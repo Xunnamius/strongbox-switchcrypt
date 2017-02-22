@@ -6,19 +6,16 @@ This is a complete rewrite of the old buselogfs code. This is a Buse + Chacha20 
 
 ## Installation and Dependencies
 
-Run `make` to compile.
-
-Run the following to install:
+Run `make` to compile buselfs. Run `make install` to install buselfs. Together, that's:
 
 ```
-(todo)
+make
+make install
 ```
 
-Run the following to uninstall:
+You may wish to run the included unit tests first before installing. See the [Testing](#Testing) section below.
 
-```
-(todo)
-```
+Run `make uninstall` to uninstall buselfs.
 
 ## Usage
 
@@ -31,6 +28,7 @@ This has only been tested on a Debian 8 x64 system. It's only guaranteed to work
 Run these tests to make sure:
 
 ```
+make
 make tests
 make check
 ```
