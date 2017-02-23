@@ -3,7 +3,7 @@ STATIC_LIB	:= vendor/libbuse.a
 
 CC			:= /usr/bin/gcc
 CFLAGS		:= -g -pedantic -Wall -Wextra -std=c99 -I/usr/local/include
-LDFLAGS		:= -L./vendor -L/usr/local/lib -lbuse -lsodium -lm
+LDFLAGS		:= -L./vendor -L/usr/local/lib -lbuse -lsodium -lzlog -lpthread -lm
 
 .PHONY: all clean tests check
 all: $(TARGET)
