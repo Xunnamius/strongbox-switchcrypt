@@ -1,6 +1,4 @@
 .vs/
 Debug/
-*.sln
-*.vcxproj*
 *.sublime*
 !*.sublime-project
