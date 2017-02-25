@@ -1,22 +1,13 @@
-EXENAME     := buselfs
-STATIC_LIB	:= vendor/libbuse.a
+.PHONY: buselfs clean check tests
 
-CC			:= /usr/bin/gcc
-LDFLAGS		:= -L./vendor -L/usr/local/lib -lbuse -lsodium -lzlog -lpthread -lm
-
-.PHONY: all clean check tests src
-
-all: src
-	$(CC) -o bin/$(EXENAME) bin/*.o $(STATIC_LIB) $(LDFLAGS)
+buselfs:
+	$(MAKE) all -C build
 
 clean:
-	rm -f bin/*
+	$(MAKE) clean -C build
 
 check:
-	$(MAKE) check -C test
+	$(MAKE) check -C build
 
 tests:
-	$(MAKE) -C test
-
-src:
-	$(MAKE) -C src
+	$(MAKE) tests -C build

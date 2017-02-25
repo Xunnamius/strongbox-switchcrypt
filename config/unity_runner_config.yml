@@ -1,0 +1,5 @@
+:unity:
+  :includes:
+    - cexception_configured.h
+  :plugins:
+    - :cexception

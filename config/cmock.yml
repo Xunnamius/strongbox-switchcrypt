@@ -1,6 +1,0 @@
-:cmock:
-    :callback_after_arg_check: 1
-    :mock_path: ./test/
-    :mock_prefix: mock_
-    :when_ptr: :smart
-    :plugins: [ :ignore, :array, :cexception, :callback, :return_thru_ptr ]

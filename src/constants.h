@@ -70,4 +70,10 @@
 
 
 
+////////////////////////
+// Exceptional Events //
+////////////////////////
+
+// See: config/cexception_config.h
+
 #endif /* CONSTANTS_H */

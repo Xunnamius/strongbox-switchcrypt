@@ -204,7 +204,7 @@ static void debug_print_hex(const char * str, int len)
         fprintf(stderr, "0x%x ", str[i] & 0xFF);
     fprintf(stderr, "\n");
 }
-*/
+
 int main(int argc, char * argv[])
 {
     /*short flags = 0;
@@ -343,5 +343,5 @@ int main(int argc, char * argv[])
     else
     {
         return buse_main(blockdevice, &buseops, (void *) &flags);
-    }*/
-}
+    }
+}*/
