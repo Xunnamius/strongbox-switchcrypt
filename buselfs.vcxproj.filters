@@ -1,0 +1,110 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="src">
+      <UniqueIdentifier>{8282b79e-b9d7-4ea8-8748-7cab7b03e552}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="test">
+      <UniqueIdentifier>{1b992255-6a75-4753-bd7f-2cfbd26df493}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\headers">
+      <UniqueIdentifier>{86a15235-3b30-4103-962e-2250f57ef293}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="test\config">
+      <UniqueIdentifier>{52d61243-3864-4b2f-8a7d-0c07c48a8698}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="test\testbitmask.c">
+      <Filter>test</Filter>
+    </ClCompile>
+    <ClCompile Include="test\testbody.c">
+      <Filter>test</Filter>
+    </ClCompile>
+    <ClCompile Include="test\testbuselfs.c">
+      <Filter>test</Filter>
+    </ClCompile>
+    <ClCompile Include="test\testcrypt.c">
+      <Filter>test</Filter>
+    </ClCompile>
+    <ClCompile Include="test\testhead.c">
+      <Filter>test</Filter>
+    </ClCompile>
+    <ClCompile Include="test\testinteract.c">
+      <Filter>test</Filter>
+    </ClCompile>
+    <ClCompile Include="test\testio.c">
+      <Filter>test</Filter>
+    </ClCompile>
+    <ClCompile Include="test\testjournal.c">
+      <Filter>test</Filter>
+    </ClCompile>
+    <ClCompile Include="test\testkeycount.c">
+      <Filter>test</Filter>
+    </ClCompile>
+    <ClCompile Include="src\bitmask.c">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\body.c">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\buselfs.c">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\crypt.c">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\head.c">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\interact.c">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\io.c">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\journal.c">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\keycount.c">
+      <Filter>src</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="src\bitmask.h">
+      <Filter>src\headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\body.h">
+      <Filter>src\headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\constants.h">
+      <Filter>src\headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\crypt.h">
+      <Filter>src\headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\head.h">
+      <Filter>src\headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\interact.h">
+      <Filter>src\headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\io.h">
+      <Filter>src\headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\journal.h">
+      <Filter>src\headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\keycount.h">
+      <Filter>src\headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\log.h">
+      <Filter>src\headers</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="test\config\cmock.yml">
+      <Filter>test\config</Filter>
+    </None>
+  </ItemGroup>
+</Project>
