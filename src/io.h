@@ -3,6 +3,7 @@
 
 #include <sys/types.h>
 #include "constants.h"
+#include "cexception_configured.h"
 
 /**
  * struct buselfs_backstore
@@ -88,6 +89,6 @@ int buselfs_backstore_close(buselfs_backstore * backstore);
  *
  * @return        Pointer pointing at the filename string
  */
-const char * buselfs_get_filename_from_path(const char * path, int maxlen)
+const char * buselfs_get_filename_from_path(const char * path, int maxlen);
 
 #endif /* IO_H */

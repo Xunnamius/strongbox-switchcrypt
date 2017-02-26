@@ -2,9 +2,10 @@
 #define HEAD_H
 
 #include <stdint.h>
-#include "bitmask.h";
-#include "io.h";
-#include "head.h";
+#include "cexception_configured.h"
+#include "bitmask.h"
+#include "io.h"
+#include "head.h"
 
 /**
  * struct buselfs_header
@@ -36,7 +37,7 @@ typedef struct buselfs_header
  * @global_id       the global ID that ties keystore, journal, and nugget
  * @data_offset     data offset in the backstore
  * @data_length     total length of the nugget in the backstore
- * @data            extended_bit_mask type header value data (a <=>64 bit mask)
+ * @data            bitmask_t type header value data (a <=>64 bit mask)
  * @mac_tag         poly1305 mac tag
  * @backstore       the backstore itself
  * @is_open         if this struct has had its members free()'d (0 = yes)
@@ -47,7 +48,7 @@ typedef struct buselfs_keystore_count
     uint64_t data_offset;
     uint64_t data_length;
 
-    extended_bit_mask * data;
+    bitmask_t * data;
     char * mac_tag;
 
     buselfs_backstore * backstore;
@@ -82,7 +83,7 @@ typedef struct buselfs_journal_entry
     char is_open;
 } buselfs_journal_entry;
 
-int buselfs_open_header(buselfs_backstore * backstore, int header_type, Header * header);
+int buselfs_open_header(buselfs_backstore * backstore, int header_type, buselfs_header * header);
 int buselfs_commit_header(buselfs_header * header);
 int buselfs_close_header(buselfs_header * header);
 int buselfs_is_fully_initialized(buselfs_backstore * backstore);

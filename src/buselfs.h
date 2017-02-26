@@ -16,5 +16,6 @@
 #include <math.h>
 
 #include "constants.h"
+#include "cexception_configured.h"
 
 #endif /* BUSELFS_H */

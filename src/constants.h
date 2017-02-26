@@ -11,7 +11,7 @@
 // 1 - light debugging to designated log file
 // 2 - ^ and some informative messages to stdout
 // 3 - ^ except it's a clusterfuck of debug messages
-#define DEBUG_LEVEL 3
+#define DEBUG_LEVEL 1 // XXX: make macro for debug, add to buselfs_* stuff
 
 ////////////
 // Header //

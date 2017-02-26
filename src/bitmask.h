@@ -19,6 +19,8 @@ typedef struct bitmask_t
  * Creates a bit mask of the specified length (in bytes). Do not forget to call
  * bitmask_fini() when you're done with the bitmask!
  *
+ * Note that length CANNOT be <= 0.
+ *
  * @param  length Positive bitmask length (in bytes); e.g. length = 2 -> 16-bit mask
  */
 bitmask_t * bitmask_init(unsigned int length);
@@ -70,6 +72,17 @@ void bitmask_set_mask(bitmask_t * bitmask);
 void bitmask_clear_mask(bitmask_t * bitmask);
 
 /**
+ * Returns 1 if the bit at the specified index is set (bit == 1). Returns 0
+ * otherwise.
+ *
+ * @param  bitmask
+ * @param  index
+ *
+ * @return         1 if the bit is set, otherwise 0
+ */
+int bitmask_is_bit_set(bitmask_t * bitmask, unsigned int index);
+
+/**
  * Set (to 1) `length` bits in the mask starting at the specified index.
  *
  * @param  bitmask
@@ -95,17 +108,6 @@ void bitmask_clear_bits(bitmask_t * bitmask, unsigned int start_index, unsigned 
  * @param  length
  */
 void bitmask_toggle_bits(bitmask_t * bitmask, unsigned int start_index, unsigned int length);
-
-/**
- * Returns 1 if the bit at the specified index is set (bit == 1). Returns 0
- * otherwise.
- *
- * @param  bitmask
- * @param  index
- *
- * @return         1 if the bit is set, otherwise 0
- */
-int bitmask_is_bit_set(bitmask_t * bitmask, unsigned int index);
 
 /**
  * Returns 1 if `length` bits starting at `start_index` are set (bit == 1).

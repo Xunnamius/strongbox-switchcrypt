@@ -2,6 +2,7 @@
 #define BODY_H
 
 #include <stdint.h>
+#include "cexception_configured.h"
 #include "io.h"
 
 /**

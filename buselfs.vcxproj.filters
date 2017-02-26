@@ -10,38 +10,11 @@
     <Filter Include="src\headers">
       <UniqueIdentifier>{86a15235-3b30-4103-962e-2250f57ef293}</UniqueIdentifier>
     </Filter>
-    <Filter Include="test\config">
-      <UniqueIdentifier>{52d61243-3864-4b2f-8a7d-0c07c48a8698}</UniqueIdentifier>
+    <Filter Include="config">
+      <UniqueIdentifier>{3118afe8-743f-4dea-8b91-0ba711db49e7}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="test\testbitmask.c">
-      <Filter>test</Filter>
-    </ClCompile>
-    <ClCompile Include="test\testbody.c">
-      <Filter>test</Filter>
-    </ClCompile>
-    <ClCompile Include="test\testbuselfs.c">
-      <Filter>test</Filter>
-    </ClCompile>
-    <ClCompile Include="test\testcrypt.c">
-      <Filter>test</Filter>
-    </ClCompile>
-    <ClCompile Include="test\testhead.c">
-      <Filter>test</Filter>
-    </ClCompile>
-    <ClCompile Include="test\testinteract.c">
-      <Filter>test</Filter>
-    </ClCompile>
-    <ClCompile Include="test\testio.c">
-      <Filter>test</Filter>
-    </ClCompile>
-    <ClCompile Include="test\testjournal.c">
-      <Filter>test</Filter>
-    </ClCompile>
-    <ClCompile Include="test\testkeycount.c">
-      <Filter>test</Filter>
-    </ClCompile>
     <ClCompile Include="src\bitmask.c">
       <Filter>src</Filter>
     </ClCompile>
@@ -68,6 +41,33 @@
     </ClCompile>
     <ClCompile Include="src\keycount.c">
       <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="test\test_bitmask.c">
+      <Filter>test</Filter>
+    </ClCompile>
+    <ClCompile Include="test\test_body.c">
+      <Filter>test</Filter>
+    </ClCompile>
+    <ClCompile Include="test\test_buselfs.c">
+      <Filter>test</Filter>
+    </ClCompile>
+    <ClCompile Include="test\test_crypt.c">
+      <Filter>test</Filter>
+    </ClCompile>
+    <ClCompile Include="test\test_head.c">
+      <Filter>test</Filter>
+    </ClCompile>
+    <ClCompile Include="test\test_interact.c">
+      <Filter>test</Filter>
+    </ClCompile>
+    <ClCompile Include="test\test_io.c">
+      <Filter>test</Filter>
+    </ClCompile>
+    <ClCompile Include="test\test_journal.c">
+      <Filter>test</Filter>
+    </ClCompile>
+    <ClCompile Include="test\test_keycount.c">
+      <Filter>test</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -98,13 +98,24 @@
     <ClInclude Include="src\keycount.h">
       <Filter>src\headers</Filter>
     </ClInclude>
-    <ClInclude Include="src\log.h">
-      <Filter>src\headers</Filter>
+    <ClInclude Include="config\cexception_config.h">
+      <Filter>config</Filter>
+    </ClInclude>
+    <ClInclude Include="config\unity_config.h">
+      <Filter>config</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <None Include="test\config\cmock.yml">
-      <Filter>test\config</Filter>
+    <None Include="README.md" />
+    <None Include="Makefile" />
+    <None Include="config\cmock_config.yml">
+      <Filter>config</Filter>
+    </None>
+    <None Include="config\unity_runner.yml">
+      <Filter>config</Filter>
+    </None>
+    <None Include="config\zlog_conf.conf">
+      <Filter>config</Filter>
     </None>
   </ItemGroup>
 </Project>

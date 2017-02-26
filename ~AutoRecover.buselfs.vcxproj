@@ -71,10 +71,10 @@
     <OutDir>/home/xunnamius/repos/research/buselfs/bin/vs/$(Platform)/$(Configuration)/</OutDir>
     <IntDir>/home/xunnamius/repos/research/buselfs/bin/vs/obj/$(Platform)/$(Configuration)/</IntDir>
     <LocalRemoteCopySources>false</LocalRemoteCopySources>
-    <RemoteBuildCommandLine>cd /home/xunnamius/repos/research/buselfs &amp;&amp; make clean &amp;&amp; make</RemoteBuildCommandLine>
-    <RemoteReBuildCommandLine>cd /home/xunnamius/repos/research/buselfs &amp;&amp; make clean &amp;&amp; make</RemoteReBuildCommandLine>
+    <RemoteBuildCommandLine>cd /home/xunnamius/repos/research/buselfs &amp;&amp; make</RemoteBuildCommandLine>
+    <RemoteReBuildCommandLine>cd /home/xunnamius/repos/research/buselfs &amp;&amp; make</RemoteReBuildCommandLine>
     <RemoteCleanCommandLine>cd /home/xunnamius/repos/research/buselfs &amp;&amp; make clean</RemoteCleanCommandLine>
-    <RemoteBuildOutputs>/home/xunnamius/repos/research/buselfs/bin/buselfs</RemoteBuildOutputs>
+    <RemoteBuildOutputs>/home/xunnamius/repos/research/buselfs/bin/test_bitmask</RemoteBuildOutputs>
     <NMakeIncludeSearchPath>H:\Visual Studio 15 Community\VC\include;vendor;config;src;vendor/unity/src;vendor/cmock/src</NMakeIncludeSearchPath>
   </PropertyGroup>
   <ItemGroup>

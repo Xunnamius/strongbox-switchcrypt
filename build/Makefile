@@ -86,7 +86,7 @@ clean:
 	find . -not -name 'Makefile' -not -name '.gitignore' -type f -exec rm {} +
 
 check: tests
-	$(patsubst %,./%;,$(TEST_TRGTS))
+	$(patsubst %,./% &&,$(TEST_TRGTS)) true
 
 vendor: $(VENDR_FILES)
 

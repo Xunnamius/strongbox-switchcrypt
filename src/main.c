@@ -1,6 +1,15 @@
-#include <stdio.h>
+/*
+ * The runner function for BuseLFS
+ *
+ * @author Bernard Dickens
+ */
 
-int main() {
+#include "buselfs.h"
 
+int main(int argc, char * argv[])
+{
+    (void) argc;
+    (void) argv;
+    // XXX: return buselfs_main(argc, argv);
     return 0;
 }
