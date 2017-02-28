@@ -28,8 +28,6 @@ This has only been tested on a Debian 8 x64 system. It's only guaranteed to work
 Run these tests to make sure:
 
 ```
-make
-make tests
 make check
 ```
 
