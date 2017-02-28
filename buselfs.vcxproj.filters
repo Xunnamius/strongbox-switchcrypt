@@ -69,6 +69,12 @@
     <ClCompile Include="test\test_keycount.c">
       <Filter>test</Filter>
     </ClCompile>
+    <ClCompile Include="src\merkle.c">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="test\test_merkle.c">
+      <Filter>test</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\bitmask.h">
@@ -101,8 +107,8 @@
     <ClInclude Include="config\cexception_config.h">
       <Filter>config</Filter>
     </ClInclude>
-    <ClInclude Include="config\unity_config.h">
-      <Filter>config</Filter>
+    <ClInclude Include="src\merkle.h">
+      <Filter>src\headers</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
