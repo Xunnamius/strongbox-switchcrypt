@@ -26,7 +26,8 @@ EXECSRC	:= $(SRC_ROOT)/main.c
 STATIC_LIB := $(VENDR_ROOT)/libbuse.a
 
 CC		:= /usr/bin/gcc
-CFLAGS	:= -g -pedantic -Wall -Wextra -std=c99 -I/usr/local/include \
+CFLAGS	:= -g -pedantic -Wall -Wextra -std=c99
+IFLAGS	:= -I/usr/local/include \
 			-I. \
 			-I$(VENDR_ROOT) \
 			-I$(CONFIG_ROOT) \
@@ -34,7 +35,8 @@ CFLAGS	:= -g -pedantic -Wall -Wextra -std=c99 -I/usr/local/include \
 			-I$(UNITY_ROOT)/src \
 			-I$(CMOCK_ROOT)/src
 
-LDFLAGS	:= -L$(VENDR_ROOT) -L/usr/local/lib -lbuse -lsodium -lzlog -lpthread -lm
+LDFLAGS	:= -L$(VENDR_ROOT) -L/usr/local/lib \
+			-lbuse -lsodium -lzlog -lpthread -lm
 
 # Ruby configs for runner generation w/ Unity (auto)
 GENRNR_CONF	:= $(CONFIG_ROOT)/unity_runner_config.yml
@@ -66,13 +68,13 @@ MOCK_TRGTS	:= $(patsubst %,mock_%.h,$(HDRS_TO_MOCK))
 .PHONY: all clean check vendor src tests mocks
 
 all: $(VENDR_FILES) $(SRC_FILES)
-	$(CC) $(LDFLAGS) -o $(EXENAME) $(EXECSRC) $(STATIC_LIB) $^
+	$(CC) $(CFLAGS) $(IFLAGS) $(LDFLAGS) -o $(EXENAME) $(EXECSRC) $(STATIC_LIB) $^
 
 $(VENDR_FILES) $(SRC_FILES): %.o: %.c %.h
-	$(CC) $(CFLAGS) -o $@ -c $<
+	$(CC) $(CFLAGS) $(IFLAGS) -o $@ -c $<
 
 $(TEST_TRGTS): test_%: %.c test_%.c test_%_runner.c
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ \
+	$(CC) $(CFLAGS) $(IFLAGS) $(LDFLAGS) -o $@ \
 		$^ \
 		$(UNITY_ROOT)/src/unity.c \
 		$(CMOCK_ROOT)/src/cmock.c \
