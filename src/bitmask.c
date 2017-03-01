@@ -72,6 +72,10 @@ void bitmask_set_mask(bitmask_t * bitmask)
 {
     free(bitmask->mask);
     bitmask->mask = malloc(bitmask->byte_length);
+
+    if(bitmask->mask == NULL)
+        Throw(EXCEPTION_ALLOC_FAILURE);
+
     memset(bitmask->mask, 0xFF, bitmask->byte_length);
 }
 
@@ -79,6 +83,9 @@ void bitmask_clear_mask(bitmask_t * bitmask)
 {
     free(bitmask->mask);
     bitmask->mask = calloc(bitmask->byte_length, sizeof(char));
+
+    if(bitmask->mask == NULL)
+        Throw(EXCEPTION_ALLOC_FAILURE);
 }
 
 int bitmask_is_bit_set(bitmask_t * bitmask, uint_fast32_t index)
