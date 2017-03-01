@@ -2,6 +2,7 @@
 #define BITMASK_H
 
 #include "cexception_configured.h"
+#include <stdint.h>
 
 /**
 * struct bitmask_t
@@ -11,8 +12,8 @@
 */
 typedef struct bitmask_t
 {
-    unsigned int byte_length;
-    char * mask;
+    size_t byte_length;
+    uint_fast8_t * mask;
 } bitmask_t;
 
 /**
@@ -23,7 +24,7 @@ typedef struct bitmask_t
  *
  * @param  length Positive bitmask length (in bytes); e.g. length = 2 -> 16-bit mask
  */
-bitmask_t * bitmask_init(unsigned int length);
+bitmask_t * bitmask_init(size_t length);
 
 /**
  * Cleans up a bit mask and any associated objects in memory. Essentially a
@@ -39,7 +40,7 @@ void bitmask_fini(bitmask_t * bitmask);
  * @param  bitmask
  * @param  index
  */
-void bitmask_set_bit(bitmask_t * bitmask, unsigned int index);
+void bitmask_set_bit(bitmask_t * bitmask, uint_fast32_t index);
 
 /**
  * Clear (set to 0) the ith bit at the specified index in the mask.
@@ -47,7 +48,7 @@ void bitmask_set_bit(bitmask_t * bitmask, unsigned int index);
  * @param  bitmask
  * @param  index
  */
-void bitmask_clear_bit(bitmask_t * bitmask, unsigned int index);
+void bitmask_clear_bit(bitmask_t * bitmask, uint_fast32_t index);
 
 /**
  * Flip the ith bit at the specified index in the mask.
@@ -55,7 +56,7 @@ void bitmask_clear_bit(bitmask_t * bitmask, unsigned int index);
  * @param  bitmask
  * @param  index
  */
-void bitmask_toggle_bit(bitmask_t * bitmask, unsigned int index);
+void bitmask_toggle_bit(bitmask_t * bitmask, uint_fast32_t index);
 
 /**
  * Set every bit in the mask to 1.
@@ -80,7 +81,7 @@ void bitmask_clear_mask(bitmask_t * bitmask);
  *
  * @return         1 if the bit is set, otherwise 0
  */
-int bitmask_is_bit_set(bitmask_t * bitmask, unsigned int index);
+int bitmask_is_bit_set(bitmask_t * bitmask, uint_fast32_t index);
 
 /**
  * Set (to 1) `length` bits in the mask starting at the specified index.
@@ -89,7 +90,7 @@ int bitmask_is_bit_set(bitmask_t * bitmask, unsigned int index);
  * @param  start_index
  * @param  length
  */
-void bitmask_set_bits(bitmask_t * bitmask, unsigned int start_index, unsigned int length);
+void bitmask_set_bits(bitmask_t * bitmask, uint_fast32_t start_index, uint_fast32_t length);
 
 /**
  * Clear (set to 0) `length` bits in the mask starting at the specified index.
@@ -98,7 +99,7 @@ void bitmask_set_bits(bitmask_t * bitmask, unsigned int start_index, unsigned in
  * @param  start_index
  * @param  length
  */
-void bitmask_clear_bits(bitmask_t * bitmask, unsigned int start_index, unsigned int length);
+void bitmask_clear_bits(bitmask_t * bitmask, uint_fast32_t start_index, uint_fast32_t length);
 
 /**
  * Flip `length` bits in the mask starting at the specified index.
@@ -107,7 +108,7 @@ void bitmask_clear_bits(bitmask_t * bitmask, unsigned int start_index, unsigned 
  * @param  start_index
  * @param  length
  */
-void bitmask_toggle_bits(bitmask_t * bitmask, unsigned int start_index, unsigned int length);
+void bitmask_toggle_bits(bitmask_t * bitmask, uint_fast32_t start_index, uint_fast32_t length);
 
 /**
  * Returns 1 if `length` bits starting at `start_index` are set (bit == 1).
@@ -118,6 +119,6 @@ void bitmask_toggle_bits(bitmask_t * bitmask, unsigned int start_index, unsigned
  *
  * @return         1 if the bit range is set, otherwise 0
  */
-int bitmask_are_bits_set(bitmask_t * bitmask, unsigned int start_index, unsigned int length);
+int bitmask_are_bits_set(bitmask_t * bitmask, uint_fast32_t start_index, uint_fast32_t length);
 
 #endif /* BITMASK_H */

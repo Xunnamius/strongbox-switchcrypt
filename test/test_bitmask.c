@@ -41,9 +41,7 @@ void test_bitmask_init_should_initialize_bitmask(void)
 
 void test_bitmask_init_should_throw_exception_on_bad_byte_length(void)
 {
-    bitmask_fini(bitmask);
-
-    CEXCEPTION_T e_expected = EXCEPTION_OUT_OF_BOUNDS;
+    CEXCEPTION_T e_expected = EXCEPTION_SIZE_T_OUT_OF_BOUNDS;
     CEXCEPTION_T e_actual = EXCEPTION_NO_EXCEPTION;
 
     TRY_FN_CATCH_EXCEPTION(bitmask = bitmask_init(0));

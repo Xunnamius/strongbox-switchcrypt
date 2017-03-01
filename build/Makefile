@@ -25,18 +25,21 @@ EXECSRC	:= $(SRC_ROOT)/main.c
 # This should be in VENDR_ROOT
 STATIC_LIB := $(VENDR_ROOT)/libbuse.a
 
-CC		:= /usr/bin/gcc
-CFLAGS	:= -g -pedantic -Wall -Wextra -std=c99
-IFLAGS	:= -I/usr/local/include \
-			-I. \
-			-I$(VENDR_ROOT) \
-			-I$(CONFIG_ROOT) \
-			-I$(SRC_ROOT) \
-			-I$(UNITY_ROOT)/src \
-			-I$(CMOCK_ROOT)/src
+CC := /usr/bin/gcc
 
-LDFLAGS	:= -L$(VENDR_ROOT) -L/usr/local/lib \
-			-lbuse -lsodium -lzlog -lpthread -lm
+DEBUGFLAGS 	:= -g -fsanitize=address,undefined,shift,integer-divide-by-zero,null,signed-integer-overflow \
+			   -fno-omit-frame-pointer
+CFLAGS		:= -pedantic -Wall -Wextra -std=c11
+IFLAGS		:= -I/usr/local/include \
+			   -I. \
+			   -I$(VENDR_ROOT) \
+			   -I$(CONFIG_ROOT) \
+			   -I$(SRC_ROOT) \
+			   -I$(UNITY_ROOT)/src \
+			   -I$(CMOCK_ROOT)/src
+
+LDFLAGS		:= -L$(VENDR_ROOT) -L/usr/local/lib \
+				-lbuse -lsodium -lzlog -lpthread -lm
 
 # Ruby configs for runner generation w/ Unity (auto)
 GENRNR_CONF	:= $(CONFIG_ROOT)/unity_runner_config.yml
@@ -74,7 +77,7 @@ $(VENDR_FILES) $(SRC_FILES): %.o: %.c %.h
 	$(CC) $(CFLAGS) $(IFLAGS) -o $@ -c $<
 
 $(TEST_TRGTS): test_%: %.c test_%.c test_%_runner.c
-	$(CC) $(CFLAGS) $(IFLAGS) $(LDFLAGS) -o $@ \
+	$(CC) $(CFLAGS) $(DEBUGFLAGS) $(IFLAGS) $(LDFLAGS) -o $@ \
 		$^ \
 		$(UNITY_ROOT)/src/unity.c \
 		$(CMOCK_ROOT)/src/cmock.c \
