@@ -102,8 +102,8 @@ void bitmask_set_bits(bitmask_t * bitmask, uint_fast32_t start_index, uint_fast3
 
     if(!length) return;
 
-    uint_fast32_t mask_count = (bit_start_index + length - 1) / 8;
-    int_fast64_t bits_remaining = length - (8 - bit_start_index);
+    uint_fast64_t mask_count = (bit_start_index + length - 1) / 8;
+    int_fast64_t bits_remaining = ((int_fast64_t)(length)) - (8 - bit_start_index);
 
     bitmask->mask[mask_start_index] |= ((1 << (8 - bit_start_index)) - 1) ^ (bits_remaining < 0 ? ((1 << abs(bits_remaining)) - 1) : 0);
 
@@ -124,8 +124,8 @@ void bitmask_clear_bits(bitmask_t * bitmask, uint_fast32_t start_index, uint_fas
 
     if(!length) return;
 
-    uint_fast32_t mask_count = (bit_start_index + length - 1) / 8;
-    int_fast64_t bits_remaining = length - (8 - bit_start_index);
+    uint_fast64_t mask_count = (bit_start_index + length - 1) / 8;
+    int_fast64_t bits_remaining = ((int_fast64_t)(length)) - (8 - bit_start_index);
 
     bitmask->mask[mask_start_index] &= ~(((1 << (8 - bit_start_index)) - 1) ^ (bits_remaining < 0 ? ((1 << abs(bits_remaining)) - 1) : 0));
 
@@ -146,8 +146,8 @@ void bitmask_toggle_bits(bitmask_t * bitmask, uint_fast32_t start_index, uint_fa
 
     if(!length) return;
 
-    uint_fast32_t mask_count = (bit_start_index + length - 1) / 8;
-    int_fast64_t bits_remaining = length - (8 - bit_start_index);
+    uint_fast64_t mask_count = (bit_start_index + length - 1) / 8;
+    int_fast64_t bits_remaining = ((int_fast64_t)(length)) - (8 - bit_start_index);
 
     bitmask->mask[mask_start_index] ^= ((1 << (8 - bit_start_index)) - 1) ^ (bits_remaining < 0 ? ((1 << abs(bits_remaining)) - 1) : 0);
 
@@ -168,18 +168,18 @@ int bitmask_are_bits_set(bitmask_t * bitmask, uint_fast32_t start_index, uint_fa
 
     if(!length) return 0;
 
-    uint_fast32_t mask_count = (bit_start_index + length - 1) / 8;
-    int_fast64_t bits_remaining = length - (8 - bit_start_index);
+    uint_fast64_t mask_count = (bit_start_index + length - 1) / 8;
+    int_fast64_t bits_remaining = ((int_fast64_t)(length)) - (8 - bit_start_index);
     uint_fast8_t is_set = 1;
 
-    uint_fast8_t filter = ((1 << (8 - bit_start_index)) - 1) ^ (bits_remaining < 0 ? ((1 << abs(bits_remaining)) - 1) : 0);
+    uint_fast8_t filter = ((uint_fast8_t)((1 << (8 - bit_start_index)) - 1)) ^ (bits_remaining < 0 ? ((1 << abs(bits_remaining)) - 1) : 0);
     is_set = is_set && !((bitmask->mask[mask_start_index] & filter) ^ filter);
 
     for(uint_fast64_t i = mask_start_index + 1; is_set && mask_count--; ++i, bits_remaining -= 8)
     {
         assert(bits_remaining > 0);
 
-        uint_fast8_t not_filter = ~((1 << (8 - (bits_remaining < 8 ? bits_remaining : 8))) - 1);
+        uint_fast8_t not_filter = ~(((1 << (8 - (bits_remaining < 8 ? bits_remaining : 8))) - 1));
         is_set = is_set && !((bitmask->mask[i] & not_filter) ^ not_filter);
     }
 
