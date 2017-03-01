@@ -25,11 +25,15 @@ EXECSRC	:= $(SRC_ROOT)/main.c
 # This should be in VENDR_ROOT
 STATIC_LIB := $(VENDR_ROOT)/libbuse.a
 
-CC := /usr/bin/gcc
+CC  := /usr/bin/gcc
+CCV := $(shell expr `gcc --version | grep ^gcc | awk '{print $$3}'` \>= 4.9)
 
-DEBUGFLAGS 	:= -g -fsanitize=address,undefined,shift,integer-divide-by-zero,null,signed-integer-overflow \
-			   -fno-omit-frame-pointer
+DEBUGFLAGS 	:= -g
+CONDITIONALDEBUGFLAGS := -fsanitize=address,undefined,shift,integer-divide-by-zero,null,signed-integer-overflow \
+						 -fno-omit-frame-pointer
+
 CFLAGS		:= -pedantic -Wall -Wextra -std=c11
+
 IFLAGS		:= -I/usr/local/include \
 			   -I. \
 			   -I$(VENDR_ROOT) \
@@ -67,6 +71,10 @@ TEST_TRGTS	:= $(patsubst %,test_%,$(SRC_FILES:.o=))
 RUNR_TRGTS	:= $(patsubst %,%_runner.c,$(TEST_TRGTS))
 
 MOCK_TRGTS	:= $(patsubst %,mock_%.h,$(HDRS_TO_MOCK))
+
+ifeq "$(CCV)" "1"
+	DEBUGFLAGS += $(CONDITIONALDEBUGFLAGS)
+endif
 
 .PHONY: all clean check vendor src tests mocks
 
