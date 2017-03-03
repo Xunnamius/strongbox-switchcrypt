@@ -1,5 +1,5 @@
-#ifndef _CONF_CEXCEPTION_H
-#define _CONF_CEXCEPTION_H
+#ifndef CONF_CEXCEPTION_H
+#define CONF_CEXCEPTION_H
 
 #include <stdlib.h>
 #include <zlog.h>
@@ -15,11 +15,14 @@
 #define CEXCEPTION_NONE (0x00)
 
 // A special handler for unhandled exceptions
-#define CEXCEPTION_NO_CATCH_HANDLER(id)                      \
-{                                                            \
-    dzlog_fatal("Program terminated by exception [%i]", id); \
-    exit(id);                                                \
-}
+#define CEXCEPTION_NO_CATCH_HANDLER(id)                                                     \
+do {                                                                                        \
+    if(id == EXCEPTION_ZLOG_INIT_FAILURE)                                                   \
+        printf("Fatal error: zlog init failure\n");                                         \
+    else                                                                                    \
+        dzlog_fatal("Fatal error: program terminated with uncaught exception [%i]", id);    \
+    exit(id);                                                                               \
+} while(0)
 
 ////////////////////////
 // Exceptional Events //
@@ -29,16 +32,22 @@
 #define EXCEPTION_NO_EXCEPTION              CEXCEPTION_NONE
 
 // Malloc failure
-#define EXCEPTION_MALLOC_FAILED             0x01
+#define EXCEPTION_MALLOC_FAILED             0x01U
 
 // Someone tried to walk off an array or something untoward
-#define EXCEPTION_OUT_OF_BOUNDS             0x02
+#define EXCEPTION_OUT_OF_BOUNDS             0x02U
 
 // Malloc/Calloc/Realloc etc went and failed on us
-#define EXCEPTION_ALLOC_FAILURE             0x03
+#define EXCEPTION_ALLOC_FAILURE             0x03U
 
 // A bad dynamic length/size was provided to some function
-#define EXCEPTION_SIZE_T_OUT_OF_BOUNDS      0x04
+#define EXCEPTION_SIZE_T_OUT_OF_BOUNDS      0x04U
+
+// Something went wrong with zlog_init
+#define EXCEPTION_ZLOG_INIT_FAILURE         0x05U
+
+// One of our sanity checks failed
+#define EXCEPTION_ASSERT_FAILURE            0x06U
 
 ///////////////////////
 // End Configuration //
@@ -46,4 +55,4 @@
 
 #include "CException.h"
 
-#endif // _CONF_CEXCEPTION_H
+#endif // CONF_CEXCEPTION_H

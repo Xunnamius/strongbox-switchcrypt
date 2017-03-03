@@ -2,10 +2,11 @@
  * @author Bernard Dickens
  */
 
-#include "unity.h"
-#include "bitmask.h"
 #include <limits.h>
 #include <string.h>
+
+#include "unity.h"
+#include "bitmask.h"
 
 #define TRY_FN_CATCH_EXCEPTION(fn_call)           \
 e_actual = EXCEPTION_NO_EXCEPTION;                \

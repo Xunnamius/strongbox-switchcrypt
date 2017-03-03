@@ -1,106 +1,163 @@
-#ifndef HEAD_H
-#define HEAD_H
+#ifndef BLFS_HEAD_H
+#define BLFS_HEAD_H
 
 #include <stdint.h>
-#include "cexception_configured.h"
+
+#include "constants.h"
 #include "bitmask.h"
 #include "io.h"
-#include "head.h"
 
 /**
- * struct buselfs_header
+ * The HEAD region (as opposed to the BODY region) of the backstore consists of
+ * several headers containing pertinent and often times constant data that is
+ * of interest at various points during buselfs's execution.
  *
- * @type            HEAD_HEADER_TYPE_*
+ * This struct represents a generic HEAD section header.
+ *
+ * @type            BLFS_HEAD_HEADER_TYPE_*
  * @data_offset     data offset in the backstore
- * @data_length     total length of the nugget in the backstore
- * @data            header value data (in bytes)
- * @backstore       the backstore itself
- * @is_open         if this struct has had its members free()'d (0 = yes)
+ * @data_length     total length of the header data in bytes
+ * @data            header value data (in bytes, not synced)
  */
-typedef struct buselfs_header
+typedef struct blfs_header_t
 {
-    int type;
+    uint32_t type;
 
     uint64_t data_offset;
     uint64_t data_length;
 
-    char * data;
-
-    buselfs_backstore * backstore;
-
-    char is_open;
-} buselfs_header;
+    uint8_t * data;
+} blfs_header_t;
 
 /**
- * buselfs_keystore_count
+ * Keycount Store entries consist of 64-bit unsigned integer nonces (keycounts)
+ * used per nugget to help encrypt that nugget's flakes with Chacha20. When the
+ * nugget is rekeyed, what actually happens is that this nonce is incremented
+ * and Chacha20 begins outputting bits from a different stream.
  *
- * @global_id       the global ID that ties keystore, journal, and nugget
+ * The Keycount Store is also referred to as KCS.
+ *
+ * @nugget_index    the index of the nugget that this struct corresponds to
  * @data_offset     data offset in the backstore
- * @data_length     total length of the nugget in the backstore
- * @data            bitmask_t type header value data (a <=>64 bit mask)
- * @mac_tag         poly1305 mac tag
- * @backstore       the backstore itself
- * @is_open         if this struct has had its members free()'d (0 = yes)
+ * @data_length     total length of the keycount data in bytes; always 8
+ * @keycount        the keycount value in the keystore (not synced)
  */
-typedef struct buselfs_keystore_count
+typedef struct blfs_keycount_t
 {
-    uint64_t global_id;
+    uint64_t nugget_index;
     uint64_t data_offset;
     uint64_t data_length;
 
-    bitmask_t * data;
-    char * mac_tag;
-
-    buselfs_backstore * backstore;
-
-    char is_open;
-} buselfs_keystore_count;
+    uint64_t keycount;
+} blfs_keycount_t;
 
 /**
- * buselfs_journal_entry
+ * Transaction Journal entries consist of bitmasks (bitvectors) that correspond
+ * to the status of flakes within corresponding nuggets. There is one bit per
+ * flake, and one Transaction Journal (TJ) entry per nugget. A high bit
+ * corresponds to a dirty flake, while a low bit corresponds to a clean one.
  *
- * @global_id       the global ID that ties keystore, journal, and nugget
+ * @nugget_index    the index of the nugget that this struct corresponds to
  * @data_offset     data offset in the backstore
- * @data_length     total length of the nugget in the backstore
- * @data            header value data (in bytes)
- * @status          journal entry status
- * @mac_tag         poly1305 mac tag
- * @backstore       the backstore itself
- * @is_open         if this struct has had its members free()'d (0 = yes)
+ * @data_length     total length of the journal entry in bytes; constant per run
+ * @mask            bitmask data representing flake states (not synced)
  */
-typedef struct buselfs_journal_entry
+typedef struct blfs_tjournal_entry_t
 {
-    uint64_t global_id;
+    uint64_t nugget_index;
     uint64_t data_offset;
     uint64_t data_length;
 
-    char * data;
-    char * mac_tag;
-    unsigned char status;
+    bitmask_t * mask;
+} blfs_tjournal_entry_t;
 
-    buselfs_backstore * backstore;
+/**
+ * Reads in the specified header from the specified backstore unless its already
+ * cached. Throws an error upon failure.
+ *
+ * @param backstore
+ * @param header_type
+ * @param header
+ *
+ * @return            blfs_header_t
+ */
+blfs_header_t * blfs_open_header(blfs_backstore_t * backstore, uint32_t header_type);
 
-    char is_open;
-} buselfs_journal_entry;
+/**
+ * Immediately writes the specified header to the specified backstore. Throws
+ * an error upon failure.
+ *
+ * @param backstore
+ * @param header
+ */
+void blfs_commit_header(blfs_backstore_t * backstore, const blfs_header_t * header);
 
-int buselfs_open_header(buselfs_backstore * backstore, int header_type, buselfs_header * header);
-int buselfs_commit_header(buselfs_header * header);
-int buselfs_close_header(buselfs_header * header);
-int buselfs_is_fully_initialized(buselfs_backstore * backstore);
+/**
+ * Evicts the specified header from any internal cache and free()s the struct.
+ * Be careful calling this. It should only be with one-time-use headers
+ * or at the end of the program.
+ *
+ * @param backstore
+ * @param header
+ */
+void blfs_close_header(blfs_backstore_t * backstore, blfs_header_t * header);
 
-int buselfs_open_keystore_count(buselfs_backstore * backstore, int global_id, buselfs_keystore_count * count);
-int buselfs_commit_keystore_count(buselfs_keystore_count * count);
-int buselfs_close_keystore_count(buselfs_keystore_count * count);
-int buselfs_increment_keystore_count(buselfs_keystore_count * count);
-int buselfs_verify_keystore_count_tag(buselfs_keystore_count * count);
-int buselfs_generate_keystore_count_tag(buselfs_keystore_count * count);
+/**
+ * Reads in the specified keycount from the specified backstore unless its already
+ * cached. Throws an error upon failure.
+ *
+ * @param  backstore
+ * @param  nugget_index
+ *
+ * @return              blfs_keycount_t
+ */
+blfs_keycount_t * blfs_open_keycount(blfs_backstore_t * backstore, uint64_t nugget_index);
 
-int buselfs_open_journal_entry(buselfs_backstore * backstore, int global_id, buselfs_journal_entry * entry);
-int buselfs_commit_journal_entry(buselfs_journal_entry * entry);
-int buselfs_close_journal_entry(buselfs_journal_entry * entry);
-int buselfs_is_flake_dirty(int flakeIndex, buselfs_journal_entry * entry);
-int buselfs_set_flake_dirty(int flakeIndex, buselfs_journal_entry * entry);
-int buselfs_verify_journal_entry_tag(buselfs_journal_entry * entry);
-int buselfs_generate_journal_entry_tag(buselfs_journal_entry * entry);
+/**
+ * Immediately writes the specified keycount to the specified backstore. Throws
+ * an error upon failure.
+ *
+ * @param backstore
+ * @param count
+ */
+void blfs_commit_keycount(blfs_backstore_t * backstore, const blfs_keycount_t * count);
 
-#endif /* HEAD_H */
+/**
+ * Evicts the specified keycount from any internal cache and free()s the struct.
+ * Be careful calling this. It should rarely be used.
+ *
+ * @param backstore
+ * @param count
+ */
+void blfs_close_keycount(blfs_backstore_t * backstore, blfs_keycount_t * count);
+
+/**
+ * Reads in the specified TJ entry from the specified backstore unless its already
+ * cached. Throws an error upon failure.
+ *
+ * @param  backstore
+ * @param  nugget_index
+ *
+ * @return              blfs_tjournal_entry_t
+ */
+blfs_tjournal_entry_t * blfs_open_journal_entry(blfs_backstore_t * backstore, uint64_t nugget_index);
+
+/**
+ * Immediately writes the specified TJ entry to the specified backstore. Throws
+ * an error upon failure.
+ *
+ * @param backstore
+ * @param entry
+ */
+void blfs_commit_journal_entry(blfs_backstore_t * backstore, const blfs_tjournal_entry_t * entry);
+
+/**
+ * Evicts the specified TJ entry from any internal cache and free()s the struct.
+ * Be careful calling this. It should rarely be used.
+ *
+ * @param backstore
+ * @param entry
+ */
+void blfs_close_journal_entry(blfs_backstore_t * backstore, blfs_tjournal_entry_t * entry);
+
+#endif /* BLFS_HEAD_H */

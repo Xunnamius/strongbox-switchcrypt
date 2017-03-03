@@ -1,8 +1,9 @@
 #ifndef BITMASK_H
 #define BITMASK_H
 
-#include "cexception_configured.h"
 #include <stdint.h>
+
+#include "cexception_configured.h"
 
 /**
 * struct bitmask_t

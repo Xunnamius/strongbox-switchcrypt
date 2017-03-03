@@ -2,10 +2,11 @@
  * @author Bernard Dickens
  */
 
-#include "unity.h"
-#include "crypto.h"
 #include <limits.h>
 #include <string.h>
+
+#include "unity.h"
+#include "crypto.h"
 
 void setUp(void)
 {

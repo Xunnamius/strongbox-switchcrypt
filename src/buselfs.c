@@ -4,130 +4,28 @@
  * @author Bernard Dickens
  */
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <assert.h>
+#include <fcntl.h>
+#include <inttypes.h>
+#include <sys/types.h>
+#include <sodium.h>
+#include <math.h>
+
+#include "buse.h"
 #include "buselfs.h"
 
-/*
-
-static int readfd = 0;
-static int writefd = 0;
-
-unsigned char cryptKey[crypto_stream_chacha20_KEYBYTES];
-unsigned char cryptNonce[crypto_stream_chacha20_NONCEBYTES];
-
-static void prepare_snake_oil()
+static int lfs_read(void * buffer, uint32_t len, uint64_t offset, void * userdata)
 {
-    unsigned int i;
-
-    for(i = 0; i < crypto_stream_chacha20_KEYBYTES; i++)
-        cryptKey[i] = (unsigned char)('A' + i);
-
-    for(i = 0; i < crypto_stream_chacha20_NONCEBYTES; i++)
-        cryptNonce[i] = (unsigned char)('a' + i);
-}
-
-static int chacha_crypt_actual(char * const cryptedMessage, const char * const message, u_int32_t messageLength, uint64_t absoluteOffset)
-{
-    int retval = -1;
-
-    uint64_t interBlockOffset = (uint64_t) floor(absoluteOffset / CHACHA_BLOCK_SIZE);
-    uint64_t intraBlockOffset = absoluteOffset % ((uint64_t) CHACHA_BLOCK_SIZE);
-    uint64_t zeroStringLength = (uint64_t) (ceil((intraBlockOffset + messageLength) / CHACHA_BLOCK_SIZE) * CHACHA_BLOCK_SIZE);
-    uint64_t blockReadUpperBound = intraBlockOffset + messageLength;
-
-    if(DEBUG_LEVEL)
-    {
-        fprintf(stderr, " [L=%" PRIu64 " IEO=%" PRIu64 " IAO=%" PRIu64 "] (mlen=%u | {bRRdiff=%" PRIu64 "} <=> blockReadRange=(%" PRIu64 " to %" PRIu64 " - 1))\n",
-                zeroStringLength, interBlockOffset, intraBlockOffset,
-                messageLength, blockReadUpperBound - intraBlockOffset, intraBlockOffset, blockReadUpperBound);
-    }
-
-    assert(zeroStringLength >= messageLength);
-
-    char * zeroString = malloc(zeroStringLength);
-    char * xorString = malloc(zeroStringLength);
-
-    memset(zeroString, '0', zeroStringLength);
-
-    retval = crypto_stream_chacha20_xor_ic((unsigned char *) xorString, (unsigned char *) zeroString, zeroStringLength, cryptNonce, interBlockOffset, cryptKey);
-
-    for(uint64_t i = intraBlockOffset, j = blockReadUpperBound, k = 0; i < j; ++i, ++k)
-    {
-        assert(k < messageLength);
-        cryptedMessage[k] = message[k] ^ xorString[i];
-    }
-
-    free(zeroString);
-    free(xorString);
-
-    return retval;
-}
-
-static int lfs_read(void * buffer, u_int32_t len, uint64_t offset, void * userdata)
-{
-    int bytesRead;
-    u_int32_t size = len;
-    char * tempBuffer = malloc(size);
-    char * originalBuffer = tempBuffer;
-    (void)(userdata);
-
-    if(DEBUG_LEVEL)
-        fprintf(stderr, "<< R - %" PRIu64 ", %u (%" PRIu64 ", %" PRIu64 ")\n", offset, len, offset, offset + len - 1);
-
-    lseek64(readfd, offset, SEEK_SET);
-    while(len > 0)
-    {
-        bytesRead = read(readfd, tempBuffer, len);
-        assert(bytesRead > 0);
-        len -= bytesRead;
-        tempBuffer = (char *) tempBuffer + bytesRead;
-    }
-
-    if(*((short *)(userdata)) & FLAG_JOURNALING_MODE_ORDERED)
-    {
-        if(DEBUG_LEVEL)
-            fprintf(stderr, "<< D");
-
-        assert(chacha_crypt_actual(buffer, originalBuffer, size, offset) == 0);
-    }
-
-    else
-        memcpy(buffer, originalBuffer, size);
-
-    free(originalBuffer);
+     // FIXME
     return 0;
 }
 
-static int lfs_write(const void * buffer, u_int32_t len, uint64_t offset, void * userdata)
+static int lfs_write(const void * buffer, uint32_t len, uint64_t offset, void * userdata)
 {
-    int bytesWritten;
-    char * tempBuffer = malloc(len);
-    char * originalBuffer = tempBuffer;
-    (void)(userdata);
-
-    if(DEBUG_LEVEL)
-        fprintf(stderr, ">> W - %" PRIu64 ", %u (%" PRIu64 ", %" PRIu64 ")\n", offset, len, offset, offset + len - 1);
-
-    if(*((short *)(userdata)) & FLAG_JOURNALING_MODE_ORDERED)
-    {
-        if(DEBUG_LEVEL)
-            fprintf(stderr, ">> E");
-
-        assert(chacha_crypt_actual(tempBuffer, buffer, len, offset) == 0);
-    }
-
-    else
-        memcpy(tempBuffer, buffer, len);
-
-    lseek64(writefd, offset, SEEK_SET);
-    while(len > 0)
-    {
-        bytesWritten = write(writefd, tempBuffer, len);
-        assert(bytesWritten > 0);
-        len -= bytesWritten;
-        tempBuffer = (char *) tempBuffer + bytesWritten;
-    }
-
-    free(originalBuffer);
+     // FIXME
     return 0;
 }
 
@@ -135,29 +33,29 @@ static void lfs_disc(void * userdata)
 {
     (void)(userdata);
 
-    if(DEBUG_LEVEL)
-        fprintf(stderr, ">> Received a disconnect request (not implemented).\n");
+    //if(DEBUG_LEVEL)
+        fprintf(stderr, ">> Received a disconnect request (not implemented).\n"); // FIXME
 }
 
 static int lfs_flush(void * userdata)
 {
     (void)(userdata);
 
-    if(DEBUG_LEVEL)
-        fprintf(stderr, ">> Received a flush request (just a sync() call).\n");
+    //if(DEBUG_LEVEL)
+        fprintf(stderr, ">> Received a flush request (just a sync() call).\n"); // FIXME
 
     return 0;
 }
 
-static int lfs_trim(uint64_t from, u_int32_t len, void * userdata)
+static int lfs_trim(uint64_t from, uint32_t len, void * userdata)
 {
     (void) from;
     (void) len;
     (void) userdata;
     (void)(userdata);
 
-    if(DEBUG_LEVEL)
-        fprintf(stderr, ">> T - (not implemented)\n");
+    //if(DEBUG_LEVEL)
+        fprintf(stderr, ">> T - (not implemented)\n"); // FIXME
 
     return 0;
 }
@@ -168,17 +66,18 @@ static struct buse_operations buseops = {
     .disc = lfs_disc,
     .flush = lfs_flush,
     .trim = lfs_trim,
-    .size = BACKSTORE_SIZE
+    .size = BLFS_DEFAULT_BYTES_BACKSTORE
 };
-*/
+
 /**
-* Get a filename from a path.
-*
-* @param  path Path string
-*
-* @return      Filename string
-*//*
-static const char * getFilenameFromPath(const char * path, int maxlen)
+ * Get a filename from a path.
+ *
+ * @param  path       Path to search
+ * @param  max_length Maximum length of returned string
+ *
+ * @return A pointer pointing to the filename
+ */
+static const char * get_filename_from_path(const char * path, int max_length)
 {
     const char * p = path;
     int count = 0;
@@ -191,23 +90,59 @@ static const char * getFilenameFromPath(const char * path, int maxlen)
 
     count++;
 
-    while(*p != '/' && count-- && maxlen--)
+    while(*p != '/' && count-- && max_length--)
         p--;
 
     p++;
     return p;
 }
 
-static void debug_print_hex(const char * str, int len)
+static void rekey_nugget_journaled()
 {
-    for(int i = 0; i < len; i++)
-        fprintf(stderr, "0x%x ", str[i] & 0xFF);
-    fprintf(stderr, "\n");
+
 }
 
-int main(int argc, char * argv[])
+static void password_verify()
 {
-    /*short flags = 0;
+
+}
+
+int buselfs_main(int argc, char * argv[])
+{
+    char buf[100];
+
+    // XXX: FIX THIS
+    snprintf(buf, sizeof buf, "%s%s%s", "blfs_level", STRINGIZE(BLFS_DEBUG_LEVEL), "XXXFIXMEXXX");
+
+    if(dzlog_init(BLFS_CONFIG_ZLOG, buf))
+        Throw(EXCEPTION_ZLOG_INIT_FAILURE);
+
+    /* Sanity asserts */
+    /*BLFS_CRYPTO_CHACHA_BLOCK_SIZE           64.0 // Must be double! XXX: necessary? Even if so, eliminate doubleness
+    BLFS_CRYPTO_BYTES_CHACHA_KEY            32U // crypto_stream_chacha20_KEYBYTES
+    BLFS_CRYPTO_BYTES_CHACHA_NONCE          8U // crypto_stream_chacha20_NONCEBYTES
+    BLFS_CRYPTO_BYTES_KDF_OUT               32U // crypto_box_SEEDBYTES
+    BLFS_CRYPTO_BYTES_KDF_SALT              16U // crypto_pwhash_SALTBYTES
+    BLFS_CRYPTO_BYTES_FLAKE_TAG_OUT         16U // crypto_onetimeauth_poly1305_BYTES
+    BLFS_CRYPTO_BYTES_FLAKE_TAG_KEY         32U // crypto_onetimeauth_poly1305_KEYBYTES
+    BLFS_CRYPTO_BYTES_MTRH                  32U // HASH_LENGTH XXX: this x8 is also an upper bound on flakes per nugget, sanity check this*/
+
+    // default journaling mode BLFS_FLAG_JOURNALING_MODE_FULL
+    
+    // determine nugget count from flake vs backstore size, ignore end bytes (but log the ignorance)
+
+    // XXX: Implement rekey function here in this file, then add it to header
+
+    /* Wrapping up... */
+    
+    zlog_fini();
+
+    return 0;
+}
+
+/*int main(int argc, char * argv[])
+{
+    short flags = 0;
     char * blockdevice = NULL;
     uint64_t blocksize = BACKSTORE_SIZE;
     char backstoreFile[256];

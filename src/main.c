@@ -8,8 +8,18 @@
 
 int main(int argc, char * argv[])
 {
-    (void) argc;
-    (void) argv;
-    // XXX: return buselfs_main(argc, argv);
-    return 0;
+    int ret = -1;
+    CEXCEPTION_T e = EXCEPTION_NO_EXCEPTION;
+
+    Try
+    {
+        ret = buselfs_main(argc, argv);
+    }
+
+    Catch(e)
+    {
+        CEXCEPTION_NO_CATCH_HANDLER(e);
+    }
+
+    return ret;
 }

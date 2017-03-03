@@ -23,7 +23,7 @@ EXENAME	:= buselfs
 EXECSRC	:= $(SRC_ROOT)/main.c
 
 # This should be in VENDR_ROOT
-STATIC_LIB := $(VENDR_ROOT)/libbuse.a
+STATIC_LIB := $(VENDR_ROOT)/libbuse.a $(VENDR_ROOT)/libmerkletree_32_20.a
 
 CC  := /usr/bin/gcc
 CCV := $(shell expr `gcc --version | grep ^gcc | awk '{print $$3}'` \>= 4.9)
@@ -54,7 +54,7 @@ CMOCK_CONF := $(CONFIG_ROOT)/cmock_config.yml
 # List of header file names (no .h or any other extensions) in SRC_ROOT to mock with cmock
 # e.g. HDRS_TO_MOCK := interactions my_lib
 # You can then include the mocked header e.g. #include "mock_my_lib.h"
-HDRS_TO_MOCK := bitmask
+HDRS_TO_MOCK := 
 
 #####################
 # End Configuration #
@@ -67,7 +67,7 @@ vpath % $(SRC_ROOT) $(VENDR_ROOT) $(CONFIG_ROOT)
 SRC_FILES	:= $(patsubst %.c,%.o,$(subst $(SRC_ROOT)/,,$(filter-out $(EXECSRC),$(wildcard $(SRC_ROOT)/*.c))))
 VENDR_FILES	:= $(patsubst %.c,%.o,$(subst $(VENDR_ROOT)/,,$(wildcard $(VENDR_ROOT)/*.c)))
 
-TEST_TRGTS	:= $(patsubst %,test_%,$(SRC_FILES:.o=))
+TEST_TRGTS	:= $(patsubst %.c,%,$(subst $(TEST_ROOT)/,,$(wildcard $(TEST_ROOT)/*.c)))
 RUNR_TRGTS	:= $(patsubst %,%_runner.c,$(TEST_TRGTS))
 
 MOCK_TRGTS	:= $(patsubst %,mock_%.h,$(HDRS_TO_MOCK))
@@ -76,9 +76,15 @@ ifeq "$(CCV)" "1"
 	DEBUGFLAGS += $(CONDITIONALDEBUGFLAGS)
 endif
 
-.PHONY: all clean check vendor src tests mocks
+.PHONY: all all-O0 all-O2 all-O3 tests tests-O0 tests-O2 tests-O3 O0 O2 O3 clean check vendor src mocks
 
-all: $(VENDR_FILES) $(SRC_FILES)
+all-O3: O3 all
+all-O2: O2 all
+all-O0: O0 all
+
+all: $(EXENAME)
+
+$(EXENAME): $(VENDR_FILES) $(SRC_FILES)
 	$(CC) $(CFLAGS) $(IFLAGS) $(LDFLAGS) -o $(EXENAME) $(EXECSRC) $(STATIC_LIB) $^
 
 $(VENDR_FILES) $(SRC_FILES): %.o: %.c %.h
@@ -95,6 +101,15 @@ $(TEST_TRGTS): test_%: %.c test_%.c test_%_runner.c
 $(RUNR_TRGTS): %_runner.c: %.c
 	ruby $(UNITY_ROOT)/auto/generate_test_runner.rb $< $@ $(GENRNR_CONF)
 
+O0:
+	$(eval CFLAGS += -O0)
+
+O2:
+	$(eval CFLAGS += -O2)
+
+O3:
+	$(eval CFLAGS += -O3)
+
 clean:
 	find . -not -name 'Makefile' -not -name '.gitignore' -type f -exec rm {} +
 
@@ -106,6 +121,10 @@ vendor: $(VENDR_FILES)
 src: $(SRC_FILES)
 
 tests: vendor mocks $(TEST_TRGTS)
+
+tests-O3: O3 tests
+tests-O2: O2 tests
+tests-O0: O0 tests
 
 mocks: $(MOCK_TRGTS)
 

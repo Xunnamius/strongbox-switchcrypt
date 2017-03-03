@@ -2,10 +2,11 @@
  * @author Bernard Dickens
  */
 
-#include "unity.h"
-#include "head.h"
 #include <limits.h>
 #include <string.h>
+
+#include "unity.h"
+#include "head.h"
 
 void setUp(void)
 {

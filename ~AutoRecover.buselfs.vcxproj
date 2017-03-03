@@ -79,45 +79,34 @@
   </PropertyGroup>
   <ItemGroup>
     <None Include="config\cmock_config.yml" />
-    <None Include="config\unity_runner.yml" />
+    <None Include="config\unity_runner_config.yml" />
     <None Include="config\zlog_conf.conf" />
     <None Include="Makefile" />
     <None Include="README.md" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\bitmask.c" />
-    <ClCompile Include="src\body.c" />
     <ClCompile Include="src\buselfs.c" />
-    <ClCompile Include="src\crypt.c" />
+    <ClCompile Include="src\crypto.c" />
     <ClCompile Include="src\head.c" />
     <ClCompile Include="src\interact.c" />
     <ClCompile Include="src\io.c" />
-    <ClCompile Include="src\journal.c" />
-    <ClCompile Include="src\keycount.c" />
-    <ClCompile Include="src\merkle.c" />
+    <ClCompile Include="src\main.c" />
     <ClCompile Include="test\test_bitmask.c" />
-    <ClCompile Include="test\test_body.c" />
     <ClCompile Include="test\test_buselfs.c" />
-    <ClCompile Include="test\test_crypt.c" />
+    <ClCompile Include="test\test_crypto.c" />
     <ClCompile Include="test\test_head.c" />
-    <ClCompile Include="test\test_interact.c" />
     <ClCompile Include="test\test_io.c" />
-    <ClCompile Include="test\test_journal.c" />
-    <ClCompile Include="test\test_keycount.c" />
-    <ClCompile Include="test\test_merkle.c" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="config\cexception_config.h" />
+    <ClInclude Include="config\cexception_configured.h" />
     <ClInclude Include="src\bitmask.h" />
-    <ClInclude Include="src\body.h" />
+    <ClInclude Include="src\buselfs.h" />
     <ClInclude Include="src\constants.h" />
-    <ClInclude Include="src\crypt.h" />
+    <ClInclude Include="src\crypto.h" />
     <ClInclude Include="src\head.h" />
     <ClInclude Include="src\interact.h" />
     <ClInclude Include="src\io.h" />
-    <ClInclude Include="src\journal.h" />
-    <ClInclude Include="src\keycount.h" />
-    <ClInclude Include="src\merkle.h" />
   </ItemGroup>
   <ItemDefinitionGroup />
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

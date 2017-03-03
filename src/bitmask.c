@@ -8,6 +8,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <inttypes.h>
+
 #include "bitmask.h"
 
 bitmask_t * bitmask_init(size_t length)
