@@ -11,7 +11,7 @@ This is a complete rewrite of the old buselogfs code. This is a Buse + Chacha20 
 
 ## Usage
 
-You may wish to run the included unit tests first before actually utilizing buselfs. See the [Testing](#Testing) section below.
+You may wish to run the included unit tests first before actually utilizing buselfs. See the [Testing](#testing) section below.
 
 First, of course, `make` buselfs:
 
