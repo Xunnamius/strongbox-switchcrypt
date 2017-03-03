@@ -4,22 +4,26 @@ This is a complete rewrite of the old buselogfs code. This is a Buse + Chacha20 
 
 (todo: advantages, disadvantages, tradeoffs, etc)
 
-## Installation and Dependencies
+## Dependencies
 
-Run `make` to compile buselfs. Run `make install` to install buselfs. Together, that's:
-
-```
-make
-make install
-```
-
-You may wish to run the included unit tests first before installing. See the [Testing](#Testing) section below.
-
-Run `make uninstall` to uninstall buselfs.
+- [zlog]()
+- [libsodium]()
 
 ## Usage
 
+You may wish to run the included unit tests first before actually utilizing buselfs. See the [Testing](#Testing) section below.
+
+First, of course, `make` buselfs:
+
+```
+make
+```
+
+Command syntax:
+
+```
 (todo)
+```
 
 ## Testing
 
