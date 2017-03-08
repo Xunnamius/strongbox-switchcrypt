@@ -64,6 +64,9 @@ do {                                                                            
 
 #define EXCEPTION_OPEN_FAILURE                  0x0DU
 
+// One of our sanity checks failed
+#define EXCEPTION_OUT_OF_MEMORY             0x07U
+
 ///////////////////////
 // End Configuration //
 ///////////////////////
