@@ -44,7 +44,7 @@ typedef struct blfs_header_t
  */
 typedef struct blfs_keycount_t
 {
-    uint64_t nugget_index;
+    uint32_t nugget_index;
     uint64_t data_offset;
     uint64_t data_length;
 
@@ -64,7 +64,7 @@ typedef struct blfs_keycount_t
  */
 typedef struct blfs_tjournal_entry_t
 {
-    uint64_t nugget_index;
+    uint32_t nugget_index;
     uint64_t data_offset;
     uint64_t data_length;
 
@@ -111,7 +111,7 @@ void blfs_close_header(blfs_backstore_t * backstore, blfs_header_t * header);
  *
  * @return              blfs_keycount_t
  */
-blfs_keycount_t * blfs_open_keycount(blfs_backstore_t * backstore, uint64_t nugget_index);
+blfs_keycount_t * blfs_open_keycount(blfs_backstore_t * backstore, uint32_t nugget_index);
 
 /**
  * Immediately writes the specified keycount to the specified backstore. Throws
@@ -140,7 +140,7 @@ void blfs_close_keycount(blfs_backstore_t * backstore, blfs_keycount_t * count);
  *
  * @return              blfs_tjournal_entry_t
  */
-blfs_tjournal_entry_t * blfs_open_journal_entry(blfs_backstore_t * backstore, uint64_t nugget_index);
+blfs_tjournal_entry_t * blfs_open_journal_entry(blfs_backstore_t * backstore, uint32_t nugget_index);
 
 /**
  * Immediately writes the specified TJ entry to the specified backstore. Throws

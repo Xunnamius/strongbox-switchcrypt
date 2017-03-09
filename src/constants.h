@@ -1,8 +1,6 @@
 #ifndef BLFS_CONSTANTS_H
 #define BLFS_CONSTANTS_H
 
-#include <sodium.h>
-
 //////////////////
 // Configurable //
 //////////////////
@@ -42,11 +40,11 @@
 
 #define BLFS_CRYPTO_BYTES_CHACHA_BLOCK          64U // chacha outputs randomly accessible 512-bit blocks
 #define BLFS_CRYPTO_BYTES_CHACHA_KEY            32U // crypto_stream_chacha20_KEYBYTES
-#define BLFS_CRYPTO_BYTES_CHACHA_NONCE          8U // crypto_stream_chacha20_NONCEBYTES
+#define BLFS_CRYPTO_BYTES_CHACHA_NONCE          8U  // crypto_stream_chacha20_NONCEBYTES
 #define BLFS_CRYPTO_BYTES_KDF_OUT               32U // crypto_box_SEEDBYTES
 #define BLFS_CRYPTO_BYTES_KDF_SALT              16U // crypto_pwhash_SALTBYTES
 #define BLFS_CRYPTO_BYTES_FLAKE_TAG_OUT         16U // crypto_onetimeauth_poly1305_BYTES
-#define BLFS_CRYPTO_BYTES_FLAKE_TAG_KEY         32U // crypto_onetimeauth_poly1305_KEYBYTES
+#define BLFS_CRYPTO_BYTES_FLAKE_TAG_KEY         32U // crypto_onetimeauth_poly1305_KEYBYTES; <= BLFS_CRYPTO_BYTES_KDF_OUT
 #define BLFS_CRYPTO_BYTES_MTRH                  32U // HASH_LENGTH ; this x8 is also an upper bound on flakes per nugget
 
 ////////////

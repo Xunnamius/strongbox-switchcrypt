@@ -1,5 +1,5 @@
-#ifndef CONF_CEXCEPTION_H
-#define CONF_CEXCEPTION_H
+#ifndef CONFIG_CEXCEPTION_CONFIGURED_H
+#define CONFIG_CEXCEPTION_CONFIGURED_H
 
 #include <stdlib.h>
 #include <zlog.h>
@@ -49,10 +49,16 @@ do {                                                                            
 // One of our sanity checks failed
 #define EXCEPTION_ASSERT_FAILURE            0x06U
 
+// One of our sanity checks failed
+#define EXCEPTION_OUT_OF_MEMORY             0x07U
+
+// One of our sanity checks failed
+#define EXCEPTION_SODIUM_INIT_FAILURE       0x08U
+
 ///////////////////////
 // End Configuration //
 ///////////////////////
 
 #include "CException.h"
 
-#endif // CONF_CEXCEPTION_H
+#endif // CONFIG_CEXCEPTION_CONFIGURED_H

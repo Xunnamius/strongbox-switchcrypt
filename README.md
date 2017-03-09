@@ -4,6 +4,11 @@ This is a complete rewrite of the old buselogfs code. This is a Buse + Chacha20 
 
 (todo: advantages, disadvantages, tradeoffs, etc)
 
+## Things to Address
+
+- Byte order is assumed to be **little endian**. Might have to implement endian conversion in `io.c` using the standard functions if this becomes an issue.
+- 
+
 ## Dependencies
 
 - [zlog]()
@@ -27,7 +32,7 @@ Command syntax:
 
 ## Testing
 
-This has only been tested on a Debian 8 x64 system. It's only guaranteed to work there, if even that.
+This has only been tested on Core2 Debian 8 x64 and ARM Odroid XU3 (Debian and Ubuntu x64) systems. It's only guaranteed to work in these environments, if even that. Run the tests below to be (about 90%) sure!
 
 Run these tests to make sure:
 

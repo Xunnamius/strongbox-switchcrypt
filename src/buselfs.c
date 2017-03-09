@@ -109,6 +109,11 @@ static void password_verify()
 
 int buselfs_main(int argc, char * argv[])
 {
+    /* Initialize libsodium */
+    if(sodium_init() == -1)
+        Throw(EXCEPTION_SODIUM_INIT_FAILURE);
+
+    /* Initialize zlog */
     char buf[100];
 
     // XXX: FIX THIS
