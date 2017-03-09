@@ -96,7 +96,8 @@ $(TEST_TRGTS): test_%: %.c test_%.c test_%_runner.c
 		$(UNITY_ROOT)/src/unity.c \
 		$(CMOCK_ROOT)/src/cmock.c \
 		$(VENDR_FILES) \
-		$(filter-out mock_$*.c,$(wildcard mock_*.c))
+		$(filter-out mock_$*.c,$(wildcard mock_*.c)) \
+		$(STATIC_LIB)
 
 $(RUNR_TRGTS): %_runner.c: %.c
 	ruby $(UNITY_ROOT)/auto/generate_test_runner.rb $< $@ $(GENRNR_CONF)

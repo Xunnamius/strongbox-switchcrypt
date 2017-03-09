@@ -15,7 +15,7 @@ void setUp(void)
 
     char buf[100];
     snprintf(buf, sizeof buf, "%s%s_%s", "blfs_level", STRINGIZE(BLFS_DEBUG_LEVEL), "test");
-    printf(">> %s\n", buf);
+
     if(dzlog_init(BLFS_CONFIG_ZLOG, buf))
         exit(EXCEPTION_ZLOG_INIT_FAILURE);
 }
@@ -138,4 +138,28 @@ void test_blfs_chacha20_crypt_crypts_properly(void)
     blfs_chacha20_crypt(crypted_data_round2, crypted_data, sizeof data, nugget_key, &kcs_keycount, nugget_internal_offset);
 
     TEST_ASSERT_EQUAL_MEMORY(data, crypted_data_round2, 10);
+}
+
+void test_blfs_chacha20_crypt_BIGLY(void)
+{
+    uint8_t data[4096];
+    randombytes_buf(data, sizeof data);
+
+    uint8_t crypted_data[4096];
+    uint64_t kcs_keycount = 123456789101112;
+    uint64_t nugget_internal_offset = 72;
+
+    uint8_t nugget_key[BLFS_CRYPTO_BYTES_CHACHA_KEY] = {
+        0xd9, 0x76, 0xff, 0x4c, 0x54, 0xaa, 0x1, 0xea, 0xa5, 0xad, 0xdc, 0x68,
+        0xcf, 0xe1, 0x8f, 0xc1, 0xa7, 0xa5, 0x45, 0x4b, 0x63, 0xaa, 0x46, 0x2d,
+        0x78, 0xda, 0xb6, 0x99, 0x18, 0x6, 0x19, 0xab
+    };
+
+    blfs_chacha20_crypt(crypted_data, data, sizeof data, nugget_key, &kcs_keycount, nugget_internal_offset);
+
+    uint8_t crypted_data_round2[4096];
+
+    blfs_chacha20_crypt(crypted_data_round2, crypted_data, sizeof data, nugget_key, &kcs_keycount, nugget_internal_offset);
+
+    TEST_ASSERT_EQUAL_MEMORY(data, crypted_data_round2, 4096);
 }

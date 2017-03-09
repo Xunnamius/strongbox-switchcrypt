@@ -29,34 +29,40 @@ do {                                                                            
 ////////////////////////
 
 // Not an exception
-#define EXCEPTION_NO_EXCEPTION              CEXCEPTION_NONE
+#define EXCEPTION_NO_EXCEPTION                  CEXCEPTION_NONE
 
 // Malloc failure
-#define EXCEPTION_MALLOC_FAILED             0x01U
+#define EXCEPTION_MALLOC_FAILED                 0x01U
 
 // Someone tried to walk off an array or something untoward
-#define EXCEPTION_OUT_OF_BOUNDS             0x02U
+#define EXCEPTION_OUT_OF_BOUNDS                 0x02U
 
 // Malloc/Calloc/Realloc etc went and failed on us
-#define EXCEPTION_ALLOC_FAILURE             0x03U
+#define EXCEPTION_ALLOC_FAILURE                 0x03U
 
 // A bad dynamic length/size was provided to some function
-#define EXCEPTION_SIZE_T_OUT_OF_BOUNDS      0x04U
+#define EXCEPTION_SIZE_T_OUT_OF_BOUNDS          0x04U
 
 // Something went wrong with zlog_init
-#define EXCEPTION_ZLOG_INIT_FAILURE         0x05U
+#define EXCEPTION_ZLOG_INIT_FAILURE             0x05U
 
 // One of our sanity checks failed
-#define EXCEPTION_ASSERT_FAILURE            0x06U
+#define EXCEPTION_ASSERT_FAILURE                0x06U
 
-// One of our sanity checks failed
-#define EXCEPTION_OUT_OF_MEMORY             0x07U
+// XXX: comment the rest of these
+#define EXCEPTION_OUT_OF_MEMORY                 0x07U
 
-// One of our sanity checks failed
-#define EXCEPTION_SODIUM_INIT_FAILURE       0x08U
+#define EXCEPTION_SODIUM_INIT_FAILURE           0x08U
 
-// One of our sanity checks failed
-#define EXCEPTION_CHACHA20_BAD_RETVAL       0x09U
+#define EXCEPTION_CHACHA20_BAD_RETVAL           0x09U
+
+#define EXCEPTION_INVALID_FLAKESIZE             0x0AU
+
+#define EXCEPTION_INVALID_FLAKES_PER_NUGGET     0x0BU
+
+#define EXCEPTION_TOO_MANY_FLAKES_PER_NUGGET    0x0CU
+
+#define EXCEPTION_OPEN_FAILURE                  0x0DU
 
 ///////////////////////
 // End Configuration //

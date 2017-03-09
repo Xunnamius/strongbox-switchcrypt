@@ -15,7 +15,7 @@ void setUp(void)
 
     char buf[100];
     snprintf(buf, sizeof buf, "%s%s_%s", "blfs_level", STRINGIZE(BLFS_DEBUG_LEVEL), "test");
-    printf(">> %s\n", buf);
+    
     if(dzlog_init(BLFS_CONFIG_ZLOG, buf))
         exit(EXCEPTION_ZLOG_INIT_FAILURE);
 }
@@ -27,6 +27,6 @@ void tearDown(void)
 
 void test_not_implemented(void)
 {
-    buselfs_main(0, NULL);
+    // Call the functions inside of buselfs and make sure they work
     TEST_IGNORE();
 }

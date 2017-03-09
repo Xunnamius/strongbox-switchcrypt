@@ -82,7 +82,8 @@
 // Backstore //
 ///////////////
 
-#define BLFS_BACKSTORE_FILENAME "./blfs-%s.bkstr"
+#define BLFS_BACKSTORE_FILENAME                 "./blfs-%s.bkstr"
+#define BLFS_BACKSTORE_FILENAME_MAXLEN          256
 
 //////////////
 // Defaults //
@@ -91,23 +92,13 @@
 #define BLFS_DEFAULT_BYTES_FLAKE                4096U
 #define BLFS_DEFAULT_BYTES_BACKSTORE            1073741824ULL // 1GB
 #define BLFS_DEFAULT_FLAKES_PER_NUGGET          256U
-#define BLFS_DEFAULT_ENABLE_STRUCT_CACHING      TRUE
-
-///////////
-// Flags //
-///////////
-
-#define BLFS_FLAG_TEST_MODE                     0x01U
-#define BLFS_FLAG_FORCE_CLEAN_START             0x02U
-#define BLFS_FLAG_JOURNALING_MODE_ORDERED       0x04U
-#define BLFS_FLAG_JOURNALING_MODE_FULL          0x08U
-#define BLFS_FLAG_CUSTOM_BYTES_FLAKE            0x10U
-#define BLFS_FLAG_CUSTOM_BYTES_BACKSTORE        0x20U
-#define BLFS_FLAG_CUSTOM_FLAKES_PER_NUGGET      0x40U
+#define BLFS_DEFAULT_DISABLE_INTERNAL_CACHING   FALSE // Not a good idea
 
 ////////////////////////
 // Exceptional Events //
 ////////////////////////
+
+#define BLFS_EXIT_STATUS_HELP_TEXT              -1
 
 // See: config/cexception_configured.h
 #include "cexception_configured.h"

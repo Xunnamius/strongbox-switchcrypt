@@ -11,68 +11,18 @@
 #include <fcntl.h>
 #include <inttypes.h>
 #include <sys/types.h>
-#include <sodium.h>
 #include <math.h>
+#include <limits.h>
+#include <errno.h>
 
 #include "buse.h"
 #include "buselfs.h"
-
-static int lfs_read(void * buffer, uint32_t len, uint64_t offset, void * userdata)
-{
-     // FIXME
-    return 0;
-}
-
-static int lfs_write(const void * buffer, uint32_t len, uint64_t offset, void * userdata)
-{
-     // FIXME
-    return 0;
-}
-
-static void lfs_disc(void * userdata)
-{
-    (void)(userdata);
-
-    //if(DEBUG_LEVEL)
-        fprintf(stderr, ">> Received a disconnect request (not implemented).\n"); // FIXME
-}
-
-static int lfs_flush(void * userdata)
-{
-    (void)(userdata);
-
-    //if(DEBUG_LEVEL)
-        fprintf(stderr, ">> Received a flush request (just a sync() call).\n"); // FIXME
-
-    return 0;
-}
-
-static int lfs_trim(uint64_t from, uint32_t len, void * userdata)
-{
-    (void) from;
-    (void) len;
-    (void) userdata;
-    (void)(userdata);
-
-    //if(DEBUG_LEVEL)
-        fprintf(stderr, ">> T - (not implemented)\n"); // FIXME
-
-    return 0;
-}
-
-static struct buse_operations buseops = {
-    .read = lfs_read,
-    .write = lfs_write,
-    .disc = lfs_disc,
-    .flush = lfs_flush,
-    .trim = lfs_trim,
-    .size = BLFS_DEFAULT_BYTES_BACKSTORE
-};
+#include "merkletree.h"
 
 /**
  * Get a filename from a path.
  *
- * @param  path       Path to search
+ * @param  path       Path string to search
  * @param  max_length Maximum length of returned string
  *
  * @return A pointer pointing to the filename
@@ -97,191 +47,184 @@ static const char * get_filename_from_path(const char * path, int max_length)
     return p;
 }
 
-static void rekey_nugget_journaled()
+/**
+ * struct buse_operations buseops is required by the BUSE subsystem. It is very
+ * similar to its FUSE counterpart in intent.
+ */
+static struct buse_operations buseops = {
+    .read = buse_read,
+    .write = buse_write,
+    .disc = buse_disc,
+    .flush = buse_flush,
+    .trim = buse_trim,
+    .size = 0
+};
+
+int buse_read(void * buffer, uint32_t len, uint64_t offset, void * userdata)
+{
+    (void) buffer;
+    (void) len;
+    (void) offset;
+    (void) userdata;
+
+    return 0;
+}
+
+int buse_write(const void * buffer, uint32_t len, uint64_t offset, void * userdata)
+{
+    (void) buffer;
+    (void) len;
+    (void) offset;
+    (void) userdata;
+
+    return 0;
+}
+
+void buse_disc(void * userdata)
+{
+    (void) userdata;
+
+    IFDEBUG(dzlog_info("Received a disconnect request (not implemented).\n"));
+}
+
+int buse_flush(void * userdata)
+{
+    (void) userdata;
+
+    IFDEBUG(dzlog_info("Received a flush request (not implemented).\n"));
+
+    return 0;
+}
+
+int buse_trim(uint64_t from, uint32_t len, void * userdata)
+{
+    (void) from;
+    (void) len;
+    (void) userdata;
+
+    IFDEBUG(dzlog_info("Received a trim request (not implemented)\n"));
+
+    return 0;
+}
+
+void rekey_nugget_journaled()
 {
 
 }
 
-static void password_verify()
+void password_verify()
 {
 
 }
 
 int buselfs_main(int argc, char * argv[])
 {
-    /* Initialize libsodium */
-    if(sodium_init() == -1)
-        Throw(EXCEPTION_SODIUM_INIT_FAILURE);
+    short blfs_flags = 0;
 
-    /* Initialize zlog */
-    char buf[100];
+    char * blockdevice;
+    char backstore_filepath[BLFS_BACKSTORE_FILENAME_MAXLEN];
 
-    // XXX: FIX THIS
-    snprintf(buf, sizeof buf, "%s%s_%s", "blfs_level", STRINGIZE(BLFS_DEBUG_LEVEL), "XXXFIXMEXXX");
+    uint64_t backstore_size = BLFS_DEFAULT_BYTES_BACKSTORE;
+    uint64_t flake_size = BLFS_DEFAULT_BYTES_FLAKE;
+    uint64_t flakes_per_nugget = BLFS_DEFAULT_FLAKES_PER_NUGGET;
 
-    if(dzlog_init(BLFS_CONFIG_ZLOG, buf))
-        Throw(EXCEPTION_ZLOG_INIT_FAILURE);
+    /* Print help text if bag argument configuration encountered */
 
-    /* Sanity asserts */
-    /*BLFS_CRYPTO_CHACHA_BLOCK_SIZE           64.0 // Must be double! XXX: necessary? Even if so, eliminate doubleness
-    BLFS_CRYPTO_BYTES_CHACHA_KEY            32U // crypto_stream_chacha20_KEYBYTES
-    BLFS_CRYPTO_BYTES_CHACHA_NONCE          8U // crypto_stream_chacha20_NONCEBYTES
-    BLFS_CRYPTO_BYTES_KDF_OUT               32U // crypto_box_SEEDBYTES
-    BLFS_CRYPTO_BYTES_KDF_SALT              16U // crypto_pwhash_SALTBYTES
-    BLFS_CRYPTO_BYTES_FLAKE_TAG_OUT         16U // crypto_onetimeauth_poly1305_BYTES
-    BLFS_CRYPTO_BYTES_FLAKE_TAG_KEY         32U // crypto_onetimeauth_poly1305_KEYBYTES
-    BLFS_CRYPTO_BYTES_MTRH                  32U // HASH_LENGTH XXX: this x8 is also an upper bound on flakes per nugget, sanity check this*/
-
-    // default journaling mode BLFS_FLAG_JOURNALING_MODE_FULL
-    
-    // determine nugget count from flake vs backstore size, ignore end bytes (but log the ignorance)
-
-    // XXX: Implement rekey function here in this file, then add it to header
-
-    /* Wrapping up... */
-    
-    zlog_fini();
-
-    return 0;
-}
-
-/*int main(int argc, char * argv[])
-{
-    short flags = 0;
-    char * blockdevice = NULL;
-    uint64_t blocksize = BACKSTORE_SIZE;
-    char backstoreFile[256];
-
-    sodium_init();
-
-    if(argc <= 1 || argc > 6)
+    if(argc <= 1 || argc > 4)
     {
         fprintf(stderr,
         "\nUsage:\n"
-        "  %s [--danger][--with-encrypt][--dirty-start][--size 1073741824] nbd_device\n"
-        "  %s [--danger][--with-encrypt] --test-mode test_characters_to_write\n\n"
+        "  %s [--backstore-size 1073741824][--flake-size 4096][--flakes-per-nugget 64] nbd_device\n"
         "nbd_device must always appear last.\n"
         "Size is specified in bytes. Default is shown above.\n"
-        "Danger mode only means something with encryption on. It definitely breaks crypto.\n"
-        "Don't forget to load nbd kernel module (`modprobe nbd`) and run as root.\n", argv[0], argv[0]);
+        "To test for correctness, run (`make check`) from the /build directory.\n"
+        "Don't forget to load nbd kernel module (`modprobe nbd`) and run as root!\n", argv[0]);
 
-        return 1;
+        return BLFS_EXIT_STATUS_HELP_TEXT;
     }
+
+    /* Process arguments */
 
     blockdevice = argv[--argc];
 
     while(argc-- > 1)
     {
-        if(strcmp(argv[argc], "--with-encrypt") == 0)
-            flags |= FLAG_JOURNALING_MODE_ORDERED;
+        if(strcmp(argv[argc], "--backstore-size") == 0)
+            backstore_size = strtol(argv[argc + 1], NULL, 0);
 
-        else if(strcmp(argv[argc], "--danger") == 0)
-            flags |= FLAG_DANGER_MODE;
+        else if(strcmp(argv[argc], "--flake-size") == 0)
+            flake_size = strtol(argv[argc + 1], NULL, 0);
 
-        else if(!(flags & FLAG_TEST_MODE) && strcmp(argv[argc], "--dirty-start") == 0)
-            flags |= FLAG_FORCE_CLEAN_START;
-
-        else if(!(flags & FLAG_TEST_MODE) && strcmp(argv[argc], "--size") == 0)
-            blocksize = strtol(argv[argc + 1], NULL, 0);
-
-        else if(strcmp(argv[argc], "--test-mode") == 0)
-        {
-            flags |= FLAG_TEST_MODE;
-            blocksize = strlen(blockdevice);
-        }
+        else if(strcmp(argv[argc], "--flakes-per-nugget") == 0)
+            flakes_per_nugget = strtol(argv[argc + 1], NULL, 0);
     }
 
-    buseops.size = blocksize;
+    /* Prepare to setup the backstore file */
 
-    sprintf(backstoreFile, BACKSTORE_FILE, getFilenameFromPath(blockdevice, 7));
+    const char * blockdevice_shortname = get_filename_from_path(blockdevice, 7);
+    sprintf(backstore_filepath, BLFS_BACKSTORE_FILENAME, blockdevice_shortname);
 
-    if(flags & FLAG_FORCE_CLEAN_START)
-        remove(backstoreFile);
+    /* Initialize libsodium */
 
-    writefd = open(backstoreFile, O_WRONLY | O_CREAT | O_TRUNC, 0666);
-    readfd = open(backstoreFile, O_RDONLY);
+    if(sodium_init() == -1)
+        Throw(EXCEPTION_SODIUM_INIT_FAILURE);
 
-    assert(writefd > 0);
-    assert(readfd > 0);
+    /* Initialize zlog */
 
-    // Ensure the backstore size always starts out as what it is expected to be
-    ftruncate(writefd, blocksize);
+    char buf[100];
 
-    if(DEBUG_LEVEL)
-    {
-        fprintf(stderr, ">> BUSE LFS Backend <<\n");
-        fprintf(stderr, ">> Input flag: 0x%02X\n", flags);
-        fprintf(stderr, ">> Journaling mode: %s\n", flags & FLAG_JOURNALING_MODE_ORDERED ? "ON" : "OFF");
-        fprintf(stderr, ">> Operating mode: %s\n", flags & FLAG_TEST_MODE ? "TESTING" : (flags & FLAG_FORCE_CLEAN_START ? "FCLEAN" : "NORMAL"));
-        fprintf(stderr, ">> Defined: DEBUG_LEVEL = %i\n", DEBUG_LEVEL);
-        fprintf(stderr, ">> Defined: BACKSTORE_FILE = %s\n", BACKSTORE_FILE);
-        fprintf(stderr, ">> Defined: BACKSTORE_SIZE = %i\n", BACKSTORE_SIZE);
-        fprintf(stderr, ">> backstoreFile (actual) = %s\n", backstoreFile);
-        fprintf(stderr, ">> blocksize (actual) = %" PRIu64 "\n", blocksize);
-    }
+    snprintf(buf, sizeof buf, "%s%s_%s", "blfs_level", STRINGIZE(BLFS_DEBUG_LEVEL), blockdevice_shortname);
 
-    if(flags & FLAG_JOURNALING_MODE_ORDERED)
-    {
-        prepare_snake_oil();
+    if(dzlog_init(BLFS_CONFIG_ZLOG, buf))
+        Throw(EXCEPTION_ZLOG_INIT_FAILURE);
 
-        if(DEBUG_LEVEL && (flags & FLAG_JOURNALING_MODE_ORDERED))
-        {
-            fprintf(stderr, ">> Encryption key: %s\n", cryptKey);
-            fprintf(stderr, ">> Encryption nonce: %s\n", cryptNonce);
-        }
-    }
+    /* Sanity/safety asserts */
 
-    if(flags & FLAG_TEST_MODE)
-    {
-        uint64_t len = blocksize;
-        uint64_t halfbs = blocksize / 2;
-        char * input = blockdevice;
-        char * readback = malloc(blocksize);
-        char * originalRB = readback;
-        char * output = malloc(halfbs);
-        char * inputPart = malloc(halfbs);
+    if(flake_size > UINT_MAX || flake_size <= 0)
+        Throw(EXCEPTION_INVALID_FLAKESIZE);
 
-        assert(blocksize > 3);
+    if(flake_size > UINT_MAX || flake_size <= 0)
+        Throw(EXCEPTION_INVALID_FLAKESIZE);
 
-        fprintf(stderr, ">> Calling lfs_write() with test data (%" PRIu64 "): ", blocksize);
-        debug_print_hex(input, blocksize);
+    if(flakes_per_nugget > UINT_MAX || flakes_per_nugget <= 0)
+        Throw(EXCEPTION_INVALID_FLAKES_PER_NUGGET);
 
-        fprintf(stderr, ">> lfs_write() returned %i\n", lfs_write(input, blocksize, 0, (void *) &flags));
+    assert(crypto_stream_chacha20_KEYBYTES == BLFS_CRYPTO_BYTES_CHACHA_KEY);
+    assert(crypto_stream_chacha20_NONCEBYTES == BLFS_CRYPTO_BYTES_CHACHA_NONCE);
+    assert(crypto_box_SEEDBYTES == BLFS_CRYPTO_BYTES_KDF_OUT);
+    assert(crypto_pwhash_SALTBYTES == BLFS_CRYPTO_BYTES_KDF_SALT);
+    assert(crypto_onetimeauth_poly1305_BYTES == BLFS_CRYPTO_BYTES_FLAKE_TAG_OUT);
+    assert(crypto_onetimeauth_poly1305_KEYBYTES == BLFS_CRYPTO_BYTES_FLAKE_TAG_KEY);
+    assert(HASH_LENGTH == BLFS_CRYPTO_BYTES_MTRH);
 
-        lseek64(readfd, 0, SEEK_SET);
-        while(len > 0)
-        {
-            uint64_t bytesRead = read(readfd, readback, len);
-            assert(bytesRead > 0);
-            len -= bytesRead;
-            readback = readback + bytesRead;
-        }
+    if(flakes_per_nugget > BLFS_CRYPTO_BYTES_MTRH * 8)
+        Throw(EXCEPTION_TOO_MANY_FLAKES_PER_NUGGET);
 
-        fprintf(stderr, ">> lfs_write() wrote-back: ");
-        debug_print_hex(originalRB, blocksize);
+    /* Setup backstore file access */
 
-        fprintf(stderr, ">> Calling lfs_read() on a smaller portion... (%" PRIu64 " to %" PRIu64 ")\n", halfbs, 2 * halfbs - 1);
-        fprintf(stderr, ">> lfs_read() returned %i\n", lfs_read(output, halfbs, halfbs, (void *) &flags));
-        fprintf(stderr, ">> lfs_read() read-back: ");
-        debug_print_hex(output, halfbs);
+    // FIXME: detect existence and change startup procedure accordingly (handled by io.c, not here)
+    int writefd = open(backstore_filepath, O_WRONLY | O_CREAT, 0666);
+    int readfd = open(backstore_filepath, O_RDONLY);
 
-        memcpy(inputPart, input + halfbs, halfbs);
+    if(writefd < 0 || readfd < 0)
+        Throw(EXCEPTION_OPEN_FAILURE);
 
-        fprintf(stderr, ">> Partial input is    : ");
-        debug_print_hex(inputPart, halfbs);
+    /* Startup procedures */
 
-        int retval = strcmp(output, inputPart);
-        fprintf(stderr, ">> Test %s\n", retval == 0 ? "SUCCEEDED!" : "FAILED!");
 
-        free(originalRB);
-        free(output);
-        free(inputPart);
+    // FIXME: determine actual size
+    buseops.size = 0;
 
-        return retval;
-    }
+    IFDEBUG(dzlog_info(">> buselfs backend <<"));
+    IFDEBUG(dzlog_info("Input flag: 0x%02X", blfs_flags));
+    IFDEBUG(dzlog_info("Defined: BLFS_DEBUG_LEVEL = %i", BLFS_DEBUG_LEVEL));
+    IFDEBUG(dzlog_info("backstore_filepath = %s", backstore_filepath));
+    IFDEBUG(dzlog_info("backstore_size = %"PRIu64, backstore_size));
+    IFDEBUG(dzlog_info("size of writable body = %"PRIu64, buseops.size));
+    IFDEBUG(dzlog_info("flake_size = %"PRIu64, flake_size));
+    IFDEBUG(dzlog_info("flakes_per_nugget = %"PRIu64, flakes_per_nugget));
 
-    else
-    {
-        return buse_main(blockdevice, &buseops, (void *) &flags);
-    }
-}*/
+    /* Let the show begin! */
+
+    return buse_main(blockdevice, &buseops, (void *) &blfs_flags);
+}
