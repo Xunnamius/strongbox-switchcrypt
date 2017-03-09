@@ -47,7 +47,7 @@ void blfs_chacha20_crypt(uint8_t * crypted_data,
                          const uint8_t * data,
                          uint32_t data_length,
                          const uint8_t * nugget_key,
-                         uint64_t kcs_keycount,
+                         const uint64_t * kcs_keycount,
                          uint64_t nugget_internal_offset)
 {
 
@@ -56,13 +56,11 @@ void blfs_chacha20_crypt(uint8_t * crypted_data,
     uint64_t zero_str_length = CEIL((intrablock_offset + data_length), BLFS_CRYPTO_BYTES_CHACHA_BLOCK) * BLFS_CRYPTO_BYTES_CHACHA_BLOCK;
     uint64_t block_read_upper_bound = intrablock_offset + data_length;
 
-    unsigned char * kcs_keycount_as_char = (unsigned char *) kcs_keycount;
-
     IFDEBUG(dzlog_debug("blfs_chacha20_crypt"));
-    IFDEBUG(dzlog_debug("keycount = %"PRIu64, kcs_keycount));
+    IFDEBUG(dzlog_debug("keycount = %"PRIu64, *kcs_keycount));
     IFDEBUG(dzlog_debug("keycount hex x2 (should match):"));
-    IFDEBUG(hdzlog_debug(&kcs_keycount, BLFS_CRYPTO_BYTES_CHACHA_NONCE));
-    IFDEBUG(hdzlog_debug(&kcs_keycount_as_char, BLFS_CRYPTO_BYTES_CHACHA_NONCE));
+    IFDEBUG(hdzlog_debug(kcs_keycount, BLFS_CRYPTO_BYTES_CHACHA_NONCE));
+    IFDEBUG(hdzlog_debug((unsigned char *) kcs_keycount, BLFS_CRYPTO_BYTES_CHACHA_NONCE));
     IFDEBUG(dzlog_debug("data_length = %"PRIu32, data_length));
     IFDEBUG(dzlog_debug("nugget_internal_offset = %"PRIu64, nugget_internal_offset));
     IFDEBUG(dzlog_debug("interblock_offset = %"PRIu64, interblock_offset));
@@ -84,7 +82,7 @@ void blfs_chacha20_crypt(uint8_t * crypted_data,
         xor_str,
         zero_str,
         zero_str_length,
-        &kcs_keycount_as_char,
+        (unsigned char *) kcs_keycount,
         interblock_offset,
         nugget_key) != 0)
     {

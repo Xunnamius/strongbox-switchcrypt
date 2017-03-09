@@ -102,7 +102,7 @@ void blfs_chacha20_crypt(uint8_t * crypted_data,
                          const uint8_t * data,
                          uint32_t data_length,
                          const uint8_t * nugget_key,
-                         uint64_t kcs_keycount,
+                         const uint64_t * kcs_keycount,
                          uint64_t nugget_internal_offset);
 
 /**
