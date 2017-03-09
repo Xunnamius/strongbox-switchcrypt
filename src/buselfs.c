@@ -117,7 +117,7 @@ int buselfs_main(int argc, char * argv[])
     char buf[100];
 
     // XXX: FIX THIS
-    snprintf(buf, sizeof buf, "%s%s%s", "blfs_level", STRINGIZE(BLFS_DEBUG_LEVEL), "XXXFIXMEXXX");
+    snprintf(buf, sizeof buf, "%s%s_%s", "blfs_level", STRINGIZE(BLFS_DEBUG_LEVEL), "XXXFIXMEXXX");
 
     if(dzlog_init(BLFS_CONFIG_ZLOG, buf))
         Throw(EXCEPTION_ZLOG_INIT_FAILURE);

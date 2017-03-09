@@ -15,7 +15,7 @@
 // 2U - ^ and some informative messages to stdout
 // 3U - ^ except now it's a clusterfuck of debug messages
 #ifndef BLFS_DEBUG_LEVEL
-#define BLFS_DEBUG_LEVEL 3U
+#define BLFS_DEBUG_LEVEL 3
 #endif
 
 ///////////////////
@@ -34,11 +34,14 @@
 #define TRUE 1
 #define FALSE 0
 
+#define CEIL(dividend,divisor) (((dividend) / (divisor)) + (((dividend) % (divisor)) > 0))
+#define MIN(a,b) ({ __typeof__ (a) _a = (a); __typeof__ (b) _b = (b); _a < _b ? _a : _b; })
+
 ////////////
 // Crypto //
 ////////////
 
-#define BLFS_CRYPTO_BYTES_CHACHA_BLOCK          64U // chacha outputs randomly accessible 512-bit blocks
+#define BLFS_CRYPTO_BYTES_CHACHA_BLOCK          64U // chacha outputs randomly accessible 512-bit (64-byte) blocks
 #define BLFS_CRYPTO_BYTES_CHACHA_KEY            32U // crypto_stream_chacha20_KEYBYTES
 #define BLFS_CRYPTO_BYTES_CHACHA_NONCE          8U  // crypto_stream_chacha20_NONCEBYTES
 #define BLFS_CRYPTO_BYTES_KDF_OUT               32U // crypto_box_SEEDBYTES

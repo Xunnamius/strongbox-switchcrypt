@@ -11,13 +11,6 @@
 
 #include "crypto.h"
 
-static void debug_print_hex(const uint8_t * data, size_t len)
-{
-    for(size_t i = 0; i < len; i++)
-        fprintf(stderr, "0x%x ", data[i] & 0xFF);
-    fprintf(stderr, "\n");
-}
-
 void blfs_password_to_secret(uint8_t * secret, const char * passwd, uint32_t passwd_length, const uint8_t * salt)
 {
     // BLFS_CRYPTO_BYTES_KDF_OUT
@@ -50,60 +43,62 @@ void blfs_poly1305_generate_tag(uint8_t * tag, const uint8_t * data, uint32_t da
     crypto_onetimeauth(tag, data, data_length, flake_key);
 }
 
-/*
-static int chacha_crypt_actual(char * const cryptedMessage, const char * const message, u_int32_t messageLength, uint64_t absoluteOffset)
-{
-    int retval = -1;
-
-    uint64_t interBlockOffset = (uint64_t) floor(absoluteOffset / CHACHA_BLOCK_SIZE);
-    uint64_t intraBlockOffset = absoluteOffset % ((uint64_t) CHACHA_BLOCK_SIZE);
-    uint64_t zeroStringLength = (uint64_t) (ceil((intraBlockOffset + messageLength) / CHACHA_BLOCK_SIZE) * CHACHA_BLOCK_SIZE);
-    uint64_t blockReadUpperBound = intraBlockOffset + messageLength;
-
-    if(DEBUG_LEVEL)
-    {
-        fprintf(stderr, " [L=%" PRIu64 " IEO=%" PRIu64 " IAO=%" PRIu64 "] (mlen=%u | {bRRdiff=%" PRIu64 "} <=> blockReadRange=(%" PRIu64 " to %" PRIu64 " - 1))\n",
-                zeroStringLength, interBlockOffset, intraBlockOffset,
-                messageLength, blockReadUpperBound - intraBlockOffset, intraBlockOffset, blockReadUpperBound);
-    }
-
-    assert(zeroStringLength >= messageLength);
-
-    char * zeroString = malloc(zeroStringLength);
-    char * xorString = malloc(zeroStringLength);
-
-    memset(zeroString, '0', zeroStringLength);
-
-    retval = crypto_stream_chacha20_xor_ic((unsigned char *) xorString, (unsigned char *) zeroString, zeroStringLength, cryptNonce, interBlockOffset, cryptKey);
-
-    for(uint64_t i = intraBlockOffset, j = blockReadUpperBound, k = 0; i < j; ++i, ++k)
-    {
-        assert(k < messageLength);
-        cryptedMessage[k] = message[k] ^ xorString[i];
-    }
-
-    free(zeroString);
-    free(xorString);
-
-    return retval;
-}
- */
-
 void blfs_chacha20_crypt(uint8_t * crypted_data,
                          const uint8_t * data,
                          uint32_t data_length,
                          const uint8_t * nugget_key,
-                         uint64_t * kcs_keycount,
+                         uint64_t kcs_keycount,
                          uint64_t nugget_internal_offset)
 {
-    (void) crypted_data;
-    (void) data;
-    (void) data_length;
-    (void) nugget_key;
-    (void) kcs_keycount;
-    (void) nugget_internal_offset;
 
+    uint64_t interblock_offset = nugget_internal_offset / BLFS_CRYPTO_BYTES_CHACHA_BLOCK;
+    uint64_t intrablock_offset = nugget_internal_offset % BLFS_CRYPTO_BYTES_CHACHA_BLOCK;
+    uint64_t zero_str_length = CEIL((intrablock_offset + data_length), BLFS_CRYPTO_BYTES_CHACHA_BLOCK) * BLFS_CRYPTO_BYTES_CHACHA_BLOCK;
+    uint64_t block_read_upper_bound = intrablock_offset + data_length;
 
+    unsigned char * kcs_keycount_as_char = (unsigned char *) kcs_keycount;
+
+    IFDEBUG(dzlog_debug("blfs_chacha20_crypt"));
+    IFDEBUG(dzlog_debug("keycount = %"PRIu64, kcs_keycount));
+    IFDEBUG(dzlog_debug("keycount hex x2 (should match):"));
+    IFDEBUG(hdzlog_debug(&kcs_keycount, BLFS_CRYPTO_BYTES_CHACHA_NONCE));
+    IFDEBUG(hdzlog_debug(&kcs_keycount_as_char, BLFS_CRYPTO_BYTES_CHACHA_NONCE));
+    IFDEBUG(dzlog_debug("data_length = %"PRIu32, data_length));
+    IFDEBUG(dzlog_debug("nugget_internal_offset = %"PRIu64, nugget_internal_offset));
+    IFDEBUG(dzlog_debug("interblock_offset = %"PRIu64, interblock_offset));
+    IFDEBUG(dzlog_debug("intrablock_offset = %"PRIu64, intrablock_offset));
+    IFDEBUG(dzlog_debug("zero_str_length = %"PRIu64, zero_str_length));
+    IFDEBUG(dzlog_debug("block_read_upper_bound = %"PRIu64, block_read_upper_bound));
+    IFDEBUG(dzlog_debug("block read range = (%"PRIu64" to %"PRIu64" - 1) <=> %"PRIu64" [total, zero indexed]",
+        intrablock_offset, block_read_upper_bound, block_read_upper_bound - intrablock_offset));
+
+    assert(zero_str_length >= data_length);
+
+    unsigned char * zero_str = calloc(zero_str_length, sizeof(char));
+    unsigned char * xor_str = malloc(zero_str_length);
+
+    if(zero_str == NULL || xor_str == NULL)
+        Throw(EXCEPTION_ALLOC_FAILURE);
+
+    if(crypto_stream_chacha20_xor_ic(
+        xor_str,
+        zero_str,
+        zero_str_length,
+        &kcs_keycount_as_char,
+        interblock_offset,
+        nugget_key) != 0)
+    {
+        Throw(EXCEPTION_CHACHA20_BAD_RETVAL);
+    }
+
+    for(uint64_t i = intrablock_offset, j = block_read_upper_bound, k = 0; i < j; ++i, ++k)
+    {
+        assert(k < data_length);
+        crypted_data[k] = data[k] ^ xor_str[i];
+    }
+
+    free(zero_str);
+    free(xor_str);
 }
 
 int blfs_globalversion_verify(uint64_t id, uint64_t global_version)

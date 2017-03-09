@@ -88,6 +88,9 @@ void blfs_poly1305_generate_tag(uint8_t * tag, const uint8_t * data, uint32_t da
  *
  * This function should be called within a per-nugget (conceptual) context.
  *
+ * If you crypt something, and then pass crypted_data back in as data with the
+ * same keys and offsets, then you will get the original message back.
+ *
  * @param crypted_data
  * @param data
  * @param data_length
@@ -99,7 +102,7 @@ void blfs_chacha20_crypt(uint8_t * crypted_data,
                          const uint8_t * data,
                          uint32_t data_length,
                          const uint8_t * nugget_key,
-                         uint64_t * kcs_keycount,
+                         uint64_t kcs_keycount,
                          uint64_t nugget_internal_offset);
 
 /**

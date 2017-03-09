@@ -55,6 +55,9 @@ do {                                                                            
 // One of our sanity checks failed
 #define EXCEPTION_SODIUM_INIT_FAILURE       0x08U
 
+// One of our sanity checks failed
+#define EXCEPTION_CHACHA20_BAD_RETVAL       0x09U
+
 ///////////////////////
 // End Configuration //
 ///////////////////////
