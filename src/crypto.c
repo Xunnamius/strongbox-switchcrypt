@@ -22,7 +22,7 @@ void blfs_password_to_secret(uint8_t * secret, const char * passwd, uint32_t pas
 {
     // BLFS_CRYPTO_BYTES_KDF_OUT
     if(crypto_pwhash(secret, BLFS_CRYPTO_BYTES_KDF_OUT, passwd, passwd_length, salt,
-                     crypto_pwhash_OPSLIMIT_MODERATE, crypto_pwhash_MEMLIMIT_MODERATE, crypto_pwhash_ALG_DEFAULT) != 0)
+                     crypto_pwhash_OPSLIMIT_INTERACTIVE, crypto_pwhash_MEMLIMIT_INTERACTIVE, crypto_pwhash_ALG_DEFAULT) != 0)
     {
         Throw(EXCEPTION_OUT_OF_MEMORY);
     }
