@@ -23,7 +23,7 @@ You may wish to run the included unit tests first before actually utilizing buse
 First, of course, `make` buselfs:
 
 ```
-make clean # if you were running tests before
+make clean # if you were running tests before now
 make
 ```
 
@@ -40,7 +40,7 @@ This has only been tested on Core2 Debian 8 x64 and ARM Odroid XU3 (Debian and U
 Run these tests to make (about 90%) sure:
 
 ```
-make prereqs
+make pre
 make check
 ```
 
