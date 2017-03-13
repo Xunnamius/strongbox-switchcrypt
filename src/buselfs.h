@@ -1,5 +1,5 @@
-#ifndef BLFS_BUSELFS_H
-#define BLFS_BUSELFS_H
+#ifndef BLFS_BUSELFS_H_
+#define BLFS_BUSELFS_H_
 
 #define _GNU_SOURCE
 #define _LARGEFILE64_SOURCE
@@ -18,4 +18,4 @@ void password_verify();
 
 int buselfs_main(int argc, char * argv[]);
 
-#endif /* BLFS_BUSELFS_H */
+#endif /* BLFS_BUSELFS_H_ */

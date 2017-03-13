@@ -81,7 +81,37 @@ static int lfs_write(const void * buffer, u_int32_t len, uint64_t offset, void *
 }
 */
 
+blfs_backstore_t * blfs_backstore_create(const char * path)
+{
+    (void) path;
+
+    return NULL;
+}
+
+blfs_backstore_t * blfs_backstore_open(const char * path)
+{
+    (void) path;
+
+    return NULL;
+}
+
 void blfs_backstore_read(blfs_backstore_t * backstore, uint8_t * buffer, uint32_t len, uint64_t offset)
+{
+    (void) backstore;
+    (void) buffer;
+    (void) len;
+    (void) offset;
+}
+
+void blfs_backstore_read_head(blfs_backstore_t * backstore, uint8_t * buffer, uint32_t len, uint64_t offset)
+{
+    (void) backstore;
+    (void) buffer;
+    (void) len;
+    (void) offset;
+}
+
+void blfs_backstore_read_body(blfs_backstore_t * backstore, uint8_t * buffer, uint32_t len, uint64_t offset)
 {
     (void) backstore;
     (void) buffer;
@@ -97,18 +127,20 @@ void blfs_backstore_write(blfs_backstore_t * backstore, const uint8_t * buffer, 
     (void) offset;
 }
 
-blfs_backstore_t * blfs_backstore_create(const char * path)
+void blfs_backstore_write_head(blfs_backstore_t * backstore, const uint8_t * buffer, uint32_t len, uint64_t offset)
 {
-    (void) path;
-
-    return NULL;
+    (void) backstore;
+    (void) buffer;
+    (void) len;
+    (void) offset;
 }
 
-blfs_backstore_t * blfs_backstore_open(const char * path)
+void blfs_backstore_write_body(blfs_backstore_t * backstore, const uint8_t * buffer, uint32_t len, uint64_t offset)
 {
-    (void) path;
-
-    return NULL;
+    (void) backstore;
+    (void) buffer;
+    (void) len;
+    (void) offset;
 }
 
 void blfs_backstore_close(blfs_backstore_t * backstore)

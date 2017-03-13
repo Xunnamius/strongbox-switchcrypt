@@ -1,10 +1,11 @@
-#ifndef BLFS_HEAD_H
-#define BLFS_HEAD_H
+#ifndef BLFS_HEAD_H_
+#define BLFS_HEAD_H_
 
 #include <stdint.h>
 
 #include "constants.h"
 #include "bitmask.h"
+#include "uthash.h"
 #include "io.h"
 
 /**
@@ -27,6 +28,8 @@ typedef struct blfs_header_t
     uint64_t data_length;
 
     uint8_t * data;
+
+    UT_hash_handle hh;
 } blfs_header_t;
 
 /**
@@ -49,6 +52,8 @@ typedef struct blfs_keycount_t
     uint64_t data_length;
 
     uint64_t keycount;
+
+    UT_hash_handle hh;
 } blfs_keycount_t;
 
 /**
@@ -69,6 +74,8 @@ typedef struct blfs_tjournal_entry_t
     uint64_t data_length;
 
     bitmask_t * mask;
+
+    UT_hash_handle hh;
 } blfs_tjournal_entry_t;
 
 /**
@@ -160,4 +167,4 @@ void blfs_commit_journal_entry(blfs_backstore_t * backstore, const blfs_tjournal
  */
 void blfs_close_journal_entry(blfs_backstore_t * backstore, blfs_tjournal_entry_t * entry);
 
-#endif /* BLFS_HEAD_H */
+#endif /* BLFS_HEAD_H_ */

@@ -1,5 +1,5 @@
-#ifndef BLFS_CRYPT_H
-#define BLFS_CRYPT_H
+#ifndef BLFS_CRYPT_H_
+#define BLFS_CRYPT_H_
 
 #include <stdint.h>
 #include <sodium.h>
@@ -134,4 +134,4 @@ int blfs_globalversion_commit(uint64_t id, uint64_t global_version);
  */
 void blfs_KDF_generate_salt(uint8_t * generated_salt);
 
-#endif /* BLFS_CRYPT_H */
+#endif /* BLFS_CRYPT_H_ */

@@ -9,7 +9,7 @@
 int main(int argc, char * argv[])
 {
     int ret = -1;
-    CEXCEPTION_T e = EXCEPTION_NO_EXCEPTION;
+    volatile CEXCEPTION_T e = EXCEPTION_NO_EXCEPTION;
 
     Try
     {

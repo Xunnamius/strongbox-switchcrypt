@@ -6,6 +6,7 @@
 #include <string.h>
 
 #include "unity.h"
+#include "mock_io.h"
 #include "head.h"
 
 void setUp(void)

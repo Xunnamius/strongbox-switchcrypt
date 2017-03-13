@@ -1,5 +1,5 @@
-#ifndef BLFS_IO_H
-#define BLFS_IO_H
+#ifndef BLFS_IO_H_
+#define BLFS_IO_H_
 
 #include <stdint.h>
 #include <sys/types.h>
@@ -19,10 +19,10 @@
  * @journal_offset      integer offset to where the transaction journal begins
  * @body_offset         integer offset to where the data BODY (nuggets) begins
  * @master_secret       cached secret from KDF, size BLFS_CRYPTO_BYTES_KDF_OUT
- * @header_cache        cached headers
- * @kcs_cache           cached keycounts
- * @tj_cache            cached journal entries
- * @chacha_key_cache    cached chacha20 encryption keys (used by nuggets)
+ * @cache_headers       cached headers
+ * @cache_ksc_offsets   cached keycounts
+ * @cache_tj_offsets    cached journal entries
+ * @cache_nugget_keys   cached chacha20 encryption keys (used by nuggets)
  */
 typedef struct blfs_backstore_t
 {
@@ -37,32 +37,7 @@ typedef struct blfs_backstore_t
     uint64_t body_offset;
 
     uint8_t * master_secret;
-
-    uint8_t * header_cache;
-    uint8_t * kcs_cache;
-    uint8_t * tj_cache;
-    uint8_t * chacha_key_cache;
 } blfs_backstore_t;
-
-/**
- * Read data from the backstore file. Throws an error upon failure.
- *
- * @param  backstore    Buselfs_backstore instance
- * @param  buffer       Buffer that data will be copied into
- * @param  len          Number of bytes that will be read into the buffer
- * @param  offset       The read operation will begin at this offset in the backstore
- */
-void blfs_backstore_read(blfs_backstore_t * backstore, uint8_t * buffer, uint32_t len, uint64_t offset);
-
-/**
- * Write data into the backstore file. Throws an error upon failure.
- *
- * @param  backstore    blfs_backstore_t instance
- * @param  buffer       Buffer that data will be copied into
- * @param  len          Number of bytes that will be written from the buffer
- * @param  offset       The write operation will begin at this offset in the backstore
- */
-void blfs_backstore_write(blfs_backstore_t * backstore, const uint8_t * buffer, uint32_t len, uint64_t offset);
 
 /**
  * Initialize a blfs_backstore_t object and create the appropriate backstore
@@ -83,6 +58,66 @@ blfs_backstore_t * blfs_backstore_create(const char * path);
 blfs_backstore_t * blfs_backstore_open(const char * path);
 
 /**
+ * Read data from the backstore file. Throws an error upon failure.
+ *
+ * @param  backstore    Buselfs_backstore instance
+ * @param  buffer       Buffer that data will be copied into
+ * @param  len          Number of bytes that will be read into the buffer
+ * @param  offset       The read operation will begin at this offset in the backstore
+ */
+void blfs_backstore_read(blfs_backstore_t * backstore, uint8_t * buffer, uint32_t len, uint64_t offset);
+
+/**
+ * Read data from the backstore file's head section. Throws an error upon failure.
+ *
+ * @param  backstore    Buselfs_backstore instance
+ * @param  buffer       Buffer that data will be copied into
+ * @param  len          Number of bytes that will be read into the buffer
+ * @param  offset       The read operation will begin at this offset in the backstore (relative to beginning of head)
+ */
+void blfs_backstore_read_head(blfs_backstore_t * backstore, uint8_t * buffer, uint32_t len, uint64_t offset);
+
+/**
+ * Read data from the backstore file's body section. Throws an error upon failure.
+ *
+ * @param  backstore    Buselfs_backstore instance
+ * @param  buffer       Buffer that data will be copied into
+ * @param  len          Number of bytes that will be read into the buffer
+ * @param  offset       The read operation will begin at this offset in the backstore (relative to beginning of body)
+ */
+void blfs_backstore_read_body(blfs_backstore_t * backstore, uint8_t * buffer, uint32_t len, uint64_t offset);
+
+/**
+ * Write data into the backstore file. Throws an error upon failure.
+ *
+ * @param  backstore    blfs_backstore_t instance
+ * @param  buffer       Buffer that data will be copied into
+ * @param  len          Number of bytes that will be written from the buffer
+ * @param  offset       The write operation will begin at this offset in the backstore
+ */
+void blfs_backstore_write(blfs_backstore_t * backstore, const uint8_t * buffer, uint32_t len, uint64_t offset);
+
+/**
+ * Write data into the backstore file's head section. Throws an error upon failure.
+ *
+ * @param  backstore    blfs_backstore_t instance
+ * @param  buffer       Buffer that data will be copied into
+ * @param  len          Number of bytes that will be written from the buffer
+ * @param  offset       The write operation will begin at this offset in the backstore (relative to beginning of head)
+ */
+void blfs_backstore_write_head(blfs_backstore_t * backstore, const uint8_t * buffer, uint32_t len, uint64_t offset);
+
+/**
+ * Write data into the backstore file's body section. Throws an error upon failure.
+ *
+ * @param  backstore    blfs_backstore_t instance
+ * @param  buffer       Buffer that data will be copied into
+ * @param  len          Number of bytes that will be written from the buffer
+ * @param  offset       The write operation will begin at this offset in the backstore (relative to beginning of body)
+ */
+void blfs_backstore_write_body(blfs_backstore_t * backstore, const uint8_t * buffer, uint32_t len, uint64_t offset);
+
+/**
  * Deinitialize a blfs_backstore_t instance, close all relevant file
  * descriptors, and free all relevant pointers and internal caches. There should
  * not really be a reason to call this.
@@ -91,4 +126,4 @@ blfs_backstore_t * blfs_backstore_open(const char * path);
  */
 void blfs_backstore_close(blfs_backstore_t * backstore);
 
-#endif /* BLFS_IO_H */
+#endif /* BLFS_IO_H_ */

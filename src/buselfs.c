@@ -17,6 +17,7 @@
 
 #include "buse.h"
 #include "buselfs.h"
+#include "uthash.h"
 #include "merkletree.h"
 
 /**
@@ -116,6 +117,13 @@ void password_verify()
 {
 
 }
+
+/* FIXME:
+blfs_header_t * cache_headers = NULL;
+blfs_keycount_t * cache_ksc_offsets = NULL;
+blfs_tjournal_entry_t * cache_tj_offsets = NULL;
+uint8_t * cache_nugget_keys = NULL;
+*/
 
 int buselfs_main(int argc, char * argv[])
 {

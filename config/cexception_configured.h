@@ -1,5 +1,5 @@
-#ifndef CONFIG_CEXCEPTION_CONFIGURED_H
-#define CONFIG_CEXCEPTION_CONFIGURED_H
+#ifndef CONFIG_CEXCEPTION_CONFIGURED_H_
+#define CONFIG_CEXCEPTION_CONFIGURED_H_
 
 #include <stdlib.h>
 #include <zlog.h>
@@ -49,23 +49,29 @@ do {                                                                            
 // One of our sanity checks failed
 #define EXCEPTION_ASSERT_FAILURE                0x06U
 
-// XXX: comment the rest of these
+// One of our sanity checks failed
 #define EXCEPTION_OUT_OF_MEMORY                 0x07U
 
+// Sodium failed to initialize
 #define EXCEPTION_SODIUM_INIT_FAILURE           0x08U
 
+// Chacha20 returned something unexpected
 #define EXCEPTION_CHACHA20_BAD_RETVAL           0x09U
 
+// Bad flake size encountered
 #define EXCEPTION_INVALID_FLAKESIZE             0x0AU
 
+// Bad flakes/nugget value encountered
 #define EXCEPTION_INVALID_FLAKES_PER_NUGGET     0x0BU
 
+// Too many flakes per nugget were specified
 #define EXCEPTION_TOO_MANY_FLAKES_PER_NUGGET    0x0CU
 
+// We failed to open something, probably a file descriptor
 #define EXCEPTION_OPEN_FAILURE                  0x0DU
 
-// One of our sanity checks failed
-#define EXCEPTION_OUT_OF_MEMORY             0x07U
+// Bad header type
+#define EXCEPTION_BAD_HEADER_TYPE               0x0EU
 
 ///////////////////////
 // End Configuration //
@@ -73,4 +79,4 @@ do {                                                                            
 
 #include "CException.h"
 
-#endif // CONFIG_CEXCEPTION_CONFIGURED_H
+#endif // CONFIG_CEXCEPTION_CONFIGURED_H_

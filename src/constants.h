@@ -1,5 +1,5 @@
-#ifndef BLFS_CONSTANTS_H
-#define BLFS_CONSTANTS_H
+#ifndef BLFS_CONSTANTS_H_
+#define BLFS_CONSTANTS_H_
 
 //////////////////
 // Configurable //
@@ -34,8 +34,12 @@
 #define TRUE 1
 #define FALSE 0
 
-#define CEIL(dividend,divisor) (((dividend) / (divisor)) + (((dividend) % (divisor)) > 0))
-#define MIN(a,b) ({ __typeof__ (a) _a = (a); __typeof__ (b) _b = (b); _a < _b ? _a : _b; })
+#define MIN(a,b) __extension__ ({ __typeof__ (a) _a = (a); __typeof__ (b) _b = (b); _a < _b ? _a : _b; })
+#define CEIL(dividend,divisor) __extension__ ({ \
+                                                __typeof__ (dividend) _dd = (dividend); \
+                                                __typeof__ (divisor) _dr = (divisor); \
+                                                _dd / _dr + (_dd % _dr > 0); \
+                                             })
 
 ////////////
 // Crypto //
@@ -54,6 +58,7 @@
 // Header //
 ////////////
 
+// XXX: See the top of head.c to see the defined head section header order!
 #define BLFS_HEAD_HEADER_TYPE_VERSION           0x01U
 #define BLFS_HEAD_HEADER_TYPE_SALT              0x02U
 #define BLFS_HEAD_HEADER_TYPE_MTRH              0x04U
@@ -76,7 +81,8 @@
 #define BLFS_HEAD_HEADER_BYTES_INITIALIZED      1U  // uint8_t
 #define BLFS_HEAD_HEADER_BYTES_REKEYING         1U  // uint8_t
 
-#define BLFS_HEAD_OFFSET_BEGIN                  0 // the beginning of the world!
+#define BLFS_HEAD_OFFSET_BEGIN                  0U // the beginning of the world!
+#define BLFS_HEAD_NUM_HEADERS                   10U
 
 ///////////////
 // Backstore //
@@ -103,4 +109,4 @@
 // See: config/cexception_configured.h
 #include "cexception_configured.h"
 
-#endif /* BLFS_CONSTANTS_H */
+#endif /* BLFS_CONSTANTS_H_ */

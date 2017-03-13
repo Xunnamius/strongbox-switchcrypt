@@ -6,13 +6,15 @@ This is a complete rewrite of the old buselogfs code. This is a Buse + Chacha20 
 
 ## Things to Address
 
-- Byte order is assumed to be **little endian**. Might have to implement endian conversion in `io.c` using the standard functions if this becomes an issue.
-- 
+- Byte order is assumed to be **little endian**. Might have to an implement endian conversion layer touching `io.c` and `crypto.c`, perhaps using the standard functions, if this becomes an issue.
 
 ## Dependencies
 
 - [zlog]()
 - [libsodium]()
+- [make]()
+- [gcc]()
+- [ruby]() (if you're going to be running the tests)
 
 ## Usage
 
@@ -21,6 +23,7 @@ You may wish to run the included unit tests first before actually utilizing buse
 First, of course, `make` buselfs:
 
 ```
+make clean # if you were running tests before
 make
 ```
 
@@ -32,14 +35,19 @@ Command syntax:
 
 ## Testing
 
-This has only been tested on Core2 Debian 8 x64 and ARM Odroid XU3 (Debian and Ubuntu x64) systems. It's only guaranteed to work in these environments, if even that. Run the tests below to be (about 90%) sure!
+This has only been tested on Core2 Debian 8 x64 and ARM Odroid XU3 (Debian and Ubuntu x64) systems. It's only guaranteed to work in these environments, if even that. Note: **these tests require ruby!**
 
-Run these tests to make sure:
+Run these tests to make (about 90%) sure:
 
 ```
+make prereqs
 make check
 ```
 
 ## File Structure and Internal Construction
+
+(todo)
+
+## Makefile Breakdown
 
 (todo)

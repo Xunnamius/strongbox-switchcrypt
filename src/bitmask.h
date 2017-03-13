@@ -1,5 +1,5 @@
-#ifndef BITMASK_H
-#define BITMASK_H
+#ifndef BITMASK_H_
+#define BITMASK_H_
 
 #include <stdint.h>
 
@@ -122,4 +122,4 @@ void bitmask_toggle_bits(bitmask_t * bitmask, uint_fast32_t start_index, uint_fa
  */
 int bitmask_are_bits_set(bitmask_t * bitmask, uint_fast32_t start_index, uint_fast32_t length);
 
-#endif /* BITMASK_H */
+#endif /* BITMASK_H_ */
