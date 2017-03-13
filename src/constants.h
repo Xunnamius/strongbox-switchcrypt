@@ -15,7 +15,7 @@
 // 2U - ^ and some informative messages to stdout
 // 3U - ^ except now it's a clusterfuck of debug messages
 #ifndef BLFS_DEBUG_LEVEL
-#define BLFS_DEBUG_LEVEL 3
+#define BLFS_DEBUG_LEVEL 0
 #endif
 
 ///////////////////
@@ -40,6 +40,12 @@
                                                 __typeof__ (divisor) _dr = (divisor); \
                                                 _dd / _dr + (_dd % _dr > 0); \
                                              })
+
+#define LAMBDA(return_type, function_body) \
+__extension__ ({ \
+                 return_type __fn__ function_body \
+                 __fn__; \
+               })
 
 ////////////
 // Crypto //

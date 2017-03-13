@@ -30,6 +30,8 @@
  */
 static const char * get_filename_from_path(const char * path, int max_length)
 {
+    IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
+
     const char * p = path;
     int count = 0;
 
@@ -45,6 +47,8 @@ static const char * get_filename_from_path(const char * path, int max_length)
         p--;
 
     p++;
+
+    IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
     return p;
 }
 
@@ -63,59 +67,82 @@ static struct buse_operations buseops = {
 
 int buse_read(void * buffer, uint32_t len, uint64_t offset, void * userdata)
 {
+    IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
+
     (void) buffer;
     (void) len;
     (void) offset;
     (void) userdata;
 
+    IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
     return 0;
 }
 
 int buse_write(const void * buffer, uint32_t len, uint64_t offset, void * userdata)
 {
+    IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
+
     (void) buffer;
     (void) len;
     (void) offset;
     (void) userdata;
 
+    IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
     return 0;
 }
 
 void buse_disc(void * userdata)
 {
+    IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
+
     (void) userdata;
 
     IFDEBUG(dzlog_info("Received a disconnect request (not implemented).\n"));
+    IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 }
 
 int buse_flush(void * userdata)
 {
+    IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
+
     (void) userdata;
 
     IFDEBUG(dzlog_info("Received a flush request (not implemented).\n"));
 
+    IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
     return 0;
 }
 
 int buse_trim(uint64_t from, uint32_t len, void * userdata)
 {
+    IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
+
     (void) from;
     (void) len;
     (void) userdata;
 
     IFDEBUG(dzlog_info("Received a trim request (not implemented)\n"));
 
+    IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
     return 0;
 }
 
 void rekey_nugget_journaled()
 {
+    IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
 
+
+
+    IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 }
 
 void password_verify()
 {
+    IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
 
+
+
+    IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 }
 
 /* FIXME:
@@ -127,6 +154,8 @@ uint8_t * cache_nugget_keys = NULL;
 
 int buselfs_main(int argc, char * argv[])
 {
+    IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
+
     short blfs_flags = 0;
 
     char * blockdevice;
@@ -234,5 +263,6 @@ int buselfs_main(int argc, char * argv[])
 
     /* Let the show begin! */
 
+    IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
     return buse_main(blockdevice, &buseops, (void *) &blfs_flags);
 }

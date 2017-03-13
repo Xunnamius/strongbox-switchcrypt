@@ -13,19 +13,27 @@
 
 void blfs_password_to_secret(uint8_t * secret, const char * passwd, uint32_t passwd_length, const uint8_t * salt)
 {
+    IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
+
     // BLFS_CRYPTO_BYTES_KDF_OUT
     if(crypto_pwhash(secret, BLFS_CRYPTO_BYTES_KDF_OUT, passwd, passwd_length, salt,
                      crypto_pwhash_OPSLIMIT_INTERACTIVE, crypto_pwhash_MEMLIMIT_INTERACTIVE, crypto_pwhash_ALG_DEFAULT) != 0)
     {
         Throw(EXCEPTION_OUT_OF_MEMORY);
     }
+
+    IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 }
 
 void blfs_nugget_key_from_data(uint8_t * nugget_key, uint8_t * secret, uint64_t nugget_index)
 {
+    IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
+
     memcpy(nugget_key, secret, BLFS_CRYPTO_BYTES_KDF_OUT);
     uint64_t * secret8bytes = (uint64_t *) nugget_key;
     secret8bytes[0] += nugget_index;
+
+    IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 }
 
 void blfs_poly1305_key_from_data(uint8_t * new_key,
@@ -33,14 +41,22 @@ void blfs_poly1305_key_from_data(uint8_t * new_key,
                                  uint32_t flake_index,
                                  uint64_t kcs_keycount)
 {
+    IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
+
     memcpy(new_key, nugget_key, BLFS_CRYPTO_BYTES_FLAKE_TAG_KEY);
     uint64_t * nk8bytes = (uint64_t *) new_key;
     nk8bytes[0] += ((uint64_t) flake_index) + kcs_keycount;
+
+    IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 }
 
 void blfs_poly1305_generate_tag(uint8_t * tag, const uint8_t * data, uint32_t data_length, const uint8_t * flake_key)
 {
+    IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
+
     crypto_onetimeauth(tag, data, data_length, flake_key);
+
+    IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 }
 
 void blfs_chacha20_crypt(uint8_t * crypted_data,
@@ -50,6 +66,7 @@ void blfs_chacha20_crypt(uint8_t * crypted_data,
                          const uint64_t * kcs_keycount,
                          uint64_t nugget_internal_offset)
 {
+    IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
 
     uint64_t interblock_offset = nugget_internal_offset / BLFS_CRYPTO_BYTES_CHACHA_BLOCK;
     uint64_t intrablock_offset = nugget_internal_offset % BLFS_CRYPTO_BYTES_CHACHA_BLOCK;
@@ -97,29 +114,41 @@ void blfs_chacha20_crypt(uint8_t * crypted_data,
 
     free(zero_str);
     free(xor_str);
+
+    IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 }
 
 int blfs_globalversion_verify(uint64_t id, uint64_t global_version)
 {
+    IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
+
     (void) id;
     (void) global_version;
 
     // TODO: spin our wheels here for a bit to simulate verification
 
+    IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
     return 0;
 }
 
 int blfs_globalversion_commit(uint64_t id, uint64_t global_version)
 {
+    IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
+
     (void) id;
     (void) global_version;
 
     // TODO: spin our wheels here for a bit to simulate committing
-    
+
+    IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
     return 0;
 }
 
 void blfs_KDF_generate_salt(uint8_t * generated_salt)
 {
+    IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
+
     randombytes_buf(generated_salt, BLFS_CRYPTO_BYTES_KDF_SALT);
+
+    IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 }

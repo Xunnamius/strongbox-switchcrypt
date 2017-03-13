@@ -13,6 +13,8 @@
 
 bitmask_t * bitmask_init(size_t length)
 {
+    IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
+
     if(length == 0 || SIZE_MAX / sizeof(uint_fast8_t) < length)
         Throw(EXCEPTION_SIZE_T_OUT_OF_BOUNDS);
 
@@ -27,17 +29,24 @@ bitmask_t * bitmask_init(size_t length)
     if(bitmask->mask == NULL)
         Throw(EXCEPTION_ALLOC_FAILURE);
 
+    IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
     return bitmask;
 }
 
 void bitmask_fini(bitmask_t * bitmask)
 {
+    IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
+
     free(bitmask->mask);
     free(bitmask);
+
+    IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 }
 
 void bitmask_set_bit(bitmask_t * bitmask, uint_fast32_t index)
 {
+    IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
+
     uint_fast32_t mask_index = (index / 8);
     uint_fast32_t bit_index = (index % 8);
 
@@ -45,10 +54,14 @@ void bitmask_set_bit(bitmask_t * bitmask, uint_fast32_t index)
         Throw(EXCEPTION_OUT_OF_BOUNDS);
 
     bitmask->mask[mask_index] |= 1 << (7 - bit_index);
+
+    IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 }
 
 void bitmask_clear_bit(bitmask_t * bitmask, uint_fast32_t index)
 {
+    IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
+
     uint_fast32_t mask_index = (index / 8);
     uint_fast32_t bit_index = (index % 8);
 
@@ -56,10 +69,14 @@ void bitmask_clear_bit(bitmask_t * bitmask, uint_fast32_t index)
         Throw(EXCEPTION_OUT_OF_BOUNDS);
 
     bitmask->mask[mask_index] &= ~(1 << (7 - bit_index));
+
+    IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 }
 
 void bitmask_toggle_bit(bitmask_t * bitmask, uint_fast32_t index)
 {
+    IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
+
     uint_fast32_t mask_index = (index / 8);
     uint_fast32_t bit_index = (index % 8);
 
@@ -67,10 +84,14 @@ void bitmask_toggle_bit(bitmask_t * bitmask, uint_fast32_t index)
         Throw(EXCEPTION_OUT_OF_BOUNDS);
 
     bitmask->mask[mask_index] ^= 1 << (7 - bit_index);
+
+    IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 }
 
 void bitmask_set_mask(bitmask_t * bitmask)
 {
+    IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
+
     free(bitmask->mask);
     bitmask->mask = malloc(bitmask->byte_length);
 
@@ -78,30 +99,41 @@ void bitmask_set_mask(bitmask_t * bitmask)
         Throw(EXCEPTION_ALLOC_FAILURE);
 
     memset(bitmask->mask, 0xFF, bitmask->byte_length);
+
+    IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 }
 
 void bitmask_clear_mask(bitmask_t * bitmask)
 {
+    IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
+
     free(bitmask->mask);
     bitmask->mask = calloc(bitmask->byte_length, sizeof(char));
 
     if(bitmask->mask == NULL)
         Throw(EXCEPTION_ALLOC_FAILURE);
+
+    IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 }
 
 int bitmask_is_bit_set(bitmask_t * bitmask, uint_fast32_t index)
 {
+    IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
+
     uint_fast32_t mask_index = (index / 8);
     uint_fast32_t bit_index = (index % 8);
 
     if(bitmask->byte_length < mask_index + 1)
         Throw(EXCEPTION_OUT_OF_BOUNDS);
 
+    IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
     return (bitmask->mask[mask_index] >> (7 - bit_index)) & 1;
 }
 
 void bitmask_set_bits(bitmask_t * bitmask, uint_fast32_t start_index, uint_fast32_t length)
 {
+    IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
+
     uint_fast32_t mask_start_index = (start_index / 8);
     uint_fast32_t bit_start_index = (start_index % 8);
 
@@ -120,10 +152,14 @@ void bitmask_set_bits(bitmask_t * bitmask, uint_fast32_t start_index, uint_fast3
         assert(bits_remaining > 0);
         bitmask->mask[i] |= ~((1 << (8 - (bits_remaining < 8 ? bits_remaining : 8))) - 1);
     }
+
+    IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 }
 
 void bitmask_clear_bits(bitmask_t * bitmask, uint_fast32_t start_index, uint_fast32_t length)
 {
+    IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
+
     uint_fast32_t mask_start_index = (start_index / 8);
     uint_fast32_t bit_start_index = (start_index % 8);
 
@@ -142,10 +178,14 @@ void bitmask_clear_bits(bitmask_t * bitmask, uint_fast32_t start_index, uint_fas
         assert(bits_remaining > 0);
         bitmask->mask[i] &= (1 << (8 - (bits_remaining < 8 ? bits_remaining : 8))) - 1;
     }
+
+    IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 }
 
 void bitmask_toggle_bits(bitmask_t * bitmask, uint_fast32_t start_index, uint_fast32_t length)
 {
+    IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
+
     uint_fast32_t mask_start_index = (start_index / 8);
     uint_fast32_t bit_start_index = (start_index % 8);
 
@@ -164,10 +204,14 @@ void bitmask_toggle_bits(bitmask_t * bitmask, uint_fast32_t start_index, uint_fa
         assert(bits_remaining > 0);
         bitmask->mask[i] ^= ~((1 << (8 - (bits_remaining < 8 ? bits_remaining : 8))) - 1);
     }
+
+    IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 }
 
 int bitmask_are_bits_set(bitmask_t * bitmask, uint_fast32_t start_index, uint_fast32_t length)
 {
+    IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
+
     uint_fast32_t mask_start_index = (start_index / 8);
     uint_fast32_t bit_start_index = (start_index % 8);
 
@@ -191,5 +235,6 @@ int bitmask_are_bits_set(bitmask_t * bitmask, uint_fast32_t start_index, uint_fa
         is_set = is_set && !((bitmask->mask[i] & not_filter) ^ not_filter);
     }
 
+    IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
     return is_set;
 }

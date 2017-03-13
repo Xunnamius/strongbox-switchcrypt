@@ -11,6 +11,8 @@
 
 vector_t * vector_init()
 {
+    IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
+
     vector_t * vector = malloc(sizeof(vector_t));
 
     if(vector == NULL)
@@ -20,17 +22,24 @@ vector_t * vector_init()
     vector->size = 0;
     vector->count = 0;
 
+    IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
     return vector;
 }
 
 void vector_fini(vector_t * vector)
 {
+    IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
+
     free(vector->data);
     free(vector);
+
+    IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 }
 
 void vector_add(vector_t * vector, const void * element)
 {
+    IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
+
     if(vector->size == 0)
     {
         vector->size = 10;
@@ -51,10 +60,14 @@ void vector_add(vector_t * vector, const void * element)
 
     vector->data[vector->count] = element;
     vector->count++;
+
+    IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 }
 
 void vector_delete(vector_t * vector, uint32_t index)
 {
+    IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
+
     if(index >= vector->count)
         Throw(EXCEPTION_OUT_OF_BOUNDS);
 
@@ -62,20 +75,29 @@ void vector_delete(vector_t * vector, uint32_t index)
         vector->data[i] = vector->data[j];
 
     vector->count--;
+
+    IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 }
 
 const void * vector_get(vector_t * vector, uint32_t index)
 {
+    IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
+
     if(index >= vector->count)
         Throw(EXCEPTION_OUT_OF_BOUNDS);
 
+    IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
     return vector->data[index];
 }
 
 void vector_set(vector_t * vector, uint32_t index, const void * element)
 {
+    IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
+
     if(index >= vector->count)
         Throw(EXCEPTION_OUT_OF_BOUNDS);
 
     vector->data[index] = element;
+
+    IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 }

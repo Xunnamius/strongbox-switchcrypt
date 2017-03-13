@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-#include "cexception_configured.h"
+#include "constants.h"
 
 #define VECTOR_GROWTH_FACTOR 2
 

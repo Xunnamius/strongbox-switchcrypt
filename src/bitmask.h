@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-#include "cexception_configured.h"
+#include "constants.h"
 
 /**
 * struct bitmask_t

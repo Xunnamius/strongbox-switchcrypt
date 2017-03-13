@@ -23,7 +23,24 @@ void tearDown(void)
     zlog_fini();
 }
 
-void test_not_implemented(void)
+void test_blfs_open_header_works_as_expected(void)
 {
-    TEST_IGNORE();
+    blfs_backstore_t * backstore = malloc(sizeof(blfs_backstore_t));
+
+    uint8_t expected_version[BLFS_HEAD_HEADER_BYTES_VERSION] = { 0xe0, 0x5f, 0xc, 0x88 };
+
+    blfs_backstore_read_head_Expect(backstore, NULL, BLFS_HEAD_HEADER_BYTES_VERSION, 0);
+    blfs_backstore_read_head_IgnoreArg_buffer();
+    blfs_backstore_read_head_ReturnArrayThruPtr_buffer(expected_version, BLFS_HEAD_HEADER_BYTES_VERSION);
+
+    blfs_header_t * actual_header = blfs_open_header(backstore, BLFS_HEAD_HEADER_TYPE_VERSION);
+
+    uint8_t expected_rekeying[BLFS_HEAD_HEADER_BYTES_REKEYING] = { 0x01 };
+
+    blfs_backstore_read_head_Expect(backstore, NULL, BLFS_HEAD_HEADER_BYTES_REKEYING, 0xC9);
+    blfs_backstore_read_head_IgnoreArg_buffer();
+    blfs_backstore_read_head_ReturnArrayThruPtr_buffer(expected_rekeying, BLFS_HEAD_HEADER_BYTES_REKEYING);
+
+    blfs_header_t * actual_header2 = blfs_open_header(backstore, BLFS_HEAD_HEADER_TYPE_REKEYING);
+
 }

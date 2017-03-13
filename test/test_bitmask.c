@@ -23,11 +23,18 @@ static bitmask_t * bitmask;
 
 void setUp(void)
 {
+    char buf[100];
+    snprintf(buf, sizeof buf, "%s%s_%s", "blfs_level", STRINGIZE(BLFS_DEBUG_LEVEL), "test");
+
+    if(dzlog_init(BLFS_CONFIG_ZLOG, buf))
+        exit(EXCEPTION_ZLOG_INIT_FAILURE);
+
     bitmask = bitmask_init(BITMASK_BYTE_LENGTH);
 }
 
 void tearDown(void)
 {
+    zlog_fini();
     bitmask_fini(bitmask);
 }
 

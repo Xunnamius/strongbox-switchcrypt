@@ -83,67 +83,101 @@ static int lfs_write(const void * buffer, u_int32_t len, uint64_t offset, void *
 
 blfs_backstore_t * blfs_backstore_create(const char * path)
 {
+    IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
+
     (void) path;
 
+    IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
     return NULL;
 }
 
 blfs_backstore_t * blfs_backstore_open(const char * path)
 {
+    IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
+
     (void) path;
 
+    IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
     return NULL;
 }
 
 void blfs_backstore_read(blfs_backstore_t * backstore, uint8_t * buffer, uint32_t len, uint64_t offset)
 {
+    IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
+
     (void) backstore;
     (void) buffer;
     (void) len;
     (void) offset;
+
+    IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 }
 
 void blfs_backstore_read_head(blfs_backstore_t * backstore, uint8_t * buffer, uint32_t len, uint64_t offset)
 {
+    IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
+
     (void) backstore;
     (void) buffer;
     (void) len;
     (void) offset;
+
+    IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 }
 
 void blfs_backstore_read_body(blfs_backstore_t * backstore, uint8_t * buffer, uint32_t len, uint64_t offset)
 {
+    IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
+
     (void) backstore;
     (void) buffer;
     (void) len;
     (void) offset;
+
+    IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 }
 
 void blfs_backstore_write(blfs_backstore_t * backstore, const uint8_t * buffer, uint32_t len, uint64_t offset)
 {
+    IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
+
     (void) backstore;
     (void) buffer;
     (void) len;
     (void) offset;
+
+    IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 }
 
 void blfs_backstore_write_head(blfs_backstore_t * backstore, const uint8_t * buffer, uint32_t len, uint64_t offset)
 {
+    IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
+
     (void) backstore;
     (void) buffer;
     (void) len;
     (void) offset;
+
+    IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 }
 
 void blfs_backstore_write_body(blfs_backstore_t * backstore, const uint8_t * buffer, uint32_t len, uint64_t offset)
 {
+    IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
+
     (void) backstore;
     (void) buffer;
     (void) len;
     (void) offset;
+
+    IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 }
 
 void blfs_backstore_close(blfs_backstore_t * backstore)
 {
+    IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
+
     (void) backstore;
+
+    IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 }

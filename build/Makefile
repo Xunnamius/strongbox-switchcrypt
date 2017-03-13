@@ -17,6 +17,10 @@ CONFIG_ROOT	:= ../config
 UNITY_ROOT	:= $(VENDR_ROOT)/unity
 CMOCK_ROOT	:= $(VENDR_ROOT)/cmock
 
+# Buselfs internal debug level
+# XXX: Set to 0 when not debugging or suffer the (perf-related) consequences!
+DEBUG := -DBLFS_DEBUG_LEVEL=3
+
 # This is the name of the resulant executable
 EXENAME	:= buselfs
 
@@ -120,15 +124,15 @@ test: check
 # Workhorse targets
 
 $(EXENAME): $(SRC_FILES) $(VENDR_FILES)
-	$(CC) $(CFLAGS) $(IFLAGS) $(LDFLAGS) -o $(EXENAME) $(EXECSRC) \
+	$(CC) $(CFLAGS) $(IFLAGS) $(LDFLAGS) $(DEBUG) -o $(EXENAME) $(EXECSRC) \
 		$^ \
 		$(STATIC_LIBS)
 
 $(SRC_FILES) $(VENDR_FILES): %.o: %.c %.h
-	$(CC) $(CFLAGS) $(IFLAGS) -o $@ -c $<
+	$(CC) $(CFLAGS) $(IFLAGS) $(DEBUG) -o $@ -c $<
 
 $(RUNR_FILES) $(TEST_FILES): %.o: %.c
-	$(CC) $(CFLAGS) $(IFLAGS) -o $@ -c $<
+	$(CC) $(CFLAGS) $(IFLAGS) $(DEBUG) -o $@ -c $<
 
 # XXX: dynamically scans prereqs (filled with #include'd headers from source)
 # for mocks, includes them, and then removes the unmocked version from the
@@ -136,7 +140,7 @@ $(RUNR_FILES) $(TEST_FILES): %.o: %.c
 $(TEST_TRGTS): test_%: test_%_runner.o test_%.o %.o test_%.d $(SRC_FILES) $(VENDR_FILES)
 	$(eval R_MOCKED_FILES := $(call distinct,$(patsubst %.h,%.c,$(call containing,mock_,$^))))
 	$(eval R_REMAIN_FILES := $(filter-out %.h %.c %.d $(if $(R_MOCKED_FILES),$(addprefix %,$(patsubst mock_%.c,%.o,$(R_MOCKED_FILES)))), $^))
-	$(CC) $(CFLAGS) $(DEBUGFLAGS) $(IFLAGS) $(LDFLAGS) -o $@ \
+	$(CC) $(CFLAGS) $(DEBUGFLAGS) $(IFLAGS) $(LDFLAGS) $(DEBUG) -o $@ \
 		$(R_REMAIN_FILES) \
 		$(R_MOCKED_FILES) \
 		$(C_LIBS) \

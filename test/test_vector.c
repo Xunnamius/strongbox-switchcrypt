@@ -21,11 +21,18 @@ static vector_t * vector;
 
 void setUp(void)
 {
+    char buf[100];
+    snprintf(buf, sizeof buf, "%s%s_%s", "blfs_level", STRINGIZE(BLFS_DEBUG_LEVEL), "test");
+
+    if(dzlog_init(BLFS_CONFIG_ZLOG, buf))
+        exit(EXCEPTION_ZLOG_INIT_FAILURE);
+
     vector = vector_init();
 }
 
 void tearDown(void)
 {
+    zlog_fini();
     vector_fini(vector);
 }
 

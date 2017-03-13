@@ -13,7 +13,7 @@ This is a complete rewrite of the old buselogfs code. This is a Buse + Chacha20 
 - [zlog]()
 - [libsodium]()
 - [make]()
-- [gcc]()
+- [gcc]() (sorry, I'm using some GCC extensions to make life easier)
 - [ruby]() (if you're going to be running the tests)
 
 ## Usage
@@ -50,4 +50,4 @@ make check
 
 ## Makefile Breakdown
 
-(todo)
+(todo) (including DEBUG)

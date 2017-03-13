@@ -12,6 +12,8 @@
 
 void interact_prompt_user(const char * prompt, char * response)
 {
+    IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
+
     struct termios term, term_orig;
     tcgetattr(STDIN_FILENO, &term);
     term_orig = term;
@@ -23,4 +25,6 @@ void interact_prompt_user(const char * prompt, char * response)
 
     /* Remember to set back, or your commands won't echo! */
     tcsetattr(STDIN_FILENO, TCSANOW, &term_orig);
+
+    IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 }
