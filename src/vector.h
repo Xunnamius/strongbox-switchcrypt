@@ -1,11 +1,10 @@
 #ifndef VECTOR_H_
 #define VECTOR_H_
 
-#include <stdint.h>
-
 #include "constants.h"
 
-#define VECTOR_GROWTH_FACTOR 2
+#define VECTOR_GROWTH_FACTOR    2
+#define VECTOR_INIT_SIZE        10
 
 /**
  * Dynamically allocated "growth on demand" array.

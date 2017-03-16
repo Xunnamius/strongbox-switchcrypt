@@ -18,6 +18,10 @@
 #define BLFS_DEBUG_LEVEL 0
 #endif
 
+#define _GNU_SOURCE
+#define _LARGEFILE64_SOURCE
+#define _XOPEN_SOURCE 500
+
 ///////////////////
 // Useful Macros //
 ///////////////////
@@ -33,6 +37,8 @@
 
 #define TRUE 1
 #define FALSE 0
+
+#define BITS_IN_A_BYTE 8
 
 #define MIN(a,b) __extension__ ({ __typeof__ (a) _a = (a); __typeof__ (b) _b = (b); _a < _b ? _a : _b; })
 #define CEIL(dividend,divisor) __extension__ ({ \
@@ -89,6 +95,7 @@ __extension__ ({ \
 
 #define BLFS_HEAD_OFFSET_BEGIN                  0U // the beginning of the world!
 #define BLFS_HEAD_NUM_HEADERS                   10U
+#define BLFS_HEAD_BYTES_KEYCOUNT                8U // uint64_t
 
 ///////////////
 // Backstore //
@@ -105,6 +112,58 @@ __extension__ ({ \
 #define BLFS_DEFAULT_BYTES_BACKSTORE            1073741824ULL // 1GB
 #define BLFS_DEFAULT_FLAKES_PER_NUGGET          256U
 #define BLFS_DEFAULT_DISABLE_INTERNAL_CACHING   FALSE // Not a good idea
+
+///////////
+// Khash //
+///////////
+
+// These don't actually have to be defined, but the symbols are used as names!
+/*
+#define BLFS_KHASH_NUGGET_KEY_CACHE_NAME
+#define BLFS_KHASH_HEADERS_CACHE_NAME
+#define BLFS_KHASH_KCS_CACHE_NAME
+#define BLFS_KHASH_TJ_CACHE_NAME
+*/
+
+/**
+ * Put a pointer into the hashmap at the location specified by key.
+ */
+#define KHASH_CACHE_PUT(name, hashmap, key, value_ptr) \
+    __extension__ ({ int _x; khint64_t _r = kh_put(name, hashmap, key, &_x); kh_value(hashmap, _r) = value_ptr; })
+
+/**
+ * Delete a key and its associated pointer value from the hashmap. This
+ * macro is slightly slower than its ITRP1 version.
+ */
+#define KHASH_CACHE_DEL_WITH_KEY(name, hashmap, key) \
+    __extension__ ({ kh_del(name, hashmap, kh_get(name, hashmap, key)); })
+
+/**
+ * Delete a key and its associated pointer value from the hashmap based on the
+ * special version of the iterator received from KHASH_CACHE_EXISTS (it's +1'd).
+ */
+#define KHASH_CACHE_DEL_WITH_ITRP1(name, hashmap, itr) \
+    __extension__ ({ kh_del(name, hashmap, itr-1); })
+
+/**
+ * Determine if the key exists (is present) in the hashmap.
+ */
+#define KHASH_CACHE_EXISTS(name, hashmap, key) \
+    __extension__ ({ khint64_t _r = kh_get(name, hashmap, key); _r == kh_end(hashmap) ? 0 : _r + 1; })
+
+/**
+ * Grab a pointer from the hashmap corresponding to the provided key. This
+ * macro is slightly slower than its ITRP1 version.
+ */
+#define KHASH_CACHE_GET_WITH_KEY(name, hashmap, key) \
+    __extension__ ({ kh_value(hashmap, kh_get(name, hashmap, key)); })
+
+/**
+ * Grab a pointer from the hashmap corresponding to a special version of the
+ * iterator received from KHASH_CACHE_EXISTS (it's +1'd).
+ */
+#define KHASH_CACHE_GET_WITH_ITRP1(hashmap, itr) \
+    __extension__ ({ kh_value(hashmap, itr-1); })
 
 ////////////////////////
 // Exceptional Events //

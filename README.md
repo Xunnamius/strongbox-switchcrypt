@@ -15,6 +15,7 @@ This is a complete rewrite of the old buselogfs code. This is a Buse + Chacha20 
 - [make]()
 - [gcc]() (sorry, I'm using some GCC extensions to make life easier)
 - [ruby]() (if you're going to be running the tests)
+- std=c11
 
 ## Usage
 
@@ -50,4 +51,4 @@ make check
 
 ## Makefile Breakdown
 
-(todo) (including DEBUG)
+(todo) (including DEBUG) (note that DEBUG mode breaks security, leaks potentially sensitive information)

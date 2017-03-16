@@ -1,8 +1,6 @@
 #ifndef BITMASK_H_
 #define BITMASK_H_
 
-#include <stdint.h>
-
 #include "constants.h"
 
 /**
@@ -14,22 +12,30 @@
 typedef struct bitmask_t
 {
     size_t byte_length;
-    uint_fast8_t * mask;
+    uint8_t * mask;
 } bitmask_t;
 
 /**
  * Creates a bit mask of the specified length (in bytes). Do not forget to call
  * bitmask_fini() when you're done with the bitmask!
  *
- * Note that length CANNOT be <= 0.
+ * The init_mask parameter is optional. If you want to initialize a bitmask of
+ * a certain length to all zeroes, just pass NULL for init_mask. Otherwise, you
+ * should pass in a pointer to `length` bytes.
  *
- * @param  length Positive bitmask length (in bytes); e.g. length = 2 -> 16-bit mask
+ * Note that length CANNOT be <= 0. Also note that init_mask should not be a
+ * pointer to stack memory (i.e. &mask_data) or the behavior is undefined.
+ *
+ * @param  init_mask Initial bitmask state (or NULL for all zeroes)
+ * @param  length    Bitmask length (in bytes); e.g. length = 2 -> 16-bit mask
  */
-bitmask_t * bitmask_init(size_t length);
+bitmask_t * bitmask_init(uint8_t * init_mask, size_t length);
 
 /**
  * Cleans up a bit mask and any associated objects in memory. Essentially a
  * free()-like command.
+ * 
+ * Note that init_mask is also free'd for you. Be aware of this.
  *
  * @param bitmask
  */

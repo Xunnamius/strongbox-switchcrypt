@@ -23,6 +23,9 @@ void interact_prompt_user(const char * prompt, char * response)
     printf("%s", prompt);
     scanf("%s", response);
 
+    IFDEBUG(dzlog_debug("promt = %s", prompt));
+    IFDEBUG(dzlog_debug("response = %s", response));
+
     /* Remember to set back, or your commands won't echo! */
     tcsetattr(STDIN_FILENO, TCSANOW, &term_orig);
 

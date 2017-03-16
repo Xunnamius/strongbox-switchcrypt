@@ -1,0 +1,272 @@
+#ifndef BLFS_BACKSTORE_H_
+#define BLFS_BACKSTORE_H_
+
+#include "khash.h"
+#include "bitmask.h"
+#include "constants.h"
+
+//////////////////////////
+// Static HEAD ordering //
+//////////////////////////
+
+static const uint32_t header_types_ordered[BLFS_HEAD_NUM_HEADERS][2] = {
+    { BLFS_HEAD_HEADER_TYPE_VERSION, BLFS_HEAD_HEADER_BYTES_VERSION },
+    { BLFS_HEAD_HEADER_TYPE_SALT, BLFS_HEAD_HEADER_BYTES_SALT },
+    { BLFS_HEAD_HEADER_TYPE_MTRH, BLFS_HEAD_HEADER_BYTES_MTRH },
+    { BLFS_HEAD_HEADER_TYPE_TPMGLOBALVER, BLFS_HEAD_HEADER_BYTES_TPMGLOBALVER },
+    { BLFS_HEAD_HEADER_TYPE_VERIFICATION, BLFS_HEAD_HEADER_BYTES_VERIFICATION },
+    { BLFS_HEAD_HEADER_TYPE_NUMNUGGETS, BLFS_HEAD_HEADER_BYTES_NUMNUGGETS },
+    { BLFS_HEAD_HEADER_TYPE_FLAKESPERNUGGET, BLFS_HEAD_HEADER_BYTES_FLAKESPERNUGGET },
+    { BLFS_HEAD_HEADER_TYPE_FLAKESIZE_BYTES, BLFS_HEAD_HEADER_BYTES_FLAKESIZE_BYTES },
+    { BLFS_HEAD_HEADER_TYPE_INITIALIZED, BLFS_HEAD_HEADER_BYTES_INITIALIZED },
+    { BLFS_HEAD_HEADER_TYPE_REKEYING, BLFS_HEAD_HEADER_BYTES_REKEYING }
+};
+
+//////////////////////
+// Typedefs/structs //
+//////////////////////
+
+/**
+ * The HEAD region (as opposed to the BODY region) of the backstore consists of
+ * several headers containing pertinent and often times constant data that is
+ * of interest at various points during buselfs's execution.
+ *
+ * This struct represents a generic HEAD section header.
+ *
+ * @type            BLFS_HEAD_HEADER_TYPE_*
+ * @data_offset     data offset in the backstore
+ * @data_length     total length of the header data in bytes
+ * @data            header value data (in bytes, not synced)
+ */
+typedef struct blfs_header_t
+{
+    uint32_t type;
+
+    uint64_t data_offset;
+    uint64_t data_length;
+
+    uint8_t * data;
+} blfs_header_t;
+
+/**
+ * Keycount Store entries consist of 64-bit unsigned integer nonces (keycounts)
+ * used per nugget to help encrypt that nugget's flakes with Chacha20. When the
+ * nugget is rekeyed, what actually happens is that this nonce is incremented
+ * and Chacha20 begins outputting bits from a different stream.
+ *
+ * The Keycount Store is also referred to as KCS.
+ *
+ * @nugget_index    the index of the nugget that this struct corresponds to
+ * @data_offset     data offset in the backstore
+ * @data_length     total length of the keycount data in bytes; always 8
+ * @keycount        the keycount value in the keystore (not synced)
+ */
+typedef struct blfs_keycount_t
+{
+    uint32_t nugget_index;
+    uint64_t data_offset;
+    uint64_t data_length;
+
+    uint64_t keycount;
+} blfs_keycount_t;
+
+/**
+ * Transaction Journal entries consist of bitmasks (bitvectors) that correspond
+ * to the status of flakes within corresponding nuggets. There is one bit per
+ * flake, and one Transaction Journal (TJ) entry per nugget. A high bit
+ * corresponds to a dirty flake, while a low bit corresponds to a clean one.
+ *
+ * @nugget_index    the index of the nugget that this struct corresponds to
+ * @data_offset     data offset in the backstore
+ * @data_length     total length of the journal entry in bytes; constant per run
+ * @mask            bitmask data representing flake states (not synced)
+ */
+typedef struct blfs_tjournal_entry_t
+{
+    uint32_t nugget_index;
+    uint64_t data_offset;
+    uint64_t data_length;
+
+    bitmask_t * bitmask;
+} blfs_tjournal_entry_t;
+
+///////////////////////////
+// Cache initializations //
+///////////////////////////
+
+KHASH_MAP_INIT_INT64(BLFS_KHASH_HEADERS_CACHE_NAME, blfs_header_t*)
+
+KHASH_MAP_INIT_INT64(BLFS_KHASH_KCS_CACHE_NAME, blfs_keycount_t*)
+
+KHASH_MAP_INIT_INT64(BLFS_KHASH_TJ_CACHE_NAME, blfs_tjournal_entry_t*)
+
+/**
+ * This struct and its related functions (in io.h) abstract away a lot of the
+ * underlying interactions and I/O between buselfs and the underlying filesystem
+ * housing the backstore file container.
+ *
+ * Note that there is reserved space for a single journaled nugget, keycount,
+ * and transaction journal. When rekeying happens in journaled mode, this is
+ * where it gets written to. Otherwise, all data starts at the "real" offsets.
+ *
+ * @file_path               backstore file path
+ * @file_name               backstore file name
+ * @read_fd                 read-only descriptor pointing to backstore file
+ * @write_fd                read-write descriptor pointing to backstore file
+ * @kcs_real_offset         integer offset to where the keycount store begins
+ * @tj_real_offset          integer offset to where the transaction journal begins
+ * @body_real_offset        integer offset to where the data BODY (nuggets) begins
+ * @kcs_journaled_offset    integer offset to where the journaled keycount goes
+ * @tj_journaled_offset     integer offset to where the journaled TJ goes
+ * @body_journaled_offset   integer offset to where the journaled nugget goes
+ * @writeable_size_actual   the actual number of writable bytes (real BODY size)
+ * @master_secret           cached secret from KDF, size BLFS_CRYPTO_BYTES_KDF_OUT
+ * @cache_headers           cached headers
+ * @cache_kcs_counts        cached keycounts
+ * @blfs_tjournal_entry_t   cached journal entries
+ */
+typedef struct blfs_backstore_t
+{
+    char * file_path;
+    char * file_name;
+
+    int read_fd;
+    int write_fd;
+
+    uint64_t kcs_real_offset;
+    uint64_t tj_real_offset;
+    uint64_t body_real_offset;
+
+    uint64_t kcs_journaled_offset;
+    uint64_t tj_journaled_offset;
+    uint64_t body_journaled_offset;
+
+    uint64_t writeable_size_actual;
+
+    uint8_t * master_secret;
+
+    khash_t(BLFS_KHASH_HEADERS_CACHE_NAME)  * cache_headers;
+    khash_t(BLFS_KHASH_KCS_CACHE_NAME)      * cache_kcs_counts;
+    khash_t(BLFS_KHASH_TJ_CACHE_NAME)       * cache_tj_entries;
+} blfs_backstore_t;
+
+/////////////////////////
+// Function Prototypes //
+/////////////////////////
+
+/**
+ * Initialize a blfs_backstore_t object and create the appropriate backstore
+ * file descriptors to the path specified. Throws an error if a file already
+ * exists at the given path.
+ *
+ * @param  path      Backstore file path
+ */
+blfs_backstore_t * blfs_backstore_create(const char * path);
+
+/**
+ * Initialize a blfs_backstore_t object and open the appropriate backstore file
+ * descriptors to the path specified. Throws an error if no file exists at the
+ * given path.
+ *
+ * @param  path      Backstore file path
+ */
+blfs_backstore_t * blfs_backstore_open(const char * path);
+
+/**
+ * Deinitialize a blfs_backstore_t instance, close all relevant file
+ * descriptors, and free all relevant pointers and internal caches. There should
+ * not really be a reason to call this.
+ *
+ * @param  backstore Buselfs_backstore instance
+ */
+void blfs_backstore_close(blfs_backstore_t * backstore);
+
+/**
+ * Reads in the specified header from the specified backstore. Throws an error
+ * upon failure.
+ *
+ * @param backstore
+ * @param header_type
+ * @param header
+ *
+ * @return            blfs_header_t
+ */
+blfs_header_t * blfs_open_header(blfs_backstore_t * backstore, uint32_t header_type);
+
+/**
+ * Immediately writes the specified header to the specified backstore. Throws
+ * an error upon failure.
+ *
+ * @param backstore
+ * @param header
+ */
+void blfs_commit_header(blfs_backstore_t * backstore, const blfs_header_t * header);
+
+/**
+ * The specified header is free()'d. Be careful calling this. It should only be
+ * with one-time-use headers or at the end of the program.
+ *
+ * @param backstore
+ * @param header
+ */
+void blfs_close_header(blfs_backstore_t * backstore, blfs_header_t * header);
+
+/**
+ * Reads in the specified keycount from the specified backstore. Throws an error
+ * upon failure.
+ *
+ * @param  backstore
+ * @param  nugget_index
+ *
+ * @return              blfs_keycount_t
+ */
+blfs_keycount_t * blfs_open_keycount(blfs_backstore_t * backstore, uint64_t nugget_index);
+
+/**
+ * Immediately writes the specified keycount to the specified backstore. Throws
+ * an error upon failure.
+ *
+ * @param backstore
+ * @param count
+ */
+void blfs_commit_keycount(blfs_backstore_t * backstore, const blfs_keycount_t * count);
+
+/**
+ * The specified keycount is free()'d. Be careful calling this. It should rarely
+ * be used.
+ *
+ * @param backstore
+ * @param count
+ */
+void blfs_close_keycount(blfs_backstore_t * backstore, blfs_keycount_t * count);
+
+/**
+ * Reads in the specified TJ entry from the specified backstore. Throws an error
+ * upon failure.
+ *
+ * @param  backstore
+ * @param  nugget_index
+ *
+ * @return              blfs_tjournal_entry_t
+ */
+blfs_tjournal_entry_t * blfs_open_tjournal_entry(blfs_backstore_t * backstore, uint64_t nugget_index);
+
+/**
+ * Immediately writes the specified TJ entry to the specified backstore. Throws
+ * an error upon failure.
+ *
+ * @param backstore
+ * @param entry
+ */
+void blfs_commit_tjournal_entry(blfs_backstore_t * backstore, const blfs_tjournal_entry_t * entry);
+
+/**
+ * The specified TJ entry is free()'d. Be careful calling this. It should rarely
+ * be used.
+ *
+ * @param backstore
+ * @param entry
+ */
+void blfs_close_tjournal_entry(blfs_backstore_t * backstore, blfs_tjournal_entry_t * entry);
+
+#endif /* BLFS_BACKSTORE_H_ */

@@ -5,19 +5,21 @@
  */
 
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 #include <assert.h>
 #include <fcntl.h>
 #include <inttypes.h>
-#include <sys/types.h>
 #include <math.h>
 #include <limits.h>
 #include <errno.h>
 
 #include "buse.h"
+#include "backstore.h"
 #include "buselfs.h"
-#include "uthash.h"
+#include "bitmask.h"
+#include "crypto.h"
+#include "interact.h"
+#include "khash.h"
 #include "merkletree.h"
 
 /**
@@ -145,12 +147,9 @@ void password_verify()
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 }
 
-/* FIXME:
-blfs_header_t * cache_headers = NULL;
-blfs_keycount_t * cache_ksc_offsets = NULL;
-blfs_tjournal_entry_t * cache_tj_offsets = NULL;
-uint8_t * cache_nugget_keys = NULL;
-*/
+/*
+FIXME: uint8_t * cache_nugget_keys;
+ */
 
 int buselfs_main(int argc, char * argv[])
 {

@@ -1,7 +1,6 @@
 #ifndef BLFS_CRYPT_H_
 #define BLFS_CRYPT_H_
 
-#include <stdint.h>
 #include <sodium.h>
 
 #include "constants.h"
@@ -38,7 +37,7 @@ void blfs_password_to_secret(uint8_t * secret, const char * passwd, uint32_t pas
  * @param secret
  * @param nugget_index
  */
-void blfs_nugget_key_from_data(uint8_t * nugget_key, uint8_t * secret, uint64_t nugget_index);
+void blfs_nugget_key_from_data(uint8_t * nugget_key, const uint8_t * secret, uint64_t nugget_index);
 
 /**
  * Accepts a nugget_key of length BLFS_CRYPTO_BYTES_KDF_OUT along with extra
@@ -102,7 +101,7 @@ void blfs_chacha20_crypt(uint8_t * crypted_data,
                          const uint8_t * data,
                          uint32_t data_length,
                          const uint8_t * nugget_key,
-                         const uint64_t * kcs_keycount,
+                         uint64_t kcs_keycount,
                          uint64_t nugget_internal_offset);
 
 /**

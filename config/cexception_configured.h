@@ -2,6 +2,7 @@
 #define CONFIG_CEXCEPTION_CONFIGURED_H_
 
 #include <stdlib.h>
+#include <stdint.h>
 #include <zlog.h>
 
 /////////////////////////

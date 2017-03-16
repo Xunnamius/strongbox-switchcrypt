@@ -29,7 +29,7 @@ void setUp(void)
     if(dzlog_init(BLFS_CONFIG_ZLOG, buf))
         exit(EXCEPTION_ZLOG_INIT_FAILURE);
 
-    bitmask = bitmask_init(BITMASK_BYTE_LENGTH);
+    bitmask = bitmask_init(NULL, BITMASK_BYTE_LENGTH);
 }
 
 void tearDown(void)
@@ -52,7 +52,30 @@ void test_bitmask_init_should_throw_exception_on_bad_byte_length(void)
     CEXCEPTION_T e_expected = EXCEPTION_SIZE_T_OUT_OF_BOUNDS;
     CEXCEPTION_T e_actual = EXCEPTION_NO_EXCEPTION;
 
-    TRY_FN_CATCH_EXCEPTION(bitmask = bitmask_init(0));
+    TRY_FN_CATCH_EXCEPTION(bitmask = bitmask_init(NULL, 0));
+}
+
+void test_bitmask_fini_works_as_expected(void)
+{
+    bitmask_fini(bitmask);
+
+    // WARNING: init_mask AS A POINTER TO STACK MEMORY IS UNDEFINED BEHAVIOR
+    //uint8_t data1[5] = { 0x01, 0x02, 0x03, 0x04, 0x05 };
+    //bitmask = bitmask_init(data1, sizeof data1);
+    //bitmask_fini(bitmask);
+
+    uint8_t * data = malloc(sizeof(uint8_t) * 5);
+
+    data[0] = 0x03;
+    data[1] = 0x05;
+    data[2] = 0x04;
+    data[3] = 0x01;
+    data[4] = 0x02;
+
+    bitmask = bitmask_init(data, 5);
+    
+    // XXX: The below is called by tearDown()
+    //bitmask_fini(bitmask);
 }
 
 void test_bitmask_functions_throw_exception_on_out_of_bounds_indices(void)

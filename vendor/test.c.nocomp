@@ -1,0 +1,111 @@
+/*
+* @Author: trefi
+* @Date:   2017-03-15 18:36:12
+* @Last Modified by:   trefi
+* @Last Modified time: 2017-03-15 20:36:52
+*/
+
+#include <stdio.h>
+#include <stdint.h>
+#include "khash.h"
+
+/**
+ * Put a pointer into the hashmap at the location specified by key.
+ */
+#define BLFS_CACHE_PUT(name, hashmap, key, value_ptr)  ({ int _x; khint64_t _r = kh_put(name, hashmap, key, &_x); kh_value(hashmap, _r) = value_ptr; })
+
+/**
+ * Delete a key and its associated pointer value from the hashmap. This
+ * macro is slightly slower than its ITRP1 version.
+ */
+#define BLFS_CACHE_DEL_WITH_KEY(name, hashmap, key)    ({ kh_del(name, hashmap, kh_get(name, hashmap, key)); })
+
+/**
+ * Delete a key and its associated pointer value from the hashmap based on the
+ * special version of the iterator received from BLFS_CACHE_EXISTS (it's +1'd).
+ */
+#define BLFS_CACHE_DEL_WITH_ITRP1(name, hashmap, itr)  ({ kh_del(name, hashmap, itr-1); })
+
+/**
+ * Determine if the key exists (is present) in the hashmap.
+ */
+#define BLFS_CACHE_EXISTS(name, hashmap, key)          ({ khint64_t _r = kh_get(name, hashmap, key); _r == kh_end(hashmap) ? 0 : _r + 1; })
+
+/**
+ * Grab a pointer from the hashmap corresponding to the provided key. This
+ * macro is slightly slower than its ITRP1 version.
+ */
+#define BLFS_CACHE_GET_WITH_KEY(name, hashmap, key)    ({ kh_value(hashmap, kh_get(name, hashmap, key)); })
+
+/**
+ * Grab a pointer from the hashmap corresponding to a special version of the
+ * iterator received from BLFS_CACHE_EXISTS (it's +1'd).
+ */
+#define BLFS_CACHE_GET_WITH_ITRP1(hashmap, itr)        ({ kh_value(hashmap, itr-1); })
+
+typedef struct b
+{
+    uint32_t t;
+    uint64_t l;
+    uint8_t * d;
+} b;
+
+KHASH_MAP_INIT_INT64(testerz, b*)
+
+khash_t(testerz) * hash;
+
+void testz()
+{
+    khint64_t r;
+    if(r = BLFS_CACHE_EXISTS(testerz, hash, 0))
+    {
+        printf("EXISTS!\n");
+
+        b * gotten = BLFS_CACHE_GET_WITH_ITRP1(hash, r);
+        printf("9002 ?= %u\n", gotten->l);
+        b * gotten2 = BLFS_CACHE_GET_WITH_KEY(testerz, hash, 0);
+        printf("9002 ?= %u\n", gotten2->l);
+    }
+
+    else
+    {
+        printf("DNE!\n");
+    }
+}
+
+int main()
+{
+    int absent, is_missing;
+    khint64_t kitr;
+
+    b * newb = malloc(sizeof(b));
+    newb->t = 9001;
+    newb->l = 9002;
+    
+    hash = kh_init(testerz);
+
+    kitr = kh_put(testerz, hash, 5, &absent);
+    printf("absent = %i\n", absent);
+    kitr = kh_put(testerz, hash, 4, &absent);
+    printf("absent = %i\n", absent);
+    kitr = kh_put(testerz, hash, 0, &absent);
+    printf("absent = %i\n", absent);
+    kitr = kh_put(testerz, hash, 0, &absent);
+    printf("absent = %i\n", absent);
+    printf("kh_value(hash, kitr) = %p\n", kh_value(hash, kitr));
+    BLFS_CACHE_DEL_WITH_ITRP1(testerz, hash, kitr+1);
+    printf("kh_value(hash, kitr) = %p\n", kh_value(hash, kitr));
+    kitr = kh_put(testerz, hash, 0, &absent);
+    printf("absent = %i\n", absent);
+    BLFS_CACHE_PUT(testerz, hash, 0, newb);
+    printf("kh_value(hash, kitr) = %p\n", kh_value(hash, kitr));
+    testz();
+    BLFS_CACHE_DEL_WITH_KEY(testerz, hash, 0);
+    testz();
+
+    if(NULL)
+        printf("FAIL");
+    else
+        printf("WIN");
+    return 0;
+}

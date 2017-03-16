@@ -6,6 +6,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <inttypes.h>
 
 #include "vector.h"
 
@@ -42,11 +43,13 @@ void vector_add(vector_t * vector, const void * element)
 
     if(vector->size == 0)
     {
-        vector->size = 10;
+        vector->size = VECTOR_INIT_SIZE;
         vector->data = calloc(vector->size, sizeof(void *));
 
         if(vector->data == NULL)
             Throw(EXCEPTION_ALLOC_FAILURE);
+
+        IFDEBUG(dzlog_debug("vector first time initialized"));
     }
 
     if(vector->size == vector->count)
@@ -56,7 +59,11 @@ void vector_add(vector_t * vector, const void * element)
 
         if(vector->data == NULL)
             Throw(EXCEPTION_ALLOC_FAILURE);
+
+        IFDEBUG(dzlog_debug("vector was resized; new size = %"PRIu32, vector->size));
     }
+
+    IFDEBUG(dzlog_debug("adding new element %p to vector at count %"PRIu32, element, vector->count));
 
     vector->data[vector->count] = element;
     vector->count++;
@@ -71,8 +78,12 @@ void vector_delete(vector_t * vector, uint32_t index)
     if(index >= vector->count)
         Throw(EXCEPTION_OUT_OF_BOUNDS);
 
+    IFDEBUG(const void * ptr = vector->data[index]);
+
     for(uint32_t i = index, j = i + 1; j < vector->count; j++, i++)
         vector->data[i] = vector->data[j];
+
+    IFDEBUG(dzlog_debug("deleted element %p from vector at count %"PRIu32, ptr, index));
 
     vector->count--;
 
@@ -86,6 +97,7 @@ const void * vector_get(vector_t * vector, uint32_t index)
     if(index >= vector->count)
         Throw(EXCEPTION_OUT_OF_BOUNDS);
 
+    IFDEBUG(dzlog_debug("getting element %p from vector at index %"PRIu32, vector->data[index], index));
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
     return vector->data[index];
 }
@@ -99,5 +111,6 @@ void vector_set(vector_t * vector, uint32_t index, const void * element)
 
     vector->data[index] = element;
 
+    IFDEBUG(dzlog_debug("setting element %p in vector at index %"PRIu32, element, index));
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 }

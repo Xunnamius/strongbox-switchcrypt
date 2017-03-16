@@ -1,11 +1,6 @@
 #ifndef BLFS_BUSELFS_H_
 #define BLFS_BUSELFS_H_
 
-#define _GNU_SOURCE
-#define _LARGEFILE64_SOURCE
-#define _XOPEN_SOURCE 500
-
-#include <sodium.h>
 #include "constants.h"
 
 int buse_read(void * buffer, uint32_t len, uint64_t offset, void * userdata);

@@ -40,7 +40,7 @@ DEBUGFLAGS 			  := -g
 CONDITIONALDEBUGFLAGS := -fsanitize=address,undefined,shift,integer-divide-by-zero,null,signed-integer-overflow \
 						 -fno-omit-frame-pointer
 
-CFLAGS		:= -pedantic -Wall -Wextra -std=c11
+CFLAGS		:= -pedantic -Wall -Wextra -Wno-parentheses -std=c11
 
 IFLAGS		:= -I/usr/local/include \
 			   -I. \
