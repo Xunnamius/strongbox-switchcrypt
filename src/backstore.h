@@ -110,7 +110,7 @@ KHASH_MAP_INIT_INT64(BLFS_KHASH_TJ_CACHE_NAME, blfs_tjournal_entry_t*)
  * where it gets written to. Otherwise, all data starts at the "real" offsets.
  *
  * @file_path               backstore file path including the filename
- * @file_name               backstore file name (limited to 7 characters)
+ * @file_name               backstore file name (limited to 16 characters)
  * @read_fd                 read-only descriptor pointing to backstore file
  * @write_fd                read-write descriptor pointing to backstore file
  * @kcs_real_offset         integer offset to where the keycount store begins
@@ -118,7 +118,8 @@ KHASH_MAP_INIT_INT64(BLFS_KHASH_TJ_CACHE_NAME, blfs_tjournal_entry_t*)
  * @body_real_offset        integer offset to where the data BODY (nuggets) begins
  * @kcs_journaled_offset    integer offset to where the journaled keycount goes
  * @tj_journaled_offset     integer offset to where the journaled TJ goes
- * @body_journaled_offset   integer offset to where the journaled nugget goes
+ * @nugget_journaled_offset integer offset to where the single journaled nugget goes
+ * @nugget_size_bytes       how big of a region a nugget represents
  * @writeable_size_actual   the actual number of writable bytes (real BODY size)
  * @master_secret           cached secret from KDF, size BLFS_CRYPTO_BYTES_KDF_OUT
  * @cache_headers           cached headers
@@ -127,11 +128,10 @@ KHASH_MAP_INIT_INT64(BLFS_KHASH_TJ_CACHE_NAME, blfs_tjournal_entry_t*)
  */
 typedef struct blfs_backstore_t
 {
-    char * file_path;
-    char * file_name;
+    const char * file_path;
+    const char * file_name;
 
-    int read_fd;
-    int write_fd;
+    int io_fd;
 
     uint64_t kcs_real_offset;
     uint64_t tj_real_offset;
@@ -139,11 +139,12 @@ typedef struct blfs_backstore_t
 
     uint64_t kcs_journaled_offset;
     uint64_t tj_journaled_offset;
-    uint64_t body_journaled_offset;
+    uint64_t nugget_journaled_offset;
 
+    uint64_t nugget_size_bytes;
     uint64_t writeable_size_actual;
 
-    uint8_t * master_secret;
+    uint8_t master_secret[BLFS_CRYPTO_BYTES_KDF_OUT];
 
     khash_t(BLFS_KHASH_HEADERS_CACHE_NAME)  * cache_headers;
     khash_t(BLFS_KHASH_KCS_CACHE_NAME)      * cache_kcs_counts;
@@ -153,33 +154,6 @@ typedef struct blfs_backstore_t
 /////////////////////////
 // Function Prototypes //
 /////////////////////////
-
-/**
- * Initialize a blfs_backstore_t object and create the appropriate backstore
- * file descriptors to the path specified. Throws an error if a file already
- * exists at the given path.
- *
- * @param  path      Backstore file path
- */
-blfs_backstore_t * blfs_backstore_create(const char * path);
-
-/**
- * Initialize a blfs_backstore_t object and open the appropriate backstore file
- * descriptors to the path specified. Throws an error if no file exists at the
- * given path.
- *
- * @param  path      Backstore file path
- */
-blfs_backstore_t * blfs_backstore_open(const char * path);
-
-/**
- * Deinitialize a blfs_backstore_t instance, close all relevant file
- * descriptors, and free all relevant pointers and internal caches. There should
- * not really be a reason to call this.
- *
- * @param  backstore Buselfs_backstore instance
- */
-void blfs_backstore_close(blfs_backstore_t * backstore);
 
 /**
  * Reads in the specified header from the specified backstore. Throws an error

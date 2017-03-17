@@ -14,9 +14,90 @@
 
 #define BACKSTORE_FILE_PATH "/tmp/test.io.bin"
 
-int writefd;
-int readfd;
-blfs_backstore_t * backstore;
+int iofd;
+
+blfs_backstore_t * fake_backstore;
+
+static const uint8_t buffer_init_backstore_state[] = {
+    // HEAD
+    // header section
+    
+    BLFS_LEAST_COMPAT_VERSION, 0x00, 0x00, 0x00, // BLFS_HEAD_HEADER_BYTES_VERSION
+
+    0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C,
+    0x0D, 0x0E, 0x0F, 0x00, // BLFS_HEAD_HEADER_BYTES_SALT
+
+    0xFF, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C,
+    0x0D, 0x0E, 0x0F, 0x00, 0x01, 0xFF, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
+    0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0xFF, 0xFF, // BLFS_HEAD_HEADER_BYTES_MTRH
+
+    0x06, 0x07, 0x08, 0x09, 0x06, 0x07, 0x08, 0x09, // BLFS_HEAD_HEADER_BYTES_TPMGLOBALVER
+
+    0xFF, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C,
+    0x0D, 0x0E, 0x0F, 0x00, 0x01, 0xFF, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
+    0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0xFF, 0xFF, 0xFF, 0x02, 0x03, 0x04,
+    0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x09, 0x0A, 0x0B, 0x0C,
+    0x0D, 0x0E, 0xFF, 0xFF, 0x0D, 0x0E, 0x0F, 0x00, 0x01, 0xFF, 0x03, 0x04,
+    0x05, 0x06, 0x07, 0x08, 0x0D, 0x0E, 0x0F, 0x00, 0x01, 0xFF, 0x03, 0xAB,
+    0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0xFF, 0xFF, 0xFF, 0x02, 0x03, 0x04,
+    0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x09, 0x0A, 0x0B, 0x0C,
+    0x0D, 0x0E, 0xFF, 0xFF, 0x0D, 0x0E, 0x0F, 0x00, 0x01, 0xFF, 0x03, 0x04,
+    0x05, 0x06, 0x07, 0x08, 0x0D, 0x0E, 0x0F, 0x00, 0x01, 0xFF, 0x03, 0xAB,
+    0x0B, 0x0C, 0x0D, 0x0E, 0xFF, 0xFF, 0xFF, 0x02, // BLFS_HEAD_HEADER_BYTES_VERIFICATION
+
+    0x03, 0x00, 0x00, 0x00, // BLFS_HEAD_HEADER_BYTES_NUMNUGGETS
+
+    0x02, 0x00, 0x00, 0x00, // BLFS_HEAD_HEADER_BYTES_FLAKESPERNUGGET
+
+    0x08, 0x00, 0x00, 0x00, // BLFS_HEAD_HEADER_BYTES_FLAKESIZE_BYTES
+
+    0x3C, // BLFS_HEAD_HEADER_BYTES_INITIALIZED
+
+    0x00, // BLFS_HEAD_HEADER_BYTES_REKEYING
+
+    // KCS
+    // 3 nuggets * 8 bytes per count
+
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+
+    0x0A, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+
+    0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+
+    // TJ
+    // 3 nuggets * 2 flakes each
+    
+    0xF0, 0x00,
+
+    0x00, 0xF0,
+
+    0x0F, 0x00,
+
+    // JOURNALED KCS
+    
+    0x00, 0xA0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+
+    // JOURNALED TJ
+    
+    0x00, 0xF0,
+
+    // JOURNALED NUGGET
+    
+    0x00, 0x00, 0xFF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0xFF, 0x00,
+
+    // BODY
+    // 3 nuggets * 2 flakes each * each flake is 8 bytes
+    
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00,
+
+    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+    0xFF, 0xFF, 0xFF, 0xFF,
+
+    0x55, 0xAA, 0x55, 0xAA, 0x55, 0xAA, 0x55, 0xAA, 0x55, 0xAA, 0x55, 0xAA,
+    0x55, 0xAA, 0x55, 0xAA
+};
 
 void setUp(void)
 {
@@ -26,22 +107,19 @@ void setUp(void)
     if(dzlog_init(BLFS_CONFIG_ZLOG, buf))
         exit(EXCEPTION_ZLOG_INIT_FAILURE);
 
-    writefd = open(BACKSTORE_FILE_PATH, O_WRONLY | O_CREAT | O_TRUNC, 0666);
-    readfd  = open(BACKSTORE_FILE_PATH, O_RDONLY);
+    iofd = open(BACKSTORE_FILE_PATH, O_CREAT | O_RDWR | O_TRUNC, 0777);
 
-    backstore = malloc(sizeof(blfs_backstore_t));
-    backstore->read_fd = readfd;
-    backstore->write_fd = writefd;
-    backstore->body_real_offset = 128;
+    fake_backstore = malloc(sizeof(blfs_backstore_t));
+    fake_backstore->io_fd = iofd;
+    fake_backstore->body_real_offset = 128;
 }
 
 void tearDown(void)
 {
     zlog_fini();
-    close(backstore->read_fd);
-    close(backstore->write_fd);
+    close(fake_backstore->io_fd);
     unlink(BACKSTORE_FILE_PATH);
-    free(backstore);
+    free(fake_backstore);
 }
 
 void test_blfs_backstore_read_and_write_works_as_expected(void)
@@ -54,8 +132,8 @@ void test_blfs_backstore_read_and_write_works_as_expected(void)
     uint8_t * buffer_actual3_ptr = buffer_actual3;
     uint8_t * buffer_expected_zeroes = calloc(sizeof buffer_actual1, sizeof(uint8_t));
 
-    blfs_backstore_write(backstore, buffer_expected_zeroes, sizeof buffer_actual1, 0);
-    blfs_backstore_read(backstore, buffer_actual1, sizeof buffer_actual1, 0);
+    blfs_backstore_write(fake_backstore, buffer_expected_zeroes, sizeof buffer_actual1, 0);
+    blfs_backstore_read(fake_backstore, buffer_actual1, sizeof buffer_actual1, 0);
 
     TEST_ASSERT_EQUAL_MEMORY(buffer_expected_zeroes, buffer_actual1, sizeof buffer_actual1);
 
@@ -68,13 +146,13 @@ void test_blfs_backstore_read_and_write_works_as_expected(void)
         0x01, 0x02, 0x03, 0x04
     };
 
-    blfs_backstore_write(backstore, buffer_expected_random, sizeof buffer_actual2, random_offset);
-    blfs_backstore_read(backstore, buffer_actual2, sizeof buffer_actual2, random_offset);
+    blfs_backstore_write(fake_backstore, buffer_expected_random, sizeof buffer_actual2, random_offset);
+    blfs_backstore_read(fake_backstore, buffer_actual2, sizeof buffer_actual2, random_offset);
 
     TEST_ASSERT_EQUAL_MEMORY(buffer_expected_random, buffer_actual2, sizeof buffer_actual2);
 
-    blfs_backstore_read(backstore, buffer_actual3_ptr, sizeof(buffer_actual2) / 2, random_offset);
-    blfs_backstore_read(backstore,
+    blfs_backstore_read(fake_backstore, buffer_actual3_ptr, sizeof(buffer_actual2) / 2, random_offset);
+    blfs_backstore_read(fake_backstore,
                         buffer_actual3_ptr + sizeof(buffer_actual2) / 2,
                         sizeof(buffer_actual2) / 2,
                         random_offset + sizeof(buffer_actual2) / 2);
@@ -149,14 +227,43 @@ void test_blfs_backstore_read_body_and_write_body_works_as_expected(void)
         0xFF, 0xFF, 0xFF, 0xFF
     };
 
-    blfs_backstore_write(backstore, buffer_expected_random, sizeof buffer_expected_random, 0);
-    blfs_backstore_read_body(backstore, buffer_actual1, sizeof buffer_actual1, 19);
+    blfs_backstore_write(fake_backstore, buffer_expected_random, sizeof buffer_expected_random, 0);
+    blfs_backstore_read_body(fake_backstore, buffer_actual1, sizeof buffer_actual1, 19);
 
     TEST_ASSERT_EQUAL_MEMORY(buffer_expected_head1, buffer_actual1, sizeof buffer_actual1);
 
-    blfs_backstore_write_body(backstore, buffer_expected_head2, sizeof buffer_expected_head2, 0);
-    blfs_backstore_read(backstore, buffer_actual2, sizeof buffer_actual2, 0);
+    blfs_backstore_write_body(fake_backstore, buffer_expected_head2, sizeof buffer_expected_head2, 0);
+    blfs_backstore_read(fake_backstore, buffer_actual2, sizeof buffer_actual2, 0);
     
     TEST_ASSERT_EQUAL_MEMORY(buffer_expected_welldefined, buffer_actual2, sizeof buffer_actual2);
 }
 
+void test_blfs_backstore_create_work_as_expected(void)
+{
+    blfs_backstore_write(fake_backstore, buffer_init_backstore_state, sizeof buffer_init_backstore_state, 0);
+
+    blfs_backstore_t * backstore = blfs_backstore_open(BACKSTORE_FILE_PATH);
+
+    TEST_ASSERT_EQUAL_STRING(BACKSTORE_FILE_PATH, backstore->file_path);
+    TEST_ASSERT_EQUAL_STRING("test.io.bin", backstore->file_name);
+    TEST_ASSERT_EQUAL_UINT64(202, backstore->kcs_real_offset);
+    TEST_ASSERT_EQUAL_UINT64(226, backstore->tj_real_offset);
+    TEST_ASSERT_EQUAL_UINT64(232, backstore->kcs_journaled_offset);
+    TEST_ASSERT_EQUAL_UINT64(240, backstore->tj_journaled_offset);
+    TEST_ASSERT_EQUAL_UINT64(242, backstore->nugget_journaled_offset);
+    TEST_ASSERT_EQUAL_UINT64(258, backstore->body_real_offset);
+    TEST_ASSERT_EQUAL_UINT64(48, backstore->writeable_size_actual);
+    TEST_ASSERT_EQUAL_UINT64(16, backstore->nugget_size_bytes);
+}
+
+void test_blfs_backstore_open_work_as_expected(void)
+{
+    TEST_IGNORE();
+}
+
+void test_blfs_backstore_close_work_as_expected(void)
+{
+    blfs_backstore_write(fake_backstore, buffer_init_backstore_state, sizeof buffer_init_backstore_state, 0);
+    blfs_backstore_t * backstore = blfs_backstore_open(BACKSTORE_FILE_PATH);
+    blfs_backstore_close(backstore); // No errors? All good!
+}

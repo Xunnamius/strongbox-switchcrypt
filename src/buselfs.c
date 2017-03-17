@@ -50,6 +50,7 @@ static const char * get_filename_from_path(const char * path, int max_length)
 
     p++;
 
+    IFDEBUG(dzlog_debug("filename = %s", p));
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
     return p;
 }

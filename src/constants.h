@@ -5,8 +5,8 @@
 // Configurable //
 //////////////////
 
-#define BLFS_CURRENT_VERSION 0.1.0
-#define BLFS_LEAST_COMPAT_VERSION 0.1.0
+#define BLFS_CURRENT_VERSION 174U
+#define BLFS_LEAST_COMPAT_VERSION 174U
 
 #define BLFS_CONFIG_ZLOG "../config/zlog_conf.conf"
 
@@ -18,9 +18,17 @@
 #define BLFS_DEBUG_LEVEL 0
 #endif
 
-#define _GNU_SOURCE
-#define _LARGEFILE64_SOURCE
+#ifndef _XOPEN_SOURCE
 #define _XOPEN_SOURCE 500
+#endif
+
+#ifndef _LARGEFILE64_SOURCE
+#define _LARGEFILE64_SOURCE
+#endif
+
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
 
 ///////////////////
 // Useful Macros //
@@ -93,9 +101,10 @@ __extension__ ({ \
 #define BLFS_HEAD_HEADER_BYTES_INITIALIZED      1U  // uint8_t
 #define BLFS_HEAD_HEADER_BYTES_REKEYING         1U  // uint8_t
 
-#define BLFS_HEAD_OFFSET_BEGIN                  0U // the beginning of the world!
 #define BLFS_HEAD_NUM_HEADERS                   10U
 #define BLFS_HEAD_BYTES_KEYCOUNT                8U // uint64_t
+#define BLFS_HEAD_IS_INITIALIZED_VALUE          0x3CU
+#define BLFS_HEAD_IS_REKEYING_VALUE             0x4DU
 
 ///////////////
 // Backstore //
@@ -112,6 +121,8 @@ __extension__ ({ \
 #define BLFS_DEFAULT_BYTES_BACKSTORE            1073741824ULL // 1GB
 #define BLFS_DEFAULT_FLAKES_PER_NUGGET          256U
 #define BLFS_DEFAULT_DISABLE_INTERNAL_CACHING   FALSE // Not a good idea
+#define BLFS_DEFAULT_MAX_FILENAME_LENGTH        16
+#define BLFS_DEFAULT_BACKSTORE_FILE_PERMS       0666
 
 ///////////
 // Khash //

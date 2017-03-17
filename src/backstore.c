@@ -7,38 +7,10 @@
 #include <assert.h>
 #include <string.h>
 #include <inttypes.h>
+#include <unistd.h>
 
-#include "backstore.h"
 #include "io.h"
-
-blfs_backstore_t * blfs_backstore_create(const char * path)
-{
-    IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
-
-    (void) path;
-
-    IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
-    return NULL;
-}
-
-blfs_backstore_t * blfs_backstore_open(const char * path)
-{
-    IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
-
-    (void) path;
-
-    IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
-    return NULL;
-}
-
-void blfs_backstore_close(blfs_backstore_t * backstore)
-{
-    IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
-
-    (void) backstore;
-
-    IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
-}
+#include "backstore.h"
 
 blfs_header_t * blfs_open_header(blfs_backstore_t * backstore, uint32_t header_type)
 {

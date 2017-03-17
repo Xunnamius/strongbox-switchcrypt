@@ -5,6 +5,36 @@
 #include "backstore.h"
 
 /**
+ * Initialize a blfs_backstore_t object and create the appropriate backstore
+ * file descriptors to the path specified. Throws an error if a file already
+ * exists at the given path.
+ *
+ * @param  path                 Backstore file path
+ * @param  file_size_bytes      The size of the backstore file in bytes (real size on disk)
+ */
+blfs_backstore_t * blfs_backstore_create(const char * path, uint64_t file_size_bytes);
+
+/**
+ * Initialize a blfs_backstore_t object and open the appropriate backstore file
+ * descriptors to the path specified. Throws an error if no file exists at the
+ * given path.
+ *
+ * @param  path      Backstore file path
+ */
+blfs_backstore_t * blfs_backstore_open(const char * path);
+
+/**
+ * Deinitialize a blfs_backstore_t instance, close all relevant file
+ * descriptors, and free all relevant pointers and internal caches. There should
+ * not really be a reason to call this.
+ *
+ * Note that file_path and file_name will not be free'd for you.
+ *
+ * @param  backstore Buselfs_backstore instance
+ */
+void blfs_backstore_close(blfs_backstore_t * backstore);
+
+/**
  * Read data from the backstore file. Throws an error upon failure.
  *
  * @param  backstore    Buselfs_backstore instance

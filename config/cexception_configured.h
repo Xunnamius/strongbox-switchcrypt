@@ -74,6 +74,18 @@ do {                                                                            
 // Bad header type
 #define EXCEPTION_BAD_HEADER_TYPE               0x0EU
 
+// A file already exists in the location at which we want to make something new
+#define EXCEPTION_FILE_ALREADY_EXISTS           0x0FU
+
+// A file we're looking for does not exist at the path specified
+#define EXCEPTION_FILE_DOES_NOT_EXIST           0x10U
+
+// Tried to open a backstore that is corrupted or otherwise not properly formatted
+#define EXCEPTION_BACKSTORE_NOT_INITIALIZED     0x11U
+
+// The backstore you're trying to load is too old. Make a new one.
+#define EXCEPTION_INCOMPAT_BACKSTORE_VERSION    0x12U
+
 ///////////////////////
 // End Configuration //
 ///////////////////////
