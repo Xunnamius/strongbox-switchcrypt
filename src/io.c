@@ -4,139 +4,82 @@
  * @author Bernard Dickens
  */
 
+#include "io.h"
+
+#include <stdio.h>
 #include <assert.h>
 #include <string.h>
 #include <inttypes.h>
+#include <sys/types.h>
+#include <unistd.h>
 
-#include "io.h"
-
-/*
-static int lfs_read(void * buffer, u_int32_t len, uint64_t offset, void * userdata)
-{
-    int bytesRead;
-    u_int32_t size = len;
-    char * tempBuffer = malloc(size);
-    char * originalBuffer = tempBuffer;
-    (void)(userdata);
-
-    if(DEBUG_LEVEL)
-        fprintf(stderr, "<< R - %" PRIu64 ", %u (%" PRIu64 ", %" PRIu64 ")\n", offset, len, offset, offset + len - 1);
-
-    lseek64(readfd, offset, SEEK_SET);
-    while(len > 0)
-    {
-        bytesRead = read(readfd, tempBuffer, len);
-        assert(bytesRead > 0);
-        len -= bytesRead;
-        tempBuffer = (char *) tempBuffer + bytesRead;
-    }
-
-    if(*((short *)(userdata)) & FLAG_JOURNALING_MODE_ORDERED)
-    {
-        if(DEBUG_LEVEL)
-            fprintf(stderr, "<< D");
-
-        assert(chacha_crypt_actual(buffer, originalBuffer, size, offset) == 0);
-    }
-
-    else
-        memcpy(buffer, originalBuffer, size);
-
-    free(originalBuffer);
-    return 0;
-}
-
-static int lfs_write(const void * buffer, u_int32_t len, uint64_t offset, void * userdata)
-{
-    int bytesWritten;
-    char * tempBuffer = malloc(len);
-    char * originalBuffer = tempBuffer;
-    (void)(userdata);
-
-    if(DEBUG_LEVEL)
-        fprintf(stderr, ">> W - %" PRIu64 ", %u (%" PRIu64 ", %" PRIu64 ")\n", offset, len, offset, offset + len - 1);
-
-    if(*((short *)(userdata)) & FLAG_JOURNALING_MODE_ORDERED)
-    {
-        if(DEBUG_LEVEL)
-            fprintf(stderr, ">> E");
-
-        assert(chacha_crypt_actual(tempBuffer, buffer, len, offset) == 0);
-    }
-
-    else
-        memcpy(tempBuffer, buffer, len);
-
-    lseek64(writefd, offset, SEEK_SET);
-    while(len > 0)
-    {
-        bytesWritten = write(writefd, tempBuffer, len);
-        assert(bytesWritten > 0);
-        len -= bytesWritten;
-        tempBuffer = (char *) tempBuffer + bytesWritten;
-    }
-
-    free(originalBuffer);
-    return 0;
-}
-*/
-
-void blfs_backstore_read(blfs_backstore_t * backstore, uint8_t * buffer, uint32_t len, uint64_t offset)
+void blfs_backstore_read(blfs_backstore_t * backstore, uint8_t * buffer, uint32_t length, uint64_t offset)
 {
     IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
 
-    (void) backstore;
-    (void) buffer;
-    (void) len;
-    (void) offset;
+    int bytes_read;
+    uint32_t size = length;
+    uint8_t * temp_buffer = malloc(sizeof(uint8_t) * length);
+    uint8_t * original_buffer = temp_buffer;
+
+    IFDEBUG(dzlog_info("incoming read request for data of length %"PRIu32" from offset %"PRIu64" to %"PRIu64,
+                        length, offset, offset + length - 1));
+
+    lseek64(backstore->read_fd, offset, SEEK_SET);
+
+    while(length > 0)
+    {
+        bytes_read = read(backstore->read_fd, temp_buffer, length);
+        assert(bytes_read > 0);
+        length -= bytes_read;
+        temp_buffer += bytes_read;
+    }
+
+    memcpy(buffer, original_buffer, size);
+
+    IFDEBUG(dzlog_info("first 64 bytes:"));
+    IFDEBUG(hdzlog_debug(buffer, MIN(64U, size)));
+
+    free(original_buffer);
 
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 }
 
-void blfs_backstore_read_head(blfs_backstore_t * backstore, uint8_t * buffer, uint32_t len, uint64_t offset)
+void blfs_backstore_write(blfs_backstore_t * backstore, const uint8_t * buffer, uint32_t length, uint64_t offset)
 {
     IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
 
-    (void) backstore;
-    (void) buffer;
-    (void) len;
-    (void) offset;
+    int bytes_written;
+    uint8_t * temp_buffer = malloc(sizeof(uint8_t) * length);
+    uint8_t * original_buffer = temp_buffer;
+
+    IFDEBUG(dzlog_info("incoming write request for data of length %"PRIu32" from offset %"PRIu64" to %"PRIu64,
+                        length, offset, offset + length - 1));
+
+    IFDEBUG(dzlog_info("first 64 bytes:"));
+    IFDEBUG(hdzlog_debug(buffer, MIN(64U, length)));
+
+    memcpy(temp_buffer, buffer, length);
+    lseek64(backstore->write_fd, offset, SEEK_SET);
+
+    while(length > 0)
+    {
+        bytes_written = write(backstore->write_fd, temp_buffer, length);
+        assert(bytes_written > 0);
+        length -= bytes_written;
+        temp_buffer += bytes_written;
+    }
+
+    free(original_buffer);
 
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 }
 
-void blfs_backstore_read_body(blfs_backstore_t * backstore, uint8_t * buffer, uint32_t len, uint64_t offset)
+void blfs_backstore_read_body(blfs_backstore_t * backstore, uint8_t * buffer, uint32_t length, uint64_t offset)
 {
     IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
 
-    (void) backstore;
-    (void) buffer;
-    (void) len;
-    (void) offset;
-
-    IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
-}
-
-void blfs_backstore_write(blfs_backstore_t * backstore, const uint8_t * buffer, uint32_t len, uint64_t offset)
-{
-    IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
-
-    (void) backstore;
-    (void) buffer;
-    (void) len;
-    (void) offset;
-
-    IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
-}
-
-void blfs_backstore_write_head(blfs_backstore_t * backstore, const uint8_t * buffer, uint32_t len, uint64_t offset)
-{
-    IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
-
-    (void) backstore;
-    (void) buffer;
-    (void) len;
-    (void) offset;
+    blfs_backstore_read(backstore, buffer, length, backstore->body_real_offset + offset);
 
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 }
@@ -145,10 +88,7 @@ void blfs_backstore_write_body(blfs_backstore_t * backstore, const uint8_t * buf
 {
     IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
 
-    (void) backstore;
-    (void) buffer;
-    (void) len;
-    (void) offset;
+    blfs_backstore_write(backstore, buffer, len, backstore->body_real_offset + offset);
 
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 }

@@ -70,7 +70,7 @@ __extension__ ({ \
 // Header //
 ////////////
 
-// XXX: See the top of head.c to see the defined head section header order!
+// XXX: See the top of backstore.c to see the defined head section header order!
 #define BLFS_HEAD_HEADER_TYPE_VERSION           0x01U
 #define BLFS_HEAD_HEADER_TYPE_SALT              0x02U
 #define BLFS_HEAD_HEADER_TYPE_MTRH              0x04U

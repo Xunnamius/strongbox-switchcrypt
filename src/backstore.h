@@ -109,8 +109,8 @@ KHASH_MAP_INIT_INT64(BLFS_KHASH_TJ_CACHE_NAME, blfs_tjournal_entry_t*)
  * and transaction journal. When rekeying happens in journaled mode, this is
  * where it gets written to. Otherwise, all data starts at the "real" offsets.
  *
- * @file_path               backstore file path
- * @file_name               backstore file name
+ * @file_path               backstore file path including the filename
+ * @file_name               backstore file name (limited to 7 characters)
  * @read_fd                 read-only descriptor pointing to backstore file
  * @write_fd                read-write descriptor pointing to backstore file
  * @kcs_real_offset         integer offset to where the keycount store begins

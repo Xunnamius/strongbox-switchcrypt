@@ -46,7 +46,7 @@ blfs_header_t * blfs_open_header(blfs_backstore_t * backstore, uint32_t header_t
 
     khint64_t khash_itr_key;
 
-    if(khash_itr_key = KHASH_CACHE_EXISTS(BLFS_KHASH_HEADERS_CACHE_NAME, backstore->cache_headers, header_type))
+    if((khash_itr_key = KHASH_CACHE_EXISTS(BLFS_KHASH_HEADERS_CACHE_NAME, backstore->cache_headers, header_type)))
     {
         IFDEBUG(dzlog_debug("CACHE HIT: header type %i was found in the cache", header_type));
         return KHASH_CACHE_GET_WITH_ITRP1(backstore->cache_headers, khash_itr_key);
@@ -77,7 +77,7 @@ blfs_header_t * blfs_open_header(blfs_backstore_t * backstore, uint32_t header_t
             if(header->data == NULL)
                 Throw(EXCEPTION_ALLOC_FAILURE);
 
-            blfs_backstore_read_head(backstore, header->data, header->data_length, header->data_offset);
+            blfs_backstore_read(backstore, header->data, header->data_length, header->data_offset);
 
             IFDEBUG(dzlog_debug("created new blfs_header_t header object"));
             IFDEBUG(dzlog_debug("header->type = %"PRIu32, header->type));
@@ -107,7 +107,7 @@ void blfs_commit_header(blfs_backstore_t * backstore, const blfs_header_t * head
 {
     IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
 
-    blfs_backstore_write_head(backstore, header->data, header->data_length, header->data_offset);
+    blfs_backstore_write(backstore, header->data, header->data_length, header->data_offset);
 
     IFDEBUG(dzlog_debug("committed header data to backstore:"));
     IFDEBUG(dzlog_debug("header->type = %"PRIu32, header->type));
@@ -125,7 +125,7 @@ void blfs_close_header(blfs_backstore_t * backstore, blfs_header_t * header)
 
     khint64_t khash_itr_key;
 
-    if(khash_itr_key = KHASH_CACHE_EXISTS(BLFS_KHASH_HEADERS_CACHE_NAME, backstore->cache_headers, header->type))
+    if((khash_itr_key = KHASH_CACHE_EXISTS(BLFS_KHASH_HEADERS_CACHE_NAME, backstore->cache_headers, header->type)))
     {
         IFDEBUG(dzlog_debug("CACHE HIT: header type %i was deleted from the cache", header->type));
         KHASH_CACHE_DEL_WITH_ITRP1(BLFS_KHASH_HEADERS_CACHE_NAME, backstore->cache_headers, khash_itr_key);
@@ -146,7 +146,7 @@ blfs_keycount_t * blfs_open_keycount(blfs_backstore_t * backstore, uint64_t nugg
     blfs_keycount_t * count;
     khint64_t khash_itr_key;
 
-    if(khash_itr_key = KHASH_CACHE_EXISTS(BLFS_KHASH_KCS_CACHE_NAME, backstore->cache_kcs_counts, nugget_index))
+    if((khash_itr_key = KHASH_CACHE_EXISTS(BLFS_KHASH_KCS_CACHE_NAME, backstore->cache_kcs_counts, nugget_index)))
     {
         count = KHASH_CACHE_GET_WITH_ITRP1(backstore->cache_kcs_counts, khash_itr_key);
         IFDEBUG(dzlog_debug("CACHE HIT: keycount for nugget id %"PRIu64" was found in the cache", nugget_index));
@@ -160,7 +160,7 @@ blfs_keycount_t * blfs_open_keycount(blfs_backstore_t * backstore, uint64_t nugg
 
         if(count == NULL)
             Throw(EXCEPTION_ALLOC_FAILURE);
-        
+
         count->nugget_index = nugget_index;
         count->data_offset = backstore->kcs_real_offset + nugget_index * BLFS_HEAD_BYTES_KEYCOUNT;
         count->data_length = BLFS_HEAD_BYTES_KEYCOUNT;
@@ -170,8 +170,8 @@ blfs_keycount_t * blfs_open_keycount(blfs_backstore_t * backstore, uint64_t nugg
         if(count_data == NULL)
             Throw(EXCEPTION_ALLOC_FAILURE);
 
-        blfs_backstore_read_head(backstore, count_data, count->data_length, count->data_offset);
-        
+        blfs_backstore_read(backstore, count_data, count->data_length, count->data_offset);
+
         count->keycount = *((uint64_t *) count_data);
 
         IFDEBUG(dzlog_debug("creating new blfs_keycount_t count object"));
@@ -184,7 +184,7 @@ blfs_keycount_t * blfs_open_keycount(blfs_backstore_t * backstore, uint64_t nugg
         IFDEBUG(hdzlog_debug(&(count->keycount), count->data_length));
 
         KHASH_CACHE_PUT(BLFS_KHASH_KCS_CACHE_NAME, backstore->cache_kcs_counts, nugget_index, count);
-        
+
         IFDEBUG(dzlog_debug("keycount for nugget id %"PRIu64" was added to the cache", nugget_index));
 
         free(count_data);
@@ -198,7 +198,7 @@ void blfs_commit_keycount(blfs_backstore_t * backstore, const blfs_keycount_t * 
 {
     IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
 
-    blfs_backstore_write_head(backstore, (uint8_t *) &(count->keycount), count->data_length, count->data_offset);
+    blfs_backstore_write(backstore, (uint8_t *) &(count->keycount), count->data_length, count->data_offset);
 
     IFDEBUG(dzlog_debug("committed keycount data to backstore:"));
     IFDEBUG(dzlog_debug("count->nugget_index = %"PRIu32, count->nugget_index));
@@ -217,7 +217,7 @@ void blfs_close_keycount(blfs_backstore_t * backstore, blfs_keycount_t * count)
 
     khint64_t khash_itr_key;
 
-    if(khash_itr_key = KHASH_CACHE_EXISTS(BLFS_KHASH_KCS_CACHE_NAME, backstore->cache_kcs_counts, count->nugget_index))
+    if((khash_itr_key = KHASH_CACHE_EXISTS(BLFS_KHASH_KCS_CACHE_NAME, backstore->cache_kcs_counts, count->nugget_index)))
     {
         IFDEBUG(dzlog_debug("CACHE HIT: keycount for nugget id %"PRIu32" was deleted from the cache", count->nugget_index));
         KHASH_CACHE_DEL_WITH_ITRP1(BLFS_KHASH_KCS_CACHE_NAME, backstore->cache_kcs_counts, khash_itr_key);
@@ -237,7 +237,7 @@ blfs_tjournal_entry_t * blfs_open_tjournal_entry(blfs_backstore_t * backstore, u
     blfs_tjournal_entry_t * entry;
     khint64_t khash_itr_key;
 
-    if(khash_itr_key = KHASH_CACHE_EXISTS(BLFS_KHASH_TJ_CACHE_NAME, backstore->cache_tj_entries, nugget_index))
+    if((khash_itr_key = KHASH_CACHE_EXISTS(BLFS_KHASH_TJ_CACHE_NAME, backstore->cache_tj_entries, nugget_index)))
     {
         IFDEBUG(dzlog_debug("CACHE HIT: transaction journal entry for nugget id %"PRIu64" was found in the cache", nugget_index));
         entry = KHASH_CACHE_GET_WITH_ITRP1(backstore->cache_tj_entries, khash_itr_key);
@@ -256,7 +256,7 @@ blfs_tjournal_entry_t * blfs_open_tjournal_entry(blfs_backstore_t * backstore, u
         uint32_t flakes_per_nugget = *((uint32_t *) flakes_per_nugget_header->data);
 
         IFDEBUG(dzlog_debug("flakes_per_nugget = %"PRIu32, flakes_per_nugget));
-        
+
         entry->nugget_index = nugget_index;
         entry->data_length = CEIL(flakes_per_nugget, BITS_IN_A_BYTE);
         entry->data_offset = backstore->tj_real_offset + nugget_index * entry->data_length;
@@ -273,11 +273,11 @@ blfs_tjournal_entry_t * blfs_open_tjournal_entry(blfs_backstore_t * backstore, u
         if(entry == NULL)
             Throw(EXCEPTION_ALLOC_FAILURE);
 
-        blfs_backstore_read_head(backstore, mask_data, entry->data_length, entry->data_offset);
+        blfs_backstore_read(backstore, mask_data, entry->data_length, entry->data_offset);
         entry->bitmask = bitmask_init(mask_data, entry->data_length);
 
         KHASH_CACHE_PUT(BLFS_KHASH_TJ_CACHE_NAME, backstore->cache_tj_entries, nugget_index, entry);
-        
+
         IFDEBUG(dzlog_debug("transaction journal entry for nugget id %"PRIu64" was added to the cache", nugget_index));
     }
 
@@ -298,7 +298,7 @@ void blfs_commit_tjournal_entry(blfs_backstore_t * backstore, const blfs_tjourna
     IFDEBUG(hdzlog_debug(entry->bitmask->mask, entry->bitmask->byte_length));
 
     assert(entry->data_length == entry->bitmask->byte_length);
-    blfs_backstore_write_head(backstore, entry->bitmask->mask, entry->bitmask->byte_length, entry->data_offset);
+    blfs_backstore_write(backstore, entry->bitmask->mask, entry->bitmask->byte_length, entry->data_offset);
 
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 }
@@ -309,7 +309,7 @@ void blfs_close_tjournal_entry(blfs_backstore_t * backstore, blfs_tjournal_entry
 
     khint64_t khash_itr_key;
 
-    if(khash_itr_key = KHASH_CACHE_EXISTS(BLFS_KHASH_TJ_CACHE_NAME, backstore->cache_tj_entries, entry->nugget_index))
+    if((khash_itr_key = KHASH_CACHE_EXISTS(BLFS_KHASH_TJ_CACHE_NAME, backstore->cache_tj_entries, entry->nugget_index)))
     {
         IFDEBUG(dzlog_debug(
             "CACHE HIT: transaction journal entry for nugget id %"PRIu32" was deleted from the cache", entry->nugget_index));

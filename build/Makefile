@@ -19,6 +19,7 @@ CMOCK_ROOT	:= $(VENDR_ROOT)/cmock
 
 # Buselfs internal debug level
 # XXX: Set to 0 when not debugging or suffer the (perf-related) consequences!
+#     := -DBLFS_DEBUG_LEVEL=0
 DEBUG := -DBLFS_DEBUG_LEVEL=3
 
 # This is the name of the resulant executable
@@ -36,11 +37,13 @@ C_LIBS := $(UNITY_ROOT)/src/unity.c $(CMOCK_ROOT)/src/cmock.c
 CC  := /usr/bin/gcc
 CCV := $(shell expr `gcc --version | grep ^gcc | awk '{print $$3}'` \>= 4.9)
 
+# May want to set this to empty when building for release/profiling
+#					  :=
 DEBUGFLAGS 			  := -g
 CONDITIONALDEBUGFLAGS := -fsanitize=address,undefined,shift,integer-divide-by-zero,null,signed-integer-overflow \
 						 -fno-omit-frame-pointer
 
-CFLAGS		:= -pedantic -Wall -Wextra -Wno-parentheses -std=c11
+CFLAGS		:= -pedantic -Wall -Wextra -std=c11
 
 IFLAGS		:= -I/usr/local/include \
 			   -I. \
@@ -129,10 +132,10 @@ $(EXENAME): $(SRC_FILES) $(VENDR_FILES)
 		$(STATIC_LIBS)
 
 $(SRC_FILES) $(VENDR_FILES): %.o: %.c %.h
-	$(CC) $(CFLAGS) $(IFLAGS) $(DEBUG) -o $@ -c $<
+	$(CC) $(CFLAGS) $(IFLAGS) $(DEBUGFLAGS) $(DEBUG) -o $@ -c $<
 
 $(RUNR_FILES) $(TEST_FILES): %.o: %.c
-	$(CC) $(CFLAGS) $(IFLAGS) $(DEBUG) -o $@ -c $<
+	$(CC) $(CFLAGS) $(IFLAGS) $(DEBUGFLAGS) $(DEBUG) -o $@ -c $<
 
 # XXX: dynamically scans prereqs (filled with #include'd headers from source)
 # for mocks, includes them, and then removes the unmocked version from the
