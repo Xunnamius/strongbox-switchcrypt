@@ -12,6 +12,66 @@
 #include "io.h"
 #include "backstore.h"
 
+static blfs_header_t * blfs_generate_header_actual(uint32_t header_type, uint8_t * data)
+{
+    
+}
+
+blfs_header_t * blfs_create_header(uint32_t header_type, uint8_t * data)
+{
+    IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
+
+    if(KHASH_CACHE_EXISTS(BLFS_KHASH_HEADERS_CACHE_NAME, backstore->cache_headers, header_type))
+    {
+        IFDEBUG(dzlog_error("ERROR: tried to create header %i when it already exists in the cache", header_type));
+        THROW(EXCEPTION_INVALID_OPERATION);
+    }
+
+    blfs_header_t * header = malloc(sizeof(blfs_header_t));
+
+    if(header == NULL)
+        Throw(EXCEPTION_ALLOC_FAILURE);
+
+    for(size_t i = 0; i < BLFS_HEAD_NUM_HEADERS; ++i)
+    {
+        uint32_t const_header_type = header_types_ordered[i][0];
+        uint64_t const_header_length = header_types_ordered[i][1];
+
+        if(header_type == const_header_type)
+        {
+            header->type = header_type;
+            header->data_length = const_header_length;
+            header->data_offset = offset;
+
+            header->data = malloc(header->data_length * sizeof(uint8_t));
+
+            if(header->data == NULL)
+                Throw(EXCEPTION_ALLOC_FAILURE);
+
+            memcpy(header->data, data, header->data_length);
+
+            IFDEBUG(dzlog_debug("created new blfs_header_t header object"));
+            IFDEBUG(dzlog_debug("header->type = %"PRIu32, header->type));
+            IFDEBUG(dzlog_debug("header->data_length = %"PRIu64, header->data_length));
+            IFDEBUG(dzlog_debug("header->data_offset = %"PRIu64, header->data_offset));
+            IFDEBUG(dzlog_debug("header->data:"));
+            IFDEBUG(hdzlog_debug(header->data, header->data_length));
+
+            KHASH_CACHE_PUT(BLFS_KHASH_HEADERS_CACHE_NAME, backstore->cache_headers, header->type, header);
+
+            IFDEBUG(dzlog_debug("header type %i was added to the cache", header_type));
+            IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
+            return header;
+        }
+
+        IFDEBUG(uint64_t original_offset = offset);
+        offset += const_header_length;
+        IFDEBUG(dzlog_debug("offset += %"PRIu64" (was %"PRIu64", now %"PRIu64")", const_header_length, original_offset, offset));
+    }
+
+    IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
+}
+
 blfs_header_t * blfs_open_header(blfs_backstore_t * backstore, uint32_t header_type)
 {
     IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
@@ -51,7 +111,7 @@ blfs_header_t * blfs_open_header(blfs_backstore_t * backstore, uint32_t header_t
 
             blfs_backstore_read(backstore, header->data, header->data_length, header->data_offset);
 
-            IFDEBUG(dzlog_debug("created new blfs_header_t header object"));
+            IFDEBUG(dzlog_debug("opened blfs_header_t header object"));
             IFDEBUG(dzlog_debug("header->type = %"PRIu32, header->type));
             IFDEBUG(dzlog_debug("header->data_length = %"PRIu64, header->data_length));
             IFDEBUG(dzlog_debug("header->data_offset = %"PRIu64, header->data_offset));

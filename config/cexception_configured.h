@@ -83,8 +83,11 @@ do {                                                                            
 // Tried to open a backstore that is corrupted or otherwise not properly formatted
 #define EXCEPTION_BACKSTORE_NOT_INITIALIZED     0x11U
 
-// The backstore you're trying to load is too old. Make a new one.
+// The backstore you're trying to load is too old. Make a new one
 #define EXCEPTION_INCOMPAT_BACKSTORE_VERSION    0x12U
+
+// An invalid operation (probably cache-related) was attempted
+#define EXCEPTION_INVALID_OPERATION             0x13U
 
 ///////////////////////
 // End Configuration //

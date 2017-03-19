@@ -242,7 +242,7 @@ void test_blfs_backstore_create_work_as_expected(void)
 {
     blfs_backstore_write(fake_backstore, buffer_init_backstore_state, sizeof buffer_init_backstore_state, 0);
 
-    blfs_backstore_t * backstore = blfs_backstore_open(BACKSTORE_FILE_PATH);
+    blfs_backstore_t * backstore = blfs_backstore_create(BACKSTORE_FILE_PATH);
 
     TEST_ASSERT_EQUAL_STRING(BACKSTORE_FILE_PATH, backstore->file_path);
     TEST_ASSERT_EQUAL_STRING("test.io.bin", backstore->file_name);
@@ -258,7 +258,20 @@ void test_blfs_backstore_create_work_as_expected(void)
 
 void test_blfs_backstore_open_work_as_expected(void)
 {
-    TEST_IGNORE();
+    blfs_backstore_write(fake_backstore, buffer_init_backstore_state, sizeof buffer_init_backstore_state, 0);
+
+    blfs_backstore_t * backstore = blfs_backstore_open(BACKSTORE_FILE_PATH);
+
+    TEST_ASSERT_EQUAL_STRING(BACKSTORE_FILE_PATH, backstore->file_path);
+    TEST_ASSERT_EQUAL_STRING("test.io.bin", backstore->file_name);
+    TEST_ASSERT_EQUAL_UINT64(202, backstore->kcs_real_offset);
+    TEST_ASSERT_EQUAL_UINT64(226, backstore->tj_real_offset);
+    TEST_ASSERT_EQUAL_UINT64(232, backstore->kcs_journaled_offset);
+    TEST_ASSERT_EQUAL_UINT64(240, backstore->tj_journaled_offset);
+    TEST_ASSERT_EQUAL_UINT64(242, backstore->nugget_journaled_offset);
+    TEST_ASSERT_EQUAL_UINT64(258, backstore->body_real_offset);
+    TEST_ASSERT_EQUAL_UINT64(48, backstore->writeable_size_actual);
+    TEST_ASSERT_EQUAL_UINT64(16, backstore->nugget_size_bytes);
 }
 
 void test_blfs_backstore_close_work_as_expected(void)
