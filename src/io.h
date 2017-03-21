@@ -5,6 +5,16 @@
 #include "backstore.h"
 
 /**
+ * Finish initializing a blfs_backstore_t object.
+ * 
+ * This should only be called after first using blfs_backstore_create() and
+ * further initializing the backstore and its dependencies.
+ *
+ * @param  backstore
+ */
+void blfs_backstore_setup_actual_post(blfs_backstore_t * backstore);
+
+/**
  * Initialize a blfs_backstore_t object and create the appropriate backstore
  * file descriptors to the path specified. Throws an error if a file already
  * exists at the given path.

@@ -156,6 +156,18 @@ typedef struct blfs_backstore_t
 /////////////////////////
 
 /**
+ * Creates the specified header from scratch and adds it to the cache. Throws
+ * an error upon failure.
+ *
+ * @param  backstore
+ * @param  header_type
+ * @param  data
+ *
+ * @return            blfs_header_t
+ */
+blfs_header_t * blfs_create_header(blfs_backstore_t * backstore, uint32_t header_type, uint8_t * data);
+
+/**
  * Reads in the specified header from the specified backstore. Throws an error
  * upon failure.
  *
@@ -186,6 +198,21 @@ void blfs_commit_header(blfs_backstore_t * backstore, const blfs_header_t * head
 void blfs_close_header(blfs_backstore_t * backstore, blfs_header_t * header);
 
 /**
+ * Creates the specified keycount from the specified backstore. Throws an error
+ * upon failure.
+ *
+ * Note that this function requires the BLFS_HEAD_HEADER_TYPE_FLAKESPERNUGGET
+ * header to be set properly (either in cache or committed) or this function's
+ * behavior is undefined.
+ *
+ * @param  backstore
+ * @param  nugget_index
+ *
+ * @return              blfs_keycount_t
+ */
+blfs_keycount_t * blfs_create_keycount(blfs_backstore_t * backstore, uint64_t nugget_index);
+
+/**
  * Reads in the specified keycount from the specified backstore. Throws an error
  * upon failure.
  *
@@ -213,6 +240,17 @@ void blfs_commit_keycount(blfs_backstore_t * backstore, const blfs_keycount_t * 
  * @param count
  */
 void blfs_close_keycount(blfs_backstore_t * backstore, blfs_keycount_t * count);
+
+/**
+ * Creates the specified TJ entry from the specified backstore. Throws an error
+ * upon failure.
+ *
+ * @param  backstore    [description]
+ * @param  nugget_index [description]
+ *
+ * @return              [description]
+ */
+blfs_tjournal_entry_t * blfs_create_tjournal_entry(blfs_backstore_t * backstore, uint64_t nugget_index);
 
 /**
  * Reads in the specified TJ entry from the specified backstore. Throws an error

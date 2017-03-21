@@ -79,7 +79,7 @@ static blfs_backstore_t * backstore_setup_actual_pre(const char * path)
     
     backstore->io_fd  = open(backstore->file_path, O_CREAT | O_RDWR, BLFS_DEFAULT_BACKSTORE_FILE_PERMS);
 
-    if(backstore->io_fd < 0 || backstore->io_fd < 0)
+    if(backstore->io_fd < 0)
         Throw(EXCEPTION_OPEN_FAILURE);
 
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
@@ -87,53 +87,9 @@ static blfs_backstore_t * backstore_setup_actual_pre(const char * path)
     return backstore;
 }
 
-blfs_backstore_t * blfs_backstore_create(const char * path, uint64_t file_size_bytes)
+void blfs_backstore_setup_actual_post(blfs_backstore_t * backstore)
 {
     IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
-
-    if(access(path, F_OK) != -1)
-        Throw(EXCEPTION_FILE_ALREADY_EXISTS);
-
-    blfs_backstore_t * backstore = backstore_setup_actual_pre(path);
-
-    ftruncate(backstore->io_fd, file_size_bytes);
-
-    IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
-
-    return backstore;
-}
-
-blfs_backstore_t * blfs_backstore_open(const char * path)
-{
-    IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
-
-    if(access(path, F_OK) == -1)
-        Throw(EXCEPTION_FILE_DOES_NOT_EXIST);
-
-    blfs_backstore_t * backstore = backstore_setup_actual_pre(path);
-
-    // Make sure that the backstore has been initialized
-    blfs_header_t * header_initialized = blfs_open_header(backstore, BLFS_HEAD_HEADER_TYPE_INITIALIZED);
-    uint8_t is_initized = *(header_initialized->data);
-
-    IFDEBUG(dzlog_debug("is_initized (%"PRIu8" == initialized) = %"PRIu8, (uint8_t) BLFS_HEAD_IS_INITIALIZED_VALUE, is_initized));
-
-    if(is_initized != (uint8_t) BLFS_HEAD_IS_INITIALIZED_VALUE)
-        Throw(EXCEPTION_BACKSTORE_NOT_INITIALIZED);
-
-    // Make sure the version is, if not the same as ours, at least compatible
-    blfs_header_t * header_version = blfs_open_header(backstore, BLFS_HEAD_HEADER_TYPE_VERSION);
-    uint32_t their_version = *((uint32_t *) header_version->data);
-
-    IFDEBUG(dzlog_debug("their_version = %"PRIu32, their_version));
-    IFDEBUG(dzlog_debug("BLFS_CURRENT_VERSION = %"PRIu32, BLFS_CURRENT_VERSION));
-    IFDEBUG(dzlog_debug("BLFS_LEAST_COMPAT_VERSION = %"PRIu32, BLFS_LEAST_COMPAT_VERSION));
-
-    if(their_version != BLFS_CURRENT_VERSION && their_version < BLFS_LEAST_COMPAT_VERSION)
-        Throw(EXCEPTION_INCOMPAT_BACKSTORE_VERSION);
-
-    // FIXME: check here for if the blocksystem should finish rekeying or not
-    //IFDEBUG(dzlog_debug("was_rekeying (%"PRIu8" == rekeying) = %"PRIu8, (uint8_t) BLFS_HEAD_IS_REKEYING_VALUE, was_rekeying));
 
     // XXX: get the last item in the header (before the start of the kcs) and
     // use its offset + length to determine the true length of the HEAD header
@@ -189,6 +145,101 @@ blfs_backstore_t * blfs_backstore_open(const char * path)
     IFDEBUG(dzlog_debug("backstore->writeable_size_actual = %"PRIu64, backstore->writeable_size_actual));
 
     assert(backstore->writeable_size_actual > 0);
+
+    IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
+}
+
+blfs_backstore_t * blfs_backstore_create(const char * path, uint64_t file_size_bytes)
+{
+    IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
+
+    if(access(path, F_OK) != -1)
+        Throw(EXCEPTION_FILE_ALREADY_EXISTS);
+
+    blfs_backstore_t * backstore = backstore_setup_actual_pre(path);
+
+    ftruncate(backstore->io_fd, file_size_bytes);
+
+    // Header data
+    uint64_t data_version_int = BLFS_CURRENT_VERSION;
+    uint8_t * data_version = (uint8_t *) &data_version_int;
+
+    IFDEBUG(dzlog_debug("data_version = %"PRIu64, data_version_int));
+    IFDEBUG(dzlog_debug("data_version:"));
+    IFDEBUG(hdzlog_debug(data_version, BLFS_HEAD_HEADER_TYPE_VERSION));
+
+    uint8_t data_salt[BLFS_HEAD_HEADER_BYTES_SALT] = { 0x00 };
+    uint8_t data_mtrh[BLFS_HEAD_HEADER_BYTES_MTRH] = { 0x00 };
+    uint8_t data_tpmglobalver[BLFS_HEAD_HEADER_BYTES_TPMGLOBALVER] = { 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
+    uint8_t data_verification[BLFS_HEAD_HEADER_BYTES_VERIFICATION] = { 0x00 };
+    uint8_t data_numnuggets[BLFS_HEAD_HEADER_BYTES_NUMNUGGETS] = { 0x00 };
+    uint8_t data_flakespernugget[BLFS_HEAD_HEADER_BYTES_FLAKESPERNUGGET] = { 0x00 };
+    uint8_t data_flakesizebytes[BLFS_HEAD_HEADER_BYTES_FLAKESIZE_BYTES] = { 0x00 };
+    uint8_t data_initialized[BLFS_HEAD_HEADER_BYTES_INITIALIZED] = { 0x00 };
+    uint8_t data_rekeying[BLFS_HEAD_HEADER_BYTES_REKEYING] = { 0x00 };
+
+    // Initialize headers (add them to cache so further opens don't hit disk)
+    // TODO: maybe put this in a loop that references header_types_ordered
+    (void) blfs_create_header(backstore, BLFS_HEAD_HEADER_TYPE_VERSION, data_version);
+    (void) blfs_create_header(backstore, BLFS_HEAD_HEADER_TYPE_SALT, data_salt);
+    (void) blfs_create_header(backstore, BLFS_HEAD_HEADER_TYPE_MTRH, data_mtrh);
+    (void) blfs_create_header(backstore, BLFS_HEAD_HEADER_TYPE_TPMGLOBALVER, data_tpmglobalver);
+    (void) blfs_create_header(backstore, BLFS_HEAD_HEADER_TYPE_VERIFICATION, data_verification);
+    (void) blfs_create_header(backstore, BLFS_HEAD_HEADER_TYPE_NUMNUGGETS, data_numnuggets);
+    (void) blfs_create_header(backstore, BLFS_HEAD_HEADER_TYPE_FLAKESPERNUGGET, data_flakespernugget);
+    (void) blfs_create_header(backstore, BLFS_HEAD_HEADER_TYPE_FLAKESIZE_BYTES, data_flakesizebytes);
+    (void) blfs_create_header(backstore, BLFS_HEAD_HEADER_TYPE_INITIALIZED, data_initialized);
+    (void) blfs_create_header(backstore, BLFS_HEAD_HEADER_TYPE_REKEYING, data_rekeying);
+
+    blfs_header_t * header_last = blfs_open_header(backstore, header_types_ordered[BLFS_HEAD_NUM_HEADERS - 1][0]);
+
+    if(file_size_bytes < (header_last->data_offset + header_last->data_length) * BLFS_DEFAULT_MIN_SIZE_FACTOR)
+        Throw(EXCEPTION_BACKSTORE_SIZE_TOO_SMALL);
+
+    backstore->kcs_real_offset = 0;
+    backstore->tj_real_offset = 0;
+    backstore->body_real_offset = 0;
+    backstore->kcs_journaled_offset = 0;
+    backstore->tj_journaled_offset = 0;
+    backstore->nugget_journaled_offset = 0;
+    backstore->nugget_size_bytes = 0;
+    backstore->writeable_size_actual = 0;
+
+    IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
+
+    return backstore;
+}
+
+blfs_backstore_t * blfs_backstore_open(const char * path)
+{
+    IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
+
+    if(access(path, F_OK) == -1)
+        Throw(EXCEPTION_FILE_DOES_NOT_EXIST);
+
+    blfs_backstore_t * backstore = backstore_setup_actual_pre(path);
+
+    // Make sure that the backstore has been initialized
+    blfs_header_t * header_initialized = blfs_open_header(backstore, BLFS_HEAD_HEADER_TYPE_INITIALIZED);
+    uint8_t is_initized = *(header_initialized->data);
+
+    IFDEBUG(dzlog_debug("is_initized (%"PRIu8" == initialized) = %"PRIu8, (uint8_t) BLFS_HEAD_IS_INITIALIZED_VALUE, is_initized));
+
+    if(is_initized != (uint8_t) BLFS_HEAD_IS_INITIALIZED_VALUE)
+        Throw(EXCEPTION_BACKSTORE_NOT_INITIALIZED);
+
+    // Make sure the version is, if not the same as ours, at least compatible
+    blfs_header_t * header_version = blfs_open_header(backstore, BLFS_HEAD_HEADER_TYPE_VERSION);
+    uint32_t their_version = *((uint32_t *) header_version->data);
+
+    IFDEBUG(dzlog_debug("their_version = %"PRIu32, their_version));
+    IFDEBUG(dzlog_debug("BLFS_CURRENT_VERSION = %"PRIu32, BLFS_CURRENT_VERSION));
+    IFDEBUG(dzlog_debug("BLFS_LEAST_COMPAT_VERSION = %"PRIu32, BLFS_LEAST_COMPAT_VERSION));
+
+    if(their_version != BLFS_CURRENT_VERSION && their_version < BLFS_LEAST_COMPAT_VERSION)
+        Throw(EXCEPTION_INCOMPAT_BACKSTORE_VERSION);
+
+    blfs_backstore_setup_actual_post(backstore);
 
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 

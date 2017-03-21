@@ -12,6 +12,16 @@
 #include "unity.h"
 #include "io.h"
 
+#define TRY_FN_CATCH_EXCEPTION(fn_call)           \
+e_actual = EXCEPTION_NO_EXCEPTION;                \
+Try                                               \
+{                                                 \
+    fn_call;                                      \
+    TEST_FAIL();                                  \
+}                                                 \
+Catch(e_actual)                                   \
+    TEST_ASSERT_EQUAL_INT(e_expected, e_actual);
+
 #define BACKSTORE_FILE_PATH "/tmp/test.io.bin"
 
 int iofd;
@@ -240,20 +250,38 @@ void test_blfs_backstore_read_body_and_write_body_works_as_expected(void)
 
 void test_blfs_backstore_create_work_as_expected(void)
 {
-    blfs_backstore_write(fake_backstore, buffer_init_backstore_state, sizeof buffer_init_backstore_state, 0);
+    unlink(BACKSTORE_FILE_PATH);
 
-    blfs_backstore_t * backstore = blfs_backstore_create(BACKSTORE_FILE_PATH);
+    blfs_backstore_t * backstore = blfs_backstore_create(BACKSTORE_FILE_PATH, 4096);
 
     TEST_ASSERT_EQUAL_STRING(BACKSTORE_FILE_PATH, backstore->file_path);
     TEST_ASSERT_EQUAL_STRING("test.io.bin", backstore->file_name);
-    TEST_ASSERT_EQUAL_UINT64(202, backstore->kcs_real_offset);
-    TEST_ASSERT_EQUAL_UINT64(226, backstore->tj_real_offset);
-    TEST_ASSERT_EQUAL_UINT64(232, backstore->kcs_journaled_offset);
-    TEST_ASSERT_EQUAL_UINT64(240, backstore->tj_journaled_offset);
-    TEST_ASSERT_EQUAL_UINT64(242, backstore->nugget_journaled_offset);
-    TEST_ASSERT_EQUAL_UINT64(258, backstore->body_real_offset);
-    TEST_ASSERT_EQUAL_UINT64(48, backstore->writeable_size_actual);
-    TEST_ASSERT_EQUAL_UINT64(16, backstore->nugget_size_bytes);
+    TEST_ASSERT_EQUAL_UINT64(0, backstore->kcs_real_offset);
+    TEST_ASSERT_EQUAL_UINT64(0, backstore->tj_real_offset);
+    TEST_ASSERT_EQUAL_UINT64(0, backstore->kcs_journaled_offset);
+    TEST_ASSERT_EQUAL_UINT64(0, backstore->tj_journaled_offset);
+    TEST_ASSERT_EQUAL_UINT64(0, backstore->nugget_journaled_offset);
+    TEST_ASSERT_EQUAL_UINT64(0, backstore->body_real_offset);
+    TEST_ASSERT_EQUAL_UINT64(0, backstore->writeable_size_actual);
+    TEST_ASSERT_EQUAL_UINT64(0, backstore->nugget_size_bytes);
+}
+
+void test_blfs_backstore_create_throws_exception_if_backstore_file_already_exists(void)
+{
+    CEXCEPTION_T e_expected = EXCEPTION_FILE_ALREADY_EXISTS;
+    CEXCEPTION_T e_actual = EXCEPTION_NO_EXCEPTION;
+
+    TRY_FN_CATCH_EXCEPTION((void) blfs_backstore_create(BACKSTORE_FILE_PATH, 4096));
+}
+
+void test_blfs_backstore_create_throws_exception_if_size_too_small(void)
+{
+    unlink(BACKSTORE_FILE_PATH);
+
+    CEXCEPTION_T e_expected = EXCEPTION_BACKSTORE_SIZE_TOO_SMALL;
+    CEXCEPTION_T e_actual = EXCEPTION_NO_EXCEPTION;
+
+    TRY_FN_CATCH_EXCEPTION((void) blfs_backstore_create(BACKSTORE_FILE_PATH, 1024));
 }
 
 void test_blfs_backstore_open_work_as_expected(void)

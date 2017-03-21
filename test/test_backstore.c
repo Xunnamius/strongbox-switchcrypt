@@ -10,6 +10,16 @@
 #include "backstore.h"
 #include "bitmask.h"
 
+#define TRY_FN_CATCH_EXCEPTION(fn_call)           \
+e_actual = EXCEPTION_NO_EXCEPTION;                \
+Try                                               \
+{                                                 \
+    fn_call;                                      \
+    TEST_FAIL();                                  \
+}                                                 \
+Catch(e_actual)                                   \
+    TEST_ASSERT_EQUAL_INT(e_expected, e_actual);
+
 void setUp(void)
 {
     char buf[100];
@@ -88,6 +98,44 @@ void test_blfs_open_and_close_header_functions_cache_properly(void)
     TEST_ASSERT_FALSE(KHASH_CACHE_EXISTS(BLFS_KHASH_HEADERS_CACHE_NAME, backstore->cache_headers, BLFS_HEAD_HEADER_TYPE_VERSION));
 }
 
+void test_blfs_create_header_works_as_expected(void)
+{
+    blfs_backstore_t bs;
+    blfs_backstore_t * backstore = fake_initialize_backstore(&bs);
+
+    uint8_t data1[BLFS_HEAD_HEADER_BYTES_VERSION] = { 0x00 };
+    uint8_t data2[BLFS_HEAD_HEADER_BYTES_VERIFICATION] = { 0x00 };
+
+    blfs_header_t * actual_header1 = blfs_create_header(backstore, BLFS_HEAD_HEADER_TYPE_VERSION, data1);
+    blfs_header_t * actual_header2 = blfs_create_header(backstore, BLFS_HEAD_HEADER_TYPE_VERIFICATION, data2);
+
+    TEST_ASSERT_EQUAL_UINT(BLFS_HEAD_HEADER_TYPE_VERSION, actual_header1->type);
+    TEST_ASSERT_EQUAL_UINT(BLFS_HEAD_HEADER_TYPE_VERIFICATION, actual_header2->type);
+
+    TEST_ASSERT_EQUAL_UINT(0, actual_header1->data_offset);
+    TEST_ASSERT_EQUAL_UINT(60, actual_header2->data_offset);
+
+    TEST_ASSERT_EQUAL_UINT(4, actual_header1->data_length);
+    TEST_ASSERT_EQUAL_UINT(128, actual_header2->data_length);
+
+    TEST_ASSERT_EQUAL_MEMORY(data1, actual_header1->data, BLFS_HEAD_HEADER_BYTES_VERSION);
+    TEST_ASSERT_EQUAL_MEMORY(data2, actual_header2->data, BLFS_HEAD_HEADER_BYTES_VERIFICATION);
+}
+
+void test_blfs_create_header_throws_exception_if_nugget_in_cache(void)
+{
+    int nugget_index = 60;
+    blfs_backstore_t bs;
+    blfs_backstore_t * backstore = fake_initialize_backstore(&bs);
+
+    (void) blfs_create_keycount(backstore, nugget_index);
+
+    CEXCEPTION_T e_expected = EXCEPTION_INVALID_OPERATION;
+    CEXCEPTION_T e_actual = EXCEPTION_NO_EXCEPTION;
+
+    TRY_FN_CATCH_EXCEPTION((void) blfs_create_keycount(backstore, nugget_index));
+}
+
 void test_blfs_commit_header_works_as_expected(void)
 {
     blfs_backstore_t bs;
@@ -161,6 +209,34 @@ void test_blfs_open_and_close_keycount_functions_cache_properly(void)
     blfs_close_keycount(backstore, actual_keycount2);
 
     TEST_ASSERT_FALSE(KHASH_CACHE_EXISTS(BLFS_KHASH_KCS_CACHE_NAME, backstore->cache_kcs_counts, nugget_index));
+}
+
+void test_blfs_create_keycount_works_as_expected(void)
+{
+    int nugget_index = 60;
+    blfs_backstore_t bs;
+    blfs_backstore_t * backstore = fake_initialize_backstore(&bs);
+
+    blfs_keycount_t * actual_keycount = blfs_create_keycount(backstore, nugget_index);
+
+    TEST_ASSERT_EQUAL_UINT(nugget_index, actual_keycount->nugget_index);
+    TEST_ASSERT_EQUAL_UINT(backstore->kcs_real_offset + nugget_index * BLFS_HEAD_BYTES_KEYCOUNT, actual_keycount->data_offset);
+    TEST_ASSERT_EQUAL_UINT(BLFS_HEAD_BYTES_KEYCOUNT, actual_keycount->data_length);
+    TEST_ASSERT_EQUAL_UINT64(0, actual_keycount->keycount);
+}
+
+void test_blfs_create_keycount_throws_exception_if_nugget_in_cache(void)
+{
+    int nugget_index = 60;
+    blfs_backstore_t bs;
+    blfs_backstore_t * backstore = fake_initialize_backstore(&bs);
+
+    (void) blfs_create_keycount(backstore, nugget_index);
+
+    CEXCEPTION_T e_expected = EXCEPTION_INVALID_OPERATION;
+    CEXCEPTION_T e_actual = EXCEPTION_NO_EXCEPTION;
+
+    TRY_FN_CATCH_EXCEPTION((void) blfs_create_keycount(backstore, nugget_index));
 }
 
 void test_blfs_commit_keycount_works_as_expected(void)
@@ -252,6 +328,47 @@ void test_blfs_open_and_close_tjournal_entry_functions_cache_properly(void)
     blfs_close_tjournal_entry(backstore, actual_tjournal_entry2);
 
     TEST_ASSERT_FALSE(KHASH_CACHE_EXISTS(BLFS_KHASH_TJ_CACHE_NAME, backstore->cache_tj_entries, nugget_index));
+}
+
+void test_blfs_create_tjournal_entry_works_as_expected(void)
+{
+    int nugget_index = 60;
+    blfs_backstore_t bs;
+    blfs_backstore_t * backstore = fake_initialize_backstore(&bs);
+
+    uint8_t expected_fpn[BLFS_HEAD_HEADER_BYTES_FLAKESPERNUGGET] = { 0x0B, 0x00, 0x00, 0x00 };
+    uint8_t expected_zeroes[2] = { 0x00, 0x00 };
+
+    blfs_backstore_read_Expect(backstore, NULL, BLFS_HEAD_HEADER_BYTES_FLAKESPERNUGGET, 192);
+    blfs_backstore_read_IgnoreArg_buffer();
+    blfs_backstore_read_ReturnArrayThruPtr_buffer(expected_fpn, BLFS_HEAD_HEADER_BYTES_FLAKESPERNUGGET);
+
+    blfs_tjournal_entry_t * tjournal_entry = blfs_create_tjournal_entry(backstore, nugget_index);
+
+    TEST_ASSERT_EQUAL_UINT(nugget_index, tjournal_entry->nugget_index);
+    TEST_ASSERT_EQUAL_UINT(backstore->tj_real_offset + 2 * nugget_index, tjournal_entry->data_offset);
+    TEST_ASSERT_EQUAL_UINT(2, tjournal_entry->data_length);
+    TEST_ASSERT_EQUAL_MEMORY(expected_zeroes, tjournal_entry->bitmask->mask, tjournal_entry->data_length);
+}
+
+void test_blfs_create_tjournal_entry_throws_exception_if_nugget_in_cache(void)
+{
+    int nugget_index = 60;
+    blfs_backstore_t bs;
+    blfs_backstore_t * backstore = fake_initialize_backstore(&bs);
+
+    uint8_t expected_fpn[BLFS_HEAD_HEADER_BYTES_FLAKESPERNUGGET] = { 0x0B, 0x00, 0x00, 0x00 };
+
+    blfs_backstore_read_Expect(backstore, NULL, BLFS_HEAD_HEADER_BYTES_FLAKESPERNUGGET, 192);
+    blfs_backstore_read_IgnoreArg_buffer();
+    blfs_backstore_read_ReturnArrayThruPtr_buffer(expected_fpn, BLFS_HEAD_HEADER_BYTES_FLAKESPERNUGGET);
+
+    (void) blfs_create_tjournal_entry(backstore, nugget_index);
+
+    CEXCEPTION_T e_expected = EXCEPTION_INVALID_OPERATION;
+    CEXCEPTION_T e_actual = EXCEPTION_NO_EXCEPTION;
+
+    TRY_FN_CATCH_EXCEPTION((void) blfs_create_tjournal_entry(backstore, nugget_index));
 }
 
 void test_blfs_commit_tjournal_entry_works_as_expected(void)

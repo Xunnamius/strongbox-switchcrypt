@@ -111,18 +111,28 @@ __extension__ ({ \
 ///////////////
 
 #define BLFS_BACKSTORE_FILENAME                 "./blfs-%s.bkstr"
+#define BLFS_BACKSTORE_DEVICEPATH               "/dev/%s"
 #define BLFS_BACKSTORE_FILENAME_MAXLEN          256
+
+#define BLFS_BACKSTORE_CREATE_MODE_UNKNOWN      0
+#define BLFS_BACKSTORE_CREATE_MODE_CREATE       1
+#define BLFS_BACKSTORE_CREATE_MODE_OPEN         2
+#define BLFS_BACKSTORE_CREATE_MAX_MODE_NUM      BLFS_BACKSTORE_CREATE_MODE_OPEN
 
 //////////////
 // Defaults //
 //////////////
 
-#define BLFS_DEFAULT_BYTES_FLAKE                4096U
-#define BLFS_DEFAULT_BYTES_BACKSTORE            1073741824ULL // 1GB
-#define BLFS_DEFAULT_FLAKES_PER_NUGGET          256U
-#define BLFS_DEFAULT_DISABLE_INTERNAL_CACHING   FALSE // Not a good idea
-#define BLFS_DEFAULT_MAX_FILENAME_LENGTH        16
+// If TRUE, makes the construction much less resilient to bad shutdowns but increases perf
+#define BLFS_DEFAULT_DISABLE_JOURNALING         FALSE
+
+#define BLFS_DEFAULT_BYTES_FLAKE                4096UL
+#define BLFS_DEFAULT_BYTES_BACKSTORE            1073741824UL // 1GB
+#define BLFS_DEFAULT_FLAKES_PER_NUGGET          256UL
+#define BLFS_DEFAULT_DISABLE_INTERNAL_CACHING   FALSE // Does nothing at the moment
+#define BLFS_BACKSTORE_DEVNAME_MAXLEN           16
 #define BLFS_DEFAULT_BACKSTORE_FILE_PERMS       0666
+#define BLFS_DEFAULT_MIN_SIZE_FACTOR            10 // Don't set this too high
 
 ///////////
 // Khash //

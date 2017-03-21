@@ -25,8 +25,28 @@ void tearDown(void)
     zlog_fini();
 }
 
-void test_not_implemented(void)
+void test_buse_read_works_as_expected(void)
 {
-    // Call the functions inside of buselfs and make sure they work
+    TEST_IGNORE();
+}
+
+void test_buse_write_works_as_expected(void)
+{
+    TEST_IGNORE();
+}
+
+void test_rekey_nugget_journaled_works_as_expected(void)
+{
+    TEST_IGNORE();
+}
+
+void test_password_verify_works_as_expected(void)
+{
+    TEST_IGNORE();
+}
+
+void test_buselfs_main_actual_works_as_expected(void)
+{
+    zlog_fini();
     TEST_IGNORE();
 }

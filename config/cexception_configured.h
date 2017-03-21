@@ -62,6 +62,9 @@ do {                                                                            
 // Bad flake size encountered
 #define EXCEPTION_INVALID_FLAKESIZE             0x0AU
 
+// Bad flake size encountered
+#define EXCEPTION_INVALID_BACKSTORESIZE         0x16U
+
 // Bad flakes/nugget value encountered
 #define EXCEPTION_INVALID_FLAKES_PER_NUGGET     0x0BU
 
@@ -88,6 +91,12 @@ do {                                                                            
 
 // An invalid operation (probably cache-related) was attempted
 #define EXCEPTION_INVALID_OPERATION             0x13U
+
+// The backstore size provided is WAY too small! Also see BLFS_MIN_SIZE_FACTOR
+#define EXCEPTION_BACKSTORE_SIZE_TOO_SMALL      0x14U
+
+// The options passed were not formatted properly, or some required options were missing
+#define EXCEPTION_BAD_ARGUMENT_FORM             0x15U
 
 ///////////////////////
 // End Configuration //
