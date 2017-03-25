@@ -5,8 +5,9 @@
 // Configurable //
 //////////////////
 
-#define BLFS_CURRENT_VERSION 174U
-#define BLFS_LEAST_COMPAT_VERSION 174U
+#define BLFS_CURRENT_VERSION 274U
+#define BLFS_LEAST_COMPAT_VERSION 274U
+#define BLFS_TPM_ID 0
 
 #define BLFS_CONFIG_ZLOG "../config/zlog_conf.conf"
 
@@ -30,6 +31,8 @@
 #define _GNU_SOURCE
 #endif
 
+#include <string.h> /* strdup() */
+
 ///////////////////
 // Useful Macros //
 ///////////////////
@@ -38,6 +41,12 @@
 #define IFDEBUG(expression) expression
 #else
 #define IFDEBUG(expression)
+#endif
+
+#if BLFS_DEBUG_LEVEL > 2
+#define IFDEBUG3(expression) expression
+#else
+#define IFDEBUG3(expression)
 #endif
 
 #define STRINGIZE_STR_FN(X) #X
@@ -99,12 +108,11 @@ __extension__ ({ \
 #define BLFS_HEAD_HEADER_BYTES_FLAKESPERNUGGET  4U  // uint32_t
 #define BLFS_HEAD_HEADER_BYTES_FLAKESIZE_BYTES  4U  // uint32_t
 #define BLFS_HEAD_HEADER_BYTES_INITIALIZED      1U  // uint8_t
-#define BLFS_HEAD_HEADER_BYTES_REKEYING         1U  // uint8_t
+#define BLFS_HEAD_HEADER_BYTES_REKEYING         4U  // uint32_t (holds a nugget id)
 
 #define BLFS_HEAD_NUM_HEADERS                   10U
 #define BLFS_HEAD_BYTES_KEYCOUNT                8U // uint64_t
 #define BLFS_HEAD_IS_INITIALIZED_VALUE          0x3CU
-#define BLFS_HEAD_IS_REKEYING_VALUE             0x4DU
 
 ///////////////
 // Backstore //
@@ -117,40 +125,43 @@ __extension__ ({ \
 #define BLFS_BACKSTORE_CREATE_MODE_UNKNOWN      0
 #define BLFS_BACKSTORE_CREATE_MODE_CREATE       1
 #define BLFS_BACKSTORE_CREATE_MODE_OPEN         2
-#define BLFS_BACKSTORE_CREATE_MAX_MODE_NUM      BLFS_BACKSTORE_CREATE_MODE_OPEN
+#define BLFS_BACKSTORE_CREATE_MODE_WIPE         3
+#define BLFS_BACKSTORE_CREATE_MAX_MODE_NUM      BLFS_BACKSTORE_CREATE_MODE_WIPE
 
 //////////////
 // Defaults //
 //////////////
 
-// If TRUE, makes the construction much less resilient to bad shutdowns but increases perf
-#define BLFS_DEFAULT_DISABLE_JOURNALING         FALSE
+#ifndef BLFS_DEFAULT_DISABLE_KEY_CACHING
+#define BLFS_DEFAULT_DISABLE_KEY_CACHING        FALSE // It might be faster just to recompute...
+#endif
 
-#define BLFS_DEFAULT_BYTES_FLAKE                4096UL
+#define BLFS_DEFAULT_BYTES_FLAKE                4096U
 #define BLFS_DEFAULT_BYTES_BACKSTORE            1073741824UL // 1GB
-#define BLFS_DEFAULT_FLAKES_PER_NUGGET          256UL
-#define BLFS_DEFAULT_DISABLE_INTERNAL_CACHING   FALSE // Does nothing at the moment
+#define BLFS_DEFAULT_FLAKES_PER_NUGGET          64U
 #define BLFS_BACKSTORE_DEVNAME_MAXLEN           16
 #define BLFS_DEFAULT_BACKSTORE_FILE_PERMS       0666
-#define BLFS_DEFAULT_MIN_SIZE_FACTOR            10 // Don't set this too high
 
 ///////////
 // Khash //
 ///////////
 
-// These don't actually have to be defined, but the symbols are used as names!
-/*
-#define BLFS_KHASH_NUGGET_KEY_CACHE_NAME
-#define BLFS_KHASH_HEADERS_CACHE_NAME
-#define BLFS_KHASH_KCS_CACHE_NAME
-#define BLFS_KHASH_TJ_CACHE_NAME
-*/
+// These don't actually have to be defined, but the symbols are used as parts
+// of type names!
+// #define BLFS_KHASH_NUGGET_KEY_CACHE_NAME
+// #define BLFS_KHASH_HEADERS_CACHE_NAME
+// #define BLFS_KHASH_KCS_CACHE_NAME
+// #define BLFS_KHASH_TJ_CACHE_NAME
+#define BLFS_KHASH_NUGGET_KEY_SIZE_BYTES        100
 
 /**
  * Put a pointer into the hashmap at the location specified by key.
  */
 #define KHASH_CACHE_PUT(name, hashmap, key, value_ptr) \
     __extension__ ({ int _x; khint64_t _r = kh_put(name, hashmap, key, &_x); kh_value(hashmap, _r) = value_ptr; })
+
+#define KHASH_CACHE_PUT_HEAP(n, h, k, v_ptr) \
+    __extension__ ({ int _x; khint64_t _r = kh_put(n, h, k, &_x); kh_val(h, _r) = v_ptr; kh_key(h, _r) = strdup(k); })
 
 /**
  * Delete a key and its associated pointer value from the hashmap. This
@@ -191,6 +202,7 @@ __extension__ ({ \
 ////////////////////////
 
 #define BLFS_EXIT_STATUS_HELP_TEXT              -1
+#define BLFS_EXIT_STATUS_WIPED_SUCCESS          0
 
 // See: config/cexception_configured.h
 #include "cexception_configured.h"

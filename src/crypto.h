@@ -1,9 +1,9 @@
 #ifndef BLFS_CRYPT_H_
 #define BLFS_CRYPT_H_
 
-#include <sodium.h>
-
 #include "constants.h"
+
+#include <sodium.h>
 
 /**
  * Accepts a password, length, and salt and returns BLFS_CRYPTO_BYTES_KDF_OUT
@@ -18,6 +18,16 @@
  * @param salt
  */
 void blfs_password_to_secret(uint8_t * secret, const char * passwd, uint32_t passwd_length, const uint8_t * salt);
+
+/**
+ * Generates a BLFS_HEAD_HEADER_BYTES_VERIFICATION length xored_value using the
+ * given secret of length BLFS_CRYPTO_BYTES_KDF_OUT and 0 as a nonce. The
+ * Chacha20 function is used.
+ * 
+ * @param xored_value
+ * @param secret
+ */
+void blfs_chacha20_128(uint8_t * xored_value, const uint8_t * secret);
 
 /**
  * Accepts a secret of length BLFS_CRYPTO_BYTES_KDF_OUT and a nugget_index and
@@ -112,18 +122,18 @@ void blfs_chacha20_crypt(uint8_t * crypted_data,
  * @param global_version
  * @returns 0 on successful verification, 1 on failure, -1 on problem
  */
-int blfs_globalversion_verify(uint64_t id, uint64_t global_version);
+void blfs_globalversion_verify(uint64_t id, uint64_t global_version);
 
 /**
  * Accepts a global_version and commits it into an internal TPM/TrustZone
  * bucket located using id. If monotonic, then the only supported commit is an
- * increment of the global_version.
+ * increment of the global_version or this function's behavior is undefined.
  *
  * @param id
  * @param global_version
  * @returns 0 on successful commit, 1 on failure/problem
  */
-int blfs_globalversion_commit(uint64_t id, uint64_t global_version);
+void blfs_globalversion_commit(uint64_t id, uint64_t global_version);
 
 /**
  * Generates a BLFS_CRYPTO_BYTES_KDF_SALT byte salt of uniform random data

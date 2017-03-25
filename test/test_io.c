@@ -32,7 +32,7 @@ static const uint8_t buffer_init_backstore_state[] = {
     // HEAD
     // header section
     
-    BLFS_LEAST_COMPAT_VERSION, 0x00, 0x00, 0x00, // BLFS_HEAD_HEADER_BYTES_VERSION
+    0xFF, 0xFF, 0xFF, 0xFE, // BLFS_HEAD_HEADER_BYTES_VERSION
 
     0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C,
     0x0D, 0x0E, 0x0F, 0x00, // BLFS_HEAD_HEADER_BYTES_SALT
@@ -63,7 +63,7 @@ static const uint8_t buffer_init_backstore_state[] = {
 
     0x3C, // BLFS_HEAD_HEADER_BYTES_INITIALIZED
 
-    0x00, // BLFS_HEAD_HEADER_BYTES_REKEYING
+    0x00, 0x00, 0x00, 0x00, // BLFS_HEAD_HEADER_BYTES_REKEYING
 
     // KCS
     // 3 nuggets * 8 bytes per count
@@ -274,31 +274,22 @@ void test_blfs_backstore_create_throws_exception_if_backstore_file_already_exist
     TRY_FN_CATCH_EXCEPTION((void) blfs_backstore_create(BACKSTORE_FILE_PATH, 4096));
 }
 
-void test_blfs_backstore_create_throws_exception_if_size_too_small(void)
-{
-    unlink(BACKSTORE_FILE_PATH);
-
-    CEXCEPTION_T e_expected = EXCEPTION_BACKSTORE_SIZE_TOO_SMALL;
-    CEXCEPTION_T e_actual = EXCEPTION_NO_EXCEPTION;
-
-    TRY_FN_CATCH_EXCEPTION((void) blfs_backstore_create(BACKSTORE_FILE_PATH, 1024));
-}
-
 void test_blfs_backstore_open_work_as_expected(void)
 {
     blfs_backstore_write(fake_backstore, buffer_init_backstore_state, sizeof buffer_init_backstore_state, 0);
 
     blfs_backstore_t * backstore = blfs_backstore_open(BACKSTORE_FILE_PATH);
 
+    // backstore size should be 309 bytes
     TEST_ASSERT_EQUAL_STRING(BACKSTORE_FILE_PATH, backstore->file_path);
     TEST_ASSERT_EQUAL_STRING("test.io.bin", backstore->file_name);
-    TEST_ASSERT_EQUAL_UINT64(202, backstore->kcs_real_offset);
-    TEST_ASSERT_EQUAL_UINT64(226, backstore->tj_real_offset);
+    TEST_ASSERT_EQUAL_UINT64(205, backstore->kcs_real_offset);
+    TEST_ASSERT_EQUAL_UINT64(229, backstore->tj_real_offset);
     TEST_ASSERT_EQUAL_UINT64(232, backstore->kcs_journaled_offset);
     TEST_ASSERT_EQUAL_UINT64(240, backstore->tj_journaled_offset);
-    TEST_ASSERT_EQUAL_UINT64(242, backstore->nugget_journaled_offset);
-    TEST_ASSERT_EQUAL_UINT64(258, backstore->body_real_offset);
-    TEST_ASSERT_EQUAL_UINT64(48, backstore->writeable_size_actual);
+    TEST_ASSERT_EQUAL_UINT64(241, backstore->nugget_journaled_offset);
+    TEST_ASSERT_EQUAL_UINT64(257, backstore->body_real_offset);
+    TEST_ASSERT_EQUAL_UINT64(52, backstore->writeable_size_actual);
     TEST_ASSERT_EQUAL_UINT64(16, backstore->nugget_size_bytes);
 }
 

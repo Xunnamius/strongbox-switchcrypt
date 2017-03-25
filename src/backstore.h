@@ -1,9 +1,9 @@
 #ifndef BLFS_BACKSTORE_H_
 #define BLFS_BACKSTORE_H_
 
+#include "constants.h"
 #include "khash.h"
 #include "bitmask.h"
-#include "constants.h"
 
 //////////////////////////
 // Static HEAD ordering //
@@ -198,6 +198,15 @@ void blfs_commit_header(blfs_backstore_t * backstore, const blfs_header_t * head
 void blfs_close_header(blfs_backstore_t * backstore, blfs_header_t * header);
 
 /**
+ * Same as blfs_commit_header except applied to every registered header in
+ * the backstore. Note that BLFS_HEAD_HEADER_TYPE_INITIALIZED will be committed
+ * last.
+ * 
+ * @param backstore
+ */
+void blfs_commit_all_headers(blfs_backstore_t * backstore);
+
+/**
  * Creates the specified keycount from the specified backstore. Throws an error
  * upon failure.
  *
@@ -280,5 +289,26 @@ void blfs_commit_tjournal_entry(blfs_backstore_t * backstore, const blfs_tjourna
  * @param entry
  */
 void blfs_close_tjournal_entry(blfs_backstore_t * backstore, blfs_tjournal_entry_t * entry);
+
+/**
+ * Reads in the journaled keycount store, transaction journal, and nugget data.
+ * This data is memcpy'd into the corresponding passed pointer arguments.
+ *
+ * The data is not cached. DO NOT call the various *_close_* functions on the
+ * keycounts and tj entries returned by this function!
+ *
+ * XXX: maybe in the future the data should be cached?
+ *
+ * @param backstore
+ * @param rekeying_nugget_index
+ * @param rekeying_count
+ * @param rekeying_entry
+ * @param rekeying_nugget_data
+ */
+void blfs_fetch_journaled_data(blfs_backstore_t * backstore,
+                               uint64_t rekeying_nugget_index,
+                               blfs_keycount_t * rekeying_count,
+                               blfs_tjournal_entry_t * rekeying_entry,
+                               uint8_t * rekeying_nugget_data);
 
 #endif /* BLFS_BACKSTORE_H_ */

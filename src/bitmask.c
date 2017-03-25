@@ -4,11 +4,11 @@
  * @author Bernard Dickens
  */
 
+#include "bitmask.h"
+
 #include <assert.h>
 #include <string.h>
 #include <inttypes.h>
-
-#include "bitmask.h"
 
 bitmask_t * bitmask_init(uint8_t * init_mask, size_t length)
 {

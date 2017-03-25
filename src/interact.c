@@ -4,13 +4,15 @@
  * @author Bernard Dickens
  */
 
+#include "interact.h"
+#include "constants.h"
+
 #include <stdio.h>
 #include <termios.h>
 #include <unistd.h>
+#include <string.h>
 
-#include "interact.h"
-
-void interact_prompt_user(const char * prompt, char * response)
+void interact_prompt_user(const char * prompt, char * response, size_t length)
 {
     IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
 
@@ -20,10 +22,17 @@ void interact_prompt_user(const char * prompt, char * response)
     term.c_lflag &= ~ECHO;
     tcsetattr(STDIN_FILENO, TCSANOW, &term);
 
+    char * r;
+
     printf("%s", prompt);
-    scanf("%s", response);
+    scanf("%ms", &r);
 
     IFDEBUG(dzlog_debug("promt = %s", prompt));
+    IFDEBUG(dzlog_debug("r = %s", r));
+
+    memcpy(response, r, MIN(length, strlen(r) + 1));
+    free(r);
+
     IFDEBUG(dzlog_debug("response = %s", response));
 
     /* Remember to set back, or your commands won't echo! */

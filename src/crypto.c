@@ -4,11 +4,11 @@
  * @author Bernard Dickens
  */
 
+#include "crypto.h"
+
 #include <assert.h>
 #include <string.h>
 #include <inttypes.h>
-
-#include "crypto.h"
 
 void blfs_password_to_secret(uint8_t * secret, const char * passwd, uint32_t passwd_length, const uint8_t * salt)
 {
@@ -28,6 +28,26 @@ void blfs_password_to_secret(uint8_t * secret, const char * passwd, uint32_t pas
 
     IFDEBUG(dzlog_debug("secret (set to):"));
     IFDEBUG(hdzlog_debug(secret, BLFS_CRYPTO_BYTES_KDF_OUT));
+
+    IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
+}
+
+void blfs_chacha20_128(uint8_t * xored_value, const uint8_t * secret)
+{
+    IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
+
+    IFDEBUG(dzlog_debug("secret:"));
+    IFDEBUG(hdzlog_debug(secret, BLFS_CRYPTO_BYTES_KDF_OUT));
+
+    uint8_t xored[BLFS_HEAD_HEADER_BYTES_VERIFICATION];
+    uint8_t nonce[BLFS_CRYPTO_BYTES_CHACHA_NONCE] = { 0x00 };
+
+    crypto_stream_chacha20(xored, sizeof xored, nonce, secret);
+
+    memcpy(xored_value, xored, BLFS_HEAD_HEADER_BYTES_VERIFICATION);
+
+    IFDEBUG(dzlog_debug("xored_value:"));
+    IFDEBUG(hdzlog_debug(xored_value, BLFS_HEAD_HEADER_BYTES_VERIFICATION));
 
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 }
@@ -157,7 +177,7 @@ void blfs_chacha20_crypt(uint8_t * crypted_data,
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 }
 
-int blfs_globalversion_verify(uint64_t id, uint64_t global_version)
+void blfs_globalversion_verify(uint64_t id, uint64_t global_version)
 {
     IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
 
@@ -165,12 +185,12 @@ int blfs_globalversion_verify(uint64_t id, uint64_t global_version)
     IFDEBUG(dzlog_debug("global_version = %"PRIu64, global_version));
 
     // TODO: spin our wheels here for a bit to simulate verification
+    // EXCEPTION_TPM_VERSION_CHECK_FAILURE
 
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
-    return 0;
 }
 
-int blfs_globalversion_commit(uint64_t id, uint64_t global_version)
+void blfs_globalversion_commit(uint64_t id, uint64_t global_version)
 {
     IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
 
@@ -178,9 +198,9 @@ int blfs_globalversion_commit(uint64_t id, uint64_t global_version)
     IFDEBUG(dzlog_debug("global_version = %"PRIu64, global_version));
 
     // TODO: spin our wheels here for a bit to simulate committing
+    // EXCEPTION_TPM_VERSION_CHECK_FAILURE
 
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
-    return 0;
 }
 
 void blfs_KDF_generate_salt(uint8_t * generated_salt)

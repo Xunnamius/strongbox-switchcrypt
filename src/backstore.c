@@ -4,13 +4,12 @@
  * @author Bernard Dickens
  */
 
-#include <assert.h>
-#include <string.h>
-#include <inttypes.h>
-#include <unistd.h>
-
 #include "io.h"
 #include "backstore.h"
+
+#include <assert.h>
+#include <inttypes.h>
+#include <unistd.h>
 
 static blfs_header_t * blfs_generate_header_actual(blfs_backstore_t * backstore,
                                                    uint32_t header_type,
@@ -153,6 +152,25 @@ void blfs_close_header(blfs_backstore_t * backstore, blfs_header_t * header)
 
     free(header->data);
     free(header);
+
+    IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
+}
+
+void blfs_commit_all_headers(blfs_backstore_t * backstore)
+{
+    IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
+
+    for(size_t i = 0; i < BLFS_HEAD_NUM_HEADERS; ++i)
+    {
+        uint32_t header_type = header_types_ordered[i][0];
+
+        if(header_type == BLFS_HEAD_HEADER_TYPE_INITIALIZED)
+            continue;
+
+        blfs_commit_header(backstore, blfs_open_header(backstore, header_type));
+    }
+    
+    blfs_commit_header(backstore, blfs_open_header(backstore, BLFS_HEAD_HEADER_TYPE_INITIALIZED));
 
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 }
@@ -311,7 +329,7 @@ blfs_tjournal_entry_t * blfs_create_tjournal_entry(blfs_backstore_t * backstore,
     IFDEBUG(dzlog_debug("backstore->tj_real_offset = %"PRIu64, backstore->tj_real_offset));
     IFDEBUG(dzlog_debug("entry->nugget_index = %"PRIu32, entry->nugget_index));
     IFDEBUG(dzlog_debug("entry->data_offset = %"PRIu64, entry->data_offset));
-    IFDEBUG(dzlog_debug("entry->data_length (bytes per nugget) = %"PRIu64, entry->data_length));
+    IFDEBUG(dzlog_debug("entry->data_length = %"PRIu64, entry->data_length));
 
     entry->bitmask = bitmask_init(NULL, entry->data_length);
 
@@ -356,7 +374,7 @@ blfs_tjournal_entry_t * blfs_open_tjournal_entry(blfs_backstore_t * backstore, u
         IFDEBUG(dzlog_debug("backstore->tj_real_offset = %"PRIu64, backstore->tj_real_offset));
         IFDEBUG(dzlog_debug("entry->nugget_index = %"PRIu32, entry->nugget_index));
         IFDEBUG(dzlog_debug("entry->data_offset = %"PRIu64, entry->data_offset));
-        IFDEBUG(dzlog_debug("entry->data_length (bytes per nugget) = %"PRIu64, entry->data_length));
+        IFDEBUG(dzlog_debug("entry->data_length = %"PRIu64, entry->data_length));
 
         uint8_t * mask_data = malloc(sizeof(uint8_t) * entry->data_length);
 
@@ -410,6 +428,81 @@ void blfs_close_tjournal_entry(blfs_backstore_t * backstore, blfs_tjournal_entry
 
     bitmask_fini(entry->bitmask);
     free(entry);
+
+    IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
+}
+
+void blfs_fetch_journaled_data(blfs_backstore_t * backstore,
+                               uint64_t rekeying_nugget_index,
+                               blfs_keycount_t * rekeying_count,
+                               blfs_tjournal_entry_t * rekeying_entry,
+                               uint8_t * rekeying_nugget_data)
+{
+    IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
+
+    blfs_keycount_t * jcount = malloc(sizeof(*jcount));
+    blfs_tjournal_entry_t * jentry = malloc(sizeof(*jentry));
+
+    if(jcount == NULL || jentry == NULL)
+        Throw(EXCEPTION_ALLOC_FAILURE);
+
+    IFDEBUG(dzlog_debug("backstore->kcs_journaled_offset = %"PRIu64, backstore->kcs_journaled_offset));
+    IFDEBUG(dzlog_debug("backstore->tj_journaled_offset = %"PRIu64, backstore->tj_journaled_offset));
+    IFDEBUG(dzlog_debug("backstore->nugget_journaled_offset = %"PRIu64, backstore->nugget_journaled_offset));
+
+    // Set up jcount
+
+    jcount->nugget_index = rekeying_nugget_index;
+    jcount->data_length = BLFS_HEAD_BYTES_KEYCOUNT;
+    jcount->data_offset = backstore->kcs_journaled_offset;
+
+    uint8_t * jcount_data = malloc(sizeof(*jcount_data) * jcount->data_length);
+
+    if(jcount_data == NULL)
+        Throw(EXCEPTION_ALLOC_FAILURE);
+
+    blfs_backstore_read(backstore, jcount_data, jcount->data_length, jcount->data_offset);
+
+    jcount->keycount = *((uint64_t *) jcount_data);
+
+    IFDEBUG(dzlog_debug("opened blfs_keycount_t *journaled* count object"));
+    IFDEBUG(dzlog_debug("jcount->nugget_index = %"PRIu32, jcount->nugget_index));
+    IFDEBUG(dzlog_debug("jcount->data_offset = %"PRIu64, jcount->data_offset));
+    IFDEBUG(dzlog_debug("jcount->data_length = %"PRIu64, jcount->data_length));
+    IFDEBUG(dzlog_debug("jcount->keycount = %"PRIu64, jcount->keycount));
+    IFDEBUG(dzlog_debug("jcount->keycount (as data):"));
+    IFDEBUG(hdzlog_debug(&(jcount->keycount), jcount->data_length));
+
+    // Set up jentry
+
+    jentry->nugget_index = rekeying_nugget_index;
+    jentry->data_length = backstore->nugget_journaled_offset - backstore->tj_journaled_offset;
+    jentry->data_offset = backstore->tj_journaled_offset;
+
+    IFDEBUG(dzlog_debug("opened blfs_tjournal_entry_t *journaled* entry object"));
+    IFDEBUG(dzlog_debug("jentry->nugget_index = %"PRIu32, jentry->nugget_index));
+    IFDEBUG(dzlog_debug("jentry->data_offset = %"PRIu64, jentry->data_offset));
+    IFDEBUG(dzlog_debug("jentry->data_length = %"PRIu64, jentry->data_length));
+
+    uint8_t * mask_data = malloc(sizeof(uint8_t) * jentry->data_length);
+
+    if(mask_data == NULL)
+        Throw(EXCEPTION_ALLOC_FAILURE);
+
+    blfs_backstore_read(backstore, mask_data, jentry->data_length, jentry->data_offset);
+    jentry->bitmask = bitmask_init(mask_data, jentry->data_length);
+
+    // Set up journaled nugget data
+
+    blfs_backstore_read(backstore, rekeying_nugget_data, backstore->nugget_size_bytes, backstore->nugget_journaled_offset);
+
+    // Finish up
+
+    memcpy(rekeying_count, jcount, sizeof(*jcount));
+    memcpy(rekeying_entry, jentry, sizeof(*jentry));
+
+    free(jcount);
+    free(jentry);
 
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 }

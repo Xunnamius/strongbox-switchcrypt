@@ -4,11 +4,11 @@
  * @author Bernard Dickens
  */
 
+#include "vector.h"
+
 #include <stdlib.h>
 #include <string.h>
 #include <inttypes.h>
-
-#include "vector.h"
 
 vector_t * vector_init()
 {

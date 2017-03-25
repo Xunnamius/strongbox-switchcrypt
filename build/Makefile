@@ -19,8 +19,8 @@ CMOCK_ROOT	:= $(VENDR_ROOT)/cmock
 
 # Buselfs internal debug level
 # XXX: Set to 0 when not debugging or suffer the (perf-related) consequences!
-#     := -DBLFS_DEBUG_LEVEL=0
-DEBUG := -DBLFS_DEBUG_LEVEL=3
+#                  := -DBLFS_DEBUG_LEVEL=0
+DEBUG_COMPILE_FLAG := -DBLFS_DEBUG_LEVEL=3
 
 # This is the name of the resulant executable
 EXENAME	:= buselfs
@@ -38,10 +38,10 @@ CC  := /usr/bin/gcc
 CCV := $(shell expr `gcc --version | grep ^gcc | awk '{print $$3}'` \>= 4.9)
 
 # May want to set this to empty when building for release/profiling
-#					  :=
-DEBUGFLAGS 			  := -g
-CONDITIONALDEBUGFLAGS := -fsanitize=address,undefined,shift,integer-divide-by-zero,null,signed-integer-overflow \
-						 -fno-omit-frame-pointer
+#					          :=
+DEBUG_MAKE_FLAGS 			  := -g
+CONDITIONAL_DEBUG_MAKE_FLAGS  := -fsanitize=address,undefined,shift,integer-divide-by-zero,null,signed-integer-overflow \
+						 		 -fno-omit-frame-pointer
 
 CFLAGS		:= -pedantic -Wall -Wextra -std=c11
 
@@ -86,10 +86,21 @@ MOCK_TRGTS	:= $(patsubst %,mock_%.h,$(HDRS_TO_MOCK))
 DEP_TEST_TRGTS	:= $(TEST_TRGTS:=.d)
 
 ifeq "$(CCV)" "1"
-	DEBUGFLAGS += $(CONDITIONALDEBUGFLAGS)
+	DEBUG_MAKE_FLAGS += $(CONDITIONAL_DEBUG_MAKE_FLAGS)
 endif
 
 PERCENT := %
+IFEMPTYGOALS :=
+
+ifeq "$(MAKECMDGOALS)" ""
+	IFEMPTYGOALS := all
+endif
+
+ifeq "$(MAKECMDGOALS)" "all"
+	IFEMPTYGOALS := all
+endif
+
+WE_PROD_NOW := $(findstring all-,$(MAKECMDGOALS))$(findstring $(EXENAME),$(MAKECMDGOALS))$(IFEMPTYGOALS)
 
 #################
 # Custom Macros #
@@ -127,15 +138,19 @@ test: check
 # Workhorse targets
 
 $(EXENAME): $(SRC_FILES) $(VENDR_FILES)
-	$(CC) $(CFLAGS) $(IFLAGS) $(LDFLAGS) $(DEBUG) -o $(EXENAME) $(EXECSRC) \
+	$(CC) $(CFLAGS) $(IFLAGS) $(LDFLAGS) $(DEBUG_COMPILE_FLAG) -o $(EXENAME) $(EXECSRC) \
 		$^ \
 		$(STATIC_LIBS)
 
 $(SRC_FILES) $(VENDR_FILES): %.o: %.c %.h
-	$(CC) $(CFLAGS) $(IFLAGS) $(DEBUGFLAGS) $(DEBUG) -o $@ -c $<
+ifneq "$(WE_PROD_NOW)" ""
+	$(CC) $(CFLAGS) $(IFLAGS) $(DEBUG_COMPILE_FLAG) -o $@ -c $<
+else
+	$(CC) $(CFLAGS) $(IFLAGS) $(DEBUG_MAKE_FLAGS) $(DEBUG_COMPILE_FLAG) -o $@ -c $<
+endif
 
 $(RUNR_FILES) $(TEST_FILES): %.o: %.c
-	$(CC) $(CFLAGS) $(IFLAGS) $(DEBUGFLAGS) $(DEBUG) -o $@ -c $<
+	$(CC) $(CFLAGS) $(IFLAGS) $(DEBUG_MAKE_FLAGS) $(DEBUG_COMPILE_FLAG) -o $@ -c $<
 
 # XXX: dynamically scans prereqs (filled with #include'd headers from source)
 # for mocks, includes them, and then removes the unmocked version from the
@@ -143,7 +158,7 @@ $(RUNR_FILES) $(TEST_FILES): %.o: %.c
 $(TEST_TRGTS): test_%: test_%_runner.o test_%.o %.o test_%.d $(SRC_FILES) $(VENDR_FILES)
 	$(eval R_MOCKED_FILES := $(call distinct,$(patsubst %.h,%.c,$(call containing,mock_,$^))))
 	$(eval R_REMAIN_FILES := $(filter-out %.h %.c %.d $(if $(R_MOCKED_FILES),$(addprefix %,$(patsubst mock_%.c,%.o,$(R_MOCKED_FILES)))), $^))
-	$(CC) $(CFLAGS) $(DEBUGFLAGS) $(IFLAGS) $(LDFLAGS) $(DEBUG) -o $@ \
+	$(CC) $(CFLAGS) $(DEBUG_MAKE_FLAGS) $(IFLAGS) $(LDFLAGS) $(DEBUG_COMPILE_FLAG) -o $@ \
 		$(R_REMAIN_FILES) \
 		$(R_MOCKED_FILES) \
 		$(C_LIBS) \

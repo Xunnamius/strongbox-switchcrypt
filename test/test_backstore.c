@@ -43,6 +43,12 @@ blfs_backstore_t * fake_initialize_backstore(blfs_backstore_t * backstore)
     backstore->kcs_real_offset = 12345;
     backstore->tj_real_offset = 10;
 
+    backstore->kcs_journaled_offset = 2;
+    backstore->tj_journaled_offset = 10;
+    backstore->nugget_journaled_offset = 12;
+
+    backstore->nugget_size_bytes = 5;
+
     return backstore;
 }
 
@@ -59,7 +65,7 @@ void test_blfs_open_header_works_as_expected(void)
 
     blfs_header_t * actual_header = blfs_open_header(backstore, BLFS_HEAD_HEADER_TYPE_VERSION);
 
-    uint8_t expected_rekeying[BLFS_HEAD_HEADER_BYTES_REKEYING] = { 0x01 };
+    uint8_t expected_rekeying[BLFS_HEAD_HEADER_BYTES_REKEYING] = { 0x01, 0x00, 0x00, 0x00 };
 
     blfs_backstore_read_Expect(backstore, NULL, BLFS_HEAD_HEADER_BYTES_REKEYING, 0xC9);
     blfs_backstore_read_IgnoreArg_buffer();
@@ -390,4 +396,44 @@ void test_blfs_commit_tjournal_entry_works_as_expected(void)
     blfs_backstore_write_Expect(backstore, data, 2, 0x08);
 
     blfs_commit_tjournal_entry(backstore, entry);
+}
+
+void test_blfs_fetch_journaled_data_works_as_expected(void)
+{
+    blfs_backstore_t bs;
+    blfs_backstore_t * backstore = fake_initialize_backstore(&bs);
+
+    blfs_keycount_t rekeying_count;
+    blfs_tjournal_entry_t rekeying_entry;
+    uint8_t rekeying_nugget_data[5] = { 0x00 };
+
+    uint8_t expected_jcount_data[BLFS_HEAD_BYTES_KEYCOUNT] = { 0xFF };
+    uint8_t expected_jentry_data[2] = { 0xFF };
+    uint8_t expected_rekeying_nugget_data[5] = { 0xFF };
+
+    blfs_backstore_read_Expect(backstore, NULL, BLFS_HEAD_BYTES_KEYCOUNT, backstore->kcs_journaled_offset);
+    blfs_backstore_read_IgnoreArg_buffer();
+    blfs_backstore_read_ReturnArrayThruPtr_buffer(expected_jcount_data, BLFS_HEAD_BYTES_KEYCOUNT);
+
+    blfs_backstore_read_Expect(backstore, NULL, 2, backstore->tj_journaled_offset);
+    blfs_backstore_read_IgnoreArg_buffer();
+    blfs_backstore_read_ReturnArrayThruPtr_buffer(expected_jentry_data, 2);
+
+    blfs_backstore_read_Expect(backstore, NULL, backstore->nugget_size_bytes, backstore->nugget_journaled_offset);
+    blfs_backstore_read_IgnoreArg_buffer();
+    blfs_backstore_read_ReturnArrayThruPtr_buffer(expected_rekeying_nugget_data, backstore->nugget_size_bytes);
+
+    blfs_fetch_journaled_data(backstore, 54, &rekeying_count, &rekeying_entry, rekeying_nugget_data);
+
+    TEST_ASSERT_EQUAL_UINT64(54, rekeying_entry.nugget_index);
+    TEST_ASSERT_EQUAL_UINT64(backstore->tj_journaled_offset, rekeying_entry.data_offset);
+    TEST_ASSERT_EQUAL_UINT64(2, rekeying_entry.data_length);
+    TEST_ASSERT_EQUAL_MEMORY(expected_jentry_data, rekeying_entry.bitmask->mask, rekeying_entry.data_length);
+
+    TEST_ASSERT_EQUAL_UINT64(54, rekeying_count.nugget_index);
+    TEST_ASSERT_EQUAL_UINT64(backstore->kcs_journaled_offset, rekeying_count.data_offset);
+    TEST_ASSERT_EQUAL_UINT64(BLFS_HEAD_BYTES_KEYCOUNT, rekeying_count.data_length);
+    TEST_ASSERT_EQUAL_UINT64(0xFF, rekeying_count.keycount);
+
+    TEST_ASSERT_EQUAL_MEMORY(expected_rekeying_nugget_data, rekeying_nugget_data, backstore->nugget_size_bytes);
 }

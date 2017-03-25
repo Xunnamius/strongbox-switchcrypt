@@ -32,9 +32,6 @@ do {                                                                            
 // Not an exception
 #define EXCEPTION_NO_EXCEPTION                  CEXCEPTION_NONE
 
-// Malloc failure
-#define EXCEPTION_MALLOC_FAILED                 0x01U
-
 // Someone tried to walk off an array or something untoward
 #define EXCEPTION_OUT_OF_BOUNDS                 0x02U
 
@@ -92,11 +89,38 @@ do {                                                                            
 // An invalid operation (probably cache-related) was attempted
 #define EXCEPTION_INVALID_OPERATION             0x13U
 
-// The backstore size provided is WAY too small! Also see BLFS_MIN_SIZE_FACTOR
+// The backstore size provided is WAY too small!
 #define EXCEPTION_BACKSTORE_SIZE_TOO_SMALL      0x14U
 
 // The options passed were not formatted properly, or some required options were missing
 #define EXCEPTION_BAD_ARGUMENT_FORM             0x15U
+
+// New password verification step (during create, not open/wipe) failure
+#define EXCEPTION_PASSWORD_MISMATCH             0x17U
+
+// Bad mode command specified during startup
+#define EXCEPTION_UNKNOWN_MODE                  0x01U
+
+// Something went wrong while trying to grab the merkle tree root hash
+#define EXCEPTION_MERKLE_TREE_ROOT_FAILURE      0x18U
+
+// Something went wrong while trying to add a node to the merkle tree
+#define EXCEPTION_MERKLE_TREE_ADD_FAILURE       0x19U
+
+// Something went wrong while trying to update a node in the merkle tree
+#define EXCEPTION_MERKLE_TREE_UPDATE_FAILURE    0x1AU
+
+// Something went wrong while trying to verify a node in the merkle tree
+#define EXCEPTION_MERKLE_TREE_VERIFY_FAILURE    0x1BU
+
+// Something went wrong with TPM verification/bad id
+#define EXCEPTION_TPM_VERSION_CHECK_FAILURE     0x1CU
+
+// You entered the wrong password
+#define EXCEPTION_BAD_PASSWORD                  0x1DU
+
+// You entered the wrong password
+#define EXCEPTION_INTEGRITY_FAILURE             0x1EU
 
 ///////////////////////
 // End Configuration //

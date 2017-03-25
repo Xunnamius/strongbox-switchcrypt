@@ -59,9 +59,16 @@ static blfs_backstore_t * backstore_setup_actual_pre(const char * path)
     IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
     IFDEBUG(dzlog_debug("creating new blfs_backstore_t backstore object"));
 
+    char * fpath = malloc((strlen(path) + 1) * sizeof(*fpath));
+
+    if(fpath == NULL)
+        Throw(EXCEPTION_ALLOC_FAILURE);
+
+    memcpy(fpath, path, strlen(path) + 1);
+
     blfs_backstore_t init = {
-        .file_path        = path,
-        .file_name        = get_filename_from_path(path, BLFS_DEFAULT_MAX_FILENAME_LENGTH),
+        .file_path        = fpath,
+        .file_name        = get_filename_from_path(fpath, BLFS_BACKSTORE_FILENAME_MAXLEN),
         .cache_headers    = kh_init(BLFS_KHASH_HEADERS_CACHE_NAME),
         .cache_kcs_counts = kh_init(BLFS_KHASH_KCS_CACHE_NAME),
         .cache_tj_entries = kh_init(BLFS_KHASH_TJ_CACHE_NAME)
@@ -119,6 +126,9 @@ void blfs_backstore_setup_actual_post(blfs_backstore_t * backstore)
     IFDEBUG(dzlog_debug("backstore_size_actual = %"PRIu64, backstore_size_actual));
     IFDEBUG(dzlog_debug("header_last->data_length = %"PRIu64, header_last->data_length));
 
+    if(backstore_size_actual <= 0)
+        Throw(EXCEPTION_BACKSTORE_SIZE_TOO_SMALL);
+
     // XXX: Maybe I should add some overflow protection here and elsewhere... maybe later
 
     backstore->kcs_real_offset = header_last->data_offset + header_last->data_length;
@@ -127,9 +137,9 @@ void blfs_backstore_setup_actual_post(blfs_backstore_t * backstore)
     IFDEBUG(dzlog_debug("backstore->kcs_real_offset = %"PRIu64, backstore->kcs_real_offset));
     IFDEBUG(dzlog_debug("backstore->tj_real_offset = %"PRIu64, backstore->tj_real_offset));
 
-    backstore->kcs_journaled_offset    = backstore->tj_real_offset + num_nuggets * flakes_per_nugget;
+    backstore->kcs_journaled_offset    = backstore->tj_real_offset + num_nuggets * CEIL(flakes_per_nugget, BITS_IN_A_BYTE);
     backstore->tj_journaled_offset     = backstore->kcs_journaled_offset + BLFS_HEAD_BYTES_KEYCOUNT;
-    backstore->nugget_journaled_offset = backstore->tj_journaled_offset + flakes_per_nugget;
+    backstore->nugget_journaled_offset = backstore->tj_journaled_offset + CEIL(flakes_per_nugget, BITS_IN_A_BYTE);
 
     IFDEBUG(dzlog_debug("backstore->kcs_journaled_offset = %"PRIu64, backstore->kcs_journaled_offset));
     IFDEBUG(dzlog_debug("backstore->tj_journaled_offset = %"PRIu64, backstore->tj_journaled_offset));
@@ -144,7 +154,8 @@ void blfs_backstore_setup_actual_post(blfs_backstore_t * backstore)
     backstore->writeable_size_actual = backstore_size_actual - backstore->body_real_offset;
     IFDEBUG(dzlog_debug("backstore->writeable_size_actual = %"PRIu64, backstore->writeable_size_actual));
 
-    assert(backstore->writeable_size_actual > 0);
+    if(backstore->writeable_size_actual > (unsigned) backstore_size_actual)
+        Throw(EXCEPTION_BACKSTORE_SIZE_TOO_SMALL);
 
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 }
@@ -176,7 +187,7 @@ blfs_backstore_t * blfs_backstore_create(const char * path, uint64_t file_size_b
     uint8_t data_flakespernugget[BLFS_HEAD_HEADER_BYTES_FLAKESPERNUGGET] = { 0x00 };
     uint8_t data_flakesizebytes[BLFS_HEAD_HEADER_BYTES_FLAKESIZE_BYTES] = { 0x00 };
     uint8_t data_initialized[BLFS_HEAD_HEADER_BYTES_INITIALIZED] = { 0x00 };
-    uint8_t data_rekeying[BLFS_HEAD_HEADER_BYTES_REKEYING] = { 0x00 };
+    uint8_t data_rekeying[BLFS_HEAD_HEADER_BYTES_REKEYING] = { 0x00, 0x00, 0x00, 0x00 };
 
     // Initialize headers (add them to cache so further opens don't hit disk)
     // TODO: maybe put this in a loop that references header_types_ordered
@@ -190,11 +201,6 @@ blfs_backstore_t * blfs_backstore_create(const char * path, uint64_t file_size_b
     (void) blfs_create_header(backstore, BLFS_HEAD_HEADER_TYPE_FLAKESIZE_BYTES, data_flakesizebytes);
     (void) blfs_create_header(backstore, BLFS_HEAD_HEADER_TYPE_INITIALIZED, data_initialized);
     (void) blfs_create_header(backstore, BLFS_HEAD_HEADER_TYPE_REKEYING, data_rekeying);
-
-    blfs_header_t * header_last = blfs_open_header(backstore, header_types_ordered[BLFS_HEAD_NUM_HEADERS - 1][0]);
-
-    if(file_size_bytes < (header_last->data_offset + header_last->data_length) * BLFS_DEFAULT_MIN_SIZE_FACTOR)
-        Throw(EXCEPTION_BACKSTORE_SIZE_TOO_SMALL);
 
     backstore->kcs_real_offset = 0;
     backstore->tj_real_offset = 0;
@@ -254,6 +260,7 @@ void blfs_backstore_close(blfs_backstore_t * backstore)
     kh_destroy(BLFS_KHASH_KCS_CACHE_NAME, backstore->cache_kcs_counts);
     kh_destroy(BLFS_KHASH_TJ_CACHE_NAME, backstore->cache_tj_entries);
     close(backstore->io_fd);
+    free((void *) backstore->file_path);
     free(backstore);
 
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
