@@ -334,7 +334,6 @@ void blfs_soft_open(buselfs_state_t * buselfs_state, uint8_t cin_allow_insecure_
         rekeying = TRUE;
     }
 
-    // FIXME: BLFS_DEFAULT_DISABLE_KEY_CACHING
     // Populate key cache (XXX: IRL, this might not be done on init/mount)
     IFDEBUG(dzlog_debug("populating key cache..."));
 
@@ -345,15 +344,13 @@ void blfs_soft_open(buselfs_state_t * buselfs_state, uint8_t cin_allow_insecure_
         char kh_nugget_key[BLFS_KHASH_NUGGET_KEY_SIZE_BYTES] = { 0x00 };
         uint8_t * nugget_key = malloc(sizeof(*nugget_key) * BLFS_CRYPTO_BYTES_KDF_OUT);
 
+        blfs_keycount_t * count = blfs_open_keycount(backstore, nugget_index);
+
         if(nugget_key == NULL)
             Throw(EXCEPTION_ALLOC_FAILURE);
 
-        sprintf(kh_nugget_key, "%i", nugget_index);
         blfs_nugget_key_from_data(nugget_key, buselfs_state->backstore->master_secret, nugget_index);
-
-        IFDEBUG(dzlog_debug("CACHE: adding KHASH key %s to cache...", kh_nugget_key));
-
-        KHASH_CACHE_PUT_HEAP(BLFS_KHASH_NUGGET_KEY_CACHE_NAME, buselfs_state->cache_nugget_keys, kh_nugget_key, nugget_key);
+        add_index_to_key_cache(buselfs_state, nugget_index, nugget_key);
 
         // Now with nugget keys:
         // nugget_index||associated_keycount||flake_id => master_secret+nugget_index+flake_id+associated_keycount
@@ -365,13 +362,8 @@ void blfs_soft_open(buselfs_state_t * buselfs_state, uint8_t cin_allow_insecure_
             if(flake_key == NULL)
                 Throw(EXCEPTION_ALLOC_FAILURE);
 
-            // Initially, keycount is always 0
-            sprintf(kh_flake_key, "%i||%i||0", nugget_index, flake_index);
-            blfs_poly1305_key_from_data(flake_key, nugget_key, flake_index, 0);
-
-            IFDEBUG(dzlog_debug("CACHE: adding KHASH key %s to cache...", kh_flake_key));
-
-            KHASH_CACHE_PUT_HEAP(BLFS_KHASH_NUGGET_KEY_CACHE_NAME, buselfs_state->cache_nugget_keys, kh_flake_key, flake_key);
+            blfs_poly1305_key_from_data(flake_key, nugget_key, flake_index, count->keycount);
+            add_keychain_to_key_cache(buselfs_state, nugget_index, flake_index, count->keycount, flake_key);
         }
     }
 
@@ -399,42 +391,53 @@ void blfs_soft_open(buselfs_state_t * buselfs_state, uint8_t cin_allow_insecure_
     }
 
     // Next, the keycounts
-    uint64_t a_zero = 0;
     IFDEBUG(dzlog_debug("MERKLE TREE: adding keycounts..."));
 
     // FIXME: substitute rekey kcs in merkle tree for verification
     for(uint32_t nugget_index = 0; nugget_index < numnuggets; nugget_index++)
-        add_to_merkle_tree((uint8_t *) &a_zero, BLFS_HEAD_BYTES_KEYCOUNT, buselfs_state);
+    {
+        blfs_keycount_t * count = blfs_open_keycount(backstore, nugget_index);
+        add_to_merkle_tree((uint8_t *) &count->keycount, BLFS_HEAD_BYTES_KEYCOUNT, buselfs_state);
+    }
     
     // Next, the TJ entries
-    bitmask_t * zero_mask = bitmask_init(NULL, flakespnug);
     IFDEBUG(dzlog_debug("MERKLE TREE: adding transaction journal entries..."));
     // FIXME: substitute rekey tj in merkle tree for verification
     for(uint32_t nugget_index = 0; nugget_index < numnuggets; nugget_index++)
-        add_to_merkle_tree(zero_mask->mask, zero_mask->byte_length, buselfs_state);
+    {
+        blfs_tjournal_entry_t * entry = blfs_open_tjournal_entry(backstore, nugget_index);
+        add_to_merkle_tree(entry->bitmask->mask, entry->bitmask->byte_length, buselfs_state);
+    }
     
     // Finally, the flake tags
-    uint8_t * zeroed_flake = calloc(flakesize, sizeof(*zeroed_flake));
     IFDEBUG(dzlog_debug("MERKLE TREE: adding flake tags..."));
 
-    if(zeroed_flake == NULL)
-        Throw(EXCEPTION_ALLOC_FAILURE);
-
-    // FIXME: BLFS_DEFAULT_DISABLE_KEY_CACHING
     // FIXME: substitute rekey flakes in merkle tree for verification
     for(uint32_t nugget_index = 0; nugget_index < numnuggets; nugget_index++)
     {
         uint8_t nugget_key[BLFS_CRYPTO_BYTES_KDF_OUT] = { 0x00 };
-        blfs_nugget_key_from_data(nugget_key, buselfs_state->backstore->master_secret, nugget_index);
+        blfs_keycount_t * count = blfs_open_keycount(backstore, nugget_index);
+
+        if(BLFS_DEFAULT_DISABLE_KEY_CACHING)
+            blfs_nugget_key_from_data(nugget_key, buselfs_state->backstore->master_secret, nugget_index);
 
         for(uint32_t flake_index = 0; flake_index < flakespnug; flake_index++)
         {
             uint8_t flake_key[BLFS_CRYPTO_BYTES_FLAKE_TAG_OUT] = { 0x00 };
             uint8_t * tag = malloc(sizeof(*tag) * BLFS_CRYPTO_BYTES_FLAKE_TAG_OUT);
 
-            blfs_poly1305_key_from_data(flake_key, nugget_key, flake_index, 0);
-            blfs_poly1305_generate_tag(tag, zeroed_flake, flakesize, flake_key);
+            if(BLFS_DEFAULT_DISABLE_KEY_CACHING)
+                blfs_poly1305_key_from_data(flake_key, nugget_key, flake_index, count->keycount);
+            else
+                get_flake_key_using_keychain(flake_key, buselfs_state, nugget_index, flake_index, count->keycount);
 
+            uint8_t * flake_data = malloc(flakesize * sizeof(*flake_data));
+
+            if(flake_data == NULL)
+                Throw(EXCEPTION_ALLOC_FAILURE);
+
+            blfs_backstore_read_body(backstore, flake_data, flakesize, flake_index * flakesize);
+            blfs_poly1305_generate_tag(tag, flake_data, flakesize, flake_key);
             add_to_merkle_tree(tag, BLFS_CRYPTO_BYTES_FLAKE_TAG_OUT, buselfs_state);
         }
     }
