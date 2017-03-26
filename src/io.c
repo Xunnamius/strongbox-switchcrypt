@@ -229,9 +229,10 @@ blfs_backstore_t * blfs_backstore_open(const char * path)
     blfs_header_t * header_initialized = blfs_open_header(backstore, BLFS_HEAD_HEADER_TYPE_INITIALIZED);
     uint8_t is_initized = *(header_initialized->data);
 
-    IFDEBUG(dzlog_debug("is_initized (%"PRIu8" == initialized) = %"PRIu8, (uint8_t) BLFS_HEAD_IS_INITIALIZED_VALUE, is_initized));
+    IFDEBUG(dzlog_debug("is_initized (%"PRIu8" || %"PRIu8" == initialized) = %"PRIu8,
+                        (uint8_t) BLFS_HEAD_IS_INITIALIZED_VALUE, (uint8_t) BLFS_HEAD_WAS_WIPED_VALUE, is_initized));
 
-    if(is_initized != (uint8_t) BLFS_HEAD_IS_INITIALIZED_VALUE)
+    if(is_initized != (uint8_t) BLFS_HEAD_IS_INITIALIZED_VALUE && is_initized != (uint8_t) BLFS_HEAD_WAS_WIPED_VALUE)
         Throw(EXCEPTION_BACKSTORE_NOT_INITIALIZED);
 
     // Make sure the version is, if not the same as ours, at least compatible

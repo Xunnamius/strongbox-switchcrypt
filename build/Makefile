@@ -16,6 +16,7 @@ CONFIG_ROOT	:= ../config
 
 UNITY_ROOT	:= $(VENDR_ROOT)/unity
 CMOCK_ROOT	:= $(VENDR_ROOT)/cmock
+MT_ROOT     := $(VENDR_ROOT)/merkle-tree
 
 # Buselfs internal debug level
 # XXX: Set to 0 when not debugging or suffer the (perf-related) consequences!
@@ -31,7 +32,7 @@ EXENAME	:= buselfs
 EXECSRC	:= $(SRC_ROOT)/main.c
 
 # These should typically be in VENDR_ROOT, though they don't have to be
-STATIC_LIBS := $(VENDR_ROOT)/libbuse.a $(VENDR_ROOT)/libmerkletree_32_20.a
+STATIC_LIBS := $(VENDR_ROOT)/merkle-tree/src/libMerkleTree.a
 C_LIBS := $(UNITY_ROOT)/src/unity.c $(CMOCK_ROOT)/src/cmock.c
 
 CC  := /usr/bin/gcc
@@ -51,10 +52,11 @@ IFLAGS		:= -I/usr/local/include \
 			   -I$(CONFIG_ROOT) \
 			   -I$(SRC_ROOT) \
 			   -I$(UNITY_ROOT)/src \
-			   -I$(CMOCK_ROOT)/src
+			   -I$(CMOCK_ROOT)/src \
+			   -I$(MT_ROOT)/src
 
 LDFLAGS		:= -L$(VENDR_ROOT) -L/usr/local/lib \
-				-lbuse -lsodium -lzlog -lpthread -lm
+			   -lsodium -lzlog -lpthread -lm
 
 # Ruby configs for runner generation w/ Unity (automatic)
 GENRNR_CONF	:= $(CONFIG_ROOT)/unity_runner_config.yml
@@ -187,6 +189,7 @@ check: tests
 	$(patsubst %,./% &&,$(TEST_TRGTS)) true
 
 vendor: $(VENDR_FILES)
+	$(MAKE) release -C ../vendor/merkle-tree
 
 src: $(SRC_FILES)
 

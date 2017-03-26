@@ -45,10 +45,10 @@ typedef struct buselfs_state_t
      * General structure:
      *
      * index 0: TPM global version
-     * index [1, 10]: headers
-     * index [11, n+10]: keycounts
-     * index [n+11, 2n+10]: transaction journal entries
-     * index [2n+11, 2n+10+(n*fpn)]: flake poly1305 tags 
+     * index [1, 7]: headers (excluding TPMGV, INITIALIZED and MTRH)
+     * index [8, n+7]: keycounts
+     * index [n+8, 2n+7]: transaction journal entries
+     * index [2n+8, 2n+7+(n*fpn)]: flake poly1305 tags 
      */
     mt_t * merkle_tree;
     mt_hash_t merkle_tree_root_hash;
@@ -105,12 +105,33 @@ int buse_read(void * buffer, uint32_t len, uint64_t offset, void * userdata);
 int buse_write(const void * buffer, uint32_t len, uint64_t offset, void * userdata);
 
 /**
- * Implementation of the buselfs rekeying procedure. Re-encrypts a nugget with
- * an entirely different key and updates the cache accordingly.
+ * Implementation of the buselfs rekeying procedure for journaled data.
+ * Re-encrypts a nugget with an entirely different key and updates the cache
+ * accordingly. This is called when rekeying was interrupted and the system was
+ * remounted.
  * 
  * @param buselfs_state
+ * @param rekeying_nugget_id
  */
 void blfs_rekey_nugget_journaled(buselfs_state_t * buselfs_state, uint32_t rekeying_nugget_id);
+
+/**
+ * Implementation of the buselfs rekeying procedure for on-write overwrite
+ * attempts. Re-encrypts a nugget with an entirely different key, performing an
+ * in-memory overwrite before writeback, and updates the cache accordingly. This
+ * is called when an overwrite occurs during buse_write().
+ *
+ * @param buselfs_state
+ * @param rekeying_nugget_id
+ * @param buffer
+ * @param length
+ * @param nugget_internal_offset
+ */
+void blfs_rekey_nugget_journaled_with_write(buselfs_state_t * buselfs_state,
+                                            uint32_t rekeying_nugget_id,
+                                            const void * buffer,
+                                            uint32_t length,
+                                            uint64_t nugget_internal_offset);
 
 /**
  * Open a backstore and perform initial validation checks and asserts.

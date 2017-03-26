@@ -7,6 +7,7 @@ This is a complete rewrite of the old buselogfs code. This is a Buse + Chacha20 
 ## Things to Address
 
 - Byte order is assumed to be **little endian**. Might have to an implement endian conversion layer touching `io.c` and `crypto.c`, perhaps using the standard functions, if this becomes an issue.
+- Merkle Tree implementation has a hard upper limit (compiled) to the number of leaves and tree node levels 
 
 ## Dependencies
 

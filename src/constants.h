@@ -113,6 +113,7 @@ __extension__ ({ \
 #define BLFS_HEAD_NUM_HEADERS                   10U
 #define BLFS_HEAD_BYTES_KEYCOUNT                8U // uint64_t
 #define BLFS_HEAD_IS_INITIALIZED_VALUE          0x3CU
+#define BLFS_HEAD_WAS_WIPED_VALUE               0x3DU
 
 ///////////////
 // Backstore //

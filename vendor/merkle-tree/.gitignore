@@ -1,0 +1,6 @@
+*.gcno
+*.gcda
+*.o
+.cproject
+.project
+.settings/
