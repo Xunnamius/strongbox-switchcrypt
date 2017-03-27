@@ -277,6 +277,7 @@ int buse_write(const void * buffer, uint32_t len, uint64_t offset, void * userda
     (void) offset;
     (void) buselfs_state;
     (void) update_in_merkle_tree;
+    (void) blfs_rekey_nugget_journaled_with_write;
 
     // FIXME: Handle writes and deal with caching
 
