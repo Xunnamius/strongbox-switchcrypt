@@ -278,11 +278,6 @@ int buse_write(const void * buffer, uint32_t len, uint64_t offset, void * userda
     (void) buselfs_state;
     (void) update_in_merkle_tree;
 
-    if(buselfs_state->journaling_is_enabled)
-    {
-        // FIXME: Handle journaling
-    }
-
     // FIXME: Handle writes and deal with caching
 
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
@@ -439,7 +434,10 @@ void blfs_soft_open(buselfs_state_t * buselfs_state, uint8_t cin_allow_insecure_
     uint32_t rekeying_nugget_index;
     blfs_keycount_t rekeying_count;
     blfs_tjournal_entry_t rekeying_entry;
-    uint8_t rekeying_nugget_data[buselfs_state->backstore->nugget_size_bytes];
+    uint8_t * rekeying_nugget_data = calloc(buselfs_state->backstore->nugget_size_bytes, sizeof(*rekeying_nugget_data));
+
+    if(rekeying_nugget_data == NULL)
+        Throw(EXCEPTION_ALLOC_FAILURE);
 
     if(memcmp(rekeying_header->data, zero_rekeying, BLFS_HEAD_HEADER_BYTES_REKEYING) != 0)
     {
@@ -614,6 +612,7 @@ void blfs_soft_open(buselfs_state_t * buselfs_state, uint8_t cin_allow_insecure_
     IFDEBUG(dzlog_debug("MERKLE TREE: comparing MTRH to header"));
 
     blfs_header_t * mtrh_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_MTRH);
+    free(rekeying_nugget_data);
 
     IFDEBUG(dzlog_debug("mtrh_header->data:"));
     IFDEBUG(hdzlog_debug(mtrh_header->data, BLFS_HEAD_HEADER_BYTES_MTRH));
@@ -1000,11 +999,9 @@ buselfs_state_t * buselfs_main_actual(int argc, char * argv[], char * blockdevic
     if(buselfs_state == NULL)
         Throw(EXCEPTION_ALLOC_FAILURE);
 
-    buselfs_state->journaling_is_enabled = FALSE;
     buselfs_state->backstore = NULL;
 
     uint8_t  cin_allow_insecure_start       = FALSE;
-    uint8_t  cin_journaling_enabled         = FALSE;
     uint8_t  cin_backstore_mode             = BLFS_BACKSTORE_CREATE_MODE_UNKNOWN;
     uint64_t cin_backstore_size             = BLFS_DEFAULT_BYTES_BACKSTORE;
     uint32_t cin_flake_size                 = BLFS_DEFAULT_BYTES_FLAKE;
@@ -1111,12 +1108,6 @@ buselfs_state_t * buselfs_main_actual(int argc, char * argv[], char * blockdevic
         {
             cin_allow_insecure_start = TRUE;
             IFDEBUG(printf("<bare debug>: saw --allow-insecure-start = %i\n", cin_allow_insecure_start));
-        }
-
-        else if(strcmp(argv[argc], "--enable-journaling") == 0)
-        {
-            cin_journaling_enabled = TRUE;
-            IFDEBUG(printf("<bare debug>: saw --enable-journaling = %i\n", cin_journaling_enabled));
         }
 
         IFDEBUG(printf("<bare debug>: errno = %i\n", errno));
@@ -1235,11 +1226,8 @@ buselfs_state_t * buselfs_main_actual(int argc, char * argv[], char * blockdevic
         Throw(EXCEPTION_ASSERT_FAILURE);
 
     buseops.size = buselfs_state->backstore->writeable_size_actual;
-    buselfs_state->journaling_is_enabled = cin_journaling_enabled;
 
     IFDEBUG(dzlog_info("buseops.size = %"PRIu64, buseops.size));
-    IFDEBUG(dzlog_info("buselfs_state->journaling_is_enabled = %s",
-                       buselfs_state->journaling_is_enabled ? "TRUE" : "FALSE"));
 
     /* Let the show begin! */
 

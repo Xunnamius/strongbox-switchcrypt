@@ -116,7 +116,6 @@ static void make_fake_state()
     buselfs_state->backstore                    = NULL;
     buselfs_state->cache_nugget_keys            = kh_init(BLFS_KHASH_NUGGET_KEY_CACHE_NAME);
     buselfs_state->merkle_tree                  = mt_create();
-    buselfs_state->journaling_is_enabled        = FALSE;
 
     iofd = open(BACKSTORE_FILE_PATH, O_CREAT | O_RDWR | O_TRUNC, 0777);
 
@@ -578,14 +577,19 @@ void test_blfs_run_mode_open_properly_opens_wiped_backstores(void)
 
     TRY_FN_CATCH_EXCEPTION(blfs_run_mode_wipe(BACKSTORE_FILE_PATH, (uint8_t)(0), buselfs_state));
 
+    uint8_t init_header_data[BLFS_HEAD_HEADER_BYTES_INITIALIZED] = { 0x00 };
+    blfs_backstore_read(buselfs_state->backstore, init_header_data, sizeof init_header_data, 104);
+
+    TEST_ASSERT_EQUAL_UINT8(BLFS_HEAD_WAS_WIPED_VALUE, init_header_data[0]);
+
     blfs_backstore_close(buselfs_state->backstore);
 
     blfs_run_mode_open(BACKSTORE_FILE_PATH, 0, buselfs_state);
 
-    uint8_t rekeying_header_data2[BLFS_HEAD_HEADER_BYTES_INITIALIZED] = { 0x00 };
-    blfs_backstore_read(buselfs_state->backstore, rekeying_header_data2, sizeof rekeying_header_data2, 104);
+    uint8_t init_header_data2[BLFS_HEAD_HEADER_BYTES_INITIALIZED] = { 0x00 };
+    blfs_backstore_read(buselfs_state->backstore, init_header_data2, sizeof init_header_data2, 104);
 
-    TEST_ASSERT_EQUAL_UINT64(BLFS_HEAD_IS_INITIALIZED_VALUE, *(uint32_t *) &rekeying_header_data2);
+    TEST_ASSERT_EQUAL_UINT8(BLFS_HEAD_IS_INITIALIZED_VALUE, init_header_data2[0]);
 
     blfs_backstore_close(buselfs_state->backstore);
 }

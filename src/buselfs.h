@@ -52,11 +52,6 @@ typedef struct buselfs_state_t
      */
     mt_t * merkle_tree;
     mt_hash_t merkle_tree_root_hash;
-
-    /**
-     * Is journaling enabled?
-     */
-    int journaling_is_enabled;
 } buselfs_state_t;
 
 // These are all the external caching functions:
