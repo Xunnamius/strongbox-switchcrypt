@@ -84,10 +84,22 @@ static blfs_backstore_t * backstore_setup_actual_pre(const char * path)
 
     memcpy(backstore, &init, sizeof(blfs_backstore_t));
     
-    backstore->io_fd  = open(backstore->file_path, O_CREAT | O_RDWR, BLFS_DEFAULT_BACKSTORE_FILE_PERMS);
+    backstore->io_fd = open(backstore->file_path, O_CREAT | O_RDWR, BLFS_DEFAULT_BACKSTORE_FILE_PERMS);
 
     if(backstore->io_fd < 0)
         Throw(EXCEPTION_OPEN_FAILURE);
+
+    off_t backstore_size_actual_int = lseek64(backstore->io_fd, 0, SEEK_END);
+
+    if(backstore_size_actual_int < 0)
+    {
+        IFDEBUG(dzlog_fatal("strange..."));
+        Throw(EXCEPTION_BACKSTORE_SIZE_TOO_SMALL);
+    }
+
+    backstore->file_size_actual = (uint64_t) backstore_size_actual_int;
+
+    IFDEBUG(dzlog_debug("backstore->file_size_actual = %"PRIu64, backstore->file_size_actual));
 
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 
@@ -119,15 +131,7 @@ void blfs_backstore_setup_actual_post(blfs_backstore_t * backstore)
     uint32_t flake_size_bytes = *((uint32_t *) header_flakesizebytes->data);
 
     IFDEBUG(dzlog_debug("flake_size_bytes = %"PRIu32, flake_size_bytes));
-
-    // We also need the backstore file size
-    off_t backstore_size_actual = lseek64(backstore->io_fd, 0, SEEK_END);
-
-    IFDEBUG(dzlog_debug("backstore_size_actual = %"PRIu64, backstore_size_actual));
     IFDEBUG(dzlog_debug("header_last->data_length = %"PRIu64, header_last->data_length));
-
-    if(backstore_size_actual <= 0)
-        Throw(EXCEPTION_BACKSTORE_SIZE_TOO_SMALL);
 
     // XXX: Maybe I should add some overflow protection here and elsewhere... maybe later
 
@@ -151,10 +155,12 @@ void blfs_backstore_setup_actual_post(blfs_backstore_t * backstore)
     backstore->body_real_offset = backstore->nugget_journaled_offset + backstore->nugget_size_bytes;
     IFDEBUG(dzlog_debug("backstore->body_real_offset = %"PRIu64, backstore->body_real_offset));
 
-    backstore->writeable_size_actual = backstore_size_actual - backstore->body_real_offset;
+    backstore->writeable_size_actual = num_nuggets * backstore->nugget_size_bytes;
+    assert(backstore->writeable_size_actual <= ((int64_t) backstore->file_size_actual) - backstore->body_real_offset);
+    IFDEBUG(dzlog_debug("file_size_actual - body_real_offset => %"PRId64, ((int64_t) backstore->file_size_actual) - ((int64_t) backstore->body_real_offset)));
     IFDEBUG(dzlog_debug("backstore->writeable_size_actual = %"PRIu64, backstore->writeable_size_actual));
 
-    if(backstore->writeable_size_actual > (unsigned) backstore_size_actual)
+    if(backstore->writeable_size_actual > backstore->file_size_actual)
         Throw(EXCEPTION_BACKSTORE_SIZE_TOO_SMALL);
 
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
@@ -170,6 +176,7 @@ blfs_backstore_t * blfs_backstore_create(const char * path, uint64_t file_size_b
     blfs_backstore_t * backstore = backstore_setup_actual_pre(path);
 
     ftruncate(backstore->io_fd, file_size_bytes);
+    backstore->file_size_actual = file_size_bytes;
 
     // Header data
     uint64_t data_version_int = BLFS_CURRENT_VERSION;
@@ -177,7 +184,7 @@ blfs_backstore_t * blfs_backstore_create(const char * path, uint64_t file_size_b
 
     IFDEBUG(dzlog_debug("data_version = %"PRIu64, data_version_int));
     IFDEBUG(dzlog_debug("data_version:"));
-    IFDEBUG(hdzlog_debug(data_version, BLFS_HEAD_HEADER_TYPE_VERSION));
+    IFDEBUG(hdzlog_debug(data_version, BLFS_HEAD_HEADER_BYTES_VERSION));
 
     uint8_t data_salt[BLFS_HEAD_HEADER_BYTES_SALT] = { 0x00 };
     uint8_t data_mtrh[BLFS_HEAD_HEADER_BYTES_MTRH] = { 0x00 };
@@ -282,6 +289,12 @@ void blfs_backstore_read(blfs_backstore_t * backstore, uint8_t * buffer, uint32_
     IFDEBUG(dzlog_info("incoming read request for data of length %"PRIu32" from offset %"PRIu64" to %"PRIu64,
                         length, offset, offset + length - 1));
 
+    IFDEBUG3(dzlog_debug("length + offset = %"PRIu64, length + offset));
+    IFDEBUG3(dzlog_debug("backstore->file_size_actual = %"PRIu64, backstore->file_size_actual));
+
+    IFDEBUG3(if(length + offset > backstore->file_size_actual) Throw(EXCEPTION_DEBUGGING_OVERFLOW));
+    IFDEBUG3(if(length + offset < length) Throw(EXCEPTION_DEBUGGING_UNDERFLOW));
+
     lseek64(backstore->io_fd, offset, SEEK_SET);
 
     while(length > 0)
@@ -326,6 +339,12 @@ void blfs_backstore_write(blfs_backstore_t * backstore, const uint8_t * buffer, 
 
     IFDEBUG(dzlog_debug("first 64 bytes:"));
     IFDEBUG(hdzlog_debug(buffer, MIN(64U, length)));
+
+    IFDEBUG3(dzlog_debug("length + offset = %"PRIu64, length + offset));
+    IFDEBUG3(dzlog_debug("backstore->file_size_actual = %"PRIu64, backstore->file_size_actual));
+
+    IFDEBUG3(if(length + offset > backstore->file_size_actual) Throw(EXCEPTION_DEBUGGING_OVERFLOW));
+    IFDEBUG3(if(length + offset < length) Throw(EXCEPTION_DEBUGGING_UNDERFLOW));
 
     memcpy(temp_buffer, buffer, length);
     lseek64(backstore->io_fd, offset, SEEK_SET);

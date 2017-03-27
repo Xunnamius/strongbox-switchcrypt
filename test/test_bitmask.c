@@ -16,14 +16,14 @@ Try                                               \
     TEST_FAIL();                                  \
 }                                                 \
 Catch(e_actual)                                   \
-    TEST_ASSERT_EQUAL_INT(e_expected, e_actual);
+    TEST_ASSERT_EQUAL_HEX_MESSAGE(e_expected, e_actual, "Encountered an unsuspected error condition!");
 
 #define BITMASK_BYTE_LENGTH 4 // 32 bits
 static bitmask_t * bitmask;
 
 void setUp(void)
 {
-    char buf[100];
+    char buf[100] = { 0x00 };
     snprintf(buf, sizeof buf, "%s%s_%s", "blfs_level", STRINGIZE(BLFS_DEBUG_LEVEL), "test");
 
     if(dzlog_init(BLFS_CONFIG_ZLOG, buf))

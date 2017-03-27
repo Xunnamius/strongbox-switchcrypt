@@ -20,7 +20,7 @@ Try                                               \
     TEST_FAIL();                                  \
 }                                                 \
 Catch(e_actual)                                   \
-    TEST_ASSERT_EQUAL_INT(e_expected, e_actual);
+    TEST_ASSERT_EQUAL_HEX_MESSAGE(e_expected, e_actual, "Encountered an unsuspected error condition!");
 
 #define BACKSTORE_FILE_PATH "/tmp/test.io.bin"
 
@@ -43,17 +43,9 @@ static const uint8_t buffer_init_backstore_state[] = {
 
     0x06, 0x07, 0x08, 0x09, 0x06, 0x07, 0x08, 0x09, // BLFS_HEAD_HEADER_BYTES_TPMGLOBALVER
 
-    0xFF, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C,
-    0x0D, 0x0E, 0x0F, 0x00, 0x01, 0xFF, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
-    0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0xFF, 0xFF, 0xFF, 0x02, 0x03, 0x04,
-    0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x09, 0x0A, 0x0B, 0x0C,
-    0x0D, 0x0E, 0xFF, 0xFF, 0x0D, 0x0E, 0x0F, 0x00, 0x01, 0xFF, 0x03, 0x04,
-    0x05, 0x06, 0x07, 0x08, 0x0D, 0x0E, 0x0F, 0x00, 0x01, 0xFF, 0x03, 0xAB,
-    0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0xFF, 0xFF, 0xFF, 0x02, 0x03, 0x04,
-    0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x09, 0x0A, 0x0B, 0x0C,
-    0x0D, 0x0E, 0xFF, 0xFF, 0x0D, 0x0E, 0x0F, 0x00, 0x01, 0xFF, 0x03, 0x04,
-    0x05, 0x06, 0x07, 0x08, 0x0D, 0x0E, 0x0F, 0x00, 0x01, 0xFF, 0x03, 0xAB,
-    0x0B, 0x0C, 0x0D, 0x0E, 0xFF, 0xFF, 0xFF, 0x02, // BLFS_HEAD_HEADER_BYTES_VERIFICATION
+    0xEB, 0x04, 0x1D, 0xB3, 0xC6, 0xF5, 0xC3, 0xB1, 0x10, 0x19, 0x1A, 0xBF,
+    0x25, 0x12, 0xBC, 0xAD, 0xAC, 0x51, 0x59, 0xCC, 0x57, 0x99, 0x9B, 0xFF,
+    0x67, 0x3D, 0xDA, 0xE8, 0x6F, 0xB8, 0x8D, 0x16, // BLFS_HEAD_HEADER_BYTES_VERIFICATION
 
     0x03, 0x00, 0x00, 0x00, // BLFS_HEAD_HEADER_BYTES_NUMNUGGETS
 
@@ -77,11 +69,11 @@ static const uint8_t buffer_init_backstore_state[] = {
     // TJ
     // 3 nuggets * 2 flakes each
     
-    0xF0, 0x00,
+    0xF0,
 
-    0x00, 0xF0,
+    0x42,
 
-    0x0F, 0x00,
+    0x0F,
 
     // JOURNALED KCS
     
@@ -89,7 +81,7 @@ static const uint8_t buffer_init_backstore_state[] = {
 
     // JOURNALED TJ
     
-    0x00, 0xF0,
+    0x00,
 
     // JOURNALED NUGGET
     
@@ -111,7 +103,7 @@ static const uint8_t buffer_init_backstore_state[] = {
 
 void setUp(void)
 {
-    char buf[100];
+    char buf[100] = { 0x00 };
     snprintf(buf, sizeof buf, "%s%s_%s", "blfs_level", STRINGIZE(BLFS_DEBUG_LEVEL), "test");
 
     if(dzlog_init(BLFS_CONFIG_ZLOG, buf))
@@ -135,9 +127,9 @@ void tearDown(void)
 void test_blfs_backstore_read_and_write_works_as_expected(void)
 {
     int random_offset = 255;
-    uint8_t buffer_actual1[1024];
-    uint8_t buffer_actual2[64];
-    uint8_t buffer_actual3[64];
+    uint8_t buffer_actual1[1024] = { 0x00 };
+    uint8_t buffer_actual2[64] = { 0x00 };
+    uint8_t buffer_actual3[64] = { 0x00 };
 
     uint8_t * buffer_actual3_ptr = buffer_actual3;
     uint8_t * buffer_expected_zeroes = calloc(sizeof buffer_actual1, sizeof(uint8_t));
@@ -172,8 +164,8 @@ void test_blfs_backstore_read_and_write_works_as_expected(void)
 
 void test_blfs_backstore_read_body_and_write_body_works_as_expected(void)
 {
-    uint8_t buffer_actual1[45];
-    uint8_t buffer_actual2[256];
+    uint8_t buffer_actual1[45] = { 0x00 };
+    uint8_t buffer_actual2[256] = { 0x00 };
 
     uint8_t buffer_expected_random[sizeof buffer_actual2] = {
         0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x00, 0x01, 0x02, 0x03, 0x04,
@@ -264,6 +256,7 @@ void test_blfs_backstore_create_work_as_expected(void)
     TEST_ASSERT_EQUAL_UINT64(0, backstore->body_real_offset);
     TEST_ASSERT_EQUAL_UINT64(0, backstore->writeable_size_actual);
     TEST_ASSERT_EQUAL_UINT64(0, backstore->nugget_size_bytes);
+    TEST_ASSERT_EQUAL_UINT64(4096, backstore->file_size_actual);
 }
 
 void test_blfs_backstore_create_throws_exception_if_backstore_file_already_exists(void)
@@ -280,17 +273,18 @@ void test_blfs_backstore_open_work_as_expected(void)
 
     blfs_backstore_t * backstore = blfs_backstore_open(BACKSTORE_FILE_PATH);
 
-    // backstore size should be 309 bytes
+    // backstore size should be 209 bytes
     TEST_ASSERT_EQUAL_STRING(BACKSTORE_FILE_PATH, backstore->file_path);
     TEST_ASSERT_EQUAL_STRING("test.io.bin", backstore->file_name);
-    TEST_ASSERT_EQUAL_UINT64(205, backstore->kcs_real_offset);
-    TEST_ASSERT_EQUAL_UINT64(229, backstore->tj_real_offset);
-    TEST_ASSERT_EQUAL_UINT64(232, backstore->kcs_journaled_offset);
-    TEST_ASSERT_EQUAL_UINT64(240, backstore->tj_journaled_offset);
-    TEST_ASSERT_EQUAL_UINT64(241, backstore->nugget_journaled_offset);
-    TEST_ASSERT_EQUAL_UINT64(257, backstore->body_real_offset);
-    TEST_ASSERT_EQUAL_UINT64(52, backstore->writeable_size_actual);
+    TEST_ASSERT_EQUAL_UINT64(109, backstore->kcs_real_offset);
+    TEST_ASSERT_EQUAL_UINT64(133, backstore->tj_real_offset);
+    TEST_ASSERT_EQUAL_UINT64(136, backstore->kcs_journaled_offset);
+    TEST_ASSERT_EQUAL_UINT64(144, backstore->tj_journaled_offset);
+    TEST_ASSERT_EQUAL_UINT64(145, backstore->nugget_journaled_offset);
+    TEST_ASSERT_EQUAL_UINT64(161, backstore->body_real_offset);
+    TEST_ASSERT_EQUAL_UINT64(48, backstore->writeable_size_actual);
     TEST_ASSERT_EQUAL_UINT64(16, backstore->nugget_size_bytes);
+    TEST_ASSERT_EQUAL_UINT64(209, backstore->file_size_actual);
 }
 
 void test_blfs_backstore_close_work_as_expected(void)

@@ -29,7 +29,7 @@ typedef struct buselfs_state_t
      *
      * Keys look like:
      * nugget keys: nugget_index => master_secret||nugget_index
-     * flake keys: nugget_index||associated_keycount||flake_id => master_secret||nugget_index||associated_keycount||flake_id
+     * flake keys: nugget_index||flake_id||associated_keycount => master_secret||nugget_index||flake_id||associated_keycount
      *
      * XXX: This uses quite a bit of memory, perhaps unnecessarily from a perf
      * perspective. Then again, it may not be all that much. Profile if ballooning.

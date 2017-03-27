@@ -39,7 +39,7 @@ void blfs_chacha20_128(uint8_t * xored_value, const uint8_t * secret)
     IFDEBUG(dzlog_debug("secret:"));
     IFDEBUG(hdzlog_debug(secret, BLFS_CRYPTO_BYTES_KDF_OUT));
 
-    uint8_t xored[BLFS_HEAD_HEADER_BYTES_VERIFICATION];
+    uint8_t xored[BLFS_HEAD_HEADER_BYTES_VERIFICATION] = { 0x00 };
     uint8_t nonce[BLFS_CRYPTO_BYTES_CHACHA_NONCE] = { 0x00 };
 
     crypto_stream_chacha20(xored, sizeof xored, nonce, secret);

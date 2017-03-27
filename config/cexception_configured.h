@@ -20,6 +20,8 @@
 do {                                                                                        \
     if(id == EXCEPTION_ZLOG_INIT_FAILURE)                                                   \
         printf("Fatal error: zlog init failure\n");                                         \
+    else if(id == EXCEPTION_MUST_HALT)                                                      \
+        dzlog_warn("WARN: execution was suddenly halted\n");                                \
     else                                                                                    \
         dzlog_fatal("Fatal error: program terminated with uncaught exception [%i]", id);    \
     exit(id);                                                                               \
@@ -121,6 +123,13 @@ do {                                                                            
 
 // You entered the wrong password
 #define EXCEPTION_INTEGRITY_FAILURE             0x1EU
+
+// A condition has occurred that has forced the software to exit immediately
+#define EXCEPTION_MUST_HALT                     0x1FU
+
+// This error only happens when BLFS_DEBUG_LEVEL > 0; bad read/write offset/len
+#define EXCEPTION_DEBUGGING_OVERFLOW            0x20U
+#define EXCEPTION_DEBUGGING_UNDERFLOW           0x21U
 
 ///////////////////////
 // End Configuration //

@@ -18,11 +18,11 @@ Try                                               \
     TEST_FAIL();                                  \
 }                                                 \
 Catch(e_actual)                                   \
-    TEST_ASSERT_EQUAL_INT(e_expected, e_actual);
+    TEST_ASSERT_EQUAL_HEX_MESSAGE(e_expected, e_actual, "Encountered an unsuspected error condition!");
 
 void setUp(void)
 {
-    char buf[100];
+    char buf[100] = { 0x00 };
     snprintf(buf, sizeof buf, "%s%s_%s", "blfs_level", STRINGIZE(BLFS_DEBUG_LEVEL), "test");
 
     if(dzlog_init(BLFS_CONFIG_ZLOG, buf))
@@ -67,7 +67,7 @@ void test_blfs_open_header_works_as_expected(void)
 
     uint8_t expected_rekeying[BLFS_HEAD_HEADER_BYTES_REKEYING] = { 0x01, 0x00, 0x00, 0x00 };
 
-    blfs_backstore_read_Expect(backstore, NULL, BLFS_HEAD_HEADER_BYTES_REKEYING, 0xC9);
+    blfs_backstore_read_Expect(backstore, NULL, BLFS_HEAD_HEADER_BYTES_REKEYING, 0x69);
     blfs_backstore_read_IgnoreArg_buffer();
     blfs_backstore_read_ReturnArrayThruPtr_buffer(expected_rekeying, BLFS_HEAD_HEADER_BYTES_REKEYING);
 
@@ -79,7 +79,7 @@ void test_blfs_open_header_works_as_expected(void)
     TEST_ASSERT_EQUAL_MEMORY(expected_version, actual_header->data, actual_header->data_length);
 
     TEST_ASSERT_EQUAL_UINT(BLFS_HEAD_HEADER_TYPE_REKEYING, actual_header2->type);
-    TEST_ASSERT_EQUAL_UINT(0xC9, actual_header2->data_offset);
+    TEST_ASSERT_EQUAL_UINT(0x69, actual_header2->data_offset);
     TEST_ASSERT_EQUAL_UINT(BLFS_HEAD_HEADER_BYTES_REKEYING, actual_header2->data_length);
     TEST_ASSERT_EQUAL_MEMORY(expected_rekeying, actual_header2->data, actual_header2->data_length);
 }
@@ -122,7 +122,7 @@ void test_blfs_create_header_works_as_expected(void)
     TEST_ASSERT_EQUAL_UINT(60, actual_header2->data_offset);
 
     TEST_ASSERT_EQUAL_UINT(4, actual_header1->data_length);
-    TEST_ASSERT_EQUAL_UINT(128, actual_header2->data_length);
+    TEST_ASSERT_EQUAL_UINT(32, actual_header2->data_length);
 
     TEST_ASSERT_EQUAL_MEMORY(data1, actual_header1->data, BLFS_HEAD_HEADER_BYTES_VERSION);
     TEST_ASSERT_EQUAL_MEMORY(data2, actual_header2->data, BLFS_HEAD_HEADER_BYTES_VERIFICATION);
@@ -274,7 +274,7 @@ void test_blfs_open_tjournal_entry_works_as_expected(void)
     uint8_t expected_ones[2] = { 0xFF, 0xFF };
     uint8_t expected_zeroes[2] = { 0x00, 0x00 };
 
-    blfs_backstore_read_Expect(backstore, NULL, BLFS_HEAD_HEADER_BYTES_FLAKESPERNUGGET, 192);
+    blfs_backstore_read_Expect(backstore, NULL, BLFS_HEAD_HEADER_BYTES_FLAKESPERNUGGET, 0x60);
     blfs_backstore_read_IgnoreArg_buffer();
     blfs_backstore_read_ReturnArrayThruPtr_buffer(expected_fpn, BLFS_HEAD_HEADER_BYTES_FLAKESPERNUGGET);
 
@@ -311,7 +311,7 @@ void test_blfs_open_and_close_tjournal_entry_functions_cache_properly(void)
     uint8_t expected_ones[1] = { 0xFF };
     uint8_t * expected_zeroes = calloc(1, sizeof(uint8_t));
 
-    blfs_backstore_read_Expect(backstore, NULL, BLFS_HEAD_HEADER_BYTES_FLAKESPERNUGGET, 192);
+    blfs_backstore_read_Expect(backstore, NULL, BLFS_HEAD_HEADER_BYTES_FLAKESPERNUGGET, 0x60);
     blfs_backstore_read_IgnoreArg_buffer();
     blfs_backstore_read_ReturnArrayThruPtr_buffer(expected_fpn, BLFS_HEAD_HEADER_BYTES_FLAKESPERNUGGET);
 
@@ -345,7 +345,7 @@ void test_blfs_create_tjournal_entry_works_as_expected(void)
     uint8_t expected_fpn[BLFS_HEAD_HEADER_BYTES_FLAKESPERNUGGET] = { 0x0B, 0x00, 0x00, 0x00 };
     uint8_t expected_zeroes[2] = { 0x00, 0x00 };
 
-    blfs_backstore_read_Expect(backstore, NULL, BLFS_HEAD_HEADER_BYTES_FLAKESPERNUGGET, 192);
+    blfs_backstore_read_Expect(backstore, NULL, BLFS_HEAD_HEADER_BYTES_FLAKESPERNUGGET, 0x60);
     blfs_backstore_read_IgnoreArg_buffer();
     blfs_backstore_read_ReturnArrayThruPtr_buffer(expected_fpn, BLFS_HEAD_HEADER_BYTES_FLAKESPERNUGGET);
 
@@ -365,7 +365,7 @@ void test_blfs_create_tjournal_entry_throws_exception_if_nugget_in_cache(void)
 
     uint8_t expected_fpn[BLFS_HEAD_HEADER_BYTES_FLAKESPERNUGGET] = { 0x0B, 0x00, 0x00, 0x00 };
 
-    blfs_backstore_read_Expect(backstore, NULL, BLFS_HEAD_HEADER_BYTES_FLAKESPERNUGGET, 192);
+    blfs_backstore_read_Expect(backstore, NULL, BLFS_HEAD_HEADER_BYTES_FLAKESPERNUGGET, 0x60);
     blfs_backstore_read_IgnoreArg_buffer();
     blfs_backstore_read_ReturnArrayThruPtr_buffer(expected_fpn, BLFS_HEAD_HEADER_BYTES_FLAKESPERNUGGET);
 

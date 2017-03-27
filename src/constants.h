@@ -88,22 +88,22 @@ __extension__ ({ \
 ////////////
 
 // XXX: See the top of backstore.c to see the defined head section header order!
-#define BLFS_HEAD_HEADER_TYPE_VERSION           0x01U
-#define BLFS_HEAD_HEADER_TYPE_SALT              0x02U
-#define BLFS_HEAD_HEADER_TYPE_MTRH              0x04U
-#define BLFS_HEAD_HEADER_TYPE_TPMGLOBALVER      0x08U
-#define BLFS_HEAD_HEADER_TYPE_VERIFICATION      0x10U
-#define BLFS_HEAD_HEADER_TYPE_NUMNUGGETS        0x20U
-#define BLFS_HEAD_HEADER_TYPE_FLAKESPERNUGGET   0x40U
-#define BLFS_HEAD_HEADER_TYPE_FLAKESIZE_BYTES   0x80U
-#define BLFS_HEAD_HEADER_TYPE_INITIALIZED       0x100U
-#define BLFS_HEAD_HEADER_TYPE_REKEYING          0x200U
+#define BLFS_HEAD_HEADER_TYPE_VERSION           0xF01U
+#define BLFS_HEAD_HEADER_TYPE_SALT              0xF02U
+#define BLFS_HEAD_HEADER_TYPE_MTRH              0xF04U
+#define BLFS_HEAD_HEADER_TYPE_TPMGLOBALVER      0xF08U
+#define BLFS_HEAD_HEADER_TYPE_VERIFICATION      0xF10U
+#define BLFS_HEAD_HEADER_TYPE_NUMNUGGETS        0xF20U
+#define BLFS_HEAD_HEADER_TYPE_FLAKESPERNUGGET   0xF40U
+#define BLFS_HEAD_HEADER_TYPE_FLAKESIZE_BYTES   0xF80U
+#define BLFS_HEAD_HEADER_TYPE_INITIALIZED       0xF100U
+#define BLFS_HEAD_HEADER_TYPE_REKEYING          0xF200U
 
 #define BLFS_HEAD_HEADER_BYTES_VERSION          4U  // uint32_t
-#define BLFS_HEAD_HEADER_BYTES_SALT             BLFS_CRYPTO_BYTES_KDF_SALT
-#define BLFS_HEAD_HEADER_BYTES_MTRH             BLFS_CRYPTO_BYTES_MTRH
+#define BLFS_HEAD_HEADER_BYTES_SALT             BLFS_CRYPTO_BYTES_KDF_SALT // 16U
+#define BLFS_HEAD_HEADER_BYTES_MTRH             BLFS_CRYPTO_BYTES_MTRH // 32U
 #define BLFS_HEAD_HEADER_BYTES_TPMGLOBALVER     8U  // uint64_t
-#define BLFS_HEAD_HEADER_BYTES_VERIFICATION     128U
+#define BLFS_HEAD_HEADER_BYTES_VERIFICATION     32U // Limited by BLFS_CRYPTO_BYTES_MTRH in vendor/mt_config
 #define BLFS_HEAD_HEADER_BYTES_NUMNUGGETS       4U  // uint32_t
 #define BLFS_HEAD_HEADER_BYTES_FLAKESPERNUGGET  4U  // uint32_t
 #define BLFS_HEAD_HEADER_BYTES_FLAKESIZE_BYTES  4U  // uint32_t
@@ -201,9 +201,6 @@ __extension__ ({ \
 ////////////////////////
 // Exceptional Events //
 ////////////////////////
-
-#define BLFS_EXIT_STATUS_HELP_TEXT              -1
-#define BLFS_EXIT_STATUS_WIPED_SUCCESS          0
 
 // See: config/cexception_configured.h
 #include "cexception_configured.h"

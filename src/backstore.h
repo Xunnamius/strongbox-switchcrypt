@@ -143,6 +143,7 @@ typedef struct blfs_backstore_t
 
     uint64_t nugget_size_bytes;
     uint64_t writeable_size_actual;
+    uint64_t file_size_actual;
 
     uint8_t master_secret[BLFS_CRYPTO_BYTES_KDF_OUT];
 

@@ -41,6 +41,8 @@ This has only been tested on Core2 Debian 8 x64 and ARM Odroid XU3 (Debian and U
 
 Run these tests to make (about 90%) sure:
 
+Note that the password for all tests is always **"t"** (no quotes, of course).
+
 ```
 make pre
 make check

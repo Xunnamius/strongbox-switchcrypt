@@ -9,6 +9,7 @@
 #include "crypto.h"
 #include "interact.h"
 #include "buse.h"
+#include "mt_err.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -93,13 +94,18 @@ static void update_merkle_tree_root_hash(buselfs_state_t * buselfs_state)
     if(mt_get_root(buselfs_state->merkle_tree, buselfs_state->merkle_tree_root_hash) != MT_SUCCESS)
         Throw(EXCEPTION_MERKLE_TREE_ROOT_FAILURE);
 
-    blfs_header_t * mtrh_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_MTRH);
-    memcpy(mtrh_header->data, buselfs_state->merkle_tree_root_hash, BLFS_HEAD_HEADER_BYTES_MTRH);
-
-    IFDEBUG(dzlog_info("merkle tree root hash:"));
-    IFDEBUG(mt_print_hash(buselfs_state->merkle_tree_root_hash));
+    IFDEBUG(dzlog_debug("merkle tree root hash:"));
+    IFDEBUG(hdzlog_debug(buselfs_state->merkle_tree_root_hash, BLFS_CRYPTO_BYTES_MTRH));
 
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
+}
+
+static void commit_merkle_tree_root_hash(buselfs_state_t * buselfs_state)
+{
+    update_merkle_tree_root_hash(buselfs_state);
+
+    blfs_header_t * mtrh_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_MTRH);
+    memcpy(mtrh_header->data, buselfs_state->merkle_tree_root_hash, BLFS_HEAD_HEADER_BYTES_MTRH);
 }
 
 /**
@@ -113,8 +119,17 @@ static void add_to_merkle_tree(uint8_t * data, size_t length, buselfs_state_t * 
 {
     IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
 
-    if(mt_add(buselfs_state->merkle_tree, data, length) != MT_SUCCESS)
+    IFDEBUG(dzlog_debug("length = %zu", length));
+    IFDEBUG(dzlog_debug("data:"));
+    IFDEBUG(hdzlog_debug(data, length));
+
+    mt_error_t err = mt_add(buselfs_state->merkle_tree, data, length);
+
+    if(err != MT_SUCCESS)
+    {
+        IFDEBUG(dzlog_debug("MT ERROR: %i", err));
         Throw(EXCEPTION_MERKLE_TREE_ADD_FAILURE);
+    }
 
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 }
@@ -131,8 +146,18 @@ static void update_in_merkle_tree(uint8_t * data, size_t length, uint32_t index,
 {
     IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
 
-    if(mt_update(buselfs_state->merkle_tree, data, length, index) != MT_SUCCESS)
+    IFDEBUG(dzlog_debug("length = %zu", length));
+    IFDEBUG(dzlog_debug("index = %u", index));
+    IFDEBUG(dzlog_debug("data:"));
+    IFDEBUG(hdzlog_debug(data, length));
+
+    mt_error_t err = mt_update(buselfs_state->merkle_tree, data, length, index);
+
+    if(err != MT_SUCCESS)
+    {
+        IFDEBUG(dzlog_debug("MT ERROR: %i", err));
         Throw(EXCEPTION_MERKLE_TREE_UPDATE_FAILURE);
+    }
 
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 }
@@ -149,8 +174,18 @@ static void verify_in_merkle_tree(uint8_t * data, size_t length, uint32_t index,
 {
     IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
 
-    if(mt_verify(buselfs_state->merkle_tree, data, length, index) != MT_SUCCESS)
+    IFDEBUG(dzlog_debug("length = %zu", length));
+    IFDEBUG(dzlog_debug("index = %u", index));
+    IFDEBUG(dzlog_debug("data:"));
+    IFDEBUG(hdzlog_debug(data, length));
+
+    mt_error_t err = mt_verify(buselfs_state->merkle_tree, data, length, index);
+
+    if(err != MT_SUCCESS)
+    {
+        IFDEBUG(dzlog_debug("MT ERROR: %i", err));
         Throw(EXCEPTION_MERKLE_TREE_VERIFY_FAILURE);
+    }
 
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 }
@@ -317,7 +352,7 @@ void blfs_rekey_nugget_journaled(buselfs_state_t * buselfs_state, uint32_t rekey
         add_index_to_key_cache(buselfs_state, nugget_index, nugget_key);
 
         // Now with nugget keys:
-        // nugget_index||associated_keycount||flake_id => master_secret+nugget_index+flake_id+associated_keycount
+        // nugget_index||flake_index||associated_keycount => master_secret+nugget_index+associated_keycount+flake_index
         for(uint32_t flake_index = 0; flake_index < flakespnug; flake_index++)
         {
             uint8_t * flake_key = malloc(sizeof(*flake_key) * BLFS_CRYPTO_BYTES_FLAKE_TAG_KEY);
@@ -373,14 +408,14 @@ void blfs_soft_open(buselfs_state_t * buselfs_state, uint8_t cin_allow_insecure_
     
     // Use chacha20 with master secret to check verification header
     blfs_header_t * verf_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_VERIFICATION);
-    uint8_t verify_pwd[BLFS_HEAD_HEADER_BYTES_VERIFICATION];
+    uint8_t verify_pwd[BLFS_HEAD_HEADER_BYTES_VERIFICATION] = { 0x00 };
 
     blfs_chacha20_128(verify_pwd, buselfs_state->backstore->master_secret);
 
     IFDEBUG(dzlog_debug("verf_header->data:"));
     IFDEBUG(hdzlog_debug(verf_header->data, BLFS_HEAD_HEADER_BYTES_VERIFICATION));
     IFDEBUG(dzlog_debug("verify_pwd (should match above):"));
-    IFDEBUG(hdzlog_debug(verf_header->data, BLFS_HEAD_HEADER_BYTES_VERIFICATION));
+    IFDEBUG(hdzlog_debug(verify_pwd, BLFS_HEAD_HEADER_BYTES_VERIFICATION));
 
     if(memcmp(verf_header->data, verify_pwd, BLFS_HEAD_HEADER_BYTES_VERIFICATION) != 0)
         Throw(EXCEPTION_BAD_PASSWORD);
@@ -448,7 +483,7 @@ void blfs_soft_open(buselfs_state_t * buselfs_state, uint8_t cin_allow_insecure_
         add_index_to_key_cache(buselfs_state, nugget_index, nugget_key);
 
         // Now with nugget keys:
-        // nugget_index||associated_keycount||flake_id => master_secret+nugget_index+flake_id+associated_keycount
+        // nugget_index||flake_index||associated_keycount => master_secret+nugget_index+flake_index+associated_keycount
         for(uint32_t flake_index = 0; flake_index < flakespnug; flake_index++)
         {
             uint8_t * flake_key = malloc(sizeof(*flake_key) * BLFS_CRYPTO_BYTES_FLAKE_TAG_KEY);
@@ -548,7 +583,7 @@ void blfs_soft_open(buselfs_state_t * buselfs_state, uint8_t cin_allow_insecure_
 
         for(uint32_t flake_index = 0; flake_index < flakespnug; flake_index++)
         {
-            uint8_t flake_key[BLFS_CRYPTO_BYTES_FLAKE_TAG_OUT] = { 0x00 };
+            uint8_t flake_key[BLFS_CRYPTO_BYTES_FLAKE_TAG_KEY] = { 0x00 };
             uint8_t * tag = malloc(sizeof(*tag) * BLFS_CRYPTO_BYTES_FLAKE_TAG_OUT);
             uint8_t flake_data[flakesize];
 
@@ -590,7 +625,6 @@ void blfs_soft_open(buselfs_state_t * buselfs_state, uint8_t cin_allow_insecure_
         if(init_header->data[0] == BLFS_HEAD_WAS_WIPED_VALUE)
         {
             IFDEBUG(dzlog_debug("WIPE DETECTED! Forcing an update of MTRH without triggering integrity warning..."));
-            update_merkle_tree_root_hash(buselfs_state);
             init_header->data[0] = BLFS_HEAD_IS_INITIALIZED_VALUE;
             blfs_commit_header(buselfs_state->backstore, init_header);
 
@@ -612,7 +646,7 @@ void blfs_soft_open(buselfs_state_t * buselfs_state, uint8_t cin_allow_insecure_
         }
     }
 
-    blfs_commit_header(buselfs_state->backstore, mtrh_header);
+    commit_merkle_tree_root_hash(buselfs_state);
 
     // Finish up
     blfs_backstore_setup_actual_post(buselfs_state->backstore);
@@ -782,7 +816,7 @@ void blfs_run_mode_create(const char * backstore_path,
         add_index_to_key_cache(buselfs_state, nugget_index, nugget_key);
 
         // Now with nugget keys:
-        // nugget_index||associated_keycount||flake_id => master_secret+nugget_index+flake_id+associated_keycount
+        // nugget_index||flake_index||associated_keycount => master_secret+nugget_index+associated_keycount+flake_index
         for(uint32_t flake_index = 0; flake_index < cin_flakes_per_nugget; flake_index++)
         {
             uint8_t * flake_key = malloc(sizeof(*flake_key) * BLFS_CRYPTO_BYTES_FLAKE_TAG_KEY);
@@ -851,7 +885,7 @@ void blfs_run_mode_create(const char * backstore_path,
 
         for(uint32_t flake_index = 0; flake_index < cin_flakes_per_nugget; flake_index++)
         {
-            uint8_t flake_key[BLFS_CRYPTO_BYTES_FLAKE_TAG_OUT] = { 0x00 };
+            uint8_t flake_key[BLFS_CRYPTO_BYTES_FLAKE_TAG_KEY] = { 0x00 };
             uint8_t * tag = malloc(sizeof(*tag) * BLFS_CRYPTO_BYTES_FLAKE_TAG_OUT);
 
             if(BLFS_DEFAULT_DISABLE_KEY_CACHING)
@@ -927,16 +961,17 @@ void blfs_run_mode_wipe(const char * backstore_path, uint8_t cin_allow_insecure_
         blfs_backstore_write_body(buselfs_state->backstore,
                                   zeroed_state,
                                   nugget_size_bytes,
-                                  buselfs_state->backstore->body_real_offset + nugget_index * nugget_size_bytes);
+                                  nugget_index * nugget_size_bytes);
     }
     
     // Reset necessary headers
     // BLFS_HEAD_HEADER_TYPE_MTRH, BLFS_HEAD_HEADER_TYPE_TPMGLOBALVER, BLFS_HEAD_HEADER_TYPE_REKEYING, BLFS_HEAD_HEADER_BYTES_INITIALIZED
+
     blfs_header_t * mtrh_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_MTRH);
     blfs_header_t * tmpgv_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_TPMGLOBALVER);
     blfs_header_t * rekeying_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_REKEYING);
-    blfs_header_t * init_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_BYTES_INITIALIZED);
-
+    blfs_header_t * init_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_INITIALIZED);
+    
     memset(mtrh_header->data, 0, BLFS_HEAD_HEADER_BYTES_MTRH);
     memset(tmpgv_header->data, 0, BLFS_HEAD_HEADER_BYTES_TPMGLOBALVER);
     memset(rekeying_header->data, 0, BLFS_HEAD_HEADER_BYTES_REKEYING);
@@ -949,12 +984,12 @@ void blfs_run_mode_wipe(const char * backstore_path, uint8_t cin_allow_insecure_
     blfs_globalversion_commit(BLFS_TPM_ID, 0);
 
     IFDEBUG(dzlog_debug("EXITING PROGRAM!"));
-    exit(BLFS_EXIT_STATUS_WIPED_SUCCESS);
+    Throw(EXCEPTION_MUST_HALT);
 }
 
 buselfs_state_t * buselfs_main_actual(int argc, char * argv[], char * blockdevice)
 {
-    IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
+    IFDEBUG(printf("<bare debug>: >>>> entering %s\n", __func__));
 
     char * cin_device_name;
     char backstore_path[BLFS_BACKSTORE_FILENAME_MAXLEN] = { 0x00 };
@@ -975,16 +1010,15 @@ buselfs_state_t * buselfs_main_actual(int argc, char * argv[], char * blockdevic
     uint32_t cin_flake_size                 = BLFS_DEFAULT_BYTES_FLAKE;
     uint32_t cin_flakes_per_nugget          = BLFS_DEFAULT_FLAKES_PER_NUGGET;
 
-    IFDEBUG(dzlog_debug("argc: %i", argc));
+    IFDEBUG(printf("<bare debug>: argc: %i\n", argc));
 
-    if(argc <= 1 || argc > 7)
+    if(argc <= 1 || argc > 9)
     {
         fprintf(stderr,
         "\nUsage:\n"
-        "  %s [--enable-journaling][--backstore-size %"PRIu64"][--flake-size %"PRIu32"][--flakes-per-nugget %"PRIu32"]"
-        " create nbd_device_name\n\n"
-        "  %s [--enable-journaling][--allow-insecure-start] open nbd_device_name\n\n"
-        "  %s wipe nbd_device_name\n\n"
+        "  %s [--backstore-size %"PRIu64"][--flake-size %"PRIu32"][--flakes-per-nugget %"PRIu32"] create nbd_device_name\n\n"
+        "  %s [--allow-insecure-start] open nbd_device_name\n\n"
+        "  %s [--allow-insecure-start] wipe nbd_device_name\n\n"
 
         "Note: nbd_device must always appear last and the desired command (open, wipe, etc) second to last.\n\n"
 
@@ -1010,18 +1044,17 @@ buselfs_state_t * buselfs_main_actual(int argc, char * argv[], char * blockdevic
         " if the backstore in question is indeed a valid buselfs backstore.\n\n"
         "Example: %s wipe nbd4\n\n"
         ":options:\n"
-        "(none)\n\n"
+        "- allow-insecure-start ignores a MTRH failure (integrity issue) and loads the buselfs backstore anyway\n\n"
 
         "To test for correctness, run `make pre && make check` from the /build directory. Check the README for more details.\n"
         "Don't forget to load nbd kernel module `modprobe nbd` and run as root!\n\n",
         argv[0], BLFS_DEFAULT_BYTES_BACKSTORE, BLFS_DEFAULT_BYTES_FLAKE, BLFS_DEFAULT_FLAKES_PER_NUGGET,
         argv[0], argv[0], argv[0], argv[0], argv[0]);
 
-        exit(BLFS_EXIT_STATUS_HELP_TEXT);
+        Throw(EXCEPTION_MUST_HALT);
     }
 
     /* Process arguments */
-
     cin_device_name = argv[--argc];
 
     if(strcmp(argv[--argc], "create") == 0)
@@ -1035,57 +1068,84 @@ buselfs_state_t * buselfs_main_actual(int argc, char * argv[], char * blockdevic
 
     else Throw(EXCEPTION_UNKNOWN_MODE);
 
-    IFDEBUG(dzlog_debug("cin_backstore_mode: %i", cin_backstore_mode));
+    IFDEBUG(printf("<bare debug>: cin_backstore_mode: %i\n", cin_backstore_mode));
 
     while(argc-- > 1)
     {
+        errno = 0;
+
         if(strcmp(argv[argc], "--backstore-size") == 0)
         {
+            int64_t cin_backstore_size_int = strtoll(argv[argc + 1], NULL, 0);
             cin_backstore_size = strtoll(argv[argc + 1], NULL, 0);
-            IFDEBUG(dzlog_debug("saw --backstore-size, got value: %"PRIu64, cin_backstore_size));
+
+            if(cin_backstore_size_int < 0)
+                Throw(EXCEPTION_INVALID_BACKSTORESIZE);
+
+            IFDEBUG(printf("<bare debug>: saw --backstore-size, got value: %"PRIu64"\n", cin_backstore_size));
         }
 
         else if(strcmp(argv[argc], "--flake-size") == 0)
         {
-            cin_flake_size = strtoll(argv[argc + 1], NULL, 0);
-            IFDEBUG(dzlog_debug("saw --flake-size = %"PRIu32, cin_flake_size));
+            int64_t cin_flake_size_int = strtoll(argv[argc + 1], NULL, 0);
+            cin_flake_size = (uint32_t) cin_flake_size_int;
+
+            if(cin_flake_size != cin_flake_size_int)
+                Throw(EXCEPTION_INVALID_FLAKESIZE);
+
+            IFDEBUG(printf("<bare debug>: saw --flake-size = %"PRIu32"\n", cin_flake_size));
         }
 
         else if(strcmp(argv[argc], "--flakes-per-nugget") == 0)
         {
-            cin_flakes_per_nugget = strtoll(argv[argc + 1], NULL, 0);
-            IFDEBUG(dzlog_debug("saw --flakes-per-nugget = %"PRIu32, cin_flakes_per_nugget));
+            int64_t cin_flakes_per_nugget_int = strtoll(argv[argc + 1], NULL, 0);
+            cin_flakes_per_nugget = (uint32_t) cin_flakes_per_nugget_int;
+
+            if(cin_flakes_per_nugget != cin_flakes_per_nugget_int)
+                Throw(EXCEPTION_INVALID_FLAKES_PER_NUGGET);
+
+            IFDEBUG(printf("<bare debug>: saw --flakes-per-nugget = %"PRIu32"\n", cin_flakes_per_nugget));
         }
 
         else if(strcmp(argv[argc], "--allow-insecure-start") == 0)
         {
             cin_allow_insecure_start = TRUE;
-            IFDEBUG(dzlog_debug("saw --allow-insecure-start = %i", cin_allow_insecure_start));
+            IFDEBUG(printf("<bare debug>: saw --allow-insecure-start = %i\n", cin_allow_insecure_start));
         }
 
         else if(strcmp(argv[argc], "--enable-journaling") == 0)
         {
             cin_journaling_enabled = TRUE;
-            IFDEBUG(dzlog_debug("saw --enable-journaling = %i", cin_journaling_enabled));
+            IFDEBUG(printf("<bare debug>: saw --enable-journaling = %i\n", cin_journaling_enabled));
+        }
+
+        IFDEBUG(printf("<bare debug>: errno = %i\n", errno));
+
+        if(errno == ERANGE)
+        {
+            IFDEBUG(printf("<bare debug>: EXCEPTION: GOT ERANGE! BAD ARGS!\n"));
+            Throw(EXCEPTION_BAD_ARGUMENT_FORM);
         }
     }
 
-    IFDEBUG(dzlog_debug("argument processing result:"));
-    IFDEBUG(dzlog_debug("cin_allow_insecure_start = %i", cin_allow_insecure_start));
-    IFDEBUG(dzlog_debug("cin_backstore_size = %"PRIu64, cin_backstore_size));
-    IFDEBUG(dzlog_debug("cin_flake_size = %"PRIu32, cin_flake_size));
-    IFDEBUG(dzlog_debug("cin_flakes_per_nugget = %"PRIu32, cin_flakes_per_nugget));
-    IFDEBUG(dzlog_debug("cin_backstore_mode = %i", cin_backstore_mode));
+    IFDEBUG(printf("<bare debug>: argument processing result:\n"));
+    IFDEBUG(printf("<bare debug>: cin_allow_insecure_start = %i\n", cin_allow_insecure_start));
+    IFDEBUG(printf("<bare debug>: cin_backstore_size = %"PRIu64"\n", cin_backstore_size));
+    IFDEBUG(printf("<bare debug>: cin_flake_size = %"PRIu32"\n", cin_flake_size));
+    IFDEBUG(printf("<bare debug>: cin_flakes_per_nugget = %"PRIu32"\n", cin_flakes_per_nugget));
+    IFDEBUG(printf("<bare debug>: cin_backstore_mode = %i\n", cin_backstore_mode));
 
-    IFDEBUG(dzlog_debug("defaults:"));
-    IFDEBUG(dzlog_debug("default allow_insecure_start = 0"));
-    IFDEBUG(dzlog_debug("default force_overwrite_backstore = 0"));
-    IFDEBUG(dzlog_debug("default backstore_size = %"PRIu64, BLFS_DEFAULT_BYTES_BACKSTORE));
-    IFDEBUG(dzlog_debug("default flake_size = %"PRIu32, BLFS_DEFAULT_BYTES_FLAKE));
-    IFDEBUG(dzlog_debug("default flakes_per_nugget = %"PRIu32, BLFS_DEFAULT_FLAKES_PER_NUGGET));
-    IFDEBUG(dzlog_debug("cin_backstore_mode = %i", BLFS_BACKSTORE_CREATE_MODE_UNKNOWN));
+    IFDEBUG(printf("<bare debug>: defaults:\n"));
+    IFDEBUG(printf("<bare debug>: default allow_insecure_start = 0\n"));
+    IFDEBUG(printf("<bare debug>: default force_overwrite_backstore = 0\n"));
+    IFDEBUG(printf("<bare debug>: default backstore_size = %"PRIu64"\n", BLFS_DEFAULT_BYTES_BACKSTORE));
+    IFDEBUG(printf("<bare debug>: default flake_size = %"PRIu32"\n", BLFS_DEFAULT_BYTES_FLAKE));
+    IFDEBUG(printf("<bare debug>: default flakes_per_nugget = %"PRIu32"\n", BLFS_DEFAULT_FLAKES_PER_NUGGET));
+    IFDEBUG(printf("<bare debug>: cin_backstore_mode = %i\n", BLFS_BACKSTORE_CREATE_MODE_UNKNOWN));
 
-    if(errno == ERANGE || cin_backstore_mode > BLFS_BACKSTORE_CREATE_MAX_MODE_NUM)
+    IFDEBUG(printf("<bare debug>: BLFS_BACKSTORE_CREATE_MAX_MODE_NUM = %i\n", BLFS_BACKSTORE_CREATE_MAX_MODE_NUM));
+
+    if(cin_backstore_mode > BLFS_BACKSTORE_CREATE_MAX_MODE_NUM)
         Throw(EXCEPTION_BAD_ARGUMENT_FORM);
 
     errno = 0;
@@ -1102,7 +1162,7 @@ buselfs_state_t * buselfs_main_actual(int argc, char * argv[], char * blockdevic
     /* Prepare to setup the backstore file */
 
     sprintf(backstore_path, BLFS_BACKSTORE_FILENAME, cin_device_name);
-    IFDEBUG(dzlog_debug("backstore_path = %s", backstore_path));
+    IFDEBUG(printf("<bare debug>: backstore_path = %s\n", backstore_path));
 
     /* Initialize libsodium */
 
@@ -1119,11 +1179,13 @@ buselfs_state_t * buselfs_main_actual(int argc, char * argv[], char * blockdevic
     char buf[100] = { 0x00 };
 
     snprintf(buf, sizeof buf, "%s%s_%s", "blfs_level", STRINGIZE(BLFS_DEBUG_LEVEL), cin_device_name);
-    IFDEBUG(dzlog_debug("BLFS_CONFIG_ZLOG = %s", BLFS_CONFIG_ZLOG));
-    IFDEBUG(dzlog_debug("zlog buf = %s", buf));
+    IFDEBUG(printf("<bare debug>: BLFS_CONFIG_ZLOG = %s\n", BLFS_CONFIG_ZLOG));
+    IFDEBUG(printf("<bare debug>: zlog buf = %s\n", buf));
 
     if(dzlog_init(BLFS_CONFIG_ZLOG, buf))
         Throw(EXCEPTION_ZLOG_INIT_FAILURE);
+
+    IFDEBUG(dzlog_debug("switched over to zlog for logging"));
 
     /* Initialize merkle tree */
 
@@ -1170,7 +1232,7 @@ buselfs_state_t * buselfs_main_actual(int argc, char * argv[], char * blockdevic
     IFDEBUG3(dzlog_debug("\n\n\n"));
 
     if(buselfs_state->backstore == NULL)
-        Throw(EXCEPTION_BACKSTORE_NOT_INITIALIZED);
+        Throw(EXCEPTION_ASSERT_FAILURE);
 
     buseops.size = buselfs_state->backstore->writeable_size_actual;
     buselfs_state->journaling_is_enabled = cin_journaling_enabled;

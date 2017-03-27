@@ -13,7 +13,7 @@ void setUp(void)
     if(sodium_init() == -1)
         exit(EXCEPTION_SODIUM_INIT_FAILURE);
 
-    char buf[100];
+    char buf[100] = { 0x00 };
     snprintf(buf, sizeof buf, "%s%s_%s", "blfs_level", STRINGIZE(BLFS_DEBUG_LEVEL), "test");
 
     if(dzlog_init(BLFS_CONFIG_ZLOG, buf))
@@ -29,8 +29,8 @@ void test_blfs_password_to_secret_returns_secret_as_expected(void)
 {
     char passwd[10] = "10charpas";
     uint8_t salt[BLFS_CRYPTO_BYTES_KDF_SALT] = "sixteencharsalt!";
-    uint8_t actual_secret1[BLFS_CRYPTO_BYTES_KDF_OUT];
-    uint8_t actual_secret2[BLFS_CRYPTO_BYTES_KDF_OUT];
+    uint8_t actual_secret1[BLFS_CRYPTO_BYTES_KDF_OUT] = { 0x00 };
+    uint8_t actual_secret2[BLFS_CRYPTO_BYTES_KDF_OUT] = { 0x00 };
 
     uint8_t expected_secret[BLFS_CRYPTO_BYTES_KDF_OUT] = {
         0x6d, 0x36, 0x75, 0xbb, 0xfb, 0x93, 0xbb, 0x89, 0x90, 0x6c, 0xba, 0x50,
@@ -56,13 +56,7 @@ void test_blfs_chacha20_128_returns_expected_data(void)
 
     uint8_t expected_hash[BLFS_HEAD_HEADER_BYTES_VERIFICATION] = {
         0x96, 0x40, 0x46, 0x08, 0x30, 0x6a, 0x57, 0xab, 0x7f, 0xe7, 0x82, 0x48, 0xbe, 0x96, 0xde, 0x78,
-        0x05, 0x01, 0xee, 0x93, 0x17, 0x20, 0x43, 0x1e, 0x5f, 0xb0, 0x0c, 0x7b, 0x82, 0x95, 0x2c, 0xd0,
-        0x65, 0xeb, 0x92, 0x7b, 0xd0, 0x23, 0x6a, 0xd2, 0xac, 0x02, 0x19, 0x7f, 0xfa, 0x08, 0x42, 0xc9,
-        0xeb, 0xc5, 0xfc, 0x69, 0x94, 0xa4, 0x72, 0x22, 0xc7, 0xee, 0x77, 0x30, 0x49, 0x8c, 0x55, 0xb4,
-        0x95, 0x03, 0x46, 0xae, 0x84, 0x4e, 0x5f, 0x32, 0xcf, 0xcf, 0x57, 0x54, 0x27, 0x7f, 0xcd, 0x44,
-        0x61, 0x6e, 0x9c, 0x0a, 0xc4, 0x2d, 0x39, 0x5b, 0x7f, 0x8e, 0xb2, 0x52, 0x7a, 0x70, 0x4a, 0x09,
-        0xbe, 0xd5, 0xad, 0x1d, 0xfa, 0xc6, 0xa1, 0x90, 0x99, 0xf3, 0x92, 0x04, 0x70, 0x5c, 0xf8, 0x6d,
-        0x58, 0xcb, 0x38, 0x00, 0x7e, 0xe3, 0x05, 0x98, 0x97, 0x93, 0x2f, 0x6f, 0xa1, 0x3e, 0xc9, 0xea
+        0x05, 0x01, 0xee, 0x93, 0x17, 0x20, 0x43, 0x1e, 0x5f, 0xb0, 0x0c, 0x7b, 0x82, 0x95, 0x2c, 0xd0
     };
 
     blfs_chacha20_128(actual_hash, secret);
@@ -72,7 +66,7 @@ void test_blfs_chacha20_128_returns_expected_data(void)
 // XXX: upgrade this test if we ever get around to making this work for big endian systems
 void test_blfs_nugget_key_from_data_fails_bad_endianness(void)
 {
-    uint8_t actual_nugget_key[BLFS_CRYPTO_BYTES_KDF_OUT];
+    uint8_t actual_nugget_key[BLFS_CRYPTO_BYTES_KDF_OUT] = { 0x00 };
 
     uint8_t secret[BLFS_CRYPTO_BYTES_KDF_OUT] = {
         0xd9, 0x2e, 0x63, 0x4c, 0xd9, 0xaa, 0x1, 0xea, 0xa5, 0xad, 0xdc, 0x68,
@@ -98,7 +92,7 @@ void test_blfs_nugget_key_from_data_fails_bad_endianness(void)
 // XXX: upgrade this test if we ever get around to making this work for big endian systems
 void test_blfs_poly1305_key_from_data_fails_bad_endianness(void)
 {
-    uint8_t new_key[BLFS_CRYPTO_BYTES_KDF_OUT];
+    uint8_t new_key[BLFS_CRYPTO_BYTES_KDF_OUT] = { 0x00 };
 
     uint8_t nugget_key[BLFS_CRYPTO_BYTES_KDF_OUT] = {
         0xd9, 0x2e, 0x63, 0x4c, 0xd9, 0xaa, 0x1, 0xea, 0xa5, 0xad, 0xdc, 0x68,
@@ -123,7 +117,7 @@ void test_blfs_poly1305_key_from_data_fails_bad_endianness(void)
 
 void test_blfs_poly1305_generate_tag_yields_expected_tag(void)
 {
-    uint8_t actual_tag[BLFS_CRYPTO_BYTES_FLAKE_TAG_OUT];
+    uint8_t actual_tag[BLFS_CRYPTO_BYTES_FLAKE_TAG_OUT] = { 0x00 };
     uint8_t data[10] = "10chardat";
 
     uint8_t key[BLFS_CRYPTO_BYTES_FLAKE_TAG_KEY] = {
@@ -145,7 +139,7 @@ void test_blfs_poly1305_generate_tag_yields_expected_tag(void)
 void test_blfs_chacha20_crypt_crypts_properly(void)
 {
     uint8_t data[10] = "10chardat";
-    uint8_t crypted_data[10];
+    uint8_t crypted_data[10] = { 0x00 };
     uint64_t kcs_keycount = 10242048;
     uint64_t nugget_internal_offset = 64;
 
@@ -157,7 +151,7 @@ void test_blfs_chacha20_crypt_crypts_properly(void)
 
     blfs_chacha20_crypt(crypted_data, data, sizeof data, nugget_key, kcs_keycount, nugget_internal_offset);
 
-    uint8_t crypted_data_round2[10];
+    uint8_t crypted_data_round2[10] = { 0x00 };
 
     blfs_chacha20_crypt(crypted_data_round2, crypted_data, sizeof data, nugget_key, kcs_keycount, nugget_internal_offset);
 
@@ -166,10 +160,10 @@ void test_blfs_chacha20_crypt_crypts_properly(void)
 
 void test_blfs_chacha20_crypt_BIGLY(void)
 {
-    uint8_t data[4096];
+    uint8_t data[4096] = { 0x00 };
     randombytes_buf(data, sizeof data);
 
-    uint8_t crypted_data[4096];
+    uint8_t crypted_data[4096] = { 0x00 };
     uint64_t kcs_keycount = 123456789101112;
     uint64_t nugget_internal_offset = 72;
 
@@ -181,7 +175,7 @@ void test_blfs_chacha20_crypt_BIGLY(void)
 
     blfs_chacha20_crypt(crypted_data, data, sizeof data, nugget_key, kcs_keycount, nugget_internal_offset);
 
-    uint8_t crypted_data_round2[4096];
+    uint8_t crypted_data_round2[4096] = { 0x00 };
 
     blfs_chacha20_crypt(crypted_data_round2, crypted_data, sizeof data, nugget_key, kcs_keycount, nugget_internal_offset);
 
