@@ -59,15 +59,8 @@ static blfs_backstore_t * backstore_setup_actual_pre(const char * path)
     IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
     IFDEBUG(dzlog_debug("creating new blfs_backstore_t backstore object"));
 
-    char * fpath = malloc((strlen(path) + 1) * sizeof(*fpath));
-
-    if(fpath == NULL)
-        Throw(EXCEPTION_ALLOC_FAILURE);
-
-    memcpy(fpath, path, strlen(path) + 1);
-
     blfs_backstore_t init = {
-        .file_path        = fpath,
+        .file_path        = strdup(path),
         .file_name        = get_filename_from_path(fpath, BLFS_BACKSTORE_FILENAME_MAXLEN),
         .cache_headers    = kh_init(BLFS_KHASH_HEADERS_CACHE_NAME),
         .cache_kcs_counts = kh_init(BLFS_KHASH_KCS_CACHE_NAME),
@@ -116,46 +109,46 @@ void blfs_backstore_setup_actual_post(blfs_backstore_t * backstore)
 
     // We need to know the number of nuggets to calculate the other offsets
     blfs_header_t * header_numnuggets = blfs_open_header(backstore, BLFS_HEAD_HEADER_TYPE_NUMNUGGETS);
-    uint32_t num_nuggets = *((uint32_t *) header_numnuggets->data);
+    backstore->backstore->num_nuggets = *((uint32_t *) header_numnuggets->data);
 
-    IFDEBUG(dzlog_debug("num_nuggets = %"PRIu32, num_nuggets));
+    IFDEBUG(dzlog_debug("backstore->num_nuggets = %"PRIu32, backstore->num_nuggets));
 
     // We also need to know the number of flakes per nugget
     blfs_header_t * header_flakespernugget = blfs_open_header(backstore, BLFS_HEAD_HEADER_TYPE_FLAKESPERNUGGET);
-    uint32_t flakes_per_nugget = *((uint32_t *) header_flakespernugget->data);
+    backstore->flakes_per_nugget = *((uint32_t *) header_flakespernugget->data);
 
-    IFDEBUG(dzlog_debug("flakes_per_nugget = %"PRIu32, flakes_per_nugget));
+    IFDEBUG(dzlog_debug("backstore->flakes_per_nugget = %"PRIu32, backstore->flakes_per_nugget));
 
     // And finally, we need the individual byte size of each flake
     blfs_header_t * header_flakesizebytes = blfs_open_header(backstore, BLFS_HEAD_HEADER_TYPE_FLAKESIZE_BYTES);
-    uint32_t flake_size_bytes = *((uint32_t *) header_flakesizebytes->data);
+    backstore->flake_size_bytes = *((uint32_t *) header_flakesizebytes->data);
 
-    IFDEBUG(dzlog_debug("flake_size_bytes = %"PRIu32, flake_size_bytes));
+    IFDEBUG(dzlog_debug("backstore->flake_size_bytes = %"PRIu32, backstore->flake_size_bytes));
     IFDEBUG(dzlog_debug("header_last->data_length = %"PRIu64, header_last->data_length));
 
     // XXX: Maybe I should add some overflow protection here and elsewhere... maybe later
 
     backstore->kcs_real_offset = header_last->data_offset + header_last->data_length;
-    backstore->tj_real_offset  = backstore->kcs_real_offset + num_nuggets * BLFS_HEAD_BYTES_KEYCOUNT;
+    backstore->tj_real_offset  = backstore->kcs_real_offset + backstore->num_nuggets * BLFS_HEAD_BYTES_KEYCOUNT;
 
     IFDEBUG(dzlog_debug("backstore->kcs_real_offset = %"PRIu64, backstore->kcs_real_offset));
     IFDEBUG(dzlog_debug("backstore->tj_real_offset = %"PRIu64, backstore->tj_real_offset));
 
-    backstore->kcs_journaled_offset    = backstore->tj_real_offset + num_nuggets * CEIL(flakes_per_nugget, BITS_IN_A_BYTE);
+    backstore->kcs_journaled_offset    = backstore->tj_real_offset + backstore->num_nuggets * CEIL(backstore->flakes_per_nugget, BITS_IN_A_BYTE);
     backstore->tj_journaled_offset     = backstore->kcs_journaled_offset + BLFS_HEAD_BYTES_KEYCOUNT;
-    backstore->nugget_journaled_offset = backstore->tj_journaled_offset + CEIL(flakes_per_nugget, BITS_IN_A_BYTE);
+    backstore->nugget_journaled_offset = backstore->tj_journaled_offset + CEIL(backstore->flakes_per_nugget, BITS_IN_A_BYTE);
 
     IFDEBUG(dzlog_debug("backstore->kcs_journaled_offset = %"PRIu64, backstore->kcs_journaled_offset));
     IFDEBUG(dzlog_debug("backstore->tj_journaled_offset = %"PRIu64, backstore->tj_journaled_offset));
     IFDEBUG(dzlog_debug("backstore->nugget_journaled_offset = %"PRIu64, backstore->nugget_journaled_offset));
 
-    backstore->nugget_size_bytes = flakes_per_nugget * flake_size_bytes;
+    backstore->nugget_size_bytes = backstore->flakes_per_nugget * backstore->flake_size_bytes;
     IFDEBUG(dzlog_debug("backstore->nugget_size_bytes = %"PRIu64, backstore->nugget_size_bytes));
     
     backstore->body_real_offset = backstore->nugget_journaled_offset + backstore->nugget_size_bytes;
     IFDEBUG(dzlog_debug("backstore->body_real_offset = %"PRIu64, backstore->body_real_offset));
 
-    backstore->writeable_size_actual = num_nuggets * backstore->nugget_size_bytes;
+    backstore->writeable_size_actual = backstore->num_nuggets * backstore->nugget_size_bytes;
     assert(backstore->writeable_size_actual <= ((int64_t) backstore->file_size_actual) - backstore->body_real_offset);
     IFDEBUG(dzlog_debug("file_size_actual - body_real_offset => %"PRId64, ((int64_t) backstore->file_size_actual) - ((int64_t) backstore->body_real_offset)));
     IFDEBUG(dzlog_debug("backstore->writeable_size_actual = %"PRIu64, backstore->writeable_size_actual));
@@ -217,6 +210,10 @@ blfs_backstore_t * blfs_backstore_create(const char * path, uint64_t file_size_b
     backstore->nugget_journaled_offset = 0;
     backstore->nugget_size_bytes = 0;
     backstore->writeable_size_actual = 0;
+    backstore->file_size_actual = 0;
+    backstore->flake_size_bytes = 0;
+    backstore->num_nuggets = 0;
+    backstore->flakes_per_nugget = 0;
 
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 

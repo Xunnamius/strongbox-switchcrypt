@@ -21,10 +21,10 @@ typedef struct bitmask_t
  *
  * The init_mask parameter is optional. If you want to initialize a bitmask of
  * a certain length to all zeroes, just pass NULL for init_mask. Otherwise, you
- * should pass in a pointer to `length` bytes.
+ * should pass in a pointer to `length` bytes. This pointer is not free'd for
+ * you.
  *
- * Note that length CANNOT be <= 0. Also note that init_mask should not be a
- * pointer to stack memory (i.e. &mask_data) or the behavior is undefined.
+ * Note that length CANNOT be <= 0.
  *
  * @param  init_mask Initial bitmask state (or NULL for all zeroes)
  * @param  length    Bitmask length (in bytes); e.g. length = 2 -> 16-bit mask

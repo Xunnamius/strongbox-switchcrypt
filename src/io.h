@@ -69,7 +69,7 @@ void blfs_backstore_write(blfs_backstore_t * backstore, const uint8_t * buffer, 
  *
  * @param  backstore    Buselfs_backstore instance
  * @param  buffer       Buffer that data will be copied into
- * @param  length          Number of bytes that will be read into the buffer
+ * @param  length       Number of bytes that will be read into the buffer
  * @param  offset       The read operation will begin at this offset in the backstore (relative to beginning of body)
  */
 void blfs_backstore_read_body(blfs_backstore_t * backstore, uint8_t * buffer, uint32_t length, uint64_t offset);

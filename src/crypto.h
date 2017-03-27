@@ -120,7 +120,6 @@ void blfs_chacha20_crypt(uint8_t * crypted_data,
  *
  * @param id
  * @param global_version
- * @returns 0 on successful verification, 1 on failure, -1 on problem
  */
 void blfs_globalversion_verify(uint64_t id, uint64_t global_version);
 
@@ -131,7 +130,6 @@ void blfs_globalversion_verify(uint64_t id, uint64_t global_version);
  *
  * @param id
  * @param global_version
- * @returns 0 on successful commit, 1 on failure/problem
  */
 void blfs_globalversion_commit(uint64_t id, uint64_t global_version);
 

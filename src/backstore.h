@@ -141,9 +141,13 @@ typedef struct blfs_backstore_t
     uint64_t tj_journaled_offset;
     uint64_t nugget_journaled_offset;
 
-    uint64_t nugget_size_bytes;
+    uint32_t nugget_size_bytes;
+    uint32_t flake_size_bytes;
     uint64_t writeable_size_actual;
     uint64_t file_size_actual;
+
+    uint32_t num_nuggets;
+    uint32_t flakes_per_nugget;
 
     uint8_t master_secret[BLFS_CRYPTO_BYTES_KDF_OUT];
 

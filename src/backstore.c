@@ -236,11 +236,7 @@ blfs_keycount_t * blfs_open_keycount(blfs_backstore_t * backstore, uint64_t nugg
         count->data_offset = backstore->kcs_real_offset + nugget_index * BLFS_HEAD_BYTES_KEYCOUNT;
         count->data_length = BLFS_HEAD_BYTES_KEYCOUNT;
 
-        uint8_t * count_data = malloc(sizeof(uint8_t) * count->data_length);
-
-        if(count_data == NULL)
-            Throw(EXCEPTION_ALLOC_FAILURE);
-
+        uint8_t count_data[count->data_length] = { 0x00 };
         blfs_backstore_read(backstore, count_data, count->data_length, count->data_offset);
 
         count->keycount = *((uint64_t *) count_data);
@@ -257,8 +253,6 @@ blfs_keycount_t * blfs_open_keycount(blfs_backstore_t * backstore, uint64_t nugg
         KHASH_CACHE_PUT(BLFS_KHASH_KCS_CACHE_NAME, backstore->cache_kcs_counts, nugget_index, count);
 
         IFDEBUG(dzlog_debug("keycount for nugget id %"PRIu64" was added to the cache", nugget_index));
-
-        free(count_data);
     }
 
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
@@ -316,13 +310,10 @@ blfs_tjournal_entry_t * blfs_create_tjournal_entry(blfs_backstore_t * backstore,
     if(entry == NULL)
         Throw(EXCEPTION_ALLOC_FAILURE);
 
-    blfs_header_t * flakes_per_nugget_header = blfs_open_header(backstore, BLFS_HEAD_HEADER_TYPE_FLAKESPERNUGGET);
-    uint32_t flakes_per_nugget = *((uint32_t *) flakes_per_nugget_header->data);
-
-    IFDEBUG(dzlog_debug("flakes_per_nugget = %"PRIu32, flakes_per_nugget));
+    IFDEBUG(dzlog_debug("backstore->flakes_per_nugget = %"PRIu32, backstore->flakes_per_nugget));
 
     entry->nugget_index = nugget_index;
-    entry->data_length = CEIL(flakes_per_nugget, BITS_IN_A_BYTE);
+    entry->data_length = CEIL(backstore->flakes_per_nugget, BITS_IN_A_BYTE);
     entry->data_offset = backstore->tj_real_offset + nugget_index * entry->data_length;
 
     IFDEBUG(dzlog_debug("created new blfs_tjournal_entry_t entry object"));
@@ -361,13 +352,10 @@ blfs_tjournal_entry_t * blfs_open_tjournal_entry(blfs_backstore_t * backstore, u
         if(entry == NULL)
             Throw(EXCEPTION_ALLOC_FAILURE);
 
-        blfs_header_t * flakes_per_nugget_header = blfs_open_header(backstore, BLFS_HEAD_HEADER_TYPE_FLAKESPERNUGGET);
-        uint32_t flakes_per_nugget = *((uint32_t *) flakes_per_nugget_header->data);
-
-        IFDEBUG(dzlog_debug("flakes_per_nugget = %"PRIu32, flakes_per_nugget));
+        IFDEBUG(dzlog_debug("backstore->flakes_per_nugget = %"PRIu32, backstore->flakes_per_nugget));
 
         entry->nugget_index = nugget_index;
-        entry->data_length = CEIL(flakes_per_nugget, BITS_IN_A_BYTE);
+        entry->data_length = CEIL(backstore->flakes_per_nugget, BITS_IN_A_BYTE);
         entry->data_offset = backstore->tj_real_offset + nugget_index * entry->data_length;
 
         IFDEBUG(dzlog_debug("opened blfs_tjournal_entry_t entry object"));
@@ -376,10 +364,7 @@ blfs_tjournal_entry_t * blfs_open_tjournal_entry(blfs_backstore_t * backstore, u
         IFDEBUG(dzlog_debug("entry->data_offset = %"PRIu64, entry->data_offset));
         IFDEBUG(dzlog_debug("entry->data_length = %"PRIu64, entry->data_length));
 
-        uint8_t * mask_data = malloc(sizeof(uint8_t) * entry->data_length);
-
-        if(mask_data == NULL)
-            Throw(EXCEPTION_ALLOC_FAILURE);
+        uint8_t mask_data[entry->data_length] = { 0x00 };
 
         blfs_backstore_read(backstore, mask_data, entry->data_length, entry->data_offset);
         entry->bitmask = bitmask_init(mask_data, entry->data_length);
@@ -456,10 +441,7 @@ void blfs_fetch_journaled_data(blfs_backstore_t * backstore,
     jcount->data_length = BLFS_HEAD_BYTES_KEYCOUNT;
     jcount->data_offset = backstore->kcs_journaled_offset;
 
-    uint8_t * jcount_data = malloc(sizeof(*jcount_data) * jcount->data_length);
-
-    if(jcount_data == NULL)
-        Throw(EXCEPTION_ALLOC_FAILURE);
+    uint8_t jcount_data[jcount->data_length] = { 0x00 };
 
     blfs_backstore_read(backstore, jcount_data, jcount->data_length, jcount->data_offset);
 
@@ -484,10 +466,7 @@ void blfs_fetch_journaled_data(blfs_backstore_t * backstore,
     IFDEBUG(dzlog_debug("jentry->data_offset = %"PRIu64, jentry->data_offset));
     IFDEBUG(dzlog_debug("jentry->data_length = %"PRIu64, jentry->data_length));
 
-    uint8_t * mask_data = malloc(sizeof(uint8_t) * jentry->data_length);
-
-    if(mask_data == NULL)
-        Throw(EXCEPTION_ALLOC_FAILURE);
+    uint8_t mask_data[jentry->data_length] = { 0x00 };
 
     blfs_backstore_read(backstore, mask_data, jentry->data_length, jentry->data_offset);
     jentry->bitmask = bitmask_init(mask_data, jentry->data_length);

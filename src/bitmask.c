@@ -23,10 +23,13 @@ bitmask_t * bitmask_init(uint8_t * init_mask, size_t length)
         Throw(EXCEPTION_ALLOC_FAILURE);
 
     bitmask->byte_length = length;
-    bitmask->mask = init_mask == NULL ? calloc(length, sizeof(uint8_t)) : init_mask;
+    bitmask->mask = calloc(length, sizeof(uint8_t));
 
     if(bitmask->mask == NULL)
         Throw(EXCEPTION_ALLOC_FAILURE);
+
+    if(init_mask != NULL)
+        memcpy(bitmask->mask, init_mask, length);
 
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
     return bitmask;

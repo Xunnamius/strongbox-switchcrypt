@@ -256,6 +256,9 @@ void test_blfs_backstore_create_work_as_expected(void)
     TEST_ASSERT_EQUAL_UINT64(0, backstore->body_real_offset);
     TEST_ASSERT_EQUAL_UINT64(0, backstore->writeable_size_actual);
     TEST_ASSERT_EQUAL_UINT64(0, backstore->nugget_size_bytes);
+    TEST_ASSERT_EQUAL_UINT64(0, backstore->flake_size_bytes);
+    TEST_ASSERT_EQUAL_UINT64(0, backstore->num_nuggets);
+    TEST_ASSERT_EQUAL_UINT64(0, backstore->flakes_per_nugget);
     TEST_ASSERT_EQUAL_UINT64(4096, backstore->file_size_actual);
 }
 
@@ -284,6 +287,9 @@ void test_blfs_backstore_open_work_as_expected(void)
     TEST_ASSERT_EQUAL_UINT64(161, backstore->body_real_offset);
     TEST_ASSERT_EQUAL_UINT64(48, backstore->writeable_size_actual);
     TEST_ASSERT_EQUAL_UINT64(16, backstore->nugget_size_bytes);
+    TEST_ASSERT_EQUAL_UINT64(8, backstore->flake_size_bytes);
+    TEST_ASSERT_EQUAL_UINT64(3, backstore->num_nuggets);
+    TEST_ASSERT_EQUAL_UINT64(2, backstore->flakes_per_nugget);
     TEST_ASSERT_EQUAL_UINT64(209, backstore->file_size_actual);
 }
 

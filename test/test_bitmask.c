@@ -59,20 +59,8 @@ void test_bitmask_fini_works_as_expected(void)
 {
     bitmask_fini(bitmask);
 
-    // WARNING: init_mask AS A POINTER TO STACK MEMORY IS UNDEFINED BEHAVIOR
-    //uint8_t data1[5] = { 0x01, 0x02, 0x03, 0x04, 0x05 };
-    //bitmask = bitmask_init(data1, sizeof data1);
-    //bitmask_fini(bitmask);
-
-    uint8_t * data = malloc(sizeof(uint8_t) * 5);
-
-    data[0] = 0x03;
-    data[1] = 0x05;
-    data[2] = 0x04;
-    data[3] = 0x01;
-    data[4] = 0x02;
-
-    bitmask = bitmask_init(data, 5);
+    uint8_t data[] = { 0x01, 0x02, 0x03, 0x04, 0x05 };
+    bitmask = bitmask_init(data, sizeof data);
     
     // XXX: The below is called by tearDown()
     //bitmask_fini(bitmask);

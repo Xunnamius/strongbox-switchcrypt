@@ -248,38 +248,120 @@ void get_flake_key_using_keychain(uint8_t * flake_key,
     memcpy(flake_key, fk, BLFS_CRYPTO_BYTES_FLAKE_TAG_KEY);
 }
 
-int buse_read(void * buffer, uint32_t len, uint64_t offset, void * userdata)
+int buse_read(void * buffer, uint32_t length, uint64_t absolute_offset, void * userdata)
 {
     IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
 
     buselfs_state_t * buselfs_state = (buselfs_state_t *) userdata;
 
-    (void) buffer;
-    (void) len;
-    (void) offset;
-    (void) buselfs_state;
-    (void) verify_in_merkle_tree;
+    // Verify the in-memory GV in the Merkle tree
+    blfs_header_t * tpmgv_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_TPMGLOBALVER);
+    blfs_globalversion_verify(BLFS_TPM_ID, *(uint64_t *) tpmgv_header->data);
 
-    // FIXME: Handle reads and deal with caching
+    uint_fast32_t nugget_size       = buselfs_state->backstore->nugget_size_bytes;
+    uint_fast32_t flake_size        = buselfs_state->backstore->flake_size_bytes;
+    uint_fast32_t num_nuggets       = buselfs_state->backstore->num_nuggets;
+    uint_fast32_t flakes_per_nugget = buselfs_state->backstore->flakes_per_nugget;
+
+    uint_fast32_t mt_offset = 2 * num_nuggets + 8;
+
+    uint_fast32_t nugget_offset          = absolute_offset / nugget_size; // nugget_index
+    uint_fast32_t nugget_internal_offset = absolute_offset % nugget_size; // internal point at which to start within nug
+
+    while(length != 0)
+    {
+        assert(length > 0);
+
+        uint8_t nugget_key[BLFS_CRYPTO_BYTES_KDF_OUT] = { 0x00 };
+        
+        uint_fast32_t internal_read_length = MIN(length, nugget_size - nugget_internal_offset);
+        uint_fast32_t first_affected_flake = nugget_internal_offset / flake_size;
+        uint_fast32_t num_affected_flakes =
+            CEIL((nugget_internal_offset + internal_read_length), flake_size) - first_affected_flake;
+
+        blfs_keycount_t * count = blfs_open_keycount(buselfs_state->backstore, nugget_offset);
+
+        uint8_t nugget_data[nugget_size]  = { 0x00 };
+
+        blfs_backstore_read_body(buselfs_state->backstore, nugget_data, nugget_offset * nugget_size, internal_read_length);
+
+        if(BLFS_DEFAULT_DISABLE_KEY_CACHING)
+            blfs_nugget_key_from_data(nugget_key, buselfs_state->backstore->master_secret, nugget_offset);
+        else
+            get_nugget_key_using_index(nugget_key, buselfs_state, nugget_offset);
+
+        for(uint_fast32_t flake_index = first_affected_flake; flake_index < num_affected_flakes; flake_index++)
+        {
+            uint8_t flake_key[BLFS_CRYPTO_BYTES_FLAKE_TAG_KEY] = { 0x00 };
+            uint8_t tag[BLFS_CRYPTO_BYTES_FLAKE_TAG_OUT] = { 0x00 };
+
+            if(BLFS_DEFAULT_DISABLE_KEY_CACHING)
+                blfs_poly1305_key_from_data(flake_key, nugget_key, flake_index, count->keycount);
+            else
+                get_flake_key_using_keychain(flake_key, buselfs_state, nugget_offset, flake_index, count->keycount);
+
+            blfs_poly1305_generate_tag(tag, nugget_data + flake_index * flake_size, flake_size, flake_key);
+            verify_in_merkle_tree(tag, sizeof tag, mt_offset + nugget_offset * flakes_per_nugget + flake_index, buselfs_state);
+        }
+
+        buffer += internal_read_length;
+        length -= internal_read_length;
+        nugget_internal_offset = 0;
+        nugget_offset++;
+    }
 
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
     return 0;
 }
 
-int buse_write(const void * buffer, uint32_t len, uint64_t offset, void * userdata)
+int buse_write(const void * buffer, uint32_t length, uint64_t absolute_offset, void * userdata)
 {
     IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
 
     buselfs_state_t * buselfs_state = (buselfs_state_t *) userdata;
 
     (void) buffer;
-    (void) len;
-    (void) offset;
+    (void) length;
+    (void) absolute_offset;
     (void) buselfs_state;
     (void) update_in_merkle_tree;
     (void) blfs_rekey_nugget_journaled_with_write;
 
-    // FIXME: Handle writes and deal with caching
+    buselfs_state_t * buselfs_state = (buselfs_state_t *) userdata;
+
+    // Verify the in-memory GV in the Merkle tree
+    blfs_header_t * tpmgv_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_TPMGLOBALVER);
+    blfs_globalversion_verify(BLFS_TPM_ID, *(uint64_t *) tpmgv_header->data);
+    
+    // For all affected nuggets FIXME
+    //     For all affected flakes
+    //         Check p1305 tags in MT (grab with caching unless disabled)
+    // Message loop: Chacha20 write data using keycount
+
+    uint32_t buffer_size = length;
+    uint32_t nugget_size = buselfs_state->backstore->nugget_size_bytes;
+    uint32_t flake_size  = buselfs_state->backstore->flake_size_bytes;
+
+    uint64_t nugget_offset          = absolute_offset / nugget_size;
+    uint64_t nugget_internal_offset = absolute_offset % nugget_size;
+
+    while(length != 0)
+    {
+        assert(length > 0);
+
+        uint64_t internal_message_length = MIN(length, nugget_size - nugget_internal_offset);
+        uint64_t first_affected_flake = nugget_internal_offset / flake_size;
+        uint64_t num_affected_flakes  =
+            CEIL((nugget_internal_offset + internal_message_length), flake_size) - first_affected_flake;
+
+        blfs_tjournal_entry_t * entry = blfs_open_tjournal_entry(buselfs_state->backstore, nugget_offset);
+
+        if(bitmask_are_bits_set(entry->bitmask, first_affected_flake, num_affected_flakes))
+        blfs_keycount_t * count = blfs_open_keycount(buselfs_state->backstore, nugget_offset);
+
+        // FIXME: deal with caching
+        (void) verify_in_merkle_tree;
+    }
 
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
     return 0;
@@ -324,43 +406,6 @@ void blfs_rekey_nugget_journaled(buselfs_state_t * buselfs_state, uint32_t rekey
 
     // Delete (AND FREE) and reinsert the nugget key and ALL THE keychains for
     // rekeying_nugget_index
-
-    /*
-    // Populate key cache (XXX: IRL, this might not be done on init/mount)
-    IFDEBUG(dzlog_debug("populating key cache..."));
-
-    // First with nugget keys:
-    // nugget_index => (nugget_key = master_secret+nugget_index)
-    for(uint32_t nugget_index = 0; nugget_index < numnuggets; nugget_index++)
-    {
-        uint8_t * nugget_key = malloc(sizeof(*nugget_key) * BLFS_CRYPTO_BYTES_KDF_OUT);
-        blfs_keycount_t * count;
-        
-        if(rekeying && rekeying_nugget_index == nugget_index)
-            count = &rekeying_count;
-        else
-            count = blfs_open_keycount(buselfs_state->backstore, nugget_index);
-
-        if(nugget_key == NULL)
-            Throw(EXCEPTION_ALLOC_FAILURE);
-
-        blfs_nugget_key_from_data(nugget_key, buselfs_state->backstore->master_secret, nugget_index);
-        add_index_to_key_cache(buselfs_state, nugget_index, nugget_key);
-
-        // Now with nugget keys:
-        // nugget_index||flake_index||associated_keycount => master_secret+nugget_index+associated_keycount+flake_index
-        for(uint32_t flake_index = 0; flake_index < flakespnug; flake_index++)
-        {
-            uint8_t * flake_key = malloc(sizeof(*flake_key) * BLFS_CRYPTO_BYTES_FLAKE_TAG_KEY);
-
-            if(flake_key == NULL)
-                Throw(EXCEPTION_ALLOC_FAILURE);
-
-            blfs_poly1305_key_from_data(flake_key, nugget_key, flake_index, count->keycount);
-            add_keychain_to_key_cache(buselfs_state, nugget_index, flake_index, count->keycount, flake_key);
-        }
-    }
-     */
 
     // Update the merkle tree entries
 
@@ -417,13 +462,9 @@ void blfs_soft_open(buselfs_state_t * buselfs_state, uint8_t cin_allow_insecure_
         Throw(EXCEPTION_BAD_PASSWORD);
 
     // Get the numnuggets, flakesize, and fpn headers (XXX: this is DEFINITELY endian-sensitive!!!)
-    blfs_header_t * numnuggets_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_NUMNUGGETS);
-    blfs_header_t * flakesize_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_FLAKESIZE_BYTES);
-    blfs_header_t * fpn_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_FLAKESPERNUGGET);
-
-    uint32_t flakesize = *(uint32_t *) flakesize_header->data;
-    uint32_t flakespnug = *(uint32_t *) fpn_header->data;
-    uint32_t numnuggets = *(uint32_t *) numnuggets_header->data;
+    uint32_t flakesize = buselfs_state->backstore->flake_size_bytes;
+    uint32_t flakespnug = buselfs_state->backstore->flakes_per_nugget;
+    uint32_t numnuggets = buselfs_state->backstore->num_nuggets;
 
     IFDEBUG(dzlog_debug("flakesize = %"PRIu32, flakesize));
     IFDEBUG(dzlog_debug("flakespnug = %"PRIu32, flakespnug));
@@ -435,10 +476,7 @@ void blfs_soft_open(buselfs_state_t * buselfs_state, uint8_t cin_allow_insecure_
     uint32_t rekeying_nugget_index;
     blfs_keycount_t rekeying_count;
     blfs_tjournal_entry_t rekeying_entry;
-    uint8_t * rekeying_nugget_data = calloc(buselfs_state->backstore->nugget_size_bytes, sizeof(*rekeying_nugget_data));
-
-    if(rekeying_nugget_data == NULL)
-        Throw(EXCEPTION_ALLOC_FAILURE);
+    uint8_t rekeying_nugget_data[buselfs_state->backstore->nugget_size_bytes] = { 0x00 };
 
     if(memcmp(rekeying_header->data, zero_rekeying, BLFS_HEAD_HEADER_BYTES_REKEYING) != 0)
     {
@@ -584,7 +622,10 @@ void blfs_soft_open(buselfs_state_t * buselfs_state, uint8_t cin_allow_insecure_
         {
             uint8_t flake_key[BLFS_CRYPTO_BYTES_FLAKE_TAG_KEY] = { 0x00 };
             uint8_t * tag = malloc(sizeof(*tag) * BLFS_CRYPTO_BYTES_FLAKE_TAG_OUT);
-            uint8_t flake_data[flakesize];
+            uint8_t flake_data[flakesize] = { 0x00 };
+
+            if(tag == NULL)
+                Throw(EXCEPTION_ALLOC_FAILURE);
 
             if(rekeying && rekeying_nugget_index == nugget_index)
             {
@@ -951,10 +992,8 @@ void blfs_run_mode_wipe(const char * backstore_path, uint8_t cin_allow_insecure_
     free(zeroed_state);
 
     uint64_t nugget_size_bytes = buselfs_state->backstore->nugget_size_bytes;
+    uint32_t numnuggets = buselfs_state->backstore->num_nuggets;
     zeroed_state = calloc(nugget_size_bytes, sizeof(*zeroed_state));
-
-    blfs_header_t * numnuggets_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_NUMNUGGETS);
-    uint32_t numnuggets = *(uint32_t *) numnuggets_header->data;
 
     for(uint32_t nugget_index = 0; nugget_index < numnuggets; nugget_index++)
     {
@@ -968,17 +1007,17 @@ void blfs_run_mode_wipe(const char * backstore_path, uint8_t cin_allow_insecure_
     // BLFS_HEAD_HEADER_TYPE_MTRH, BLFS_HEAD_HEADER_TYPE_TPMGLOBALVER, BLFS_HEAD_HEADER_TYPE_REKEYING, BLFS_HEAD_HEADER_BYTES_INITIALIZED
 
     blfs_header_t * mtrh_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_MTRH);
-    blfs_header_t * tmpgv_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_TPMGLOBALVER);
+    blfs_header_t * tpmgv_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_TPMGLOBALVER);
     blfs_header_t * rekeying_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_REKEYING);
     blfs_header_t * init_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_INITIALIZED);
     
     memset(mtrh_header->data, 0, BLFS_HEAD_HEADER_BYTES_MTRH);
-    memset(tmpgv_header->data, 0, BLFS_HEAD_HEADER_BYTES_TPMGLOBALVER);
+    memset(tpmgv_header->data, 0, BLFS_HEAD_HEADER_BYTES_TPMGLOBALVER);
     memset(rekeying_header->data, 0, BLFS_HEAD_HEADER_BYTES_REKEYING);
     init_header->data[0] = BLFS_HEAD_WAS_WIPED_VALUE;
     
     blfs_commit_header(buselfs_state->backstore, mtrh_header);
-    blfs_commit_header(buselfs_state->backstore, tmpgv_header);
+    blfs_commit_header(buselfs_state->backstore, tpmgv_header);
     blfs_commit_header(buselfs_state->backstore, rekeying_header);
     blfs_commit_header(buselfs_state->backstore, init_header);
     blfs_globalversion_commit(BLFS_TPM_ID, 0);

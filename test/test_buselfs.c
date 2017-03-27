@@ -170,6 +170,12 @@ void test_blfs_rekey_nugget_journaled_with_write_works_as_expected(void)
     TEST_IGNORE();
 }
 
+void test_adding_and_evicting_from_the_keycache_works_as_expected(void)
+{
+    // add, add, get, get, add, add, get, get
+    TEST_IGNORE();
+}
+
 // XXX: The password used was "t" but almost no matter what you input the test will win
 // XXX: Don't forget to also test using the correct password!
 void test_blfs_soft_open_throws_exception_on_invalid_password(void)
@@ -252,7 +258,11 @@ void test_blfs_soft_open_works_as_expected(void)
     TEST_ASSERT_EQUAL_UINT64(161, buselfs_state->backstore->body_real_offset);
     TEST_ASSERT_EQUAL_UINT64(48, buselfs_state->backstore->writeable_size_actual);
     TEST_ASSERT_EQUAL_UINT64(16, buselfs_state->backstore->nugget_size_bytes);
+    TEST_ASSERT_EQUAL_UINT64(8, backstore->flake_size_bytes);
+    TEST_ASSERT_EQUAL_UINT64(3, backstore->num_nuggets);
+    TEST_ASSERT_EQUAL_UINT64(2, backstore->flakes_per_nugget);
     TEST_ASSERT_EQUAL_UINT64(209, buselfs_state->backstore->file_size_actual);
+
 
     blfs_header_t * header_version = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_VERSION);
     blfs_header_t * header_salt = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_SALT);
@@ -374,6 +384,10 @@ void test_blfs_run_mode_create_works_when_backstore_exists_already(void)
     TEST_ASSERT_EQUAL_UINT64(1303, backstore->body_real_offset);
     TEST_ASSERT_EQUAL_UINT64(2784, backstore->writeable_size_actual);
     TEST_ASSERT_EQUAL_UINT64(24, backstore->nugget_size_bytes);
+    TEST_ASSERT_EQUAL_UINT64(2, backstore->flake_size_bytes);
+    TEST_ASSERT_EQUAL_UINT64(12, backstore->flakes_per_nugget);
+    TEST_ASSERT_EQUAL_UINT64(116, backstore->num_nuggets);
+    TEST_ASSERT_EQUAL_UINT64(1096, buselfs_state->backstore->file_size_actual);
 
     // Ensure headers are accurate
 
@@ -435,6 +449,10 @@ void test_blfs_run_mode_create_works_when_backstore_DNE(void)
     TEST_ASSERT_EQUAL_UINT64(1303, backstore->body_real_offset);
     TEST_ASSERT_EQUAL_UINT64(2784, backstore->writeable_size_actual);
     TEST_ASSERT_EQUAL_UINT64(24, backstore->nugget_size_bytes);
+    TEST_ASSERT_EQUAL_UINT64(8, backstore->flake_size_bytes);
+    TEST_ASSERT_EQUAL_UINT64(3, backstore->num_nuggets);
+    TEST_ASSERT_EQUAL_UINT64(2, backstore->flakes_per_nugget);
+    TEST_ASSERT_EQUAL_UINT64(209, buselfs_state->backstore->file_size_actual);
 
     blfs_backstore_close(buselfs_state->backstore);
 }
@@ -506,6 +524,10 @@ void test_blfs_run_mode_open_works_as_expected(void)
     TEST_ASSERT_EQUAL_UINT64(161, buselfs_state->backstore->body_real_offset);
     TEST_ASSERT_EQUAL_UINT64(48, buselfs_state->backstore->writeable_size_actual);
     TEST_ASSERT_EQUAL_UINT64(16, buselfs_state->backstore->nugget_size_bytes);
+    TEST_ASSERT_EQUAL_UINT64(209, buselfs_state->backstore->file_size_actual);
+    TEST_ASSERT_EQUAL_UINT64(8, backstore->flake_size_bytes);
+    TEST_ASSERT_EQUAL_UINT64(3, backstore->num_nuggets);
+    TEST_ASSERT_EQUAL_UINT64(2, backstore->flakes_per_nugget);
     TEST_ASSERT_EQUAL_UINT64(209, buselfs_state->backstore->file_size_actual);
 
     blfs_backstore_close(buselfs_state->backstore);
