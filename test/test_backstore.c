@@ -48,6 +48,10 @@ blfs_backstore_t * fake_initialize_backstore(blfs_backstore_t * backstore)
     backstore->nugget_journaled_offset = 12;
 
     backstore->nugget_size_bytes = 5;
+    backstore->flake_size_bytes = 5;
+
+    backstore->num_nuggets = 2;
+    backstore->flakes_per_nugget = 3;
 
     return backstore;
 }
@@ -270,34 +274,29 @@ void test_blfs_open_tjournal_entry_works_as_expected(void)
     blfs_backstore_t bs;
     blfs_backstore_t * backstore = fake_initialize_backstore(&bs);
 
-    uint8_t expected_fpn[BLFS_HEAD_HEADER_BYTES_FLAKESPERNUGGET] = { 0x0B, 0x00, 0x00, 0x00 };
-    uint8_t expected_ones[2] = { 0xFF, 0xFF };
-    uint8_t expected_zeroes[2] = { 0x00, 0x00 };
+    uint8_t expected_ones[] = { 0xFF };
+    uint8_t expected_zeroes[] = { 0x00 };
 
-    blfs_backstore_read_Expect(backstore, NULL, BLFS_HEAD_HEADER_BYTES_FLAKESPERNUGGET, 0x60);
+    blfs_backstore_read_Expect(backstore, NULL, 1, backstore->tj_real_offset + nugget_index);
     blfs_backstore_read_IgnoreArg_buffer();
-    blfs_backstore_read_ReturnArrayThruPtr_buffer(expected_fpn, BLFS_HEAD_HEADER_BYTES_FLAKESPERNUGGET);
-
-    blfs_backstore_read_Expect(backstore, NULL, 2, backstore->tj_real_offset + nugget_index * 2);
-    blfs_backstore_read_IgnoreArg_buffer();
-    blfs_backstore_read_ReturnArrayThruPtr_buffer(expected_zeroes, 2);
+    blfs_backstore_read_ReturnArrayThruPtr_buffer(expected_zeroes, 1);
 
     blfs_tjournal_entry_t * actual_tjournal_entry = blfs_open_tjournal_entry(backstore, nugget_index);
 
     TEST_ASSERT_EQUAL_UINT(nugget_index, actual_tjournal_entry->nugget_index);
-    TEST_ASSERT_EQUAL_UINT(2, actual_tjournal_entry->data_length);
-    TEST_ASSERT_EQUAL_UINT(backstore->tj_real_offset + nugget_index * 2, actual_tjournal_entry->data_offset);
+    TEST_ASSERT_EQUAL_UINT(1, actual_tjournal_entry->data_length);
+    TEST_ASSERT_EQUAL_UINT(backstore->tj_real_offset + nugget_index, actual_tjournal_entry->data_offset);
     TEST_ASSERT_EQUAL_MEMORY(expected_zeroes, actual_tjournal_entry->bitmask->mask, actual_tjournal_entry->data_length);
 
-    blfs_backstore_read_Expect(backstore, NULL, 2, backstore->tj_real_offset);
+    blfs_backstore_read_Expect(backstore, NULL, 1, backstore->tj_real_offset);
     blfs_backstore_read_IgnoreArg_buffer();
-    blfs_backstore_read_ReturnArrayThruPtr_buffer(expected_ones, 2);
+    blfs_backstore_read_ReturnArrayThruPtr_buffer(expected_ones, 1);
 
     blfs_tjournal_entry_t * actual_tjournal_entry2 = blfs_open_tjournal_entry(backstore, 0);
 
     TEST_ASSERT_EQUAL_UINT(0, actual_tjournal_entry2->nugget_index);
     TEST_ASSERT_EQUAL_UINT(backstore->tj_real_offset, actual_tjournal_entry2->data_offset);
-    TEST_ASSERT_EQUAL_UINT(2, actual_tjournal_entry2->data_length);
+    TEST_ASSERT_EQUAL_UINT(1, actual_tjournal_entry2->data_length);
     TEST_ASSERT_EQUAL_MEMORY(expected_ones, actual_tjournal_entry2->bitmask->mask, actual_tjournal_entry2->data_length);
 }
 
@@ -307,13 +306,8 @@ void test_blfs_open_and_close_tjournal_entry_functions_cache_properly(void)
     blfs_backstore_t bs;
     blfs_backstore_t * backstore = fake_initialize_backstore(&bs);
 
-    uint8_t expected_fpn[BLFS_HEAD_HEADER_BYTES_FLAKESPERNUGGET] = { 0x08, 0x00, 0x00, 0x00 };
     uint8_t expected_ones[1] = { 0xFF };
     uint8_t * expected_zeroes = calloc(1, sizeof(uint8_t));
-
-    blfs_backstore_read_Expect(backstore, NULL, BLFS_HEAD_HEADER_BYTES_FLAKESPERNUGGET, 0x60);
-    blfs_backstore_read_IgnoreArg_buffer();
-    blfs_backstore_read_ReturnArrayThruPtr_buffer(expected_fpn, BLFS_HEAD_HEADER_BYTES_FLAKESPERNUGGET);
 
     blfs_backstore_read_Expect(backstore, NULL, 1, backstore->tj_real_offset + nugget_index);
     blfs_backstore_read_IgnoreArg_buffer();
@@ -342,18 +336,13 @@ void test_blfs_create_tjournal_entry_works_as_expected(void)
     blfs_backstore_t bs;
     blfs_backstore_t * backstore = fake_initialize_backstore(&bs);
 
-    uint8_t expected_fpn[BLFS_HEAD_HEADER_BYTES_FLAKESPERNUGGET] = { 0x0B, 0x00, 0x00, 0x00 };
-    uint8_t expected_zeroes[2] = { 0x00, 0x00 };
-
-    blfs_backstore_read_Expect(backstore, NULL, BLFS_HEAD_HEADER_BYTES_FLAKESPERNUGGET, 0x60);
-    blfs_backstore_read_IgnoreArg_buffer();
-    blfs_backstore_read_ReturnArrayThruPtr_buffer(expected_fpn, BLFS_HEAD_HEADER_BYTES_FLAKESPERNUGGET);
+    uint8_t expected_zeroes[] = { 0x00 };
 
     blfs_tjournal_entry_t * tjournal_entry = blfs_create_tjournal_entry(backstore, nugget_index);
 
     TEST_ASSERT_EQUAL_UINT(nugget_index, tjournal_entry->nugget_index);
-    TEST_ASSERT_EQUAL_UINT(backstore->tj_real_offset + 2 * nugget_index, tjournal_entry->data_offset);
-    TEST_ASSERT_EQUAL_UINT(2, tjournal_entry->data_length);
+    TEST_ASSERT_EQUAL_UINT(backstore->tj_real_offset + nugget_index, tjournal_entry->data_offset);
+    TEST_ASSERT_EQUAL_UINT(1, tjournal_entry->data_length);
     TEST_ASSERT_EQUAL_MEMORY(expected_zeroes, tjournal_entry->bitmask->mask, tjournal_entry->data_length);
 }
 
@@ -362,12 +351,6 @@ void test_blfs_create_tjournal_entry_throws_exception_if_nugget_in_cache(void)
     int nugget_index = 60;
     blfs_backstore_t bs;
     blfs_backstore_t * backstore = fake_initialize_backstore(&bs);
-
-    uint8_t expected_fpn[BLFS_HEAD_HEADER_BYTES_FLAKESPERNUGGET] = { 0x0B, 0x00, 0x00, 0x00 };
-
-    blfs_backstore_read_Expect(backstore, NULL, BLFS_HEAD_HEADER_BYTES_FLAKESPERNUGGET, 0x60);
-    blfs_backstore_read_IgnoreArg_buffer();
-    blfs_backstore_read_ReturnArrayThruPtr_buffer(expected_fpn, BLFS_HEAD_HEADER_BYTES_FLAKESPERNUGGET);
 
     (void) blfs_create_tjournal_entry(backstore, nugget_index);
 

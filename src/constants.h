@@ -134,7 +134,7 @@ __extension__ ({ \
 //////////////
 
 #ifndef BLFS_DEFAULT_DISABLE_KEY_CACHING
-#define BLFS_DEFAULT_DISABLE_KEY_CACHING        FALSE // It might be faster just to recompute...
+#define BLFS_DEFAULT_DISABLE_KEY_CACHING        TRUE // It might be faster just to recompute...
 #endif
 
 #define BLFS_DEFAULT_BYTES_FLAKE                4096U

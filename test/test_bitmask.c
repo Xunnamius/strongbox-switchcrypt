@@ -336,3 +336,46 @@ void test_bitmask_are_bits_set_returns_0_on_0_length_parameter(void)
     TEST_ASSERT_EQUAL_INT(0, bitmask_are_bits_set(bitmask, 11, 0));
     TEST_ASSERT_EQUAL_INT(0, bitmask_are_bits_set(bitmask, 31, 0));
 }
+
+void test_bitmask_any_bits_set_checks_expected_bits(void)
+{
+    TEST_ASSERT_EQUAL_INT(0, bitmask_any_bits_set(bitmask, 0, 5));
+    TEST_ASSERT_EQUAL_INT(0, bitmask_any_bits_set(bitmask, 28, 4));
+    TEST_ASSERT_EQUAL_INT(0, bitmask_any_bits_set(bitmask, 16, 8));
+
+    bitmask_set_bits(bitmask, 4, 6);
+    bitmask_set_bits(bitmask, 28, 4);
+
+    TEST_ASSERT_EQUAL_INT(1, bitmask_any_bits_set(bitmask, 0, 5));
+    
+    TEST_ASSERT_EQUAL_INT(1, bitmask_any_bits_set(bitmask, 5, 1));
+    TEST_ASSERT_EQUAL_INT(1, bitmask_any_bits_set(bitmask, 5, 27));
+    TEST_ASSERT_EQUAL_INT(0, bitmask_any_bits_set(bitmask, 10, 18));
+    TEST_ASSERT_EQUAL_INT(1, bitmask_any_bits_set(bitmask, 10, 19));
+}
+
+void test_bitmask_any_bits_set_checks_all_bits_when_length_32(void)
+{
+    TEST_ASSERT_EQUAL_INT(0, bitmask_any_bits_set(bitmask, 0, 32));
+    bitmask_set_mask(bitmask);
+    TEST_ASSERT_EQUAL_INT(1, bitmask_any_bits_set(bitmask, 0, 32));
+
+}
+
+void test_bitmask_any_bits_set_checks_bits_across_chars_properly(void)
+{
+    bitmask_set_bits(bitmask, 0, 5);
+
+    TEST_ASSERT_EQUAL_INT(1, bitmask_any_bits_set(bitmask, 0, 4));
+    TEST_ASSERT_EQUAL_INT(1, bitmask_any_bits_set(bitmask, 0, 6));
+    TEST_ASSERT_EQUAL_INT(1, bitmask_any_bits_set(bitmask, 0, 16));
+    TEST_ASSERT_EQUAL_INT(1, bitmask_any_bits_set(bitmask, 0, 32));
+}
+
+void test_bitmask_any_bits_set_returns_0_on_0_length_parameter(void)
+{
+    bitmask_set_mask(bitmask);
+    TEST_ASSERT_EQUAL_INT(0, bitmask_any_bits_set(bitmask, 0, 0));
+    TEST_ASSERT_EQUAL_INT(0, bitmask_any_bits_set(bitmask, 11, 0));
+    TEST_ASSERT_EQUAL_INT(0, bitmask_any_bits_set(bitmask, 31, 0));
+}

@@ -48,14 +48,15 @@ typedef struct buselfs_state_t
      * index [1, 7]: headers (excluding TPMGV, INITIALIZED and MTRH)
      * index [8, n+7]: keycounts
      * index [n+8, 2n+7]: transaction journal entries
-     * index [2n+8, 2n+7+(n*fpn)]: flake poly1305 tags 
+     * index [2n+8, 2n+7+(n*fpn)]: flake poly1305 tags
      */
     mt_t * merkle_tree;
     mt_hash_t merkle_tree_root_hash;
 } buselfs_state_t;
 
 // These are all the external caching functions:
-
+// XXX: These caches grow, but they never shrink, even though they DEFINITELY should during rekeying. This is a
+// memory leak. To be fixed later.
 void add_index_to_key_cache(buselfs_state_t * buselfs_state, uint32_t nugget_index, uint8_t * nugget_key);
 
 void add_keychain_to_key_cache(buselfs_state_t * buselfs_state,

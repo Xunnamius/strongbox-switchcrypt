@@ -236,7 +236,7 @@ blfs_keycount_t * blfs_open_keycount(blfs_backstore_t * backstore, uint64_t nugg
         count->data_offset = backstore->kcs_real_offset + nugget_index * BLFS_HEAD_BYTES_KEYCOUNT;
         count->data_length = BLFS_HEAD_BYTES_KEYCOUNT;
 
-        uint8_t count_data[count->data_length] = { 0x00 };
+        uint8_t count_data[count->data_length];
         blfs_backstore_read(backstore, count_data, count->data_length, count->data_offset);
 
         count->keycount = *((uint64_t *) count_data);
@@ -364,7 +364,7 @@ blfs_tjournal_entry_t * blfs_open_tjournal_entry(blfs_backstore_t * backstore, u
         IFDEBUG(dzlog_debug("entry->data_offset = %"PRIu64, entry->data_offset));
         IFDEBUG(dzlog_debug("entry->data_length = %"PRIu64, entry->data_length));
 
-        uint8_t mask_data[entry->data_length] = { 0x00 };
+        uint8_t mask_data[entry->data_length];
 
         blfs_backstore_read(backstore, mask_data, entry->data_length, entry->data_offset);
         entry->bitmask = bitmask_init(mask_data, entry->data_length);
@@ -441,7 +441,7 @@ void blfs_fetch_journaled_data(blfs_backstore_t * backstore,
     jcount->data_length = BLFS_HEAD_BYTES_KEYCOUNT;
     jcount->data_offset = backstore->kcs_journaled_offset;
 
-    uint8_t jcount_data[jcount->data_length] = { 0x00 };
+    uint8_t jcount_data[jcount->data_length];
 
     blfs_backstore_read(backstore, jcount_data, jcount->data_length, jcount->data_offset);
 
@@ -466,7 +466,7 @@ void blfs_fetch_journaled_data(blfs_backstore_t * backstore,
     IFDEBUG(dzlog_debug("jentry->data_offset = %"PRIu64, jentry->data_offset));
     IFDEBUG(dzlog_debug("jentry->data_length = %"PRIu64, jentry->data_length));
 
-    uint8_t mask_data[jentry->data_length] = { 0x00 };
+    uint8_t mask_data[jentry->data_length];
 
     blfs_backstore_read(backstore, mask_data, jentry->data_length, jentry->data_offset);
     jentry->bitmask = bitmask_init(mask_data, jentry->data_length);

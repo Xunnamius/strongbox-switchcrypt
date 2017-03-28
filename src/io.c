@@ -59,8 +59,10 @@ static blfs_backstore_t * backstore_setup_actual_pre(const char * path)
     IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
     IFDEBUG(dzlog_debug("creating new blfs_backstore_t backstore object"));
 
+    char * fpath = strdup(path);
+
     blfs_backstore_t init = {
-        .file_path        = strdup(path),
+        .file_path        = fpath,
         .file_name        = get_filename_from_path(fpath, BLFS_BACKSTORE_FILENAME_MAXLEN),
         .cache_headers    = kh_init(BLFS_KHASH_HEADERS_CACHE_NAME),
         .cache_kcs_counts = kh_init(BLFS_KHASH_KCS_CACHE_NAME),
@@ -109,7 +111,7 @@ void blfs_backstore_setup_actual_post(blfs_backstore_t * backstore)
 
     // We need to know the number of nuggets to calculate the other offsets
     blfs_header_t * header_numnuggets = blfs_open_header(backstore, BLFS_HEAD_HEADER_TYPE_NUMNUGGETS);
-    backstore->backstore->num_nuggets = *((uint32_t *) header_numnuggets->data);
+    backstore->num_nuggets = *((uint32_t *) header_numnuggets->data);
 
     IFDEBUG(dzlog_debug("backstore->num_nuggets = %"PRIu32, backstore->num_nuggets));
 
@@ -143,7 +145,7 @@ void blfs_backstore_setup_actual_post(blfs_backstore_t * backstore)
     IFDEBUG(dzlog_debug("backstore->nugget_journaled_offset = %"PRIu64, backstore->nugget_journaled_offset));
 
     backstore->nugget_size_bytes = backstore->flakes_per_nugget * backstore->flake_size_bytes;
-    IFDEBUG(dzlog_debug("backstore->nugget_size_bytes = %"PRIu64, backstore->nugget_size_bytes));
+    IFDEBUG(dzlog_debug("backstore->nugget_size_bytes = %"PRIu32, backstore->nugget_size_bytes));
     
     backstore->body_real_offset = backstore->nugget_journaled_offset + backstore->nugget_size_bytes;
     IFDEBUG(dzlog_debug("backstore->body_real_offset = %"PRIu64, backstore->body_real_offset));
@@ -210,7 +212,6 @@ blfs_backstore_t * blfs_backstore_create(const char * path, uint64_t file_size_b
     backstore->nugget_journaled_offset = 0;
     backstore->nugget_size_bytes = 0;
     backstore->writeable_size_actual = 0;
-    backstore->file_size_actual = 0;
     backstore->flake_size_bytes = 0;
     backstore->num_nuggets = 0;
     backstore->flakes_per_nugget = 0;

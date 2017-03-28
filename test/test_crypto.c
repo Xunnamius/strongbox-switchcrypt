@@ -156,6 +156,18 @@ void test_blfs_chacha20_crypt_crypts_properly(void)
     blfs_chacha20_crypt(crypted_data_round2, crypted_data, sizeof data, nugget_key, kcs_keycount, nugget_internal_offset);
 
     TEST_ASSERT_EQUAL_MEMORY(data, crypted_data_round2, 10);
+
+    uint8_t crypted_data_round3[5] = { 0x00 };
+
+    blfs_chacha20_crypt(crypted_data_round3, data, 5, nugget_key, kcs_keycount, nugget_internal_offset);
+
+    TEST_ASSERT_EQUAL_MEMORY(crypted_data, crypted_data_round3, 5);
+
+    uint8_t crypted_data_round4[5] = { 0x00 };
+
+    blfs_chacha20_crypt(crypted_data_round4, crypted_data_round3, 5, nugget_key, kcs_keycount, nugget_internal_offset);
+
+    TEST_ASSERT_EQUAL_MEMORY(data, crypted_data_round4, 5);
 }
 
 void test_blfs_chacha20_crypt_BIGLY(void)

@@ -128,4 +128,15 @@ void bitmask_toggle_bits(bitmask_t * bitmask, uint_fast32_t start_index, uint_fa
  */
 int bitmask_are_bits_set(bitmask_t * bitmask, uint_fast32_t start_index, uint_fast32_t length);
 
+/**
+ * Returns 1 if ANY of the `length` bits starting at `start_index` are set.
+ * Returns 0 otherwise.
+ *
+ * @param  bitmask
+ * @param  index
+ *
+ * @return         1 if any bit in the bit range is set, otherwise 0
+ */
+int bitmask_any_bits_set(bitmask_t * bitmask, uint_fast32_t start_index, uint_fast32_t length);
+
 #endif /* BITMASK_H_ */

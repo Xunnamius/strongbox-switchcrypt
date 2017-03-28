@@ -45,9 +45,9 @@ static const uint8_t buffer_init_backstore_state[/*209*/] = {
     0x8f, 0xa2, 0x0d, 0x92, 0x35, 0xd6, 0xc2, 0x4c, 0xe4, 0xbc, 0x4f, 0x47,
     0xa4, 0xce, 0x69, 0xa8, // BLFS_HEAD_HEADER_BYTES_SALT
 
-    0x4d, 0x8b, 0x58, 0xb9, 0x42, 0xef, 0xa7, 0x76, 0xce, 0x33, 0x64, 0x88,
-    0x6c, 0x8c, 0x8f, 0x82, 0x2c, 0xbd, 0x84, 0x8b, 0x7a, 0x47, 0xfe, 0x4f,
-    0x17, 0x95, 0xce, 0xc6, 0x59, 0x0b, 0x06, 0x71, // BLFS_HEAD_HEADER_BYTES_MTRH
+    0xdb, 0xf1, 0x88, 0xa8, 0x27, 0x2a, 0x17, 0xa7, 0xcd, 0xfe, 0xa1, 0xc0,
+    0x6f, 0x6f, 0x56, 0xdc, 0xc4, 0x58, 0xdb, 0xf6, 0xb1, 0x21, 0xa0, 0xe3,
+    0xa9, 0xe6, 0x37, 0x05, 0xf1, 0x7b, 0xd8, 0xac, // BLFS_HEAD_HEADER_BYTES_MTRH
 
     0x06, 0x07, 0x08, 0x09, 0x06, 0x07, 0x08, 0x09, // BLFS_HEAD_HEADER_BYTES_TPMGLOBALVER
 
@@ -151,36 +151,66 @@ void tearDown(void)
     unlink(BACKSTORE_FILE_PATH);
 }
 
-void test_buse_readwrite_works_as_expected(void)
+// XXX: Also need to test a delete function to fix the memory leak issue discussed in buselfs.h
+/*void test_adding_and_evicting_from_the_keycache_works_as_expected(void)
 {
-    // can execute a series of reads writes reads properly including edge cases, encryption, etc
-    TEST_IGNORE();
-}
+    free(buselfs_state->backstore);
+    
+    if(BLFS_DEFAULT_DISABLE_KEY_CACHING)
+        TEST_IGNORE();
 
-void test_blfs_rekey_nugget_journaled_zeroes_out_everything(void)
-{
-    // rekeying on a specific nugget on startup has the intended effect (0s written)
-    TEST_IGNORE();
-}
+    else
+    {
+        uint32_t nugget_index1 = 0;
+        uint32_t nugget_index2 = 55;
+        uint32_t nugget_index3 = 124;
 
-void test_blfs_rekey_nugget_journaled_with_write_works_as_expected(void)
-{
-    // rekeying on a specific nugget in the middle of the write operation
-    // puts the backstore in an expected state
-    TEST_IGNORE();
-}
+        uint8_t expected_nugget_key1[BLFS_CRYPTO_BYTES_KDF_OUT] = { 0xFF, 0xF0, 0x0F };
+        uint8_t expected_nugget_key2[BLFS_CRYPTO_BYTES_KDF_OUT] = { 0xC0, 0xAF, 0x44 };
+        uint8_t expected_nugget_key3[BLFS_CRYPTO_BYTES_KDF_OUT] = { 0xBE, 0xCD, 0x12 };
 
-void test_adding_and_evicting_from_the_keycache_works_as_expected(void)
-{
-    // add, add, get, get, add, add, get, get
-    TEST_IGNORE();
+        uint8_t expected_flake_key1[BLFS_CRYPTO_BYTES_FLAKE_TAG_KEY] = { 0xC0, 0xF1, 0x04 };
+        uint8_t expected_flake_key2[BLFS_CRYPTO_BYTES_FLAKE_TAG_KEY] = { 0xFD, 0xA0, 0xFE };
+        uint8_t expected_flake_key3[BLFS_CRYPTO_BYTES_FLAKE_TAG_KEY] = { 0xB4, 0xFC, 0xF2 };
+
+        uint8_t actual_nugget_key1[BLFS_CRYPTO_BYTES_KDF_OUT] = { 0x00 };
+        uint8_t actual_nugget_key2[BLFS_CRYPTO_BYTES_KDF_OUT] = { 0x00 };
+        uint8_t actual_nugget_key3[BLFS_CRYPTO_BYTES_KDF_OUT] = { 0x00 };
+
+        uint8_t actual_flake_key1[BLFS_CRYPTO_BYTES_FLAKE_TAG_KEY] = { 0x00 };
+        uint8_t actual_flake_key2[BLFS_CRYPTO_BYTES_FLAKE_TAG_KEY] = { 0x00 };
+        uint8_t actual_flake_key3[BLFS_CRYPTO_BYTES_FLAKE_TAG_KEY] = { 0x00 };
+
+        add_index_to_key_cache(buselfs_state, nugget_index1, expected_nugget_key1);
+        add_index_to_key_cache(buselfs_state, nugget_index2, expected_nugget_key2);
+        add_index_to_key_cache(buselfs_state, nugget_index3, expected_nugget_key3);
+
+        get_nugget_key_using_index(actual_nugget_key1, buselfs_state, nugget_index1);
+        get_nugget_key_using_index(actual_nugget_key2, buselfs_state, nugget_index2);
+        get_nugget_key_using_index(actual_nugget_key3, buselfs_state, nugget_index3);
+
+        add_keychain_to_key_cache(buselfs_state, nugget_index1, 7, 4, expected_flake_key1);
+        add_keychain_to_key_cache(buselfs_state, nugget_index2, 8, 5, expected_flake_key2);
+        add_keychain_to_key_cache(buselfs_state, nugget_index3, 9, 6, expected_flake_key3);
+
+        get_flake_key_using_keychain(actual_flake_key1, buselfs_state, nugget_index1, 7, 4);
+        get_flake_key_using_keychain(actual_flake_key2, buselfs_state, nugget_index2, 8, 5);
+        get_flake_key_using_keychain(actual_flake_key3, buselfs_state, nugget_index3, 9, 6);
+
+        TEST_ASSERT_EQUAL_MEMORY(expected_nugget_key1, actual_nugget_key1, BLFS_CRYPTO_BYTES_KDF_OUT);
+        TEST_ASSERT_EQUAL_MEMORY(expected_nugget_key2, actual_nugget_key2, BLFS_CRYPTO_BYTES_KDF_OUT);
+        TEST_ASSERT_EQUAL_MEMORY(expected_nugget_key3, actual_nugget_key3, BLFS_CRYPTO_BYTES_KDF_OUT);
+
+        TEST_ASSERT_EQUAL_MEMORY(expected_flake_key1, actual_flake_key1, BLFS_CRYPTO_BYTES_KDF_OUT);
+        TEST_ASSERT_EQUAL_MEMORY(expected_flake_key2, actual_flake_key2, BLFS_CRYPTO_BYTES_KDF_OUT);
+        TEST_ASSERT_EQUAL_MEMORY(expected_flake_key3, actual_flake_key3, BLFS_CRYPTO_BYTES_KDF_OUT);
+    }
 }
 
 // XXX: The password used was "t" but almost no matter what you input the test will win
 // XXX: Don't forget to also test using the correct password!
 void test_blfs_soft_open_throws_exception_on_invalid_password(void)
 {
-    
     free(buselfs_state->backstore);
 
     buselfs_state->backstore = blfs_backstore_open(BACKSTORE_FILE_PATH);
@@ -258,9 +288,9 @@ void test_blfs_soft_open_works_as_expected(void)
     TEST_ASSERT_EQUAL_UINT64(161, buselfs_state->backstore->body_real_offset);
     TEST_ASSERT_EQUAL_UINT64(48, buselfs_state->backstore->writeable_size_actual);
     TEST_ASSERT_EQUAL_UINT64(16, buselfs_state->backstore->nugget_size_bytes);
-    TEST_ASSERT_EQUAL_UINT64(8, backstore->flake_size_bytes);
-    TEST_ASSERT_EQUAL_UINT64(3, backstore->num_nuggets);
-    TEST_ASSERT_EQUAL_UINT64(2, backstore->flakes_per_nugget);
+    TEST_ASSERT_EQUAL_UINT64(8, buselfs_state->backstore->flake_size_bytes);
+    TEST_ASSERT_EQUAL_UINT64(3, buselfs_state->backstore->num_nuggets);
+    TEST_ASSERT_EQUAL_UINT64(2, buselfs_state->backstore->flakes_per_nugget);
     TEST_ASSERT_EQUAL_UINT64(209, buselfs_state->backstore->file_size_actual);
 
 
@@ -387,7 +417,7 @@ void test_blfs_run_mode_create_works_when_backstore_exists_already(void)
     TEST_ASSERT_EQUAL_UINT64(2, backstore->flake_size_bytes);
     TEST_ASSERT_EQUAL_UINT64(12, backstore->flakes_per_nugget);
     TEST_ASSERT_EQUAL_UINT64(116, backstore->num_nuggets);
-    TEST_ASSERT_EQUAL_UINT64(1096, buselfs_state->backstore->file_size_actual);
+    TEST_ASSERT_EQUAL_UINT64(4096, buselfs_state->backstore->file_size_actual);
 
     // Ensure headers are accurate
 
@@ -449,10 +479,10 @@ void test_blfs_run_mode_create_works_when_backstore_DNE(void)
     TEST_ASSERT_EQUAL_UINT64(1303, backstore->body_real_offset);
     TEST_ASSERT_EQUAL_UINT64(2784, backstore->writeable_size_actual);
     TEST_ASSERT_EQUAL_UINT64(24, backstore->nugget_size_bytes);
-    TEST_ASSERT_EQUAL_UINT64(8, backstore->flake_size_bytes);
-    TEST_ASSERT_EQUAL_UINT64(3, backstore->num_nuggets);
-    TEST_ASSERT_EQUAL_UINT64(2, backstore->flakes_per_nugget);
-    TEST_ASSERT_EQUAL_UINT64(209, buselfs_state->backstore->file_size_actual);
+    TEST_ASSERT_EQUAL_UINT64(2, backstore->flake_size_bytes);
+    TEST_ASSERT_EQUAL_UINT64(12, backstore->flakes_per_nugget);
+    TEST_ASSERT_EQUAL_UINT64(116, backstore->num_nuggets);
+    TEST_ASSERT_EQUAL_UINT64(4096, buselfs_state->backstore->file_size_actual);
 
     blfs_backstore_close(buselfs_state->backstore);
 }
@@ -525,9 +555,9 @@ void test_blfs_run_mode_open_works_as_expected(void)
     TEST_ASSERT_EQUAL_UINT64(48, buselfs_state->backstore->writeable_size_actual);
     TEST_ASSERT_EQUAL_UINT64(16, buselfs_state->backstore->nugget_size_bytes);
     TEST_ASSERT_EQUAL_UINT64(209, buselfs_state->backstore->file_size_actual);
-    TEST_ASSERT_EQUAL_UINT64(8, backstore->flake_size_bytes);
-    TEST_ASSERT_EQUAL_UINT64(3, backstore->num_nuggets);
-    TEST_ASSERT_EQUAL_UINT64(2, backstore->flakes_per_nugget);
+    TEST_ASSERT_EQUAL_UINT64(8, buselfs_state->backstore->flake_size_bytes);
+    TEST_ASSERT_EQUAL_UINT64(3, buselfs_state->backstore->num_nuggets);
+    TEST_ASSERT_EQUAL_UINT64(2, buselfs_state->backstore->flakes_per_nugget);
     TEST_ASSERT_EQUAL_UINT64(209, buselfs_state->backstore->file_size_actual);
 
     blfs_backstore_close(buselfs_state->backstore);
@@ -750,6 +780,87 @@ void test_buselfs_main_actual_throws_exception_if_bad_numbers_given_as_args(void
     };
 
     TRY_FN_CATCH_EXCEPTION(buselfs_main_actual(5, argv8, blockdevice));
+}*/
+
+void test_buse_read_works_as_expected(void)
+{
+    uint8_t decrypted_body[] = {
+        0xb5, 0x26, 0x11, 0xf8, 0x1c, 0x3b, 0x99, 0xe0, 0x64, 0xe8, 0xc6, 0xf4,
+        0x4d, 0xba, 0x84, 0xdd, 0xc2, 0xd5, 0xe3, 0x56, 0xab, 0xcd, 0x6a, 0xb9,
+        0x26, 0xeb, 0x39, 0x2b, 0xef, 0xc5, 0x98, 0xaf, 0x0c, 0xe2, 0x14, 0x71,
+        0x32, 0xe1, 0x69, 0xf4, 0x38, 0xad, 0xdc, 0xf8, 0x64, 0xc2, 0xd1, 0x52
+    };
+
+    free(buselfs_state->backstore);
+
+    blfs_run_mode_open(BACKSTORE_FILE_PATH, (uint8_t)(0), buselfs_state);
+
+    uint8_t buffer1[1] = { 0x00 };
+    uint64_t offset1 = 0;
+
+    buse_read(buffer1, sizeof buffer1, offset1, (void *) buselfs_state);
+
+    TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset1, buffer1, sizeof buffer1);
+
+    uint8_t buffer2[16] = { 0x00 };
+    uint64_t offset2 = 0;
+
+    buse_read(buffer2, sizeof buffer2, offset2, (void *) buselfs_state);
+
+    TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset2, buffer2, sizeof buffer2);
+
+    uint8_t buffer3[20] = { 0x00 };
+    uint64_t offset3 = 0;
+
+    buse_read(buffer3, sizeof buffer3, offset3, (void *) buselfs_state);
+
+    TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset3, buffer3, sizeof buffer3);
+
+    uint8_t buffer4[20] = { 0x00 };
+    uint64_t offset4 = 20;
+
+    buse_read(buffer4, sizeof buffer4, offset4, (void *) buselfs_state);
+
+    TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset4, buffer4, sizeof buffer4);
+
+    uint8_t buffer5[48] = { 0x00 };
+    uint64_t offset5 = 0;
+
+    buse_read(buffer5, sizeof buffer5, offset5, (void *) buselfs_state);
+
+    TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset5, buffer5, sizeof buffer5);
+
+    uint8_t buffer6[1] = { 0x00 };
+    uint64_t offset6 = 47;
+
+    buse_read(buffer6, sizeof buffer6, offset6, (void *) buselfs_state);
+
+    TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset6, buffer6, sizeof buffer6);
+
+    uint8_t buffer7[35] = { 0x00 };
+    uint64_t offset7 = 10;
+
+    buse_read(buffer7, sizeof buffer7, offset7, (void *) buselfs_state);
+
+    TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset7, buffer7, sizeof buffer7);
+}
+
+void test_buse_write_works_as_expected(void)
+{
+    
+}
+
+/*void test_blfs_rekey_nugget_journaled_zeroes_out_everything(void)
+{
+    // rekeying on a specific nugget on startup has the intended effect (0s written)
+    TEST_IGNORE();
+}
+
+void test_blfs_rekey_nugget_journaled_with_write_works_as_expected(void)
+{
+    // rekeying on a specific nugget in the middle of the write operation
+    // puts the backstore in an expected state
+    TEST_IGNORE();
 }
 
 void test_buselfs_main_actual_is_readable_and_writable(void)
@@ -757,4 +868,4 @@ void test_buselfs_main_actual_is_readable_and_writable(void)
     zlog_fini();
     // can create, read, write, close, open, read, write, close, open, read, write, rekey, read, write, close, open, read
     TEST_IGNORE();
-}
+}*/

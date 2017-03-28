@@ -192,15 +192,15 @@ static void verify_in_merkle_tree(uint8_t * data, size_t length, uint32_t index,
 
 void add_index_to_key_cache(buselfs_state_t * buselfs_state, uint32_t nugget_index, uint8_t * nugget_key)
 {
-    if(!BLFS_DEFAULT_DISABLE_KEY_CACHING)
-    {
-        char kh_nugget_key[BLFS_KHASH_NUGGET_KEY_SIZE_BYTES] = { 0x00 };
+    if(BLFS_DEFAULT_DISABLE_KEY_CACHING)
+        Throw(EXCEPTION_BAD_CACHE);
 
-        sprintf(kh_nugget_key, "%"PRIu32, nugget_index);
-        IFDEBUG(dzlog_debug("CACHE: adding KHASH nugget index key %s to cache...", kh_nugget_key));
+    char kh_nugget_key[BLFS_KHASH_NUGGET_KEY_SIZE_BYTES] = { 0x00 };
 
-        KHASH_CACHE_PUT_HEAP(BLFS_KHASH_NUGGET_KEY_CACHE_NAME, buselfs_state->cache_nugget_keys, kh_nugget_key, nugget_key);
-    }
+    sprintf(kh_nugget_key, "%"PRIu32, nugget_index);
+    IFDEBUG(dzlog_debug("CACHE: adding KHASH nugget index key %s to cache...", kh_nugget_key));
+
+    KHASH_CACHE_PUT_HEAP(BLFS_KHASH_NUGGET_KEY_CACHE_NAME, buselfs_state->cache_nugget_keys, kh_nugget_key, nugget_key);
 }
 
 void add_keychain_to_key_cache(buselfs_state_t * buselfs_state,
@@ -209,24 +209,27 @@ void add_keychain_to_key_cache(buselfs_state_t * buselfs_state,
                                       uint64_t keycount,
                                       uint8_t * flake_key)
 {
-    if(!BLFS_DEFAULT_DISABLE_KEY_CACHING)
-    {
-        char kh_flake_key[BLFS_KHASH_NUGGET_KEY_SIZE_BYTES] = { 0x00 };
+    if(BLFS_DEFAULT_DISABLE_KEY_CACHING)
+        Throw(EXCEPTION_BAD_CACHE);
 
-        sprintf(kh_flake_key, "%"PRIu32"||%"PRIu32"||%"PRIu64, nugget_index, flake_index, keycount);
-        IFDEBUG(dzlog_debug("CACHE: adding KHASH flake keychain key %s to cache...", kh_flake_key));
+    char kh_flake_key[BLFS_KHASH_NUGGET_KEY_SIZE_BYTES] = { 0x00 };
 
-        KHASH_CACHE_PUT_HEAP(BLFS_KHASH_NUGGET_KEY_CACHE_NAME, buselfs_state->cache_nugget_keys, kh_flake_key, flake_key);
-    }
+    sprintf(kh_flake_key, "%"PRIu32"||%"PRIu32"||%"PRIu64, nugget_index, flake_index, keycount);
+    IFDEBUG(dzlog_debug("CACHE: adding KHASH flake keychain key %s to cache...", kh_flake_key));
+
+    KHASH_CACHE_PUT_HEAP(BLFS_KHASH_NUGGET_KEY_CACHE_NAME, buselfs_state->cache_nugget_keys, kh_flake_key, flake_key);
 }
 
 void get_nugget_key_using_index(uint8_t * nugget_key, buselfs_state_t * buselfs_state, uint32_t nugget_index)
 {
+    if(BLFS_DEFAULT_DISABLE_KEY_CACHING)
+        Throw(EXCEPTION_BAD_CACHE);
+
     char kh_nugget_key[BLFS_KHASH_NUGGET_KEY_SIZE_BYTES] = { 0x00 };
     uint8_t * ng;
 
     sprintf(kh_nugget_key, "%"PRIu32, nugget_index);
-    IFDEBUG(dzlog_debug("CACHE: grabbing KHASH flake keychain key %s from cache...", kh_nugget_key));
+    IFDEBUG(dzlog_debug("CACHE: grabbing KHASH nugget index key %s from cache...", kh_nugget_key));
 
     ng = KHASH_CACHE_GET_WITH_KEY(BLFS_KHASH_NUGGET_KEY_CACHE_NAME, buselfs_state->cache_nugget_keys, kh_nugget_key);
     memcpy(nugget_key, ng, BLFS_CRYPTO_BYTES_FLAKE_TAG_KEY);
@@ -238,6 +241,9 @@ void get_flake_key_using_keychain(uint8_t * flake_key,
                                         uint32_t flake_index,
                                         uint64_t keycount)
 {
+    if(BLFS_DEFAULT_DISABLE_KEY_CACHING)
+        Throw(EXCEPTION_BAD_CACHE);
+
     char kh_flake_key[BLFS_KHASH_NUGGET_KEY_SIZE_BYTES] = { 0x00 };
     uint8_t * fk;
 
@@ -248,15 +254,20 @@ void get_flake_key_using_keychain(uint8_t * flake_key,
     memcpy(flake_key, fk, BLFS_CRYPTO_BYTES_FLAKE_TAG_KEY);
 }
 
-int buse_read(void * buffer, uint32_t length, uint64_t absolute_offset, void * userdata)
+int buse_read(void * output_buffer, uint32_t length, uint64_t absolute_offset, void * userdata)
 {
     IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
 
+    uint8_t * buffer = (uint8_t *) output_buffer;
     buselfs_state_t * buselfs_state = (buselfs_state_t *) userdata;
+    uint_fast32_t size = length;
 
-    // Verify the in-memory GV in the Merkle tree
-    blfs_header_t * tpmgv_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_TPMGLOBALVER);
-    blfs_globalversion_verify(BLFS_TPM_ID, *(uint64_t *) tpmgv_header->data);
+    IFDEBUG(dzlog_debug("output_buffer (ptr): %p", (void *) output_buffer));
+    IFDEBUG(dzlog_debug("buffer (ptr): %p", (void *) buffer));
+    IFDEBUG(dzlog_debug("length: %"PRIu32, length));
+    IFDEBUG(dzlog_debug("absolute_offset: %"PRIu64, absolute_offset));
+    IFDEBUG(dzlog_debug("userdata (ptr): %p", (void *) userdata));
+    IFDEBUG(dzlog_debug("buselfs_state (ptr): %p", (void *) buselfs_state));
 
     uint_fast32_t nugget_size       = buselfs_state->backstore->nugget_size_bytes;
     uint_fast32_t flake_size        = buselfs_state->backstore->flake_size_bytes;
@@ -265,104 +276,281 @@ int buse_read(void * buffer, uint32_t length, uint64_t absolute_offset, void * u
 
     uint_fast32_t mt_offset = 2 * num_nuggets + 8;
 
-    uint_fast32_t nugget_offset          = absolute_offset / nugget_size; // nugget_index
-    uint_fast32_t nugget_internal_offset = absolute_offset % nugget_size; // internal point at which to start within nug
+    // XXX: For a bigger system, this cast could be a problem
+    uint_fast32_t nugget_offset          = (uint_fast32_t) (absolute_offset / nugget_size); // nugget_index
+    uint_fast32_t nugget_internal_offset = (uint_fast32_t) (absolute_offset % nugget_size); // internal point at which to start within nug
+
+    IFDEBUG(dzlog_debug("nugget_size: %"PRIuFAST32, nugget_size));
+    IFDEBUG(dzlog_debug("flake_size: %"PRIuFAST32, flake_size));
+    IFDEBUG(dzlog_debug("num_nuggets: %"PRIuFAST32, num_nuggets));
+    IFDEBUG(dzlog_debug("flakes_per_nugget: %"PRIuFAST32, flakes_per_nugget));
+    IFDEBUG(dzlog_debug("mt_offset: %"PRIuFAST32, mt_offset));
+    IFDEBUG(dzlog_debug("nugget_offset: %"PRIuFAST32, nugget_offset));
+    IFDEBUG(dzlog_debug("nugget_internal_offset: %"PRIuFAST32, nugget_internal_offset));
 
     while(length != 0)
     {
+        IFDEBUG(dzlog_debug("------------------"));
+        IFDEBUG(dzlog_debug("starting with length: %"PRIu32, length));
+
         assert(length > 0);
 
-        uint8_t nugget_key[BLFS_CRYPTO_BYTES_KDF_OUT] = { 0x00 };
+        uint8_t nugget_key[BLFS_CRYPTO_BYTES_KDF_OUT];
         
-        uint_fast32_t internal_read_length = MIN(length, nugget_size - nugget_internal_offset);
+        uint_fast32_t buffer_read_length = MIN(length, nugget_size - nugget_internal_offset); // nmlen
         uint_fast32_t first_affected_flake = nugget_internal_offset / flake_size;
         uint_fast32_t num_affected_flakes =
-            CEIL((nugget_internal_offset + internal_read_length), flake_size) - first_affected_flake;
+            CEIL((nugget_internal_offset + buffer_read_length), flake_size) - first_affected_flake;
+        uint_fast32_t nugget_read_length = num_affected_flakes * flake_size;
 
-        blfs_keycount_t * count = blfs_open_keycount(buselfs_state->backstore, nugget_offset);
+        uint8_t nugget_data[nugget_read_length];
 
-        uint8_t nugget_data[nugget_size]  = { 0x00 };
+        IFDEBUG(dzlog_debug("buffer_read_length: %"PRIuFAST32, buffer_read_length));
+        IFDEBUG(dzlog_debug("first_affected_flake: %"PRIuFAST32, first_affected_flake));
+        IFDEBUG(dzlog_debug("num_affected_flakes: %"PRIuFAST32, num_affected_flakes));
+        IFDEBUG(dzlog_debug("nugget_read_length: %"PRIuFAST32, nugget_read_length));
+        
+        IFDEBUG(dzlog_debug("blfs_backstore_read_body offset: %"PRIuFAST32,
+                            nugget_offset * nugget_size + first_affected_flake * flake_size));
 
-        blfs_backstore_read_body(buselfs_state->backstore, nugget_data, nugget_offset * nugget_size, internal_read_length);
+        blfs_backstore_read_body(buselfs_state->backstore,
+                                 nugget_data,
+                                 nugget_read_length,
+                                 nugget_offset * nugget_size + first_affected_flake * flake_size);
+
+        IFDEBUG(dzlog_debug("nugget_data (initial 64 bytes):"));
+        IFDEBUG(hdzlog_debug(nugget_data, MIN(64U, nugget_read_length)));
 
         if(BLFS_DEFAULT_DISABLE_KEY_CACHING)
+        {
+            IFDEBUG(dzlog_debug("KEY CACHING DISABLED!"));
             blfs_nugget_key_from_data(nugget_key, buselfs_state->backstore->master_secret, nugget_offset);
+        }
+
         else
+        {
+            IFDEBUG(dzlog_debug("KEY CACHING ENABLED!"));
             get_nugget_key_using_index(nugget_key, buselfs_state, nugget_offset);
+        }
+
+        IFDEBUG(dzlog_debug("nugget_key (initial 64 bytes):"));
+        IFDEBUG(hdzlog_debug(nugget_key, MIN(64U, BLFS_CRYPTO_BYTES_KDF_OUT)));
+
+        blfs_keycount_t * count = blfs_open_keycount(buselfs_state->backstore, nugget_offset);
+        IFDEBUG(dzlog_debug("count->keycount: %"PRIu64, count->keycount));
 
         for(uint_fast32_t flake_index = first_affected_flake; flake_index < num_affected_flakes; flake_index++)
         {
-            uint8_t flake_key[BLFS_CRYPTO_BYTES_FLAKE_TAG_KEY] = { 0x00 };
-            uint8_t tag[BLFS_CRYPTO_BYTES_FLAKE_TAG_OUT] = { 0x00 };
+            uint8_t flake_key[BLFS_CRYPTO_BYTES_FLAKE_TAG_KEY];
+            uint8_t tag[BLFS_CRYPTO_BYTES_FLAKE_TAG_OUT];
 
             if(BLFS_DEFAULT_DISABLE_KEY_CACHING)
+            {
+                IFDEBUG(dzlog_debug("KEY CACHING DISABLED!"));
                 blfs_poly1305_key_from_data(flake_key, nugget_key, flake_index, count->keycount);
-            else
-                get_flake_key_using_keychain(flake_key, buselfs_state, nugget_offset, flake_index, count->keycount);
+            }
 
-            blfs_poly1305_generate_tag(tag, nugget_data + flake_index * flake_size, flake_size, flake_key);
+            else
+            {
+                IFDEBUG(dzlog_debug("KEY CACHING ENABLED!"));
+                get_flake_key_using_keychain(flake_key, buselfs_state, nugget_offset, flake_index, count->keycount);
+            }
+
+            IFDEBUG(dzlog_debug("flake_key (initial 64 bytes):"));
+            IFDEBUG(hdzlog_debug(flake_key, MIN(64U, BLFS_CRYPTO_BYTES_FLAKE_TAG_KEY)));
+
+            IFDEBUG(dzlog_debug("blfs_poly1305_generate_tag calculated ptr: %p --[ + "
+                                "%"PRIuFAST32" * %"PRIuFAST32" => %"PRIuFAST32
+                                " ]> %p (gen tag for %"PRIuFAST32" bytes)",
+                                (void *) nugget_data,
+                                flake_index,
+                                flake_size,
+                                flake_index * flake_size,
+                                (void *) (nugget_data + (flake_index * flake_size)),
+                                flake_size));
+
+            blfs_poly1305_generate_tag(tag, nugget_data + (flake_index * flake_size), flake_size, flake_key);
+
+            IFDEBUG(dzlog_debug("tag (initial 64 bytes):"));
+            IFDEBUG(hdzlog_debug(tag, MIN(64U, BLFS_CRYPTO_BYTES_FLAKE_TAG_OUT)));
+
+            IFDEBUG(dzlog_debug("verify_in_merkle_tree calculated offset: %"PRIuFAST32,
+                                mt_offset + nugget_offset * flakes_per_nugget + flake_index));
+
             verify_in_merkle_tree(tag, sizeof tag, mt_offset + nugget_offset * flakes_per_nugget + flake_index, buselfs_state);
         }
 
-        buffer += internal_read_length;
-        length -= internal_read_length;
+        IFDEBUG(dzlog_debug("blfs_chacha20_crypt calculated ptr: %p --[ + "
+                            "%"PRIuFAST32" - %"PRIuFAST32" * %"PRIuFAST32" => %"PRIuFAST32
+                            " ]> %p (crypting %"PRIuFAST32" bytes)",
+                            (void *) nugget_data,
+                            nugget_internal_offset,
+                            first_affected_flake,
+                            flake_size,
+                            nugget_internal_offset - first_affected_flake * flake_size,
+                            (void *) (nugget_data + (nugget_internal_offset - first_affected_flake * flake_size)),
+                            buffer_read_length));
+
+        blfs_chacha20_crypt(buffer,
+                            nugget_data + (nugget_internal_offset - first_affected_flake * flake_size),
+                            buffer_read_length,
+                            nugget_key,
+                            count->keycount,
+                            nugget_internal_offset);
+
+        IFDEBUG(dzlog_debug("blfs_chacha20_crypt output (initial 64 bytes):"));
+        IFDEBUG(hdzlog_debug(output_buffer, MIN(64U, size)));
+
+        buffer += buffer_read_length;
+        length -= buffer_read_length;
         nugget_internal_offset = 0;
         nugget_offset++;
+
+        IFDEBUG(dzlog_debug("END (next nugget):"));
+        IFDEBUG(dzlog_debug("buffer: %p", (void *) buffer));
+        IFDEBUG(dzlog_debug("length: %"PRIu32, length));
+        IFDEBUG(dzlog_debug("nugget_internal_offset: %"PRIuFAST32, nugget_internal_offset));
+        IFDEBUG(dzlog_debug("nugget_offset: %"PRIuFAST32, nugget_offset));
     }
 
+    IFDEBUG(dzlog_debug("------------------"));
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
     return 0;
 }
 
-int buse_write(const void * buffer, uint32_t length, uint64_t absolute_offset, void * userdata)
+int buse_write(const void * output_buffer, uint32_t length, uint64_t absolute_offset, void * userdata)
 {
     IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
 
+    uint8_t * buffer = (uint8_t *) output_buffer;
     buselfs_state_t * buselfs_state = (buselfs_state_t *) userdata;
+    uint_fast32_t size = length;
 
-    (void) buffer;
-    (void) length;
-    (void) absolute_offset;
-    (void) buselfs_state;
-    (void) update_in_merkle_tree;
-    (void) blfs_rekey_nugget_journaled_with_write;
+    IFDEBUG(dzlog_debug("output_buffer (ptr): %p", (void *) output_buffer));
+    IFDEBUG(dzlog_debug("buffer (ptr): %p", (void *) buffer));
+    IFDEBUG(dzlog_debug("length: %"PRIu32, length));
+    IFDEBUG(dzlog_debug("absolute_offset: %"PRIu64, absolute_offset));
+    IFDEBUG(dzlog_debug("userdata (ptr): %p", (void *) userdata));
+    IFDEBUG(dzlog_debug("buselfs_state (ptr): %p", (void *) buselfs_state));
 
-    buselfs_state_t * buselfs_state = (buselfs_state_t *) userdata;
+    uint_fast32_t nugget_size       = buselfs_state->backstore->nugget_size_bytes;
+    uint_fast32_t flake_size        = buselfs_state->backstore->flake_size_bytes;
+    uint_fast32_t num_nuggets       = buselfs_state->backstore->num_nuggets;
+    uint_fast32_t flakes_per_nugget = buselfs_state->backstore->flakes_per_nugget;
 
-    // Verify the in-memory GV in the Merkle tree
-    blfs_header_t * tpmgv_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_TPMGLOBALVER);
-    blfs_globalversion_verify(BLFS_TPM_ID, *(uint64_t *) tpmgv_header->data);
-    
-    // For all affected nuggets FIXME
-    //     For all affected flakes
-    //         Check p1305 tags in MT (grab with caching unless disabled)
-    // Message loop: Chacha20 write data using keycount
+    uint_fast32_t mt_offset = 2 * num_nuggets + 8;
 
-    uint32_t buffer_size = length;
-    uint32_t nugget_size = buselfs_state->backstore->nugget_size_bytes;
-    uint32_t flake_size  = buselfs_state->backstore->flake_size_bytes;
+    // XXX: For a bigger system, this cast could be a problem
+    uint_fast32_t nugget_offset          = (uint_fast32_t) (absolute_offset / nugget_size); // nugget_index
+    uint_fast32_t nugget_internal_offset = (uint_fast32_t) (absolute_offset % nugget_size); // internal point at which to start within nug
 
-    uint64_t nugget_offset          = absolute_offset / nugget_size;
-    uint64_t nugget_internal_offset = absolute_offset % nugget_size;
+    IFDEBUG(dzlog_debug("nugget_size: %"PRIuFAST32, nugget_size));
+    IFDEBUG(dzlog_debug("flake_size: %"PRIuFAST32, flake_size));
+    IFDEBUG(dzlog_debug("num_nuggets: %"PRIuFAST32, num_nuggets));
+    IFDEBUG(dzlog_debug("flakes_per_nugget: %"PRIuFAST32, flakes_per_nugget));
+    IFDEBUG(dzlog_debug("mt_offset: %"PRIuFAST32, mt_offset));
+    IFDEBUG(dzlog_debug("nugget_offset: %"PRIuFAST32, nugget_offset));
+    IFDEBUG(dzlog_debug("nugget_internal_offset: %"PRIuFAST32, nugget_internal_offset));
 
     while(length != 0)
     {
+        IFDEBUG(dzlog_debug("------------------"));
+        IFDEBUG(dzlog_debug("starting with length: %"PRIu32, length));
+
         assert(length > 0);
 
-        uint64_t internal_message_length = MIN(length, nugget_size - nugget_internal_offset);
-        uint64_t first_affected_flake = nugget_internal_offset / flake_size;
-        uint64_t num_affected_flakes  =
-            CEIL((nugget_internal_offset + internal_message_length), flake_size) - first_affected_flake;
+        uint8_t nugget_key[BLFS_CRYPTO_BYTES_KDF_OUT];
+        
+        uint_fast32_t buffer_write_length = MIN(length, nugget_size - nugget_internal_offset); // nmlen
+        uint_fast32_t first_affected_flake = nugget_internal_offset / flake_size;
+        uint_fast32_t num_affected_flakes =
+            CEIL((nugget_internal_offset + buffer_write_length), flake_size) - first_affected_flake;
 
-        blfs_tjournal_entry_t * entry = blfs_open_tjournal_entry(buselfs_state->backstore, nugget_offset);
+        IFDEBUG(dzlog_debug("buffer_write_length: %"PRIuFAST32, buffer_write_length));
+        IFDEBUG(dzlog_debug("first_affected_flake: %"PRIuFAST32, first_affected_flake));
+        IFDEBUG(dzlog_debug("num_affected_flakes: %"PRIuFAST32, num_affected_flakes));
 
-        if(bitmask_are_bits_set(entry->bitmask, first_affected_flake, num_affected_flakes))
+        if(BLFS_DEFAULT_DISABLE_KEY_CACHING)
+        {
+            IFDEBUG(dzlog_debug("KEY CACHING DISABLED!"));
+            blfs_nugget_key_from_data(nugget_key, buselfs_state->backstore->master_secret, nugget_offset);
+        }
+
+        else
+        {
+            IFDEBUG(dzlog_debug("KEY CACHING ENABLED!"));
+            get_nugget_key_using_index(nugget_key, buselfs_state, nugget_offset);
+        }
+
+        IFDEBUG(dzlog_debug("nugget_key (initial 64 bytes):"));
+        IFDEBUG(hdzlog_debug(nugget_key, MIN(64U, BLFS_CRYPTO_BYTES_KDF_OUT)));
+
         blfs_keycount_t * count = blfs_open_keycount(buselfs_state->backstore, nugget_offset);
+        IFDEBUG(dzlog_debug("count->keycount: %"PRIu64, count->keycount));
 
-        // FIXME: deal with caching
-        (void) verify_in_merkle_tree;
+        // First, check if this constitutes an overwrite...
+        blfs_tjournal_entry_t * entry = blfs_open_tjournal_entry(buselfs_state->backstore, nugget_offset);
+        if(bitmask_any_bits_set(entry->bitmask, first_affected_flake, num_affected_flakes))
+        {
+            IFDEBUG(dzlog_notice("OVERWRITE DETECTED! PERFORMING IN-PLACE JOURNALED REKEYING + WRITE"));
+
+            blfs_rekey_nugget_journaled_with_write(buselfs_state, nugget_offset, buffer, buffer_write_length, nugget_internal_offset);
+        }
+
+        else
+        {
+
+        }
+        
+        /*IFDEBUG(dzlog_debug("blfs_backstore_read_body offset: %"PRIuFAST32,
+                            nugget_offset * nugget_size + first_affected_flake * flake_size));
+
+        blfs_backstore_read_body(buselfs_state->backstore,
+                                 nugget_data,
+                                 nugget_read_length,
+                                 nugget_offset * nugget_size + first_affected_flake * flake_size);
+
+        IFDEBUG(dzlog_debug("nugget_data (initial 64 bytes):"));
+        IFDEBUG(hdzlog_debug(nugget_data, MIN(64U, nugget_read_length)));
+
+        
+
+        IFDEBUG(dzlog_debug("blfs_chacha20_crypt calculated ptr: %p --[ + "
+                            "%"PRIuFAST32" - %"PRIuFAST32" * %"PRIuFAST32" => %"PRIuFAST32
+                            " ]> %p (crypting %"PRIuFAST32" bytes)",
+                            (void *) nugget_data,
+                            nugget_internal_offset,
+                            first_affected_flake,
+                            flake_size,
+                            nugget_internal_offset - first_affected_flake * flake_size,
+                            (void *) (nugget_data + (nugget_internal_offset - first_affected_flake * flake_size)),
+                            buffer_write_length));
+
+        blfs_chacha20_crypt(buffer,
+                            nugget_data + (nugget_internal_offset - first_affected_flake * flake_size),
+                            buffer_write_length,
+                            nugget_key,
+                            count->keycount,
+                            nugget_internal_offset);
+
+        IFDEBUG(dzlog_debug("blfs_chacha20_crypt output (initial 64 bytes):"));
+        IFDEBUG(hdzlog_debug(output_buffer, MIN(64U, size)));
+
+        buffer += buffer_write_length;
+        length -= buffer_write_length;
+        nugget_internal_offset = 0;
+        nugget_offset++;*/
+
+        IFDEBUG(dzlog_debug("END (next nugget):"));
+        IFDEBUG(dzlog_debug("buffer: %p", (void *) buffer));
+        IFDEBUG(dzlog_debug("length: %"PRIu32, length));
+        IFDEBUG(dzlog_debug("nugget_internal_offset: %"PRIuFAST32, nugget_internal_offset));
+        IFDEBUG(dzlog_debug("nugget_offset: %"PRIuFAST32, nugget_offset));
     }
 
+    (void) update_in_merkle_tree;
+
+    IFDEBUG(dzlog_debug("------------------"));
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
     return 0;
 }
@@ -462,6 +650,7 @@ void blfs_soft_open(buselfs_state_t * buselfs_state, uint8_t cin_allow_insecure_
         Throw(EXCEPTION_BAD_PASSWORD);
 
     // Get the numnuggets, flakesize, and fpn headers (XXX: this is DEFINITELY endian-sensitive!!!)
+    uint32_t nugsize = buselfs_state->backstore->nugget_size_bytes;
     uint32_t flakesize = buselfs_state->backstore->flake_size_bytes;
     uint32_t flakespnug = buselfs_state->backstore->flakes_per_nugget;
     uint32_t numnuggets = buselfs_state->backstore->num_nuggets;
@@ -476,7 +665,7 @@ void blfs_soft_open(buselfs_state_t * buselfs_state, uint8_t cin_allow_insecure_
     uint32_t rekeying_nugget_index;
     blfs_keycount_t rekeying_count;
     blfs_tjournal_entry_t rekeying_entry;
-    uint8_t rekeying_nugget_data[buselfs_state->backstore->nugget_size_bytes] = { 0x00 };
+    uint8_t rekeying_nugget_data[nugsize];
 
     if(memcmp(rekeying_header->data, zero_rekeying, BLFS_HEAD_HEADER_BYTES_REKEYING) != 0)
     {
@@ -494,42 +683,47 @@ void blfs_soft_open(buselfs_state_t * buselfs_state, uint8_t cin_allow_insecure_
                                   rekeying_nugget_data);
     }
 
-    // Populate key cache (XXX: IRL, this might not be done on init/mount)
-    IFDEBUG(dzlog_debug("populating key cache..."));
-
-    // First with nugget keys:
-    // nugget_index => (nugget_key = master_secret+nugget_index)
-    for(uint32_t nugget_index = 0; nugget_index < numnuggets; nugget_index++)
+    if(BLFS_DEFAULT_DISABLE_KEY_CACHING)
+        IFDEBUG(dzlog_debug("KEY CACHING DISABLED!"));
+    else
     {
-        uint8_t * nugget_key = malloc(sizeof(*nugget_key) * BLFS_CRYPTO_BYTES_KDF_OUT);
-        blfs_keycount_t * count;
-        
-        if(rekeying && rekeying_nugget_index == nugget_index)
+        // Populate key cache (XXX: IRL, this might not be done on init/mount)
+        IFDEBUG(dzlog_debug("populating key cache..."));
+
+        // First with nugget keys:
+        // nugget_index => (nugget_key = master_secret+nugget_index)
+        for(uint32_t nugget_index = 0; nugget_index < numnuggets; nugget_index++)
         {
-            IFDEBUG(dzlog_debug("rekeying detected! Using rekeying_nugget_index to grab count..."));
-            count = &rekeying_count;
-        }
+            uint8_t * nugget_key = malloc(sizeof(*nugget_key) * BLFS_CRYPTO_BYTES_KDF_OUT);
+            blfs_keycount_t * count;
+            
+            if(rekeying && rekeying_nugget_index == nugget_index)
+            {
+                IFDEBUG(dzlog_debug("rekeying detected! Using rekeying_nugget_index to grab count..."));
+                count = &rekeying_count;
+            }
 
-        else
-            count = blfs_open_keycount(buselfs_state->backstore, nugget_index);
+            else
+                count = blfs_open_keycount(buselfs_state->backstore, nugget_index);
 
-        if(nugget_key == NULL)
-            Throw(EXCEPTION_ALLOC_FAILURE);
-
-        blfs_nugget_key_from_data(nugget_key, buselfs_state->backstore->master_secret, nugget_index);
-        add_index_to_key_cache(buselfs_state, nugget_index, nugget_key);
-
-        // Now with nugget keys:
-        // nugget_index||flake_index||associated_keycount => master_secret+nugget_index+flake_index+associated_keycount
-        for(uint32_t flake_index = 0; flake_index < flakespnug; flake_index++)
-        {
-            uint8_t * flake_key = malloc(sizeof(*flake_key) * BLFS_CRYPTO_BYTES_FLAKE_TAG_KEY);
-
-            if(flake_key == NULL)
+            if(nugget_key == NULL)
                 Throw(EXCEPTION_ALLOC_FAILURE);
 
-            blfs_poly1305_key_from_data(flake_key, nugget_key, flake_index, count->keycount);
-            add_keychain_to_key_cache(buselfs_state, nugget_index, flake_index, count->keycount, flake_key);
+            blfs_nugget_key_from_data(nugget_key, buselfs_state->backstore->master_secret, nugget_index);
+            add_index_to_key_cache(buselfs_state, nugget_index, nugget_key);
+
+            // Now with nugget keys:
+            // nugget_index||flake_index||associated_keycount => master_secret+nugget_index+flake_index+associated_keycount
+            for(uint32_t flake_index = 0; flake_index < flakespnug; flake_index++)
+            {
+                uint8_t * flake_key = malloc(sizeof(*flake_key) * BLFS_CRYPTO_BYTES_FLAKE_TAG_KEY);
+
+                if(flake_key == NULL)
+                    Throw(EXCEPTION_ALLOC_FAILURE);
+
+                blfs_poly1305_key_from_data(flake_key, nugget_key, flake_index, count->keycount);
+                add_keychain_to_key_cache(buselfs_state, nugget_index, flake_index, count->keycount, flake_key);
+            }
         }
     }
 
@@ -622,7 +816,7 @@ void blfs_soft_open(buselfs_state_t * buselfs_state, uint8_t cin_allow_insecure_
         {
             uint8_t flake_key[BLFS_CRYPTO_BYTES_FLAKE_TAG_KEY] = { 0x00 };
             uint8_t * tag = malloc(sizeof(*tag) * BLFS_CRYPTO_BYTES_FLAKE_TAG_OUT);
-            uint8_t flake_data[flakesize] = { 0x00 };
+            uint8_t flake_data[flakesize];
 
             if(tag == NULL)
                 Throw(EXCEPTION_ALLOC_FAILURE);
@@ -640,7 +834,7 @@ void blfs_soft_open(buselfs_state_t * buselfs_state, uint8_t cin_allow_insecure_
                 else
                     get_flake_key_using_keychain(flake_key, buselfs_state, nugget_index, flake_index, count->keycount);
 
-                blfs_backstore_read_body(buselfs_state->backstore, flake_data, flakesize, flake_index * flakesize);
+                blfs_backstore_read_body(buselfs_state->backstore, flake_data, flakesize, nugget_index * nugsize + flake_index * flakesize);
             }
             
             blfs_poly1305_generate_tag(tag, flake_data, flakesize, flake_key);
@@ -651,10 +845,12 @@ void blfs_soft_open(buselfs_state_t * buselfs_state, uint8_t cin_allow_insecure_
     // Update the global MTRH
     update_merkle_tree_root_hash(buselfs_state);
 
+    IFDEBUG3(dzlog_debug("MERKLE TREE: debug print (at the bottom)"));
+    IFDEBUG3(mt_print(buselfs_state->merkle_tree));
+
     IFDEBUG(dzlog_debug("MERKLE TREE: comparing MTRH to header"));
 
     blfs_header_t * mtrh_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_MTRH);
-    free(rekeying_nugget_data);
 
     IFDEBUG(dzlog_debug("mtrh_header->data:"));
     IFDEBUG(hdzlog_debug(mtrh_header->data, BLFS_HEAD_HEADER_BYTES_MTRH));
@@ -841,33 +1037,38 @@ void blfs_run_mode_create(const char * backstore_path,
 
     memcpy(numnuggets_header->data, data_numnuggets, BLFS_HEAD_HEADER_BYTES_FLAKESPERNUGGET);
 
-    // Populate key cache (XXX: IRL, this might not be done on init/mount)
-    IFDEBUG(dzlog_debug("populating key cache..."));
-
-    // First with nugget keys:
-    // nugget_index => (nugget_key = master_secret+nugget_index)
-    for(uint32_t nugget_index = 0; nugget_index < num_nuggets_calculated_32; nugget_index++)
+    if(BLFS_DEFAULT_DISABLE_KEY_CACHING)
+        IFDEBUG(dzlog_debug("KEY CACHING DISABLED!"));
+    else
     {
-        uint8_t * nugget_key = malloc(sizeof(*nugget_key) * BLFS_CRYPTO_BYTES_KDF_OUT);
+        // Populate key cache (XXX: IRL, this might not be done on init/mount)
+        IFDEBUG(dzlog_debug("populating key cache..."));
 
-        if(nugget_key == NULL)
-            Throw(EXCEPTION_ALLOC_FAILURE);
-
-        blfs_nugget_key_from_data(nugget_key, buselfs_state->backstore->master_secret, nugget_index);
-        add_index_to_key_cache(buselfs_state, nugget_index, nugget_key);
-
-        // Now with nugget keys:
-        // nugget_index||flake_index||associated_keycount => master_secret+nugget_index+associated_keycount+flake_index
-        for(uint32_t flake_index = 0; flake_index < cin_flakes_per_nugget; flake_index++)
+        // First with nugget keys:
+        // nugget_index => (nugget_key = master_secret+nugget_index)
+        for(uint32_t nugget_index = 0; nugget_index < num_nuggets_calculated_32; nugget_index++)
         {
-            uint8_t * flake_key = malloc(sizeof(*flake_key) * BLFS_CRYPTO_BYTES_FLAKE_TAG_KEY);
+            uint8_t * nugget_key = malloc(sizeof(*nugget_key) * BLFS_CRYPTO_BYTES_KDF_OUT);
 
-            if(flake_key == NULL)
+            if(nugget_key == NULL)
                 Throw(EXCEPTION_ALLOC_FAILURE);
 
-            // Initially, keycount is always 0
-            blfs_poly1305_key_from_data(flake_key, nugget_key, flake_index, 0);
-            add_keychain_to_key_cache(buselfs_state, nugget_index, flake_index, 0, flake_key);
+            blfs_nugget_key_from_data(nugget_key, buselfs_state->backstore->master_secret, nugget_index);
+            add_index_to_key_cache(buselfs_state, nugget_index, nugget_key);
+
+            // Now with nugget keys:
+            // nugget_index||flake_index||associated_keycount => master_secret+nugget_index+associated_keycount+flake_index
+            for(uint32_t flake_index = 0; flake_index < cin_flakes_per_nugget; flake_index++)
+            {
+                uint8_t * flake_key = malloc(sizeof(*flake_key) * BLFS_CRYPTO_BYTES_FLAKE_TAG_KEY);
+
+                if(flake_key == NULL)
+                    Throw(EXCEPTION_ALLOC_FAILURE);
+
+                // Initially, keycount is always 0
+                blfs_poly1305_key_from_data(flake_key, nugget_key, flake_index, 0);
+                add_keychain_to_key_cache(buselfs_state, nugget_index, flake_index, 0, flake_key);
+            }
         }
     }
 
@@ -941,6 +1142,9 @@ void blfs_run_mode_create(const char * backstore_path,
 
     // Update the global MTRH
     update_merkle_tree_root_hash(buselfs_state);
+
+    IFDEBUG3(dzlog_debug("MERKLE TREE: debug print (at the bottom)"));
+    IFDEBUG3(mt_print(buselfs_state->merkle_tree));
 
     // Set initialization header to initialized and commit header
     init_header->data[0] = BLFS_HEAD_IS_INITIALIZED_VALUE;
@@ -1051,7 +1255,7 @@ buselfs_state_t * buselfs_main_actual(int argc, char * argv[], char * blockdevic
 
     if(argc <= 1 || argc > 9)
     {
-        fprintf(stderr,
+        printf(
         "\nUsage:\n"
         "  %s [--backstore-size %"PRIu64"][--flake-size %"PRIu32"][--flakes-per-nugget %"PRIu32"] create nbd_device_name\n\n"
         "  %s [--allow-insecure-start] open nbd_device_name\n\n"
@@ -1257,10 +1461,6 @@ buselfs_state_t * buselfs_main_actual(int argc, char * argv[], char * blockdevic
     /* Finish up startup procedures */
 
     IFDEBUG(dzlog_info("Defined: BLFS_DEBUG_LEVEL = %i", BLFS_DEBUG_LEVEL));
-
-    IFDEBUG3(dzlog_debug("merkle tree debug print:\n\n\n"));
-    IFDEBUG3(mt_print(buselfs_state->merkle_tree));
-    IFDEBUG3(dzlog_debug("\n\n\n"));
 
     if(buselfs_state->backstore == NULL)
         Throw(EXCEPTION_ASSERT_FAILURE);

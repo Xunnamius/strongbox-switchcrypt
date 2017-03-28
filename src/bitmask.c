@@ -372,3 +372,48 @@ int bitmask_are_bits_set(bitmask_t * bitmask, uint_fast32_t start_index, uint_fa
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
     return is_set;
 }
+
+int bitmask_any_bits_set(bitmask_t * bitmask, uint_fast32_t start_index, uint_fast32_t length)
+{
+    IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
+
+    uint_fast32_t mask_start_index = (start_index / 8);
+    uint_fast32_t bit_start_index = (start_index % 8);
+
+    if(bitmask->byte_length <= mask_start_index || bitmask->byte_length * 8 < start_index + length)
+        Throw(EXCEPTION_OUT_OF_BOUNDS);
+
+    if(!length)
+    {
+        IFDEBUG(dzlog_debug("RETURN 0 (hardcoded): length = 0!"));
+        return 0;
+    }
+
+    uint_fast64_t mask_count = (bit_start_index + length - 1) / 8;
+    int_fast64_t bits_remaining = ((int_fast64_t)(length)) - (8 - bit_start_index);
+
+    uint8_t filter = ((uint8_t)((1 << (8 - bit_start_index)) - 1)) ^ (bits_remaining < 0 ? ((1 << abs(bits_remaining)) - 1) : 0);
+
+    if(filter & bitmask->mask[mask_start_index])
+    {
+        IFDEBUG(dzlog_debug("RETURN: is_set => 1"));
+        return 1;
+    }
+
+    for(uint_fast64_t i = mask_start_index + 1; mask_count--; ++i, bits_remaining -= 8)
+    {
+        assert(bits_remaining > 0);
+
+        uint8_t not_filter = ~(((1 << (8 - (bits_remaining < 8 ? bits_remaining : 8))) - 1));
+
+        if(not_filter & bitmask->mask[i])
+        {
+            IFDEBUG(dzlog_debug("RETURN: is_set => 1"));
+            return 1;
+        }
+    }
+
+    IFDEBUG(dzlog_debug("RETURN: is_set => 0"));
+    IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
+    return 0;
+}

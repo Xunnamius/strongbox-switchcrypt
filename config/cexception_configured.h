@@ -131,6 +131,9 @@ do {                                                                            
 #define EXCEPTION_DEBUGGING_OVERFLOW            0x20U
 #define EXCEPTION_DEBUGGING_UNDERFLOW           0x21U
 
+// Why you call cache function when cache disabled?!?!
+#define EXCEPTION_BAD_CACHE                     0x22U
+
 ///////////////////////
 // End Configuration //
 ///////////////////////
