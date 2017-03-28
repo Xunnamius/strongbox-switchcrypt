@@ -197,7 +197,7 @@ void test_blfs_open_keycount_works_as_expected(void)
     TEST_ASSERT_EQUAL_UINT(0, actual_keycount2->nugget_index);
     TEST_ASSERT_EQUAL_UINT(backstore->kcs_real_offset, actual_keycount2->data_offset);
     TEST_ASSERT_EQUAL_UINT(BLFS_HEAD_BYTES_KEYCOUNT, actual_keycount2->data_length);
-    TEST_(keycount2, actual_keycount2->keycount);
+    TEST_ASSERT_EQUAL_UINT(keycount2, actual_keycount2->keycount);
 }
 
 void test_blfs_open_and_close_keycount_functions_cache_properly(void)
@@ -232,7 +232,7 @@ void test_blfs_create_keycount_works_as_expected(void)
     TEST_ASSERT_EQUAL_UINT(nugget_index, actual_keycount->nugget_index);
     TEST_ASSERT_EQUAL_UINT(backstore->kcs_real_offset + nugget_index * BLFS_HEAD_BYTES_KEYCOUNT, actual_keycount->data_offset);
     TEST_ASSERT_EQUAL_UINT(BLFS_HEAD_BYTES_KEYCOUNT, actual_keycount->data_length);
-    TEST_(0, actual_keycount->keycount);
+    TEST_ASSERT_EQUAL_UINT(0, actual_keycount->keycount);
 }
 
 void test_blfs_create_keycount_throws_exception_if_nugget_in_cache(void)
@@ -408,15 +408,15 @@ void test_blfs_fetch_journaled_data_works_as_expected(void)
 
     blfs_fetch_journaled_data(backstore, 54, &rekeying_count, &rekeying_entry, rekeying_nugget_data);
 
-    TEST_(54, rekeying_entry.nugget_index);
-    TEST_(backstore->tj_journaled_offset, rekeying_entry.data_offset);
-    TEST_(2, rekeying_entry.data_length);
+    TEST_ASSERT_EQUAL_UINT(54, rekeying_entry.nugget_index);
+    TEST_ASSERT_EQUAL_UINT(backstore->tj_journaled_offset, rekeying_entry.data_offset);
+    TEST_ASSERT_EQUAL_UINT(2, rekeying_entry.data_length);
     TEST_ASSERT_EQUAL_MEMORY(expected_jentry_data, rekeying_entry.bitmask->mask, rekeying_entry.data_length);
 
-    TEST_(54, rekeying_count.nugget_index);
-    TEST_(backstore->kcs_journaled_offset, rekeying_count.data_offset);
-    TEST_(BLFS_HEAD_BYTES_KEYCOUNT, rekeying_count.data_length);
-    TEST_(0xFF, rekeying_count.keycount);
+    TEST_ASSERT_EQUAL_UINT(54, rekeying_count.nugget_index);
+    TEST_ASSERT_EQUAL_UINT(backstore->kcs_journaled_offset, rekeying_count.data_offset);
+    TEST_ASSERT_EQUAL_UINT(BLFS_HEAD_BYTES_KEYCOUNT, rekeying_count.data_length);
+    TEST_ASSERT_EQUAL_UINT(0xFF, rekeying_count.keycount);
 
     TEST_ASSERT_EQUAL_MEMORY(expected_rekeying_nugget_data, rekeying_nugget_data, backstore->nugget_size_bytes);
 }
