@@ -178,7 +178,7 @@ void bitmask_set_bits(bitmask_t * bitmask, uint_fast32_t start_index, uint_fast3
     IFDEBUG(uint8_t old_val_at_index = bitmask->mask[mask_start_index]);
     IFDEBUG(dzlog_debug(
                         "bitmask->mask[mask_start_index => %"PRIuFAST32"] "
-                        "|= ((1 << (8 - %"PRIuFAST64")) - 1) ^ (%"PRIuFAST64" < 0 ? ((1 << abs(%"PRIuFAST64")) - 1) : 0)) => 0x%x ^ 0x%x",
+                        "|= ((1 << (8 - %"PRIuFAST32")) - 1) ^ (%"PRIuFAST64" < 0 ? ((1 << abs(%"PRIuFAST64")) - 1) : 0)) => 0x%x ^ 0x%x",
                         mask_start_index,
                         bit_start_index,
                         bits_remaining,
@@ -196,7 +196,7 @@ void bitmask_set_bits(bitmask_t * bitmask, uint_fast32_t start_index, uint_fast3
 
         IFDEBUG(uint8_t old_val_at_index_inner = bitmask->mask[i]);
         IFDEBUG(dzlog_debug(
-                            "bitmask->mask[i => %"PRIuFAST32"] "
+                            "bitmask->mask[i => %"PRIuFAST64"] "
                             "|= ~((1 << (8 - (%"PRIuFAST64" < 8 ? %"PRIuFAST64" : 8))) - 1) => 0x%x",
                             i, bits_remaining, bits_remaining, ~((1 << (8 - (bits_remaining < 8 ? bits_remaining : 8))) - 1)));
 
@@ -248,7 +248,7 @@ void bitmask_clear_bits(bitmask_t * bitmask, uint_fast32_t start_index, uint_fas
 
         IFDEBUG(uint8_t old_val_at_index_inner = bitmask->mask[i]);
         IFDEBUG(dzlog_debug(
-                            "bitmask->mask[i => %"PRIuFAST32"] "
+                            "bitmask->mask[i => %"PRIuFAST64"] "
                             "&= (1 << (8 - (%"PRIuFAST64" < 8 ? %"PRIuFAST64" : 8))) - 1 => 0x%x",
                             i, bits_remaining, bits_remaining, (1 << (8 - (bits_remaining < 8 ? bits_remaining : 8))) - 1));
 
@@ -356,7 +356,7 @@ int bitmask_are_bits_set(bitmask_t * bitmask, uint_fast32_t start_index, uint_fa
 
         IFDEBUG(uint8_t old_val_at_index_inner = is_set);
         IFDEBUG(dzlog_debug(
-                        "is_set = is_set && !((bitmask->mask[i => %"PRIuFAST32"] & 0x%x) ^ 0x%x) => 0x%x & 0x%x",
+                        "is_set = is_set && !((bitmask->mask[i => %"PRIuFAST64"] & 0x%x) ^ 0x%x) => 0x%x & 0x%x",
                         i,
                         not_filter,
                         not_filter,

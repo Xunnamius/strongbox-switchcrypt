@@ -385,7 +385,7 @@ void blfs_commit_tjournal_entry(blfs_backstore_t * backstore, const blfs_tjourna
     IFDEBUG(dzlog_debug("committing transaction journal entry data to backstore:"));
     IFDEBUG(dzlog_debug("entry->nugget_index = %"PRIu32, entry->nugget_index));
     IFDEBUG(dzlog_debug("entry->data_length (should match below)          = %"PRIu64, entry->data_length));
-    IFDEBUG(dzlog_debug("entry->bitmask->byte_length (should match above) = %"PRIu64, entry->bitmask->byte_length));
+    IFDEBUG(dzlog_debug("entry->bitmask->byte_length (should match above) = %zu", entry->bitmask->byte_length));
     IFDEBUG(dzlog_debug("entry->data_offset = %"PRIu64, entry->data_offset));
     IFDEBUG(dzlog_debug("entry->bitmask (as data):"));
     IFDEBUG(hdzlog_debug(entry->bitmask->mask, entry->bitmask->byte_length));
