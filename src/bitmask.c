@@ -300,7 +300,7 @@ void bitmask_toggle_bits(bitmask_t * bitmask, uint_fast32_t start_index, uint_fa
 
         IFDEBUG(uint8_t old_val_at_index_inner = bitmask->mask[i]);
         IFDEBUG(dzlog_debug(
-                            "bitmask->mask[i => %"PRIuFAST32"] "
+                            "bitmask->mask[i => %"PRIuFAST64"] "
                             "^= ~((1 << (8 - (%"PRIuFAST64" < 8 ? %"PRIuFAST64" : 8))) - 1) => 0x%x",
                             i, bits_remaining, bits_remaining, ~((1 << (8 - (bits_remaining < 8 ? bits_remaining : 8))) - 1)));
         IFDEBUG(dzlog_debug("bitmask->mask[i] (was 0x%x, now 0x%x)", old_val_at_index_inner, bitmask->mask[i]));

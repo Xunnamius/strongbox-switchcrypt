@@ -280,18 +280,18 @@ void test_blfs_soft_open_works_as_expected(void)
 
     TEST_ASSERT_EQUAL_STRING(BACKSTORE_FILE_PATH, buselfs_state->backstore->file_path);
     TEST_ASSERT_EQUAL_STRING("test.io.bin", buselfs_state->backstore->file_name);
-    TEST_ASSERT_EQUAL_UINT64(109, buselfs_state->backstore->kcs_real_offset);
-    TEST_ASSERT_EQUAL_UINT64(133, buselfs_state->backstore->tj_real_offset);
-    TEST_ASSERT_EQUAL_UINT64(136, buselfs_state->backstore->kcs_journaled_offset);
-    TEST_ASSERT_EQUAL_UINT64(144, buselfs_state->backstore->tj_journaled_offset);
-    TEST_ASSERT_EQUAL_UINT64(145, buselfs_state->backstore->nugget_journaled_offset);
-    TEST_ASSERT_EQUAL_UINT64(161, buselfs_state->backstore->body_real_offset);
-    TEST_ASSERT_EQUAL_UINT64(48, buselfs_state->backstore->writeable_size_actual);
-    TEST_ASSERT_EQUAL_UINT64(16, buselfs_state->backstore->nugget_size_bytes);
-    TEST_ASSERT_EQUAL_UINT64(8, buselfs_state->backstore->flake_size_bytes);
-    TEST_ASSERT_EQUAL_UINT64(3, buselfs_state->backstore->num_nuggets);
-    TEST_ASSERT_EQUAL_UINT64(2, buselfs_state->backstore->flakes_per_nugget);
-    TEST_ASSERT_EQUAL_UINT64(209, buselfs_state->backstore->file_size_actual);
+    TEST_ASSERT_EQUAL_UINT(109, buselfs_state->backstore->kcs_real_offset);
+    TEST_ASSERT_EQUAL_UINT(133, buselfs_state->backstore->tj_real_offset);
+    TEST_(136, buselfs_state->backstore->kcs_journaled_offset);
+    TEST_(144, buselfs_state->backstore->tj_journaled_offset);
+    TEST_(145, buselfs_state->backstore->nugget_journaled_offset);
+    TEST_(161, buselfs_state->backstore->body_real_offset);
+    TEST_(48, buselfs_state->backstore->writeable_size_actual);
+    TEST_(16, buselfs_state->backstore->nugget_size_bytes);
+    TEST_(8, buselfs_state->backstore->flake_size_bytes);
+    TEST_(3, buselfs_state->backstore->num_nuggets);
+    TEST_(2, buselfs_state->backstore->flakes_per_nugget);
+    TEST_(209, buselfs_state->backstore->file_size_actual);
 
 
     blfs_header_t * header_version = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_VERSION);
@@ -406,18 +406,18 @@ void test_blfs_run_mode_create_works_when_backstore_exists_already(void)
 
     TEST_ASSERT_EQUAL_STRING(BACKSTORE_FILE_PATH, backstore->file_path);
     TEST_ASSERT_EQUAL_STRING("test.io.bin", backstore->file_name);
-    TEST_ASSERT_EQUAL_UINT64(109, backstore->kcs_real_offset);
-    TEST_ASSERT_EQUAL_UINT64(1037, backstore->tj_real_offset);
-    TEST_ASSERT_EQUAL_UINT64(1269, backstore->kcs_journaled_offset);
-    TEST_ASSERT_EQUAL_UINT64(1277, backstore->tj_journaled_offset);
-    TEST_ASSERT_EQUAL_UINT64(1279, backstore->nugget_journaled_offset);
-    TEST_ASSERT_EQUAL_UINT64(1303, backstore->body_real_offset);
-    TEST_ASSERT_EQUAL_UINT64(2784, backstore->writeable_size_actual);
-    TEST_ASSERT_EQUAL_UINT64(24, backstore->nugget_size_bytes);
-    TEST_ASSERT_EQUAL_UINT64(2, backstore->flake_size_bytes);
-    TEST_ASSERT_EQUAL_UINT64(12, backstore->flakes_per_nugget);
-    TEST_ASSERT_EQUAL_UINT64(116, backstore->num_nuggets);
-    TEST_ASSERT_EQUAL_UINT64(4096, buselfs_state->backstore->file_size_actual);
+    TEST_(109, backstore->kcs_real_offset);
+    TEST_(1037, backstore->tj_real_offset);
+    TEST_(1269, backstore->kcs_journaled_offset);
+    TEST_(1277, backstore->tj_journaled_offset);
+    TEST_(1279, backstore->nugget_journaled_offset);
+    TEST_(1303, backstore->body_real_offset);
+    TEST_(2784, backstore->writeable_size_actual);
+    TEST_(24, backstore->nugget_size_bytes);
+    TEST_(2, backstore->flake_size_bytes);
+    TEST_(12, backstore->flakes_per_nugget);
+    TEST_(116, backstore->num_nuggets);
+    TEST_(4096, buselfs_state->backstore->file_size_actual);
 
     // Ensure headers are accurate
 
@@ -471,18 +471,18 @@ void test_blfs_run_mode_create_works_when_backstore_DNE(void)
 
     TEST_ASSERT_EQUAL_STRING(BACKSTORE_FILE_PATH, backstore->file_path);
     TEST_ASSERT_EQUAL_STRING("test.io.bin", backstore->file_name);
-    TEST_ASSERT_EQUAL_UINT64(109, backstore->kcs_real_offset);
-    TEST_ASSERT_EQUAL_UINT64(1037, backstore->tj_real_offset);
-    TEST_ASSERT_EQUAL_UINT64(1269, backstore->kcs_journaled_offset);
-    TEST_ASSERT_EQUAL_UINT64(1277, backstore->tj_journaled_offset);
-    TEST_ASSERT_EQUAL_UINT64(1279, backstore->nugget_journaled_offset);
-    TEST_ASSERT_EQUAL_UINT64(1303, backstore->body_real_offset);
-    TEST_ASSERT_EQUAL_UINT64(2784, backstore->writeable_size_actual);
-    TEST_ASSERT_EQUAL_UINT64(24, backstore->nugget_size_bytes);
-    TEST_ASSERT_EQUAL_UINT64(2, backstore->flake_size_bytes);
-    TEST_ASSERT_EQUAL_UINT64(12, backstore->flakes_per_nugget);
-    TEST_ASSERT_EQUAL_UINT64(116, backstore->num_nuggets);
-    TEST_ASSERT_EQUAL_UINT64(4096, buselfs_state->backstore->file_size_actual);
+    TEST_(109, backstore->kcs_real_offset);
+    TEST_(1037, backstore->tj_real_offset);
+    TEST_(1269, backstore->kcs_journaled_offset);
+    TEST_(1277, backstore->tj_journaled_offset);
+    TEST_(1279, backstore->nugget_journaled_offset);
+    TEST_(1303, backstore->body_real_offset);
+    TEST_(2784, backstore->writeable_size_actual);
+    TEST_(24, backstore->nugget_size_bytes);
+    TEST_(2, backstore->flake_size_bytes);
+    TEST_(12, backstore->flakes_per_nugget);
+    TEST_(116, backstore->num_nuggets);
+    TEST_(4096, buselfs_state->backstore->file_size_actual);
 
     blfs_backstore_close(buselfs_state->backstore);
 }
@@ -546,19 +546,19 @@ void test_blfs_run_mode_open_works_as_expected(void)
 
     TEST_ASSERT_EQUAL_STRING(BACKSTORE_FILE_PATH, buselfs_state->backstore->file_path);
     TEST_ASSERT_EQUAL_STRING("test.io.bin", buselfs_state->backstore->file_name);
-    TEST_ASSERT_EQUAL_UINT64(109, buselfs_state->backstore->kcs_real_offset);
-    TEST_ASSERT_EQUAL_UINT64(133, buselfs_state->backstore->tj_real_offset);
-    TEST_ASSERT_EQUAL_UINT64(136, buselfs_state->backstore->kcs_journaled_offset);
-    TEST_ASSERT_EQUAL_UINT64(144, buselfs_state->backstore->tj_journaled_offset);
-    TEST_ASSERT_EQUAL_UINT64(145, buselfs_state->backstore->nugget_journaled_offset);
-    TEST_ASSERT_EQUAL_UINT64(161, buselfs_state->backstore->body_real_offset);
-    TEST_ASSERT_EQUAL_UINT64(48, buselfs_state->backstore->writeable_size_actual);
-    TEST_ASSERT_EQUAL_UINT64(16, buselfs_state->backstore->nugget_size_bytes);
-    TEST_ASSERT_EQUAL_UINT64(209, buselfs_state->backstore->file_size_actual);
-    TEST_ASSERT_EQUAL_UINT64(8, buselfs_state->backstore->flake_size_bytes);
-    TEST_ASSERT_EQUAL_UINT64(3, buselfs_state->backstore->num_nuggets);
-    TEST_ASSERT_EQUAL_UINT64(2, buselfs_state->backstore->flakes_per_nugget);
-    TEST_ASSERT_EQUAL_UINT64(209, buselfs_state->backstore->file_size_actual);
+    TEST_(109, buselfs_state->backstore->kcs_real_offset);
+    TEST_(133, buselfs_state->backstore->tj_real_offset);
+    TEST_(136, buselfs_state->backstore->kcs_journaled_offset);
+    TEST_(144, buselfs_state->backstore->tj_journaled_offset);
+    TEST_(145, buselfs_state->backstore->nugget_journaled_offset);
+    TEST_(161, buselfs_state->backstore->body_real_offset);
+    TEST_(48, buselfs_state->backstore->writeable_size_actual);
+    TEST_(16, buselfs_state->backstore->nugget_size_bytes);
+    TEST_(209, buselfs_state->backstore->file_size_actual);
+    TEST_(8, buselfs_state->backstore->flake_size_bytes);
+    TEST_(3, buselfs_state->backstore->num_nuggets);
+    TEST_(2, buselfs_state->backstore->flakes_per_nugget);
+    TEST_(209, buselfs_state->backstore->file_size_actual);
 
     blfs_backstore_close(buselfs_state->backstore);
 }
