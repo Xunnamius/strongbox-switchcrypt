@@ -887,7 +887,7 @@ void test_buse_read_works_as_expected(void)
     TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset9, buffer9, sizeof buffer9);
 }
 
-void test_buse_write_works_as_expected1(void)
+void test_buse_writeread_works_as_expected1(void)
 {
     free(buselfs_state->backstore);
 
@@ -904,7 +904,7 @@ void test_buse_write_works_as_expected1(void)
     TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset1, buffer1, sizeof buffer1);
 }
 
-void test_buse_write_works_as_expected2(void)
+void test_buse_writeread_works_as_expected2(void)
 {
     free(buselfs_state->backstore);
 
@@ -921,7 +921,7 @@ void test_buse_write_works_as_expected2(void)
     TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset2, buffer2, sizeof buffer2);
 }
 
-void test_buse_write_works_as_expected3(void)
+void test_buse_writeread_works_as_expected3(void)
 {
     free(buselfs_state->backstore);
 
@@ -938,7 +938,7 @@ void test_buse_write_works_as_expected3(void)
     TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset3, buffer3, sizeof buffer3);
 }
 
-void test_buse_write_works_as_expected4(void)
+void test_buse_writeread_works_as_expected4(void)
 {
     free(buselfs_state->backstore);
 
@@ -955,7 +955,7 @@ void test_buse_write_works_as_expected4(void)
     TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset4, buffer4, sizeof buffer4);
 }
 
-void test_buse_write_works_as_expected5(void)
+void test_buse_writeread_works_as_expected5(void)
 {
     free(buselfs_state->backstore);
 
@@ -972,7 +972,7 @@ void test_buse_write_works_as_expected5(void)
     TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset5, buffer5, sizeof buffer5);
 }
 
-void test_buse_write_works_as_expected6(void)
+void test_buse_writeread_works_as_expected6(void)
 {
     free(buselfs_state->backstore);
 
@@ -989,7 +989,7 @@ void test_buse_write_works_as_expected6(void)
     TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset6, buffer6, sizeof buffer6);
 }
 
-void test_buse_write_works_as_expected7(void)
+void test_buse_writeread_works_as_expected7(void)
 {
     free(buselfs_state->backstore);
 
@@ -1006,7 +1006,24 @@ void test_buse_write_works_as_expected7(void)
     TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset7, buffer7, sizeof buffer7);
 }
 
-/*void test_blfs_rekey_nugget_journaled_with_write_works_as_expected(void)
+void test_buse_writeread_works_as_expected8(void)
+{
+    free(buselfs_state->backstore);
+
+    clear_tj();
+
+    blfs_run_mode_open(BACKSTORE_FILE_PATH, (uint8_t)(1), buselfs_state);
+
+    uint8_t buffer[8] = { 0x00 };
+    uint64_t offset = 17;
+
+    buse_write(decrypted_body + offset, sizeof buffer, offset, (void *) buselfs_state);
+    buse_read(buffer, sizeof buffer, offset, (void *) buselfs_state);
+
+    TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset, buffer, sizeof buffer);
+}
+
+void test_blfs_rekey_nugget_journaled_with_write_works_as_expected(void)
 {
     // FIXME
     // rekeying on a specific nugget in the middle of the write operation
@@ -1019,24 +1036,16 @@ void test_buse_write_dirty_write_triggers_rekeying(void)
     // FIXME
 }
 
-void test_blfs_rekey_nugget_journaled_zeroes_out_everything(void)
+void test_blfs_rekey_nugget_journaled_zeroes_out_everything_as_expected(void)
 {
     // FIXME
     // rekeying on a specific nugget on startup has the intended effect (0s written)
     TEST_IGNORE();
 }
 
-void test_blfs_incomplete_rekey_triggers_blfs_rekey_nugget_journaled(void)
+void test_blfs_incomplete_rekeying_triggers_blfs_rekey_nugget_journaled_on_startup(void)
 {
     // FIXME
     // rekeying on a specific nugget on startup has the intended effect (0s written)
     TEST_IGNORE();
 }
-
-void test_buselfs_main_actual_is_readable_and_writable(void)
-{
-    // FIXME
-    zlog_fini();
-    // can create, read, write, close, open, read, write, close, open, read, write, rekey, read, write, close, open, read
-    TEST_IGNORE();
-}*/
