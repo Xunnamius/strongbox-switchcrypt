@@ -52,6 +52,12 @@ typedef struct buselfs_state_t
      */
     mt_t * merkle_tree;
     mt_hash_t merkle_tree_root_hash;
+
+    /**
+     * If not null, this default password should be used and the user should not
+     * be disturbed. Useful for unit testing.
+     */
+    char * default_password;
 } buselfs_state_t;
 
 // These are all the external caching functions:

@@ -96,17 +96,28 @@ static const uint8_t buffer_init_backstore_state[/*209*/] = {
     0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C,
     0x0D, 0x0F, 0x10, 0x11,
 
-    // BODY
+    // BODY (offset 161)
     // 3 nuggets * 2 flakes each * each flake is 8 bytes
     
-    0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x10, 0x11, 0x12, 0x13,
-    0x14, 0x15, 0x16, 0x17,
+    0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19,
+    0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17,
 
-    0x18, 0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1F, 0x20, 0x21, 0x22, 0x23, 0x24,
-    0x25, 0x26, 0x27, 0x28,
+    0x18, 0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1F, 0x20,
+    0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 0x28,
 
-    0x29, 0x2A, 0x2B, 0x2C, 0x2D, 0x2F, 0x30, 0x31, 0x32, 0x33, 0x34, 0x35,
-    0x36, 0x37, 0x38, 0x39
+    0x29, 0x2A, 0x2B, 0x2C, 0x2D, 0x2F, 0x30, 0x31,
+    0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39
+};
+
+static const uint8_t decrypted_body[] = {
+    0xb5, 0x26, 0x11, 0xf8, 0x1c, 0x3b, 0x99, 0xe0,
+    0x64, 0xe8, 0xc6, 0xf4, 0x4d, 0xba, 0x84, 0xdd,
+
+    0xc2, 0xd5, 0xe3, 0x56, 0xab, 0xcd, 0x6a, 0xb9,
+    0x26, 0xeb, 0x39, 0x2b, 0xef, 0xc5, 0x98, 0xaf,
+
+    0x0c, 0xe2, 0x14, 0x71, 0x32, 0xe1, 0x69, 0xf4,
+    0x38, 0xad, 0xdc, 0xf8, 0x64, 0xc2, 0xd1, 0x52
 };
 
 static void make_fake_state()
@@ -116,6 +127,7 @@ static void make_fake_state()
     buselfs_state->backstore                    = NULL;
     buselfs_state->cache_nugget_keys            = kh_init(BLFS_KHASH_NUGGET_KEY_CACHE_NAME);
     buselfs_state->merkle_tree                  = mt_create();
+    buselfs_state->default_password             = BLFS_DEFAULT_PASS;
 
     iofd = open(BACKSTORE_FILE_PATH, O_CREAT | O_RDWR | O_TRUNC, 0777);
 
@@ -125,6 +137,25 @@ static void make_fake_state()
     buselfs_state->backstore->file_size_actual  = (uint64_t)(sizeof buffer_init_backstore_state);
 
     blfs_backstore_write(buselfs_state->backstore, buffer_init_backstore_state, sizeof buffer_init_backstore_state, 0);
+}
+
+static void clear_tj()
+{
+    blfs_backstore_t * backstore = blfs_backstore_open(BACKSTORE_FILE_PATH);
+
+    blfs_tjournal_entry_t * entry0 = blfs_open_tjournal_entry(backstore, 0);
+    blfs_tjournal_entry_t * entry1 = blfs_open_tjournal_entry(backstore, 1);
+    blfs_tjournal_entry_t * entry2 = blfs_open_tjournal_entry(backstore, 2);
+
+    memset(entry0->bitmask->mask, 0, entry0->data_length);
+    memset(entry1->bitmask->mask, 0, entry1->data_length);
+    memset(entry2->bitmask->mask, 0, entry2->data_length);
+
+    blfs_commit_tjournal_entry(backstore, entry0);
+    blfs_commit_tjournal_entry(backstore, entry1);
+    blfs_commit_tjournal_entry(backstore, entry2);
+
+    blfs_backstore_close(backstore);
 }
 
 void setUp(void)
@@ -152,12 +183,12 @@ void tearDown(void)
 }
 
 // XXX: Also need to test a delete function to fix the memory leak issue discussed in buselfs.h
-/*void test_adding_and_evicting_from_the_keycache_works_as_expected(void)
+void test_adding_and_evicting_from_the_keycache_works_as_expected(void)
 {
     free(buselfs_state->backstore);
     
     if(BLFS_DEFAULT_DISABLE_KEY_CACHING)
-        TEST_IGNORE();
+        TEST_IGNORE_MESSAGE("BLFS_DEFAULT_DISABLE_KEY_CACHING is in effect, so this test will be skipped!");
 
     else
     {
@@ -311,12 +342,6 @@ void test_blfs_soft_open_works_as_expected(void)
         0xa4, 0xce, 0x69, 0xa8
     };
 
-    uint8_t actual_mtrh[BLFS_HEAD_HEADER_BYTES_MTRH] = {
-        0x4d, 0x8b, 0x58, 0xb9, 0x42, 0xef, 0xa7, 0x76, 0xce, 0x33, 0x64, 0x88,
-        0x6c, 0x8c, 0x8f, 0x82, 0x2c, 0xbd, 0x84, 0x8b, 0x7a, 0x47, 0xfe, 0x4f,
-        0x17, 0x95, 0xce, 0xc6, 0x59, 0x0b, 0x06, 0x71,
-    };
-
     uint8_t expected_tpmglobalver[BLFS_HEAD_HEADER_BYTES_TPMGLOBALVER] = { 0x06, 0x07, 0x08, 0x09, 0x06, 0x07, 0x08, 0x09 };
     uint8_t expected_verification[BLFS_HEAD_HEADER_BYTES_VERIFICATION] = {
         0xa7, 0x35, 0x05, 0xed, 0x0a, 0x2c, 0x81, 0xf9, 0x74, 0xf9, 0xd4, 0xe7,
@@ -330,7 +355,7 @@ void test_blfs_soft_open_works_as_expected(void)
 
     TEST_ASSERT_EQUAL_UINT(*(uint32_t *) expected_ver, *(uint32_t *) header_version->data);
     TEST_ASSERT_EQUAL_MEMORY(expected_salt, header_salt->data, BLFS_HEAD_HEADER_BYTES_SALT);
-    TEST_ASSERT_EQUAL_MEMORY(actual_mtrh, header_mtrh->data, BLFS_HEAD_HEADER_BYTES_MTRH);
+    TEST_ASSERT_EQUAL_MEMORY(buffer_init_backstore_state + 20, header_mtrh->data, BLFS_HEAD_HEADER_BYTES_MTRH);
     TEST_ASSERT_EQUAL_MEMORY(expected_tpmglobalver, header_tpmglobalver->data, BLFS_HEAD_HEADER_BYTES_TPMGLOBALVER);
     TEST_ASSERT_EQUAL_MEMORY(expected_verification, header_verification->data, BLFS_HEAD_HEADER_BYTES_VERIFICATION);
     TEST_ASSERT_EQUAL_UINT32(3, *(uint32_t *) header_numnuggets->data);
@@ -349,52 +374,58 @@ void test_blfs_soft_open_initializes_keycache_and_merkle_tree_properly(void)
 {
     free(buselfs_state->backstore);
 
-    buselfs_state->backstore = blfs_backstore_open(BACKSTORE_FILE_PATH);
-    blfs_soft_open(buselfs_state, (uint8_t)(0));
+    if(BLFS_DEFAULT_DISABLE_KEY_CACHING)
+        TEST_IGNORE_MESSAGE("BLFS_DEFAULT_DISABLE_KEY_CACHING is in effect, so this test will be skipped!");
 
-    TEST_ASSERT(KHASH_CACHE_EXISTS(BLFS_KHASH_NUGGET_KEY_CACHE_NAME, buselfs_state->cache_nugget_keys, "0"));
-    TEST_ASSERT(KHASH_CACHE_EXISTS(BLFS_KHASH_NUGGET_KEY_CACHE_NAME, buselfs_state->cache_nugget_keys, "2"));
-    TEST_ASSERT_FALSE(KHASH_CACHE_EXISTS(BLFS_KHASH_NUGGET_KEY_CACHE_NAME, buselfs_state->cache_nugget_keys, "3"));
+    else
+    {
+        buselfs_state->backstore = blfs_backstore_open(BACKSTORE_FILE_PATH);
+        blfs_soft_open(buselfs_state, (uint8_t)(0));
 
-    TEST_ASSERT(KHASH_CACHE_EXISTS(BLFS_KHASH_NUGGET_KEY_CACHE_NAME, buselfs_state->cache_nugget_keys, "0||0||0"));
-    TEST_ASSERT(KHASH_CACHE_EXISTS(BLFS_KHASH_NUGGET_KEY_CACHE_NAME, buselfs_state->cache_nugget_keys, "0||1||0"));
-    TEST_ASSERT(KHASH_CACHE_EXISTS(BLFS_KHASH_NUGGET_KEY_CACHE_NAME, buselfs_state->cache_nugget_keys, "2||0||2"));
-    TEST_ASSERT(KHASH_CACHE_EXISTS(BLFS_KHASH_NUGGET_KEY_CACHE_NAME, buselfs_state->cache_nugget_keys, "2||1||2"));
+        TEST_ASSERT(KHASH_CACHE_EXISTS(BLFS_KHASH_NUGGET_KEY_CACHE_NAME, buselfs_state->cache_nugget_keys, "0"));
+        TEST_ASSERT(KHASH_CACHE_EXISTS(BLFS_KHASH_NUGGET_KEY_CACHE_NAME, buselfs_state->cache_nugget_keys, "2"));
+        TEST_ASSERT_FALSE(KHASH_CACHE_EXISTS(BLFS_KHASH_NUGGET_KEY_CACHE_NAME, buselfs_state->cache_nugget_keys, "3"));
 
-    TEST_ASSERT_FALSE(KHASH_CACHE_EXISTS(BLFS_KHASH_NUGGET_KEY_CACHE_NAME, buselfs_state->cache_nugget_keys, "0||0||2"));
-    TEST_ASSERT_FALSE(KHASH_CACHE_EXISTS(BLFS_KHASH_NUGGET_KEY_CACHE_NAME, buselfs_state->cache_nugget_keys, "0||2||0"));
-    TEST_ASSERT_FALSE(KHASH_CACHE_EXISTS(BLFS_KHASH_NUGGET_KEY_CACHE_NAME, buselfs_state->cache_nugget_keys, "3||||0"));
+        TEST_ASSERT(KHASH_CACHE_EXISTS(BLFS_KHASH_NUGGET_KEY_CACHE_NAME, buselfs_state->cache_nugget_keys, "0||0||0"));
+        TEST_ASSERT(KHASH_CACHE_EXISTS(BLFS_KHASH_NUGGET_KEY_CACHE_NAME, buselfs_state->cache_nugget_keys, "0||1||0"));
+        TEST_ASSERT(KHASH_CACHE_EXISTS(BLFS_KHASH_NUGGET_KEY_CACHE_NAME, buselfs_state->cache_nugget_keys, "2||0||2"));
+        TEST_ASSERT(KHASH_CACHE_EXISTS(BLFS_KHASH_NUGGET_KEY_CACHE_NAME, buselfs_state->cache_nugget_keys, "2||1||2"));
 
-    blfs_header_t * version_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_VERSION);
-    blfs_header_t * salt_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_SALT);
-    blfs_header_t * tpmgv_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_TPMGLOBALVER);
-    blfs_header_t * verification_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_VERIFICATION);
-    blfs_header_t * numnuggets_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_NUMNUGGETS);
-    blfs_header_t * flakespernugget_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_FLAKESPERNUGGET);
-    blfs_header_t * flakesize_bytes_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_FLAKESIZE_BYTES);
-    blfs_header_t * rekeying_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_REKEYING);
+        TEST_ASSERT_FALSE(KHASH_CACHE_EXISTS(BLFS_KHASH_NUGGET_KEY_CACHE_NAME, buselfs_state->cache_nugget_keys, "0||0||2"));
+        TEST_ASSERT_FALSE(KHASH_CACHE_EXISTS(BLFS_KHASH_NUGGET_KEY_CACHE_NAME, buselfs_state->cache_nugget_keys, "0||2||0"));
+        TEST_ASSERT_FALSE(KHASH_CACHE_EXISTS(BLFS_KHASH_NUGGET_KEY_CACHE_NAME, buselfs_state->cache_nugget_keys, "3||||0"));
 
-    TEST_ASSERT(mt_verify(buselfs_state->merkle_tree, tpmgv_header->data, BLFS_HEAD_HEADER_BYTES_TPMGLOBALVER, 0) == MT_SUCCESS);
+        blfs_header_t * version_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_VERSION);
+        blfs_header_t * salt_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_SALT);
+        blfs_header_t * tpmgv_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_TPMGLOBALVER);
+        blfs_header_t * verification_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_VERIFICATION);
+        blfs_header_t * numnuggets_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_NUMNUGGETS);
+        blfs_header_t * flakespernugget_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_FLAKESPERNUGGET);
+        blfs_header_t * flakesize_bytes_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_FLAKESIZE_BYTES);
+        blfs_header_t * rekeying_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_REKEYING);
 
-    TEST_ASSERT(mt_verify(buselfs_state->merkle_tree, version_header->data, BLFS_HEAD_HEADER_BYTES_VERSION, 1) == MT_SUCCESS);
-    TEST_ASSERT(mt_verify(buselfs_state->merkle_tree, salt_header->data, BLFS_HEAD_HEADER_BYTES_SALT, 2) == MT_SUCCESS);
-    TEST_ASSERT(mt_verify(buselfs_state->merkle_tree, verification_header->data, BLFS_HEAD_HEADER_BYTES_VERIFICATION, 3) == MT_SUCCESS);
-    TEST_ASSERT(mt_verify(buselfs_state->merkle_tree, numnuggets_header->data, BLFS_HEAD_HEADER_BYTES_NUMNUGGETS, 4) == MT_SUCCESS);
-    TEST_ASSERT(mt_verify(buselfs_state->merkle_tree, flakespernugget_header->data, BLFS_HEAD_HEADER_BYTES_FLAKESPERNUGGET, 5) == MT_SUCCESS);
-    TEST_ASSERT(mt_verify(buselfs_state->merkle_tree, flakesize_bytes_header->data, BLFS_HEAD_HEADER_BYTES_FLAKESIZE_BYTES, 6) == MT_SUCCESS);
-    TEST_ASSERT(mt_verify(buselfs_state->merkle_tree, rekeying_header->data, BLFS_HEAD_HEADER_BYTES_REKEYING, 7) == MT_SUCCESS);
+        TEST_ASSERT(mt_verify(buselfs_state->merkle_tree, tpmgv_header->data, BLFS_HEAD_HEADER_BYTES_TPMGLOBALVER, 0) == MT_SUCCESS);
 
-    TEST_ASSERT(mt_exists(buselfs_state->merkle_tree, 8));
-    TEST_ASSERT(mt_exists(buselfs_state->merkle_tree, 10));
+        TEST_ASSERT(mt_verify(buselfs_state->merkle_tree, version_header->data, BLFS_HEAD_HEADER_BYTES_VERSION, 1) == MT_SUCCESS);
+        TEST_ASSERT(mt_verify(buselfs_state->merkle_tree, salt_header->data, BLFS_HEAD_HEADER_BYTES_SALT, 2) == MT_SUCCESS);
+        TEST_ASSERT(mt_verify(buselfs_state->merkle_tree, verification_header->data, BLFS_HEAD_HEADER_BYTES_VERIFICATION, 3) == MT_SUCCESS);
+        TEST_ASSERT(mt_verify(buselfs_state->merkle_tree, numnuggets_header->data, BLFS_HEAD_HEADER_BYTES_NUMNUGGETS, 4) == MT_SUCCESS);
+        TEST_ASSERT(mt_verify(buselfs_state->merkle_tree, flakespernugget_header->data, BLFS_HEAD_HEADER_BYTES_FLAKESPERNUGGET, 5) == MT_SUCCESS);
+        TEST_ASSERT(mt_verify(buselfs_state->merkle_tree, flakesize_bytes_header->data, BLFS_HEAD_HEADER_BYTES_FLAKESIZE_BYTES, 6) == MT_SUCCESS);
+        TEST_ASSERT(mt_verify(buselfs_state->merkle_tree, rekeying_header->data, BLFS_HEAD_HEADER_BYTES_REKEYING, 7) == MT_SUCCESS);
 
-    TEST_ASSERT(mt_exists(buselfs_state->merkle_tree, 11));
-    TEST_ASSERT(mt_exists(buselfs_state->merkle_tree, 13));
+        TEST_ASSERT(mt_exists(buselfs_state->merkle_tree, 8));
+        TEST_ASSERT(mt_exists(buselfs_state->merkle_tree, 10));
 
-    TEST_ASSERT(mt_exists(buselfs_state->merkle_tree, 14));
-    TEST_ASSERT(mt_exists(buselfs_state->merkle_tree, 19));
+        TEST_ASSERT(mt_exists(buselfs_state->merkle_tree, 11));
+        TEST_ASSERT(mt_exists(buselfs_state->merkle_tree, 13));
 
-    TEST_ASSERT_FALSE(mt_exists(buselfs_state->merkle_tree, 20));
-    blfs_backstore_close(buselfs_state->backstore);
+        TEST_ASSERT(mt_exists(buselfs_state->merkle_tree, 14));
+        TEST_ASSERT(mt_exists(buselfs_state->merkle_tree, 19));
+
+        TEST_ASSERT_FALSE(mt_exists(buselfs_state->merkle_tree, 20));
+        blfs_backstore_close(buselfs_state->backstore);
+    }
 }
 
 void test_blfs_run_mode_create_works_when_backstore_exists_already(void)
@@ -438,14 +469,10 @@ void test_blfs_run_mode_create_works_when_backstore_exists_already(void)
     uint8_t zero_rekeying[BLFS_HEAD_HEADER_BYTES_REKEYING] = { 0x00 };
     uint8_t zero_master_secret[BLFS_CRYPTO_BYTES_KDF_OUT] = { 0x00 };
     uint8_t set_initialized[BLFS_HEAD_HEADER_BYTES_INITIALIZED] = { BLFS_HEAD_IS_INITIALIZED_VALUE };
-    uint8_t actual_mtrh[BLFS_HEAD_HEADER_BYTES_MTRH] = {
-        0xB4, 0x7E, 0x13, 0xD4, 0x5E, 0xFB, 0xB0, 0xF3, 0x80, 0x59, 0xE7, 0x14, 0xDC, 0xA5, 0xC3, 0x1C, 0xC7, 0xC8, 0x60,
-        0x89, 0x8F, 0x9C, 0x2D, 0x4B, 0x3A, 0x36, 0x26, 0xD6, 0x8C, 0xC8, 0xA1, 0x51
-    };
 
     TEST_ASSERT_EQUAL_UINT32(BLFS_CURRENT_VERSION, *(uint32_t *) header_version->data);
     TEST_ASSERT_TRUE(memcmp(header_salt->data, zero_salt, BLFS_HEAD_HEADER_BYTES_SALT) != 0);
-    TEST_ASSERT_TRUE(memcmp(header_mtrh->data, actual_mtrh, BLFS_HEAD_HEADER_BYTES_MTRH) != 0);
+    TEST_ASSERT_TRUE(memcmp(header_mtrh->data, buffer_init_backstore_state + 20, BLFS_HEAD_HEADER_BYTES_MTRH) != 0);
     TEST_ASSERT_TRUE(memcmp(header_tpmglobalver->data, zero_tpmglobalver, BLFS_HEAD_HEADER_BYTES_TPMGLOBALVER) != 0);
     TEST_ASSERT_TRUE(memcmp(header_verification->data, zero_verification, BLFS_HEAD_HEADER_BYTES_VERIFICATION) != 0);
     TEST_ASSERT_EQUAL_UINT32(116, *(uint32_t *) header_numnuggets->data);
@@ -489,52 +516,60 @@ void test_blfs_run_mode_create_works_when_backstore_DNE(void)
 
 void test_blfs_run_mode_create_initializes_keycache_and_merkle_tree_properly(void)
 {
-    blfs_run_mode_create(BACKSTORE_FILE_PATH, 4096, 2, 12, buselfs_state);
+    free(buselfs_state->backstore);
 
-    TEST_ASSERT(KHASH_CACHE_EXISTS(BLFS_KHASH_NUGGET_KEY_CACHE_NAME, buselfs_state->cache_nugget_keys, "0"));
-    TEST_ASSERT(KHASH_CACHE_EXISTS(BLFS_KHASH_NUGGET_KEY_CACHE_NAME, buselfs_state->cache_nugget_keys, "2"));
-    TEST_ASSERT_FALSE(KHASH_CACHE_EXISTS(BLFS_KHASH_NUGGET_KEY_CACHE_NAME, buselfs_state->cache_nugget_keys, "116"));
+    if(BLFS_DEFAULT_DISABLE_KEY_CACHING)
+        TEST_IGNORE_MESSAGE("BLFS_DEFAULT_DISABLE_KEY_CACHING is in effect, so this test will be skipped!");
 
-    TEST_ASSERT(KHASH_CACHE_EXISTS(BLFS_KHASH_NUGGET_KEY_CACHE_NAME, buselfs_state->cache_nugget_keys, "0||0||0"));
-    TEST_ASSERT(KHASH_CACHE_EXISTS(BLFS_KHASH_NUGGET_KEY_CACHE_NAME, buselfs_state->cache_nugget_keys, "0||10||0"));
-    TEST_ASSERT(KHASH_CACHE_EXISTS(BLFS_KHASH_NUGGET_KEY_CACHE_NAME, buselfs_state->cache_nugget_keys, "115||0||0"));
-    TEST_ASSERT(KHASH_CACHE_EXISTS(BLFS_KHASH_NUGGET_KEY_CACHE_NAME, buselfs_state->cache_nugget_keys, "115||11||0"));
+    else
+    {
+        blfs_run_mode_create(BACKSTORE_FILE_PATH, 4096, 2, 12, buselfs_state);
 
-    TEST_ASSERT_FALSE(KHASH_CACHE_EXISTS(BLFS_KHASH_NUGGET_KEY_CACHE_NAME, buselfs_state->cache_nugget_keys, "116||0||0"));
-    TEST_ASSERT_FALSE(KHASH_CACHE_EXISTS(BLFS_KHASH_NUGGET_KEY_CACHE_NAME, buselfs_state->cache_nugget_keys, "0||0||10"));
-    TEST_ASSERT_FALSE(KHASH_CACHE_EXISTS(BLFS_KHASH_NUGGET_KEY_CACHE_NAME, buselfs_state->cache_nugget_keys, "0||12||0"));
+        TEST_ASSERT(KHASH_CACHE_EXISTS(BLFS_KHASH_NUGGET_KEY_CACHE_NAME, buselfs_state->cache_nugget_keys, "0"));
+        TEST_ASSERT(KHASH_CACHE_EXISTS(BLFS_KHASH_NUGGET_KEY_CACHE_NAME, buselfs_state->cache_nugget_keys, "2"));
+        TEST_ASSERT_FALSE(KHASH_CACHE_EXISTS(BLFS_KHASH_NUGGET_KEY_CACHE_NAME, buselfs_state->cache_nugget_keys, "116"));
 
-    blfs_header_t * version_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_VERSION);
-    blfs_header_t * salt_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_SALT);
-    blfs_header_t * tpmgv_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_TPMGLOBALVER);
-    blfs_header_t * verification_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_VERIFICATION);
-    blfs_header_t * numnuggets_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_NUMNUGGETS);
-    blfs_header_t * flakespernugget_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_FLAKESPERNUGGET);
-    blfs_header_t * flakesize_bytes_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_FLAKESIZE_BYTES);
-    blfs_header_t * rekeying_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_REKEYING);
+        TEST_ASSERT(KHASH_CACHE_EXISTS(BLFS_KHASH_NUGGET_KEY_CACHE_NAME, buselfs_state->cache_nugget_keys, "0||0||0"));
+        TEST_ASSERT(KHASH_CACHE_EXISTS(BLFS_KHASH_NUGGET_KEY_CACHE_NAME, buselfs_state->cache_nugget_keys, "0||10||0"));
+        TEST_ASSERT(KHASH_CACHE_EXISTS(BLFS_KHASH_NUGGET_KEY_CACHE_NAME, buselfs_state->cache_nugget_keys, "115||0||0"));
+        TEST_ASSERT(KHASH_CACHE_EXISTS(BLFS_KHASH_NUGGET_KEY_CACHE_NAME, buselfs_state->cache_nugget_keys, "115||11||0"));
 
-    TEST_ASSERT(mt_verify(buselfs_state->merkle_tree, tpmgv_header->data, BLFS_HEAD_HEADER_BYTES_TPMGLOBALVER, 0) == MT_SUCCESS);
+        TEST_ASSERT_FALSE(KHASH_CACHE_EXISTS(BLFS_KHASH_NUGGET_KEY_CACHE_NAME, buselfs_state->cache_nugget_keys, "116||0||0"));
+        TEST_ASSERT_FALSE(KHASH_CACHE_EXISTS(BLFS_KHASH_NUGGET_KEY_CACHE_NAME, buselfs_state->cache_nugget_keys, "0||0||10"));
+        TEST_ASSERT_FALSE(KHASH_CACHE_EXISTS(BLFS_KHASH_NUGGET_KEY_CACHE_NAME, buselfs_state->cache_nugget_keys, "0||12||0"));
 
-    TEST_ASSERT(mt_verify(buselfs_state->merkle_tree, version_header->data, BLFS_HEAD_HEADER_BYTES_VERSION, 1) == MT_SUCCESS);
-    TEST_ASSERT(mt_verify(buselfs_state->merkle_tree, salt_header->data, BLFS_HEAD_HEADER_BYTES_SALT, 2) == MT_SUCCESS);
-    TEST_ASSERT(mt_verify(buselfs_state->merkle_tree, verification_header->data, BLFS_HEAD_HEADER_BYTES_VERIFICATION, 3) == MT_SUCCESS);
-    TEST_ASSERT(mt_verify(buselfs_state->merkle_tree, numnuggets_header->data, BLFS_HEAD_HEADER_BYTES_NUMNUGGETS, 4) == MT_SUCCESS);
-    TEST_ASSERT(mt_verify(buselfs_state->merkle_tree, flakespernugget_header->data, BLFS_HEAD_HEADER_BYTES_FLAKESPERNUGGET, 5) == MT_SUCCESS);
-    TEST_ASSERT(mt_verify(buselfs_state->merkle_tree, flakesize_bytes_header->data, BLFS_HEAD_HEADER_BYTES_FLAKESIZE_BYTES, 6) == MT_SUCCESS);
-    TEST_ASSERT(mt_verify(buselfs_state->merkle_tree, rekeying_header->data, BLFS_HEAD_HEADER_BYTES_REKEYING, 7) == MT_SUCCESS);
+        blfs_header_t * version_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_VERSION);
+        blfs_header_t * salt_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_SALT);
+        blfs_header_t * tpmgv_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_TPMGLOBALVER);
+        blfs_header_t * verification_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_VERIFICATION);
+        blfs_header_t * numnuggets_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_NUMNUGGETS);
+        blfs_header_t * flakespernugget_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_FLAKESPERNUGGET);
+        blfs_header_t * flakesize_bytes_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_FLAKESIZE_BYTES);
+        blfs_header_t * rekeying_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_REKEYING);
 
-    TEST_ASSERT(mt_exists(buselfs_state->merkle_tree, 8));
-    TEST_ASSERT(mt_exists(buselfs_state->merkle_tree, 130));
+        TEST_ASSERT(mt_verify(buselfs_state->merkle_tree, tpmgv_header->data, BLFS_HEAD_HEADER_BYTES_TPMGLOBALVER, 0) == MT_SUCCESS);
 
-    TEST_ASSERT(mt_exists(buselfs_state->merkle_tree, 124));
-    TEST_ASSERT(mt_exists(buselfs_state->merkle_tree, 239));
+        TEST_ASSERT(mt_verify(buselfs_state->merkle_tree, version_header->data, BLFS_HEAD_HEADER_BYTES_VERSION, 1) == MT_SUCCESS);
+        TEST_ASSERT(mt_verify(buselfs_state->merkle_tree, salt_header->data, BLFS_HEAD_HEADER_BYTES_SALT, 2) == MT_SUCCESS);
+        TEST_ASSERT(mt_verify(buselfs_state->merkle_tree, verification_header->data, BLFS_HEAD_HEADER_BYTES_VERIFICATION, 3) == MT_SUCCESS);
+        TEST_ASSERT(mt_verify(buselfs_state->merkle_tree, numnuggets_header->data, BLFS_HEAD_HEADER_BYTES_NUMNUGGETS, 4) == MT_SUCCESS);
+        TEST_ASSERT(mt_verify(buselfs_state->merkle_tree, flakespernugget_header->data, BLFS_HEAD_HEADER_BYTES_FLAKESPERNUGGET, 5) == MT_SUCCESS);
+        TEST_ASSERT(mt_verify(buselfs_state->merkle_tree, flakesize_bytes_header->data, BLFS_HEAD_HEADER_BYTES_FLAKESIZE_BYTES, 6) == MT_SUCCESS);
+        TEST_ASSERT(mt_verify(buselfs_state->merkle_tree, rekeying_header->data, BLFS_HEAD_HEADER_BYTES_REKEYING, 7) == MT_SUCCESS);
 
-    TEST_ASSERT(mt_exists(buselfs_state->merkle_tree, 240));
-    TEST_ASSERT(mt_exists(buselfs_state->merkle_tree, 1631));
+        TEST_ASSERT(mt_exists(buselfs_state->merkle_tree, 8));
+        TEST_ASSERT(mt_exists(buselfs_state->merkle_tree, 130));
 
-    TEST_ASSERT_FALSE(mt_exists(buselfs_state->merkle_tree, 1632));
+        TEST_ASSERT(mt_exists(buselfs_state->merkle_tree, 124));
+        TEST_ASSERT(mt_exists(buselfs_state->merkle_tree, 239));
 
-    blfs_backstore_close(buselfs_state->backstore);
+        TEST_ASSERT(mt_exists(buselfs_state->merkle_tree, 240));
+        TEST_ASSERT(mt_exists(buselfs_state->merkle_tree, 1631));
+
+        TEST_ASSERT_FALSE(mt_exists(buselfs_state->merkle_tree, 1632));
+
+        blfs_backstore_close(buselfs_state->backstore);
+    }
 }
 
 void test_blfs_run_mode_open_works_as_expected(void)
@@ -780,17 +815,10 @@ void test_buselfs_main_actual_throws_exception_if_bad_numbers_given_as_args(void
     };
 
     TRY_FN_CATCH_EXCEPTION(buselfs_main_actual(5, argv8, blockdevice));
-}*/
+}
 
 void test_buse_read_works_as_expected(void)
 {
-    uint8_t decrypted_body[] = {
-        0xb5, 0x26, 0x11, 0xf8, 0x1c, 0x3b, 0x99, 0xe0, 0x64, 0xe8, 0xc6, 0xf4,
-        0x4d, 0xba, 0x84, 0xdd, 0xc2, 0xd5, 0xe3, 0x56, 0xab, 0xcd, 0x6a, 0xb9,
-        0x26, 0xeb, 0x39, 0x2b, 0xef, 0xc5, 0x98, 0xaf, 0x0c, 0xe2, 0x14, 0x71,
-        0x32, 0xe1, 0x69, 0xf4, 0x38, 0xad, 0xdc, 0xf8, 0x64, 0xc2, 0xd1, 0x52
-    };
-
     free(buselfs_state->backstore);
 
     blfs_run_mode_open(BACKSTORE_FILE_PATH, (uint8_t)(0), buselfs_state);
@@ -843,28 +871,171 @@ void test_buse_read_works_as_expected(void)
     buse_read(buffer7, sizeof buffer7, offset7, (void *) buselfs_state);
 
     TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset7, buffer7, sizeof buffer7);
+
+    uint8_t buffer8[20] = { 0x00 };
+    uint64_t offset8 = 28;
+
+    buse_read(buffer8, sizeof buffer8, offset8, (void *) buselfs_state);
+
+    TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset8, buffer8, sizeof buffer8);
+
+    uint8_t buffer9[8] = { 0x00 };
+    uint64_t offset9 = 1;
+
+    buse_read(buffer9, sizeof buffer9, offset9, (void *) buselfs_state);
+
+    TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset9, buffer9, sizeof buffer9);
 }
 
-void test_buse_write_works_as_expected(void)
+void test_buse_write_works_as_expected1(void)
 {
-    
+    free(buselfs_state->backstore);
+
+    clear_tj();
+
+    blfs_run_mode_open(BACKSTORE_FILE_PATH, (uint8_t)(1), buselfs_state);
+
+    uint8_t buffer1[20] = { 0x00 };
+    uint64_t offset1 = 28;
+
+    buse_write(decrypted_body + offset1, sizeof buffer1, offset1, (void *) buselfs_state);
+    buse_read(buffer1, sizeof buffer1, offset1, (void *) buselfs_state);
+
+    TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset1, buffer1, sizeof buffer1);
 }
 
-/*void test_blfs_rekey_nugget_journaled_zeroes_out_everything(void)
+void test_buse_write_works_as_expected2(void)
 {
-    // rekeying on a specific nugget on startup has the intended effect (0s written)
-    TEST_IGNORE();
+    free(buselfs_state->backstore);
+
+    clear_tj();
+
+    blfs_run_mode_open(BACKSTORE_FILE_PATH, (uint8_t)(1), buselfs_state);
+
+    uint8_t buffer2[20] = { 0x00 };
+    uint64_t offset2 = 28;
+
+    buse_write(decrypted_body + offset2, sizeof buffer2, offset2, (void *) buselfs_state);
+    buse_read(buffer2, sizeof buffer2, offset2, (void *) buselfs_state);
+
+    TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset2, buffer2, sizeof buffer2);
 }
 
-void test_blfs_rekey_nugget_journaled_with_write_works_as_expected(void)
+void test_buse_write_works_as_expected3(void)
 {
+    free(buselfs_state->backstore);
+
+    clear_tj();
+
+    blfs_run_mode_open(BACKSTORE_FILE_PATH, (uint8_t)(1), buselfs_state);
+
+    uint8_t buffer3[48] = { 0x00 };
+    uint64_t offset3 = 0;
+
+    buse_write(decrypted_body + offset3, sizeof buffer3, offset3, (void *) buselfs_state);
+    buse_read(buffer3, sizeof buffer3, offset3, (void *) buselfs_state);
+
+    TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset3, buffer3, sizeof buffer3);
+}
+
+void test_buse_write_works_as_expected4(void)
+{
+    free(buselfs_state->backstore);
+
+    clear_tj();
+
+    blfs_run_mode_open(BACKSTORE_FILE_PATH, (uint8_t)(1), buselfs_state);
+
+    uint8_t buffer4[8] = { 0x00 };
+    uint64_t offset4 = 0;
+
+    buse_write(decrypted_body + offset4, sizeof buffer4, offset4, (void *) buselfs_state);
+    buse_read(buffer4, sizeof buffer4, offset4, (void *) buselfs_state);
+
+    TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset4, buffer4, sizeof buffer4);
+}
+
+void test_buse_write_works_as_expected5(void)
+{
+    free(buselfs_state->backstore);
+
+    clear_tj();
+
+    blfs_run_mode_open(BACKSTORE_FILE_PATH, (uint8_t)(1), buselfs_state);
+
+    uint8_t buffer5[8] = { 0x00 };
+    uint64_t offset5 = 1;
+
+    buse_write(decrypted_body + offset5, sizeof buffer5, offset5, (void *) buselfs_state);
+    buse_read(buffer5, sizeof buffer5, offset5, (void *) buselfs_state);
+
+    TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset5, buffer5, sizeof buffer5);
+}
+
+void test_buse_write_works_as_expected6(void)
+{
+    free(buselfs_state->backstore);
+
+    clear_tj();
+
+    blfs_run_mode_open(BACKSTORE_FILE_PATH, (uint8_t)(1), buselfs_state);
+
+    uint8_t buffer6[1] = { 0x00 };
+    uint64_t offset6 = 47;
+
+    buse_write(decrypted_body + offset6, sizeof buffer6, offset6, (void *) buselfs_state);
+    buse_read(buffer6, sizeof buffer6, offset6, (void *) buselfs_state);
+
+    TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset6, buffer6, sizeof buffer6);
+}
+
+void test_buse_write_works_as_expected7(void)
+{
+    free(buselfs_state->backstore);
+
+    clear_tj();
+
+    blfs_run_mode_open(BACKSTORE_FILE_PATH, (uint8_t)(1), buselfs_state);
+
+    uint8_t buffer7[1] = { 0x00 };
+    uint64_t offset7 = 35;
+
+    buse_write(decrypted_body + offset7, sizeof buffer7, offset7, (void *) buselfs_state);
+    buse_read(buffer7, sizeof buffer7, offset7, (void *) buselfs_state);
+
+    TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset7, buffer7, sizeof buffer7);
+}
+
+/*void test_blfs_rekey_nugget_journaled_with_write_works_as_expected(void)
+{
+    // FIXME
     // rekeying on a specific nugget in the middle of the write operation
     // puts the backstore in an expected state
     TEST_IGNORE();
 }
 
+void test_buse_write_dirty_write_triggers_rekeying(void)
+{
+    // FIXME
+}
+
+void test_blfs_rekey_nugget_journaled_zeroes_out_everything(void)
+{
+    // FIXME
+    // rekeying on a specific nugget on startup has the intended effect (0s written)
+    TEST_IGNORE();
+}
+
+void test_blfs_incomplete_rekey_triggers_blfs_rekey_nugget_journaled(void)
+{
+    // FIXME
+    // rekeying on a specific nugget on startup has the intended effect (0s written)
+    TEST_IGNORE();
+}
+
 void test_buselfs_main_actual_is_readable_and_writable(void)
 {
+    // FIXME
     zlog_fini();
     // can create, read, write, close, open, read, write, close, open, read, write, rekey, read, write, close, open, read
     TEST_IGNORE();

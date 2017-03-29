@@ -140,8 +140,12 @@ __extension__ ({ \
 #define BLFS_DEFAULT_BYTES_FLAKE                4096U
 #define BLFS_DEFAULT_BYTES_BACKSTORE            1073741824ULL // 1GB
 #define BLFS_DEFAULT_FLAKES_PER_NUGGET          64U
-#define BLFS_BACKSTORE_DEVNAME_MAXLEN           16
 #define BLFS_DEFAULT_BACKSTORE_FILE_PERMS       0666
+#define BLFS_DEFAULT_PASS                       "t" // Of course, its use is not secure...
+
+#define BLFS_BACKSTORE_DEVNAME_MAXLEN           16
+#define BLFS_PASSWORD_BUF_SIZE                  1025
+#define BLFS_PASSWORD_MAX_SIZE                  "1024"
 
 ///////////
 // Khash //

@@ -130,6 +130,9 @@ void blfs_chacha20_crypt(uint8_t * crypted_data,
     uint64_t zero_str_length = CEIL((intrablock_offset + data_length), BLFS_CRYPTO_BYTES_CHACHA_BLOCK) * BLFS_CRYPTO_BYTES_CHACHA_BLOCK;
     uint64_t block_read_upper_bound = intrablock_offset + data_length;
 
+    IFDEBUG(dzlog_debug("data in: (first 64 bytes):"));
+    IFDEBUG(hdzlog_debug(data, MIN(64U, data_length)));
+
     unsigned char * kcs_keycount_ptr = (unsigned char *) &kcs_keycount;
 
     IFDEBUG(dzlog_debug("blfs_chacha20_crypt"));
@@ -170,6 +173,10 @@ void blfs_chacha20_crypt(uint8_t * crypted_data,
         assert(k < data_length);
         crypted_data[k] = data[k] ^ xor_str[i];
     }
+
+
+    IFDEBUG(dzlog_debug("crypted data out: (first 64 bytes):"));
+    IFDEBUG(hdzlog_debug(crypted_data, MIN(64U, data_length)));
 
     free(zero_str);
     free(xor_str);
