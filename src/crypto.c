@@ -191,6 +191,9 @@ void blfs_globalversion_verify(uint64_t id, uint64_t global_version)
     IFDEBUG(dzlog_debug("id = %"PRIu64, id));
     IFDEBUG(dzlog_debug("global_version = %"PRIu64, global_version));
 
+    (void) id;
+    (void) global_version;
+
     // TODO: spin our wheels here for a bit to simulate verification
     // EXCEPTION_TPM_VERSION_CHECK_FAILURE
 
@@ -203,6 +206,9 @@ void blfs_globalversion_commit(uint64_t id, uint64_t global_version)
 
     IFDEBUG(dzlog_debug("id = %"PRIu64, id));
     IFDEBUG(dzlog_debug("global_version = %"PRIu64, global_version));
+
+    (void) id;
+    (void) global_version;
 
     // TODO: spin our wheels here for a bit to simulate committing
     // EXCEPTION_TPM_VERSION_CHECK_FAILURE

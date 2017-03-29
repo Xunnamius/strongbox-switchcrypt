@@ -250,7 +250,7 @@ void test_blfs_soft_open_throws_exception_on_invalid_password(void)
     blfs_commit_header(buselfs_state->backstore, header);
 
     CEXCEPTION_T e_expected = EXCEPTION_BAD_PASSWORD;
-    CEXCEPTION_T e_actual = EXCEPTION_NO_EXCEPTION;
+    volatile CEXCEPTION_T e_actual = EXCEPTION_NO_EXCEPTION;
 
     TRY_FN_CATCH_EXCEPTION(blfs_soft_open(buselfs_state, (uint8_t)(0)));
     blfs_backstore_close(buselfs_state->backstore);
@@ -266,7 +266,7 @@ void test_blfs_soft_open_throws_exception_on_bad_init_header(void)
     blfs_commit_header(buselfs_state->backstore, header);
 
     CEXCEPTION_T e_expected = EXCEPTION_BACKSTORE_NOT_INITIALIZED;
-    CEXCEPTION_T e_actual = EXCEPTION_NO_EXCEPTION;
+    volatile CEXCEPTION_T e_actual = EXCEPTION_NO_EXCEPTION;
 
     TRY_FN_CATCH_EXCEPTION(blfs_soft_open(buselfs_state, (uint8_t)(0)));
     blfs_backstore_close(buselfs_state->backstore);
@@ -281,7 +281,7 @@ void test_blfs_soft_open_throws_exception_on_invalid_mtrh(void)
     buselfs_state->backstore = blfs_backstore_open(BACKSTORE_FILE_PATH);
 
     CEXCEPTION_T e_expected = EXCEPTION_INTEGRITY_FAILURE;
-    CEXCEPTION_T e_actual = EXCEPTION_NO_EXCEPTION;
+    volatile CEXCEPTION_T e_actual = EXCEPTION_NO_EXCEPTION;
 
     TRY_FN_CATCH_EXCEPTION(blfs_soft_open(buselfs_state, (uint8_t)(0)));
     blfs_backstore_close(buselfs_state->backstore);
@@ -605,7 +605,7 @@ void test_blfs_run_mode_wipe_works_as_expected(void)
     buselfs_state->backstore = blfs_backstore_open(BACKSTORE_FILE_PATH);
 
     CEXCEPTION_T e_expected = EXCEPTION_MUST_HALT;
-    CEXCEPTION_T e_actual = EXCEPTION_NO_EXCEPTION;
+    volatile CEXCEPTION_T e_actual = EXCEPTION_NO_EXCEPTION;
 
     TRY_FN_CATCH_EXCEPTION(blfs_run_mode_wipe(BACKSTORE_FILE_PATH, (uint8_t)(0), buselfs_state));
 
@@ -660,7 +660,7 @@ void test_blfs_run_mode_open_properly_opens_wiped_backstores(void)
     free(buselfs_state->backstore);
 
     CEXCEPTION_T e_expected = EXCEPTION_MUST_HALT;
-    CEXCEPTION_T e_actual = EXCEPTION_NO_EXCEPTION;
+    volatile CEXCEPTION_T e_actual = EXCEPTION_NO_EXCEPTION;
 
     TRY_FN_CATCH_EXCEPTION(blfs_run_mode_wipe(BACKSTORE_FILE_PATH, (uint8_t)(0), buselfs_state));
 
@@ -685,7 +685,7 @@ void test_buselfs_main_actual_throws_exception_if_wrong_argc(void)
 {
    
     CEXCEPTION_T e_expected = EXCEPTION_MUST_HALT;
-    CEXCEPTION_T e_actual = EXCEPTION_NO_EXCEPTION;
+    volatile CEXCEPTION_T e_actual = EXCEPTION_NO_EXCEPTION;
 
     char * argv[] = { "progname" };
 
@@ -695,7 +695,7 @@ void test_buselfs_main_actual_throws_exception_if_wrong_argc(void)
 void test_buselfs_main_actual_throws_exception_if_bad_cmd(void)
 {
     CEXCEPTION_T e_expected = EXCEPTION_UNKNOWN_MODE;
-    CEXCEPTION_T e_actual = EXCEPTION_NO_EXCEPTION;
+    volatile CEXCEPTION_T e_actual = EXCEPTION_NO_EXCEPTION;
 
     char * argv[] = {
         "progname",
@@ -710,7 +710,7 @@ void test_buselfs_main_actual_throws_exception_if_too_many_fpn(void)
     zlog_fini();
 
     CEXCEPTION_T e_expected = EXCEPTION_TOO_MANY_FLAKES_PER_NUGGET;
-    CEXCEPTION_T e_actual = EXCEPTION_NO_EXCEPTION;
+    volatile CEXCEPTION_T e_actual = EXCEPTION_NO_EXCEPTION;
 
     char * argv[] = {
         "progname",
@@ -726,7 +726,7 @@ void test_buselfs_main_actual_throws_exception_if_too_many_fpn(void)
 void test_buselfs_main_actual_throws_exception_if_bad_numbers_given_as_args(void)
 {
     CEXCEPTION_T e_expected = EXCEPTION_INVALID_FLAKES_PER_NUGGET;
-    CEXCEPTION_T e_actual = EXCEPTION_NO_EXCEPTION;
+    volatile CEXCEPTION_T e_actual = EXCEPTION_NO_EXCEPTION;
 
     char * argv[] = {
         "progname",

@@ -141,7 +141,7 @@ void test_blfs_create_header_throws_exception_if_nugget_in_cache(void)
     (void) blfs_create_keycount(backstore, nugget_index);
 
     CEXCEPTION_T e_expected = EXCEPTION_INVALID_OPERATION;
-    CEXCEPTION_T e_actual = EXCEPTION_NO_EXCEPTION;
+    volatile CEXCEPTION_T e_actual = EXCEPTION_NO_EXCEPTION;
 
     TRY_FN_CATCH_EXCEPTION((void) blfs_create_keycount(backstore, nugget_index));
 }
@@ -244,7 +244,7 @@ void test_blfs_create_keycount_throws_exception_if_nugget_in_cache(void)
     (void) blfs_create_keycount(backstore, nugget_index);
 
     CEXCEPTION_T e_expected = EXCEPTION_INVALID_OPERATION;
-    CEXCEPTION_T e_actual = EXCEPTION_NO_EXCEPTION;
+    volatile CEXCEPTION_T e_actual = EXCEPTION_NO_EXCEPTION;
 
     TRY_FN_CATCH_EXCEPTION((void) blfs_create_keycount(backstore, nugget_index));
 }
@@ -261,7 +261,7 @@ void test_blfs_commit_keycount_works_as_expected(void)
     count->nugget_index = 25;
     count->data_offset = 0x04;
     count->data_length = BLFS_HEAD_BYTES_KEYCOUNT;
-    count->keycount = *((uint64_t *) data);
+    memcpy(&(count->keycount), data, count->data_length);
 
     blfs_backstore_write_Expect(backstore, data, BLFS_HEAD_BYTES_KEYCOUNT, 0x04);
 
@@ -355,7 +355,7 @@ void test_blfs_create_tjournal_entry_throws_exception_if_nugget_in_cache(void)
     (void) blfs_create_tjournal_entry(backstore, nugget_index);
 
     CEXCEPTION_T e_expected = EXCEPTION_INVALID_OPERATION;
-    CEXCEPTION_T e_actual = EXCEPTION_NO_EXCEPTION;
+    volatile CEXCEPTION_T e_actual = EXCEPTION_NO_EXCEPTION;
 
     TRY_FN_CATCH_EXCEPTION((void) blfs_create_tjournal_entry(backstore, nugget_index));
 }

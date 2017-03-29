@@ -39,7 +39,7 @@ void tearDown(void)
 void test_vector_functions_throw_exceptions_as_expected(void)
 {
     CEXCEPTION_T e_expected = EXCEPTION_OUT_OF_BOUNDS;
-    CEXCEPTION_T e_actual = EXCEPTION_NO_EXCEPTION;
+    volatile CEXCEPTION_T e_actual = EXCEPTION_NO_EXCEPTION;
 
     TRY_FN_CATCH_EXCEPTION(vector_delete(vector, 0));
     TRY_FN_CATCH_EXCEPTION(vector_get(vector, 0));
@@ -55,7 +55,7 @@ void test_vector_functions_throw_exceptions_as_expected(void)
 void test_vector_add_and_get_perform_as_expected(void)
 {
     CEXCEPTION_T e_expected = EXCEPTION_OUT_OF_BOUNDS;
-    CEXCEPTION_T e_actual = EXCEPTION_NO_EXCEPTION;
+    volatile CEXCEPTION_T e_actual = EXCEPTION_NO_EXCEPTION;
 
     int i_expected = 5;
     int j_expected = 15;
@@ -82,7 +82,7 @@ void test_vector_add_and_get_perform_as_expected(void)
 void test_vector_delete_removes_element_as_expected(void)
 {
     CEXCEPTION_T e_expected = EXCEPTION_OUT_OF_BOUNDS;
-    CEXCEPTION_T e_actual = EXCEPTION_NO_EXCEPTION;
+    volatile CEXCEPTION_T e_actual = EXCEPTION_NO_EXCEPTION;
 
     int i_expected = 5;
     int j_expected = -55;

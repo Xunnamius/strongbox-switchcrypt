@@ -239,7 +239,7 @@ blfs_keycount_t * blfs_open_keycount(blfs_backstore_t * backstore, uint64_t nugg
         uint8_t count_data[count->data_length];
         blfs_backstore_read(backstore, count_data, count->data_length, count->data_offset);
 
-        count->keycount = *((uint64_t *) count_data);
+        memcpy(&(count->keycount), count_data, count->data_length);
 
         IFDEBUG(dzlog_debug("opened blfs_keycount_t count object"));
         IFDEBUG(dzlog_debug("backstore->kcs_real_offset = %"PRIu64, backstore->kcs_real_offset));
@@ -445,7 +445,7 @@ void blfs_fetch_journaled_data(blfs_backstore_t * backstore,
 
     blfs_backstore_read(backstore, jcount_data, jcount->data_length, jcount->data_offset);
 
-    jcount->keycount = *((uint64_t *) jcount_data);
+    memcpy(&(jcount->keycount), jcount_data, jcount->data_length);
 
     IFDEBUG(dzlog_debug("opened blfs_keycount_t *journaled* count object"));
     IFDEBUG(dzlog_debug("jcount->nugget_index = %"PRIu32, jcount->nugget_index));

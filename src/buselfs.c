@@ -291,7 +291,6 @@ int buse_read(void * output_buffer, uint32_t length, uint64_t absolute_offset, v
 
     while(length != 0)
     {
-        IFDEBUG(dzlog_debug("------------------"));
         IFDEBUG(dzlog_debug("starting with length: %"PRIu32, length));
 
         assert(length > 0 && length <= size);
@@ -417,7 +416,6 @@ int buse_read(void * output_buffer, uint32_t length, uint64_t absolute_offset, v
         IFDEBUG(dzlog_debug("nugget_offset: %"PRIuFAST32, nugget_offset));
     }
 
-    IFDEBUG(dzlog_debug("------------------"));
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
     return 0;
 }
@@ -461,7 +459,6 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
 
     while(length != 0)
     {
-        IFDEBUG(dzlog_debug("^^^^^^^^^^^^^^^^^^^^^"));
         IFDEBUG(dzlog_debug("starting with length: %"PRIu32, length));
 
         assert(length > 0 && length <= size);
@@ -533,8 +530,6 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
 
             for(uint_fast32_t i = 0; flake_index < flake_end; flake_index++, i++)
             {
-                IFDEBUG(dzlog_debug("::::::::::::::::::::::::::"));
-
                 uint_fast32_t flake_write_length = MIN(flake_total_bytes_to_write, flake_size - flake_internal_offset);
 
                 IFDEBUG(dzlog_debug("flake_write_length: %"PRIuFAST32, flake_write_length));
@@ -684,7 +679,6 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
     update_merkle_tree_root_hash(buselfs_state);
     commit_merkle_tree_root_hash(buselfs_state);
 
-    IFDEBUG(dzlog_debug("xxxxxxxxxxxxxxxxxxxxxxxxxxx"));
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
     return 0;
 }
@@ -808,7 +802,7 @@ void blfs_soft_open(buselfs_state_t * buselfs_state, uint8_t cin_allow_insecure_
     // Do we need to rekey?
     blfs_header_t * rekeying_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_REKEYING);
     uint8_t zero_rekeying[BLFS_HEAD_HEADER_BYTES_REKEYING] = { 0x00 };
-    uint32_t rekeying_nugget_index;
+    uint32_t rekeying_nugget_index = 0;
     blfs_keycount_t rekeying_count;
     blfs_tjournal_entry_t rekeying_entry;
     uint8_t rekeying_nugget_data[nugsize];

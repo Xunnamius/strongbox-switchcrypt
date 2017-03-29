@@ -265,7 +265,7 @@ void test_blfs_backstore_create_work_as_expected(void)
 void test_blfs_backstore_create_throws_exception_if_backstore_file_already_exists(void)
 {
     CEXCEPTION_T e_expected = EXCEPTION_FILE_ALREADY_EXISTS;
-    CEXCEPTION_T e_actual = EXCEPTION_NO_EXCEPTION;
+    volatile CEXCEPTION_T e_actual = EXCEPTION_NO_EXCEPTION;
 
     TRY_FN_CATCH_EXCEPTION((void) blfs_backstore_create(BACKSTORE_FILE_PATH, 4096));
 }

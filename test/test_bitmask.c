@@ -50,7 +50,7 @@ void test_bitmask_init_should_initialize_bitmask(void)
 void test_bitmask_init_should_throw_exception_on_bad_byte_length(void)
 {
     CEXCEPTION_T e_expected = EXCEPTION_SIZE_T_OUT_OF_BOUNDS;
-    CEXCEPTION_T e_actual = EXCEPTION_NO_EXCEPTION;
+    volatile CEXCEPTION_T e_actual = EXCEPTION_NO_EXCEPTION;
 
     TRY_FN_CATCH_EXCEPTION(bitmask = bitmask_init(NULL, 0));
 }
@@ -69,7 +69,7 @@ void test_bitmask_fini_works_as_expected(void)
 void test_bitmask_functions_throw_exception_on_out_of_bounds_indices(void)
 {
     CEXCEPTION_T e_expected = EXCEPTION_OUT_OF_BOUNDS;
-    CEXCEPTION_T e_actual = EXCEPTION_NO_EXCEPTION;
+    volatile CEXCEPTION_T e_actual = EXCEPTION_NO_EXCEPTION;
 
     unsigned int out_of_bounds = BITMASK_BYTE_LENGTH * 8;
 
