@@ -25,7 +25,7 @@ You may wish to run the included unit tests first before actually utilizing buse
 First, of course, `make` buselfs:
 
 ```
-make clean # if you were running tests before now
+make clean # only if you were running tests or making things before now. Important for different O/DEBUG levels!
 make
 ```
 
@@ -44,6 +44,7 @@ Run these tests to make (about 90%) sure:
 Note that the password for all tests is always **"t"** (no quotes, of course).
 
 ```
+make clean
 make pre
 make check
 ```
