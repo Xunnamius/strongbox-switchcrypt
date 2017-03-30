@@ -189,7 +189,7 @@ void tearDown(void)
 }
 
 // XXX: Also need to test a delete function to fix the memory leak issue discussed in buselfs.h
-/*void test_adding_and_evicting_from_the_keycache_works_as_expected(void)
+void test_adding_and_evicting_from_the_keycache_works_as_expected(void)
 {
     free(buselfs_state->backstore);
     
@@ -1027,7 +1027,7 @@ void test_buse_writeread_works_as_expected8(void)
     buse_read(buffer, sizeof buffer, offset, (void *) buselfs_state);
 
     TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset, buffer, sizeof buffer);
-}*/
+}
 
 /*void test_blfs_rekey_nugget_journaled_with_write_works_as_expected(void)
 {
@@ -1092,9 +1092,9 @@ static void readwrite_quicktests()
     }
 }
 
-void test_buselfs_main_actual_opens_creates_wipes(void)
+void test_buselfs_main_actual_creates(void)
 {
-    tearDown();
+    zlog_fini();
 
     int argc = 4;
 
@@ -1107,8 +1107,18 @@ void test_buselfs_main_actual_opens_creates_wipes(void)
 
     buselfs_state = buselfs_main_actual(argc, argv_create1, blockdevice);
     readwrite_quicktests();
+}
 
-    /*char * argv_open1[] = {
+/*void test_buselfs_main_actual_opens(void)
+{
+    // FIXME: can't open a previously created backstore? Is MTRH being committed
+    // at the proper frequency?
+
+    zlog_fini();
+
+    int argc = 4;
+
+    char * argv_open1[] = {
         "progname",
         "--default-password",
         "open",
@@ -1116,7 +1126,23 @@ void test_buselfs_main_actual_opens_creates_wipes(void)
     };
 
     buselfs_state = buselfs_main_actual(argc, argv_open1, blockdevice);
-    readwrite_quicktests();
+    blfs_backstore_close(buselfs_state->backstore);
+}*/
+
+/*void test_buselfs_main_actual_opens_after_create()
+{
+    zlog_fini();
+
+    int argc = 4;
+
+    char * argv_create1[] = {
+        "progname",
+        "--default-password",
+        "create",
+        "test_buselfs_nbd"
+    };
+
+    buselfs_state = buselfs_main_actual(argc, argv_create1, blockdevice);
 
     char * argv_wipe1[] = {
         "progname",
@@ -1126,46 +1152,14 @@ void test_buselfs_main_actual_opens_creates_wipes(void)
     };
 
     buselfs_state = buselfs_main_actual(argc, argv_wipe1, blockdevice);
-    readwrite_quicktests();
 
-    char * argv_open2[] = {
-        "progname",
-        "--default-password",
-        "open",
-        "test_buselfs_nbd"
-    };
+    uint8_t buffer5[8] = { 0x00 };
+    uint64_t offset5 = 1;
 
-    buselfs_state = buselfs_main_actual(argc, argv_open2, blockdevice);
-    readwrite_quicktests();
+    buse_write(decrypted_body + offset5, sizeof buffer5, offset5, (void *) buselfs_state);
+    buse_read(buffer5, sizeof buffer5, offset5, (void *) buselfs_state);
 
-    char * argv_create2[] = {
-        "progname",
-        "--default-password",
-        "create",
-        "test_buselfs_nbd"
-    };
+    TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset5, buffer5, sizeof buffer5);
 
-    buselfs_state = buselfs_main_actual(argc, argv_create2, blockdevice);
-    readwrite_quicktests();
-
-    char * argv_wipe2[] = {
-        "progname",
-        "--default-password",
-        "wipe",
-        "test_buselfs_nbd"
-    };
-
-    buselfs_state = buselfs_main_actual(argc, argv_wipe2, blockdevice);
-    readwrite_quicktests();
-
-    char * argv_open3[] = {
-        "progname",
-        "--default-password",
-        "open",
-        "test_buselfs_nbd"
-    };
-
-    buselfs_state = buselfs_main_actual(argc, argv_open3, blockdevice);
-    readwrite_quicktests();
-    setUp();*/
-}
+    setUp();
+}*/
