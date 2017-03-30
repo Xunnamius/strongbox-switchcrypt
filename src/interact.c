@@ -24,9 +24,10 @@ void interact_prompt_user(const char * prompt, char * response, size_t length)
 
     char * r;
 
-    printf("%s\n", prompt);
+    printf("%s", prompt);
+    printf("\n");
     scanf("%ms", &r);
-    printf("\n", prompt);
+    printf("\n");
 
     IFDEBUG(dzlog_debug("prompt = %s", prompt));
     IFDEBUG(dzlog_debug("r = %s", r));
