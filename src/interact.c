@@ -25,7 +25,6 @@ void interact_prompt_user(const char * prompt, char * response, size_t length)
     char * r;
 
     printf("%s", prompt);
-    printf("\n");
     scanf("%ms", &r);
     printf("\n");
 

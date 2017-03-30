@@ -23,7 +23,7 @@ do {                                                                            
     else if(id == EXCEPTION_MUST_HALT)                                                      \
         dzlog_warn("WARN: execution was suddenly halted\n");                                \
     else                                                                                    \
-        dzlog_fatal("Fatal error: program terminated with uncaught exception [%i]", id);    \
+        dzlog_fatal("Fatal error: program terminated with uncaught exception [0x%x]", id);    \
     exit(id);                                                                               \
 } while(0)
 
