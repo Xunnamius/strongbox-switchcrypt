@@ -1584,10 +1584,6 @@ buselfs_state_t * buselfs_main_actual(int argc, char * argv[], char * blockdevic
     IFDEBUG3(printf("<bare debug>: BLFS_CONFIG_ZLOG = %s\n", BLFS_CONFIG_ZLOG));
     IFDEBUG3(printf("<bare debug>: zlog buf = %s\n", buf));
 
-    char cwd[1024];
-    getcwd(cwd, sizeof(cwd));
-    printf("CWD: %s\n", cwd);
-
     if(dzlog_init(BLFS_CONFIG_ZLOG, buf))
     {
         Throw(EXCEPTION_ZLOG_INIT_FAILURE);

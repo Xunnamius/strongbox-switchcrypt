@@ -14,6 +14,8 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <inttypes.h>
+#include <assert.h>
 
 // XXX: The passwords used for this test are always "t" (without the quotes, of
 // course)
@@ -157,99 +159,6 @@ static void clear_tj()
     blfs_commit_tjournal_entry(backstore, entry2);
 
     blfs_backstore_close(backstore);
-}
-
-static void read_quicktests()
-{
-    uint8_t buffer1[1] = { 0x00 };
-    uint64_t offset1 = 0;
-
-    buse_read(buffer1, sizeof buffer1, offset1, (void *) buselfs_state);
-
-    TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset1, buffer1, sizeof buffer1);
-
-    uint8_t buffer2[16] = { 0x00 };
-    uint64_t offset2 = 0;
-
-    buse_read(buffer2, sizeof buffer2, offset2, (void *) buselfs_state);
-
-    TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset2, buffer2, sizeof buffer2);
-
-    uint8_t buffer3[20] = { 0x00 };
-    uint64_t offset3 = 0;
-
-    buse_read(buffer3, sizeof buffer3, offset3, (void *) buselfs_state);
-
-    TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset3, buffer3, sizeof buffer3);
-
-    uint8_t buffer4[20] = { 0x00 };
-    uint64_t offset4 = 20;
-
-    buse_read(buffer4, sizeof buffer4, offset4, (void *) buselfs_state);
-
-    TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset4, buffer4, sizeof buffer4);
-
-    uint8_t buffer5[48] = { 0x00 };
-    uint64_t offset5 = 0;
-
-    buse_read(buffer5, sizeof buffer5, offset5, (void *) buselfs_state);
-
-    TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset5, buffer5, sizeof buffer5);
-
-    uint8_t buffer6[1] = { 0x00 };
-    uint64_t offset6 = 47;
-
-    buse_read(buffer6, sizeof buffer6, offset6, (void *) buselfs_state);
-
-    TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset6, buffer6, sizeof buffer6);
-
-    uint8_t buffer7[35] = { 0x00 };
-    uint64_t offset7 = 10;
-
-    buse_read(buffer7, sizeof buffer7, offset7, (void *) buselfs_state);
-
-    TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset7, buffer7, sizeof buffer7);
-
-    uint8_t buffer8[20] = { 0x00 };
-    uint64_t offset8 = 28;
-
-    buse_read(buffer8, sizeof buffer8, offset8, (void *) buselfs_state);
-
-    TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset8, buffer8, sizeof buffer8);
-
-    uint8_t buffer9[8] = { 0x00 };
-    uint64_t offset9 = 1;
-
-    buse_read(buffer9, sizeof buffer9, offset9, (void *) buselfs_state);
-
-    TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset9, buffer9, sizeof buffer9);
-}
-
-static void write_quicktests_restricted()
-{
-    uint8_t buffer1[8] = { 0x00 };
-    uint64_t offset1 = 32;
-
-    buse_write(decrypted_body + offset1, sizeof buffer1, offset1, (void *) buselfs_state);
-    buse_read(buffer1, sizeof buffer1, offset1, (void *) buselfs_state);
-
-    TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset1, buffer1, sizeof buffer1);
-
-    uint8_t buffer2[8] = { 0x00 };
-    uint64_t offset2 = 33;
-
-    buse_write(decrypted_body + offset2, sizeof buffer2, offset2, (void *) buselfs_state);
-    buse_read(buffer2, sizeof buffer2, offset2, (void *) buselfs_state);
-
-    TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset2, buffer2, sizeof buffer2);
-
-    uint8_t buffer3[16] = { 0x00 };
-    uint64_t offset3 = 32;
-
-    buse_write(decrypted_body + offset3, sizeof buffer3, offset3, (void *) buselfs_state);
-    buse_read(buffer3, sizeof buffer3, offset3, (void *) buselfs_state);
-
-    TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset3, buffer3, sizeof buffer3);
 }
 
 void setUp(void)
@@ -920,7 +829,68 @@ void test_buse_read_works_as_expected(void)
 
     blfs_run_mode_open(BACKSTORE_FILE_PATH, (uint8_t)(0), buselfs_state);
 
-    read_quicktests();
+    uint8_t buffer1[1] = { 0x00 };
+    uint64_t offset1 = 0;
+
+    buse_read(buffer1, sizeof buffer1, offset1, (void *) buselfs_state);
+
+    TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset1, buffer1, sizeof buffer1);
+
+    uint8_t buffer2[16] = { 0x00 };
+    uint64_t offset2 = 0;
+
+    buse_read(buffer2, sizeof buffer2, offset2, (void *) buselfs_state);
+
+    TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset2, buffer2, sizeof buffer2);
+
+    uint8_t buffer3[20] = { 0x00 };
+    uint64_t offset3 = 0;
+
+    buse_read(buffer3, sizeof buffer3, offset3, (void *) buselfs_state);
+
+    TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset3, buffer3, sizeof buffer3);
+
+    uint8_t buffer4[20] = { 0x00 };
+    uint64_t offset4 = 20;
+
+    buse_read(buffer4, sizeof buffer4, offset4, (void *) buselfs_state);
+
+    TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset4, buffer4, sizeof buffer4);
+
+    uint8_t buffer5[48] = { 0x00 };
+    uint64_t offset5 = 0;
+
+    buse_read(buffer5, sizeof buffer5, offset5, (void *) buselfs_state);
+
+    TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset5, buffer5, sizeof buffer5);
+
+    uint8_t buffer6[1] = { 0x00 };
+    uint64_t offset6 = 47;
+
+    buse_read(buffer6, sizeof buffer6, offset6, (void *) buselfs_state);
+
+    TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset6, buffer6, sizeof buffer6);
+
+    uint8_t buffer7[35] = { 0x00 };
+    uint64_t offset7 = 10;
+
+    buse_read(buffer7, sizeof buffer7, offset7, (void *) buselfs_state);
+
+    TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset7, buffer7, sizeof buffer7);
+
+    uint8_t buffer8[20] = { 0x00 };
+    uint64_t offset8 = 28;
+
+    buse_read(buffer8, sizeof buffer8, offset8, (void *) buselfs_state);
+
+    TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset8, buffer8, sizeof buffer8);
+
+    uint8_t buffer9[8] = { 0x00 };
+    uint64_t offset9 = 1;
+
+    buse_read(buffer9, sizeof buffer9, offset9, (void *) buselfs_state);
+
+    TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset9, buffer9, sizeof buffer9);
 }
 
 void test_buse_writeread_works_as_expected1(void)
@@ -1086,6 +1056,42 @@ void test_blfs_incomplete_rekeying_triggers_blfs_rekey_nugget_journaled_on_start
     TEST_IGNORE();
 }*/
 
+static void readwrite_quicktests()
+{
+    uint8_t expected_buffer1[4096] = { 0x00 };
+    uint32_t offset = 0;
+
+    for(; offset < 1024; offset++)
+    {
+        uint8_t buffer[sizeof expected_buffer1];
+
+        assert(sizeof(buffer) == sizeof(expected_buffer1));
+
+        buse_write(expected_buffer1, sizeof buffer, sizeof(buffer) * offset, (void *) buselfs_state);
+        buse_read(buffer, sizeof buffer, sizeof(buffer) * offset, (void *) buselfs_state);
+
+        char strbuf[100];
+        snprintf(strbuf, sizeof strbuf, "Loop offset: %"PRIu32, offset);
+        TEST_ASSERT_EQUAL_MEMORY_MESSAGE(expected_buffer1, buffer, sizeof buffer, strbuf);
+    }
+
+    uint8_t expected_buffer2[5000] = { 0x00 };
+
+    for(; offset < 2048; offset+=2)
+    {
+        uint8_t buffer[sizeof expected_buffer2];
+
+        assert(sizeof(buffer) == sizeof(expected_buffer2));
+
+        buse_write(expected_buffer2, sizeof buffer, sizeof(buffer) * offset, (void *) buselfs_state);
+        buse_read(buffer, sizeof buffer, sizeof(buffer) * offset, (void *) buselfs_state);
+
+        char strbuf[100];
+        snprintf(strbuf, sizeof strbuf, "Loop offset: %"PRIu32, offset);
+        TEST_ASSERT_EQUAL_MEMORY_MESSAGE(expected_buffer2, buffer, sizeof buffer, strbuf);
+    }
+}
+
 void test_buselfs_main_actual_opens_creates_wipes(void)
 {
     tearDown();
@@ -1100,8 +1106,7 @@ void test_buselfs_main_actual_opens_creates_wipes(void)
     };
 
     buselfs_state = buselfs_main_actual(argc, argv_create1, blockdevice);
-    read_quicktests();
-    write_quicktests_restricted();
+    readwrite_quicktests();
 
     /*char * argv_open1[] = {
         "progname",
@@ -1111,8 +1116,7 @@ void test_buselfs_main_actual_opens_creates_wipes(void)
     };
 
     buselfs_state = buselfs_main_actual(argc, argv_open1, blockdevice);
-    read_quicktests();
-    write_quicktests_restricted();
+    readwrite_quicktests();
 
     char * argv_wipe1[] = {
         "progname",
@@ -1122,8 +1126,7 @@ void test_buselfs_main_actual_opens_creates_wipes(void)
     };
 
     buselfs_state = buselfs_main_actual(argc, argv_wipe1, blockdevice);
-    read_quicktests();
-    write_quicktests_restricted();
+    readwrite_quicktests();
 
     char * argv_open2[] = {
         "progname",
@@ -1133,8 +1136,7 @@ void test_buselfs_main_actual_opens_creates_wipes(void)
     };
 
     buselfs_state = buselfs_main_actual(argc, argv_open2, blockdevice);
-    read_quicktests();
-    write_quicktests_restricted();
+    readwrite_quicktests();
 
     char * argv_create2[] = {
         "progname",
@@ -1144,8 +1146,7 @@ void test_buselfs_main_actual_opens_creates_wipes(void)
     };
 
     buselfs_state = buselfs_main_actual(argc, argv_create2, blockdevice);
-    read_quicktests();
-    write_quicktests_restricted();
+    readwrite_quicktests();
 
     char * argv_wipe2[] = {
         "progname",
@@ -1155,8 +1156,7 @@ void test_buselfs_main_actual_opens_creates_wipes(void)
     };
 
     buselfs_state = buselfs_main_actual(argc, argv_wipe2, blockdevice);
-    read_quicktests();
-    write_quicktests_restricted();
+    readwrite_quicktests();
 
     char * argv_open3[] = {
         "progname",
@@ -1166,7 +1166,6 @@ void test_buselfs_main_actual_opens_creates_wipes(void)
     };
 
     buselfs_state = buselfs_main_actual(argc, argv_open3, blockdevice);
-    read_quicktests();
-    write_quicktests_restricted(buselfs_state);*/
-    setUp();
+    readwrite_quicktests();
+    setUp();*/
 }
