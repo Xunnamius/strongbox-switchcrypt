@@ -18,7 +18,8 @@
 // XXX: The passwords used for this test are always "t" (without the quotes, of
 // course)
 // 
-// XXX: Note that these tests are leaky!
+// XXX: Note that these tests are leaky! Cache reduction logic was not included
+// (it's not necessary outside tests)
 
 #define TRY_FN_CATCH_EXCEPTION(fn_call)           \
 e_actual = EXCEPTION_NO_EXCEPTION;                \
@@ -45,9 +46,9 @@ static const uint8_t buffer_init_backstore_state[/*209*/] = {
     0x8f, 0xa2, 0x0d, 0x92, 0x35, 0xd6, 0xc2, 0x4c, 0xe4, 0xbc, 0x4f, 0x47,
     0xa4, 0xce, 0x69, 0xa8, // BLFS_HEAD_HEADER_BYTES_SALT
 
-    0xdb, 0xf1, 0x88, 0xa8, 0x27, 0x2a, 0x17, 0xa7, 0xcd, 0xfe, 0xa1, 0xc0,
-    0x6f, 0x6f, 0x56, 0xdc, 0xc4, 0x58, 0xdb, 0xf6, 0xb1, 0x21, 0xa0, 0xe3,
-    0xa9, 0xe6, 0x37, 0x05, 0xf1, 0x7b, 0xd8, 0xac, // BLFS_HEAD_HEADER_BYTES_MTRH
+    0x7a, 0x32, 0x4d, 0x9c, 0x34, 0x00, 0x61, 0x47, 0x6f, 0x46, 0xf5, 0xe0,
+    0x59, 0x6a, 0x9b, 0x3f, 0x0b, 0x0a, 0x71, 0xf2, 0xe5, 0x8c, 0x6b, 0x48,
+    0x08, 0xa9, 0x47, 0x05, 0x60, 0x4b, 0xd0, 0x18, // BLFS_HEAD_HEADER_BYTES_MTRH
 
     0x06, 0x07, 0x08, 0x09, 0x06, 0x07, 0x08, 0x09, // BLFS_HEAD_HEADER_BYTES_TPMGLOBALVER
 
@@ -65,7 +66,7 @@ static const uint8_t buffer_init_backstore_state[/*209*/] = {
 
     0x00, 0x00, 0x00, 0x00, // BLFS_HEAD_HEADER_BYTES_REKEYING
 
-    // KCS
+    // KCS 262144
     // 3 nuggets * 8 bytes per count
 
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -158,6 +159,99 @@ static void clear_tj()
     blfs_backstore_close(backstore);
 }
 
+static void read_quicktests()
+{
+    uint8_t buffer1[1] = { 0x00 };
+    uint64_t offset1 = 0;
+
+    buse_read(buffer1, sizeof buffer1, offset1, (void *) buselfs_state);
+
+    TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset1, buffer1, sizeof buffer1);
+
+    uint8_t buffer2[16] = { 0x00 };
+    uint64_t offset2 = 0;
+
+    buse_read(buffer2, sizeof buffer2, offset2, (void *) buselfs_state);
+
+    TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset2, buffer2, sizeof buffer2);
+
+    uint8_t buffer3[20] = { 0x00 };
+    uint64_t offset3 = 0;
+
+    buse_read(buffer3, sizeof buffer3, offset3, (void *) buselfs_state);
+
+    TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset3, buffer3, sizeof buffer3);
+
+    uint8_t buffer4[20] = { 0x00 };
+    uint64_t offset4 = 20;
+
+    buse_read(buffer4, sizeof buffer4, offset4, (void *) buselfs_state);
+
+    TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset4, buffer4, sizeof buffer4);
+
+    uint8_t buffer5[48] = { 0x00 };
+    uint64_t offset5 = 0;
+
+    buse_read(buffer5, sizeof buffer5, offset5, (void *) buselfs_state);
+
+    TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset5, buffer5, sizeof buffer5);
+
+    uint8_t buffer6[1] = { 0x00 };
+    uint64_t offset6 = 47;
+
+    buse_read(buffer6, sizeof buffer6, offset6, (void *) buselfs_state);
+
+    TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset6, buffer6, sizeof buffer6);
+
+    uint8_t buffer7[35] = { 0x00 };
+    uint64_t offset7 = 10;
+
+    buse_read(buffer7, sizeof buffer7, offset7, (void *) buselfs_state);
+
+    TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset7, buffer7, sizeof buffer7);
+
+    uint8_t buffer8[20] = { 0x00 };
+    uint64_t offset8 = 28;
+
+    buse_read(buffer8, sizeof buffer8, offset8, (void *) buselfs_state);
+
+    TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset8, buffer8, sizeof buffer8);
+
+    uint8_t buffer9[8] = { 0x00 };
+    uint64_t offset9 = 1;
+
+    buse_read(buffer9, sizeof buffer9, offset9, (void *) buselfs_state);
+
+    TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset9, buffer9, sizeof buffer9);
+}
+
+static void write_quicktests_restricted()
+{
+    uint8_t buffer1[8] = { 0x00 };
+    uint64_t offset1 = 32;
+
+    buse_write(decrypted_body + offset1, sizeof buffer1, offset1, (void *) buselfs_state);
+    buse_read(buffer1, sizeof buffer1, offset1, (void *) buselfs_state);
+
+    TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset1, buffer1, sizeof buffer1);
+
+    uint8_t buffer2[8] = { 0x00 };
+    uint64_t offset2 = 33;
+
+    buse_write(decrypted_body + offset2, sizeof buffer2, offset2, (void *) buselfs_state);
+    buse_read(buffer2, sizeof buffer2, offset2, (void *) buselfs_state);
+
+    TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset2, buffer2, sizeof buffer2);
+
+    uint8_t buffer3[16] = { 0x00 };
+    uint64_t offset3 = 32;
+
+    buse_write(decrypted_body + offset3, sizeof buffer3, offset3, (void *) buselfs_state);
+    buse_read(buffer3, sizeof buffer3, offset3, (void *) buselfs_state);
+
+    TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset3, buffer3, sizeof buffer3);
+}
+
 void setUp(void)
 {
     if(sodium_init() == -1)
@@ -175,7 +269,10 @@ void setUp(void)
 void tearDown(void)
 {
     mt_delete(buselfs_state->merkle_tree);
-    kh_destroy(BLFS_KHASH_NUGGET_KEY_CACHE_NAME, buselfs_state->cache_nugget_keys);
+
+    if(!BLFS_DEFAULT_DISABLE_KEY_CACHING)
+        kh_destroy(BLFS_KHASH_NUGGET_KEY_CACHE_NAME, buselfs_state->cache_nugget_keys);
+
     free(buselfs_state);
     zlog_fini();
     close(iofd);
@@ -183,7 +280,7 @@ void tearDown(void)
 }
 
 // XXX: Also need to test a delete function to fix the memory leak issue discussed in buselfs.h
-void test_adding_and_evicting_from_the_keycache_works_as_expected(void)
+/*void test_adding_and_evicting_from_the_keycache_works_as_expected(void)
 {
     free(buselfs_state->backstore);
     
@@ -823,68 +920,7 @@ void test_buse_read_works_as_expected(void)
 
     blfs_run_mode_open(BACKSTORE_FILE_PATH, (uint8_t)(0), buselfs_state);
 
-    uint8_t buffer1[1] = { 0x00 };
-    uint64_t offset1 = 0;
-
-    buse_read(buffer1, sizeof buffer1, offset1, (void *) buselfs_state);
-
-    TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset1, buffer1, sizeof buffer1);
-
-    uint8_t buffer2[16] = { 0x00 };
-    uint64_t offset2 = 0;
-
-    buse_read(buffer2, sizeof buffer2, offset2, (void *) buselfs_state);
-
-    TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset2, buffer2, sizeof buffer2);
-
-    uint8_t buffer3[20] = { 0x00 };
-    uint64_t offset3 = 0;
-
-    buse_read(buffer3, sizeof buffer3, offset3, (void *) buselfs_state);
-
-    TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset3, buffer3, sizeof buffer3);
-
-    uint8_t buffer4[20] = { 0x00 };
-    uint64_t offset4 = 20;
-
-    buse_read(buffer4, sizeof buffer4, offset4, (void *) buselfs_state);
-
-    TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset4, buffer4, sizeof buffer4);
-
-    uint8_t buffer5[48] = { 0x00 };
-    uint64_t offset5 = 0;
-
-    buse_read(buffer5, sizeof buffer5, offset5, (void *) buselfs_state);
-
-    TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset5, buffer5, sizeof buffer5);
-
-    uint8_t buffer6[1] = { 0x00 };
-    uint64_t offset6 = 47;
-
-    buse_read(buffer6, sizeof buffer6, offset6, (void *) buselfs_state);
-
-    TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset6, buffer6, sizeof buffer6);
-
-    uint8_t buffer7[35] = { 0x00 };
-    uint64_t offset7 = 10;
-
-    buse_read(buffer7, sizeof buffer7, offset7, (void *) buselfs_state);
-
-    TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset7, buffer7, sizeof buffer7);
-
-    uint8_t buffer8[20] = { 0x00 };
-    uint64_t offset8 = 28;
-
-    buse_read(buffer8, sizeof buffer8, offset8, (void *) buselfs_state);
-
-    TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset8, buffer8, sizeof buffer8);
-
-    uint8_t buffer9[8] = { 0x00 };
-    uint64_t offset9 = 1;
-
-    buse_read(buffer9, sizeof buffer9, offset9, (void *) buselfs_state);
-
-    TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset9, buffer9, sizeof buffer9);
+    read_quicktests();
 }
 
 void test_buse_writeread_works_as_expected1(void)
@@ -1021,9 +1057,9 @@ void test_buse_writeread_works_as_expected8(void)
     buse_read(buffer, sizeof buffer, offset, (void *) buselfs_state);
 
     TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset, buffer, sizeof buffer);
-}
+}*/
 
-void test_blfs_rekey_nugget_journaled_with_write_works_as_expected(void)
+/*void test_blfs_rekey_nugget_journaled_with_write_works_as_expected(void)
 {
     // FIXME
     // rekeying on a specific nugget in the middle of the write operation
@@ -1048,4 +1084,109 @@ void test_blfs_incomplete_rekeying_triggers_blfs_rekey_nugget_journaled_on_start
     // FIXME
     // rekeying on a specific nugget on startup has the intended effect (0s written)
     TEST_IGNORE();
+}*/
+
+static void quickprep()
+{
+    mt_delete(buselfs_state->merkle_tree);
+    kh_destroy(BLFS_KHASH_NUGGET_KEY_CACHE_NAME, buselfs_state->cache_nugget_keys);
+    free(buselfs_state);
+    make_fake_state();
+    zlog_fini();
+}
+
+void test_buselfs_main_actual_opens_creates_wipes(void)
+{
+    int argc = 4;
+
+    quickprep();
+
+    char * argv_create1[] = {
+        "progname",
+        "--default-password",
+        "create",
+        "test_buselfs_nbd"
+    };
+
+    buselfs_state = buselfs_main_actual(argc, argv_create1, blockdevice);
+    read_quicktests();
+    write_quicktests_restricted();
+
+    /*quickprep();
+
+    char * argv_open1[] = {
+        "progname",
+        "--default-password",
+        "open",
+        "test_buselfs_nbd"
+    };
+
+    buselfs_state = buselfs_main_actual(argc, argv_open1, blockdevice);
+    read_quicktests();
+    write_quicktests_restricted();
+
+    quickprep();
+
+    char * argv_wipe1[] = {
+        "progname",
+        "--default-password",
+        "wipe",
+        "test_buselfs_nbd"
+    };
+
+    buselfs_state = buselfs_main_actual(argc, argv_wipe1, blockdevice);
+    read_quicktests();
+    write_quicktests_restricted();
+
+    quickprep();
+
+    char * argv_open2[] = {
+        "progname",
+        "--default-password",
+        "open",
+        "test_buselfs_nbd"
+    };
+
+    buselfs_state = buselfs_main_actual(argc, argv_open2, blockdevice);
+    read_quicktests();
+    write_quicktests_restricted();
+
+    quickprep();
+
+    char * argv_create2[] = {
+        "progname",
+        "--default-password",
+        "create",
+        "test_buselfs_nbd"
+    };
+
+    buselfs_state = buselfs_main_actual(argc, argv_create2, blockdevice);
+    read_quicktests();
+    write_quicktests_restricted();
+
+    quickprep();
+
+    char * argv_wipe2[] = {
+        "progname",
+        "--default-password",
+        "wipe",
+        "test_buselfs_nbd"
+    };
+
+    buselfs_state = buselfs_main_actual(argc, argv_wipe2, blockdevice);
+    read_quicktests();
+    write_quicktests_restricted();
+
+    quickprep();
+
+    char * argv_open3[] = {
+        "progname",
+        "--default-password",
+        "open",
+        "test_buselfs_nbd"
+    };
+
+    buselfs_state = buselfs_main_actual(argc, argv_open3, blockdevice);
+    read_quicktests();
+    write_quicktests_restricted(buselfs_state);*/
 }

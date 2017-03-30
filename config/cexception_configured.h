@@ -107,7 +107,7 @@ do {                                                                            
 #define EXCEPTION_MERKLE_TREE_ROOT_FAILURE      0x18U
 
 // Something went wrong while trying to add a node to the merkle tree
-#define EXCEPTION_MERKLE_TREE_ADD_FAILURE       0x19U
+#define EXCEPTION_MERKLE_TREE_ADD_FAILURE       0x19U // probably a hash length issue
 
 // Something went wrong while trying to update a node in the merkle tree
 #define EXCEPTION_MERKLE_TREE_UPDATE_FAILURE    0x1AU

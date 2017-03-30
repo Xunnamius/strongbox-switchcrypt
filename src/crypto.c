@@ -32,7 +32,7 @@ void blfs_password_to_secret(uint8_t * secret, const char * passwd, uint32_t pas
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 }
 
-void blfs_chacha20_128(uint8_t * xored_value, const uint8_t * secret)
+void blfs_chacha20_verif(uint8_t * xored_value, const uint8_t * secret)
 {
     IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
 
@@ -48,6 +48,21 @@ void blfs_chacha20_128(uint8_t * xored_value, const uint8_t * secret)
 
     IFDEBUG(dzlog_debug("xored_value:"));
     IFDEBUG(hdzlog_debug(xored_value, BLFS_HEAD_HEADER_BYTES_VERIFICATION));
+
+    IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
+}
+
+void blfs_chacha20_tj_hash(uint8_t * tj_hash, const uint8_t * tj_data, uint64_t tj_data_length, const uint8_t * master_secret)
+{
+    IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
+
+    IFDEBUG(dzlog_debug("tj_data:"));
+    IFDEBUG(hdzlog_debug(tj_data, tj_data_length));
+
+    crypto_generichash(tj_hash, BLFS_CRYPTO_BYTES_TJ_HASH_OUT, tj_data, tj_data_length, master_secret, BLFS_CRYPTO_BYTES_KDF_OUT);
+
+    IFDEBUG(dzlog_debug("tj_hash:"));
+    IFDEBUG(hdzlog_debug(tj_hash, BLFS_CRYPTO_BYTES_TJ_HASH_OUT));
 
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 }

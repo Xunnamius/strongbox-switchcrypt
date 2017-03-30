@@ -128,7 +128,7 @@ static void add_to_merkle_tree(uint8_t * data, size_t length, buselfs_state_t * 
 
     if(err != MT_SUCCESS)
     {
-        IFDEBUG(dzlog_debug("MT ERROR: %i", err));
+        IFDEBUG(dzlog_fatal("MT ERROR: %i", err));
         Throw(EXCEPTION_MERKLE_TREE_ADD_FAILURE);
     }
 
@@ -156,7 +156,7 @@ static void update_in_merkle_tree(uint8_t * data, size_t length, uint32_t index,
 
     if(err != MT_SUCCESS)
     {
-        IFDEBUG(dzlog_debug("MT ERROR: %i", err));
+        IFDEBUG(dzlog_fatal("MT ERROR: %i", err));
         Throw(EXCEPTION_MERKLE_TREE_UPDATE_FAILURE);
     }
 
@@ -184,7 +184,7 @@ static void verify_in_merkle_tree(uint8_t * data, size_t length, uint32_t index,
 
     if(err != MT_SUCCESS)
     {
-        IFDEBUG(dzlog_debug("MT ERROR: %i", err));
+        IFDEBUG(dzlog_fatal("MT ERROR: %i", err));
         Throw(EXCEPTION_MERKLE_TREE_VERIFY_FAILURE);
     }
 
@@ -779,7 +779,7 @@ void blfs_soft_open(buselfs_state_t * buselfs_state, uint8_t cin_allow_insecure_
     blfs_header_t * verf_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_VERIFICATION);
     uint8_t verify_pwd[BLFS_HEAD_HEADER_BYTES_VERIFICATION] = { 0x00 };
 
-    blfs_chacha20_128(verify_pwd, buselfs_state->backstore->master_secret);
+    blfs_chacha20_verif(verify_pwd, buselfs_state->backstore->master_secret);
 
     IFDEBUG(dzlog_debug("verf_header->data:"));
     IFDEBUG(hdzlog_debug(verf_header->data, BLFS_HEAD_HEADER_BYTES_VERIFICATION));
@@ -926,7 +926,9 @@ void blfs_soft_open(buselfs_state_t * buselfs_state, uint8_t cin_allow_insecure_
         else
             entry = blfs_open_tjournal_entry(buselfs_state->backstore, nugget_index);
 
-        add_to_merkle_tree(entry->bitmask->mask, entry->bitmask->byte_length, buselfs_state);
+        uint8_t hash[BLFS_CRYPTO_BYTES_TJ_HASH_OUT];
+        blfs_chacha20_tj_hash(hash, entry->bitmask->mask, entry->bitmask->byte_length, buselfs_state->backstore->master_secret);
+        add_to_merkle_tree(hash, BLFS_CRYPTO_BYTES_TJ_HASH_OUT, buselfs_state);
     }
     
     // Finally, the flake tags
@@ -1121,7 +1123,7 @@ void blfs_run_mode_create(const char * backstore_path,
 
     // Use chacha20 with master secret to get verification header, set header
     blfs_header_t * verf_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_VERIFICATION);
-    blfs_chacha20_128(verf_header->data, buselfs_state->backstore->master_secret);
+    blfs_chacha20_verif(verf_header->data, buselfs_state->backstore->master_secret);
 
     IFDEBUG(dzlog_debug("verf_header->data:"));
     IFDEBUG(hdzlog_debug(verf_header->data, BLFS_HEAD_HEADER_BYTES_VERIFICATION));
@@ -1255,10 +1257,16 @@ void blfs_run_mode_create(const char * backstore_path,
     
     // Next, the TJ entries
     bitmask_t * zero_mask = bitmask_init(NULL, cin_flakes_per_nugget);
+    uint8_t zero_hash[BLFS_CRYPTO_BYTES_TJ_HASH_OUT];
+    blfs_chacha20_tj_hash(zero_hash, zero_mask->mask, zero_mask->byte_length, buselfs_state->backstore->master_secret);
+
+    IFDEBUG(dzlog_debug("generated zero_hash:"));
+    IFDEBUG(hdzlog_debug(zero_hash, BLFS_CRYPTO_BYTES_TJ_HASH_OUT));
+
     IFDEBUG(dzlog_debug("MERKLE TREE: adding transaction journal entries..."));
 
     for(uint32_t nugget_index = 0; nugget_index < num_nuggets_calculated_32; nugget_index++)
-        add_to_merkle_tree(zero_mask->mask, zero_mask->byte_length, buselfs_state);
+        add_to_merkle_tree(zero_hash, BLFS_CRYPTO_BYTES_TJ_HASH_OUT, buselfs_state);
     
     // Finally, the flake tags
     uint8_t * zeroed_flake = calloc(cin_flake_size, sizeof(*zeroed_flake));
@@ -1576,8 +1584,14 @@ buselfs_state_t * buselfs_main_actual(int argc, char * argv[], char * blockdevic
     IFDEBUG3(printf("<bare debug>: BLFS_CONFIG_ZLOG = %s\n", BLFS_CONFIG_ZLOG));
     IFDEBUG3(printf("<bare debug>: zlog buf = %s\n", buf));
 
+    char cwd[1024];
+    getcwd(cwd, sizeof(cwd));
+    printf("CWD: %s\n", cwd);
+
     if(dzlog_init(BLFS_CONFIG_ZLOG, buf))
+    {
         Throw(EXCEPTION_ZLOG_INIT_FAILURE);
+    }
 
     IFDEBUG(dzlog_debug("switched over to zlog for logging"));
 

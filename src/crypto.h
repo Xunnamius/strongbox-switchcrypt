@@ -27,7 +27,17 @@ void blfs_password_to_secret(uint8_t * secret, const char * passwd, uint32_t pas
  * @param xored_value
  * @param secret
  */
-void blfs_chacha20_128(uint8_t * xored_value, const uint8_t * secret);
+void blfs_chacha20_verif(uint8_t * xored_value, const uint8_t * secret);
+
+/**
+ * Generates a BLFS_CRYPTO_BYTES_TJ_HASH_OUT length xored_tj using the given
+ * secret of `length` and a BLFS_CRYPTO_BYTES_CHACHA_NONCE nonce. The Chacha20
+ * based BLAKE2 function is used.
+ * 
+ * @param xored_value
+ * @param secret
+ */
+void blfs_chacha20_tj_hash(uint8_t * tj_hash, const uint8_t * tj_data, uint64_t tj_data_length, const uint8_t * master_secret);
 
 /**
  * Accepts a secret of length BLFS_CRYPTO_BYTES_KDF_OUT and a nugget_index and

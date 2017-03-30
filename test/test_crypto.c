@@ -45,7 +45,7 @@ void test_blfs_password_to_secret_returns_secret_as_expected(void)
     TEST_ASSERT_EQUAL_MEMORY(expected_secret, actual_secret2, BLFS_CRYPTO_BYTES_KDF_OUT);
 }
 
-void test_blfs_chacha20_128_returns_expected_data(void)
+void test_blfs_chacha20_verif_returns_expected_data(void)
 {
     uint8_t actual_hash[BLFS_HEAD_HEADER_BYTES_VERIFICATION] = { 0x00 };
     uint8_t secret[BLFS_CRYPTO_BYTES_KDF_OUT] = {
@@ -59,8 +59,32 @@ void test_blfs_chacha20_128_returns_expected_data(void)
         0x05, 0x01, 0xee, 0x93, 0x17, 0x20, 0x43, 0x1e, 0x5f, 0xb0, 0x0c, 0x7b, 0x82, 0x95, 0x2c, 0xd0
     };
 
-    blfs_chacha20_128(actual_hash, secret);
+    blfs_chacha20_verif(actual_hash, secret);
     TEST_ASSERT_EQUAL_MEMORY(expected_hash, actual_hash, BLFS_HEAD_HEADER_BYTES_VERIFICATION);
+}
+
+void test_blfs_chacha20_tj_hash_returns_expected_data(void)
+{
+    uint8_t actual_hash[BLFS_CRYPTO_BYTES_TJ_HASH_OUT] = { 0x00 };
+
+    uint8_t secret[BLFS_CRYPTO_BYTES_KDF_OUT] = {
+        0xd9, 0x2e, 0x63, 0x4c, 0xd9, 0xaa, 0x1, 0xea, 0xa5, 0xad, 0xdc, 0x68,
+        0xcf, 0xe1, 0x8f, 0xc1, 0xa7, 0xa5, 0x10, 0x4b, 0x63, 0x1b, 0x46, 0x2d,
+        0x78, 0xda, 0xb6, 0x18, 0x18, 0x6, 0x19, 0xab
+    };
+
+    uint8_t input_vector[] = {
+        0xaa, 0x1b, 0x46, 0x2a, 0x70, 0xaa, 0x10, 0x4b, 0x63, 0xb6, 0x1f, 0x08,
+        0x06
+    };
+
+    uint8_t expected_hash[BLFS_CRYPTO_BYTES_TJ_HASH_OUT] = {
+        0x0f, 0x58, 0x41, 0xe2, 0xae, 0xfc, 0xc6, 0xf4, 0x99, 0xc9, 0x9e, 0xae,
+        0x67, 0x94, 0xeb, 0x04
+    };
+
+    blfs_chacha20_tj_hash(actual_hash, input_vector, sizeof input_vector, secret);
+    TEST_ASSERT_EQUAL_MEMORY(expected_hash, actual_hash, BLFS_CRYPTO_BYTES_TJ_HASH_OUT);
 }
 
 // XXX: upgrade this test if we ever get around to making this work for big endian systems
