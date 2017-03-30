@@ -1086,20 +1086,11 @@ void test_blfs_incomplete_rekeying_triggers_blfs_rekey_nugget_journaled_on_start
     TEST_IGNORE();
 }*/
 
-static void quickprep()
-{
-    mt_delete(buselfs_state->merkle_tree);
-    kh_destroy(BLFS_KHASH_NUGGET_KEY_CACHE_NAME, buselfs_state->cache_nugget_keys);
-    free(buselfs_state);
-    make_fake_state();
-    zlog_fini();
-}
-
 void test_buselfs_main_actual_opens_creates_wipes(void)
 {
-    int argc = 4;
+    tearDown();
 
-    quickprep();
+    int argc = 4;
 
     char * argv_create1[] = {
         "progname",
@@ -1112,9 +1103,7 @@ void test_buselfs_main_actual_opens_creates_wipes(void)
     read_quicktests();
     write_quicktests_restricted();
 
-    /*quickprep();
-
-    char * argv_open1[] = {
+    /*char * argv_open1[] = {
         "progname",
         "--default-password",
         "open",
@@ -1124,8 +1113,6 @@ void test_buselfs_main_actual_opens_creates_wipes(void)
     buselfs_state = buselfs_main_actual(argc, argv_open1, blockdevice);
     read_quicktests();
     write_quicktests_restricted();
-
-    quickprep();
 
     char * argv_wipe1[] = {
         "progname",
@@ -1138,8 +1125,6 @@ void test_buselfs_main_actual_opens_creates_wipes(void)
     read_quicktests();
     write_quicktests_restricted();
 
-    quickprep();
-
     char * argv_open2[] = {
         "progname",
         "--default-password",
@@ -1150,8 +1135,6 @@ void test_buselfs_main_actual_opens_creates_wipes(void)
     buselfs_state = buselfs_main_actual(argc, argv_open2, blockdevice);
     read_quicktests();
     write_quicktests_restricted();
-
-    quickprep();
 
     char * argv_create2[] = {
         "progname",
@@ -1164,8 +1147,6 @@ void test_buselfs_main_actual_opens_creates_wipes(void)
     read_quicktests();
     write_quicktests_restricted();
 
-    quickprep();
-
     char * argv_wipe2[] = {
         "progname",
         "--default-password",
@@ -1177,8 +1158,6 @@ void test_buselfs_main_actual_opens_creates_wipes(void)
     read_quicktests();
     write_quicktests_restricted();
 
-    quickprep();
-
     char * argv_open3[] = {
         "progname",
         "--default-password",
@@ -1189,4 +1168,5 @@ void test_buselfs_main_actual_opens_creates_wipes(void)
     buselfs_state = buselfs_main_actual(argc, argv_open3, blockdevice);
     read_quicktests();
     write_quicktests_restricted(buselfs_state);*/
+    setUp();
 }
