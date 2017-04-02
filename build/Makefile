@@ -41,6 +41,7 @@ CCV := $(shell expr `gcc --version | grep ^gcc | awk '{print $$3}'` \>= 4.9)
 # May want to set this to empty when building for release/profiling
 #					          :=
 DEBUG_MAKE_FLAGS 			  := -g
+#							  :=
 CONDITIONAL_DEBUG_MAKE_FLAGS  := -fsanitize=address,undefined,shift,integer-divide-by-zero,null,signed-integer-overflow \
 						 		 -fno-omit-frame-pointer
 
@@ -189,6 +190,7 @@ check: tests
 	$(patsubst %,./% &&,$(TEST_TRGTS)) true
 
 vendor: $(VENDR_FILES)
+	$(MAKE) clean -C ../vendor/merkle-tree
 	$(MAKE) release -C ../vendor/merkle-tree
 
 src: $(SRC_FILES)

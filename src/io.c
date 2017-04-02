@@ -151,13 +151,13 @@ void blfs_backstore_setup_actual_post(blfs_backstore_t * backstore)
     IFDEBUG(dzlog_debug("backstore->body_real_offset = %"PRIu64, backstore->body_real_offset));
 
     backstore->writeable_size_actual = backstore->num_nuggets * backstore->nugget_size_bytes;
-    assert(backstore->writeable_size_actual <= ((int64_t) backstore->file_size_actual) - backstore->body_real_offset);
     IFDEBUG(dzlog_debug("file_size_actual - body_real_offset => %"PRId64, ((int64_t) backstore->file_size_actual) - ((int64_t) backstore->body_real_offset)));
     IFDEBUG(dzlog_debug("backstore->writeable_size_actual = %"PRIu64, backstore->writeable_size_actual));
 
     if(backstore->writeable_size_actual > backstore->file_size_actual)
         Throw(EXCEPTION_BACKSTORE_SIZE_TOO_SMALL);
 
+    assert(backstore->writeable_size_actual <= ((int64_t) backstore->file_size_actual) - backstore->body_real_offset);
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 }
 
@@ -297,9 +297,11 @@ void blfs_backstore_read(blfs_backstore_t * backstore, uint8_t * buffer, uint32_
 
     while(length > 0)
     {
+        errno = 0;
+
         bytes_read = read(backstore->io_fd, temp_buffer, length);
 
-        if(bytes_read == -1)
+        if(bytes_read == -1 || errno)
         {
             dzlog_fatal("IO error: read error: %s", strerror(errno));
             errno = 0;
@@ -349,9 +351,11 @@ void blfs_backstore_write(blfs_backstore_t * backstore, const uint8_t * buffer, 
 
     while(length > 0)
     {
+        errno = 0;
+
         bytes_written = write(backstore->io_fd, temp_buffer, length);
 
-        if(bytes_written == -1)
+        if(bytes_written == -1 || errno)
         {
             dzlog_fatal("IO error: write error: %s", strerror(errno));
             errno = 0;

@@ -10,7 +10,6 @@ release:
 
 debug:
 	$(Q)$(MAKE) -C src/ debug
-	-$(Q)$(MAKE) -C tests/ all
 
 coverage:
 	$(Q)$(MAKE) -C src/ coverage

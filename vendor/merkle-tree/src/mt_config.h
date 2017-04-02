@@ -33,7 +33,7 @@
 #include <stdint.h>
 
 #define HASH_LENGTH                      32u  /*!< The length of the hash function output in bytes */
-#define TREE_LEVELS                      20u  /*!< The number of levels in the tree */
+#define TREE_LEVELS                      21u  /*!< The number of levels in the tree */
 #define MT_AL_MAX_ELEMS              524288u  /*!< The maximum number of elements in a Merkle Tree array list. Essential for integer overflow protection! */
 
 /*!

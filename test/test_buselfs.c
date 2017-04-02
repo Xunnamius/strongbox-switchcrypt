@@ -167,7 +167,7 @@ void setUp(void)
         exit(EXCEPTION_SODIUM_INIT_FAILURE);
 
     char buf[100] = { 0x00 };
-    snprintf(buf, sizeof buf, "%s%s_%s", "blfs_level", STRINGIZE(BLFS_DEBUG_LEVEL), "test");
+    snprintf(buf, sizeof buf, "%s%s_%s", "blfs_level", STRINGIZE(BLFS_DEBUG_LEVEL), "device_test");
     
     if(dzlog_init(BLFS_CONFIG_ZLOG, buf))
         exit(EXCEPTION_ZLOG_INIT_FAILURE);
@@ -706,7 +706,7 @@ void test_buselfs_main_actual_throws_exception_if_bad_cmd(void)
     char * argv[] = {
         "progname",
         "cmd",
-        "device"
+        "device1"
     };
     TRY_FN_CATCH_EXCEPTION(buselfs_main_actual(3, argv, blockdevice));
 }
@@ -723,7 +723,7 @@ void test_buselfs_main_actual_throws_exception_if_too_many_fpn(void)
         "--flakes-per-nugget",
         "4000000000",
         "create",
-        "device"
+        "device2"
     };
 
     TRY_FN_CATCH_EXCEPTION(buselfs_main_actual(5, argv, blockdevice));
@@ -739,7 +739,7 @@ void test_buselfs_main_actual_throws_exception_if_bad_numbers_given_as_args(void
         "--flakes-per-nugget",
         "10241024102410241024102410241024",
         "create",
-        "device"
+        "device3"
     };
 
     TRY_FN_CATCH_EXCEPTION(buselfs_main_actual(5, argv, blockdevice));
@@ -752,7 +752,7 @@ void test_buselfs_main_actual_throws_exception_if_bad_numbers_given_as_args(void
         "--backstore-size",
         "-5",
         "create",
-        "device"
+        "device4"
     };
 
     TRY_FN_CATCH_EXCEPTION(buselfs_main_actual(5, argv2, blockdevice));
@@ -765,7 +765,7 @@ void test_buselfs_main_actual_throws_exception_if_bad_numbers_given_as_args(void
         "--backstore-size",
         "40000000000",
         "create",
-        "device"
+        "device5"
     };
 
     TRY_FN_CATCH_EXCEPTION(buselfs_main_actual(5, argv3, blockdevice));
@@ -778,7 +778,7 @@ void test_buselfs_main_actual_throws_exception_if_bad_numbers_given_as_args(void
         "--flakes-per-nugget",
         "-5",
         "create",
-        "device"
+        "device6"
     };
 
     TRY_FN_CATCH_EXCEPTION(buselfs_main_actual(5, argv4, blockdevice));
@@ -791,7 +791,7 @@ void test_buselfs_main_actual_throws_exception_if_bad_numbers_given_as_args(void
         "--flakes-per-nugget",
         "5294967295",
         "create",
-        "device"
+        "device7"
     };
 
     TRY_FN_CATCH_EXCEPTION(buselfs_main_actual(5, argv5, blockdevice));
@@ -804,7 +804,7 @@ void test_buselfs_main_actual_throws_exception_if_bad_numbers_given_as_args(void
         "--flake-size",
         "-5",
         "create",
-        "device"
+        "device8"
     };
 
     TRY_FN_CATCH_EXCEPTION(buselfs_main_actual(5, argv7, blockdevice));
@@ -817,7 +817,7 @@ void test_buselfs_main_actual_throws_exception_if_bad_numbers_given_as_args(void
         "--flake-size",
         "40000000000",
         "create",
-        "device"
+        "device9"
     };
 
     TRY_FN_CATCH_EXCEPTION(buselfs_main_actual(5, argv8, blockdevice));
@@ -1058,14 +1058,15 @@ void test_blfs_incomplete_rekeying_triggers_blfs_rekey_nugget_journaled_on_start
 
 static void readwrite_quicktests()
 {
-    uint8_t expected_buffer1[4096] = { 0x00 };
+    uint8_t expected_buffer1[4096];
+    memset(&expected_buffer1, 0xCE, 4096);
+    expected_buffer1[4095] = 0xAB;
+    expected_buffer1[4094] = 0xAA;
     uint32_t offset = 0;
 
     for(; offset < 1024; offset++)
     {
         uint8_t buffer[sizeof expected_buffer1];
-
-        assert(sizeof(buffer) == sizeof(expected_buffer1));
 
         buse_write(expected_buffer1, sizeof buffer, sizeof(buffer) * offset, (void *) buselfs_state);
         buse_read(buffer, sizeof buffer, sizeof(buffer) * offset, (void *) buselfs_state);
@@ -1081,8 +1082,6 @@ static void readwrite_quicktests()
     {
         uint8_t buffer[sizeof expected_buffer2];
 
-        assert(sizeof(buffer) == sizeof(expected_buffer2));
-
         buse_write(expected_buffer2, sizeof buffer, sizeof(buffer) * offset, (void *) buselfs_state);
         buse_read(buffer, sizeof buffer, sizeof(buffer) * offset, (void *) buselfs_state);
 
@@ -1090,6 +1089,19 @@ static void readwrite_quicktests()
         snprintf(strbuf, sizeof strbuf, "Loop offset: %"PRIu32, offset);
         TEST_ASSERT_EQUAL_MEMORY_MESSAGE(expected_buffer2, buffer, sizeof buffer, strbuf);
     }
+
+    dzlog_info("test end io:");
+
+    // Test end writes
+    uint8_t buffer[sizeof expected_buffer1];
+    offset = buselfs_state->backstore->writeable_size_actual - sizeof(expected_buffer1);
+
+    buse_write(expected_buffer1, sizeof buffer, offset, (void *) buselfs_state);
+    buse_read(buffer, sizeof buffer, offset, (void *) buselfs_state);
+
+    char strbuf[100];
+    snprintf(strbuf, sizeof strbuf, "Loop offset (actual index #): %"PRIu32, offset);
+    TEST_ASSERT_EQUAL_MEMORY_MESSAGE(expected_buffer1, buffer, sizeof buffer, strbuf);
 }
 
 void test_buselfs_main_actual_creates(void)
@@ -1102,7 +1114,7 @@ void test_buselfs_main_actual_creates(void)
         "progname",
         "--default-password",
         "create",
-        "test_buselfs_nbd"
+        "device_actual1"
     };
 
     buselfs_state = buselfs_main_actual(argc, argv_create1, blockdevice);
@@ -1122,7 +1134,7 @@ void test_buselfs_main_actual_creates(void)
         "progname",
         "--default-password",
         "open",
-        "test_buselfs_nbd"
+        "device_actual2"
     };
 
     buselfs_state = buselfs_main_actual(argc, argv_open1, blockdevice);
@@ -1139,7 +1151,7 @@ void test_buselfs_main_actual_creates(void)
         "progname",
         "--default-password",
         "create",
-        "test_buselfs_nbd"
+        "device_actual3"
     };
 
     buselfs_state = buselfs_main_actual(argc, argv_create1, blockdevice);
@@ -1148,7 +1160,7 @@ void test_buselfs_main_actual_creates(void)
         "progname",
         "--default-password",
         "wipe",
-        "test_buselfs_nbd"
+        "device_actual4"
     };
 
     buselfs_state = buselfs_main_actual(argc, argv_wipe1, blockdevice);

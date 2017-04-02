@@ -41,3 +41,18 @@ void interact_prompt_user(const char * prompt, char * response, size_t length)
 
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 }
+
+// Expects an initial printf("Progress: 0%%")
+static uint32_t previous_percent = 0;
+
+void interact_print_percent_done(uint32_t percent)
+{
+    if(percent <= 0 || ((percent - 1) / 10 == 0 && previous_percent < 10))
+        printf("\b\b");
+    else
+        printf("\b\b\b");
+
+    previous_percent = percent;
+    printf("%i%%", percent);
+    fflush(stdout);
+}
