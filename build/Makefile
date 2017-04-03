@@ -141,9 +141,10 @@ test: check
 # Workhorse targets
 
 $(EXENAME): $(SRC_FILES) $(VENDR_FILES)
-	$(CC) $(CFLAGS) $(IFLAGS) $(LDFLAGS) $(DEBUG_COMPILE_FLAG) -o $(EXENAME) $(EXECSRC) \
+	$(CC) $(CFLAGS) $(IFLAGS) $(DEBUG_COMPILE_FLAG) -o $(EXENAME) $(EXECSRC) \
 		$^ \
-		$(STATIC_LIBS)
+		$(STATIC_LIBS) \
+		$(LDFLAGS)
 
 $(SRC_FILES) $(VENDR_FILES): %.o: %.c %.h
 ifneq "$(WE_PROD_NOW)" ""
@@ -161,11 +162,12 @@ $(RUNR_FILES) $(TEST_FILES): %.o: %.c
 $(TEST_TRGTS): test_%: test_%_runner.o test_%.o %.o test_%.d $(SRC_FILES) $(VENDR_FILES)
 	$(eval R_MOCKED_FILES := $(call distinct,$(patsubst %.h,%.c,$(call containing,mock_,$^))))
 	$(eval R_REMAIN_FILES := $(filter-out %.h %.c %.d $(if $(R_MOCKED_FILES),$(addprefix %,$(patsubst mock_%.c,%.o,$(R_MOCKED_FILES)))), $^))
-	$(CC) $(CFLAGS) $(DEBUG_MAKE_FLAGS) $(IFLAGS) $(LDFLAGS) $(DEBUG_COMPILE_FLAG) -o $@ \
+	$(CC) $(CFLAGS) $(DEBUG_MAKE_FLAGS) $(IFLAGS) $(DEBUG_COMPILE_FLAG) -o $@ \
 		$(R_REMAIN_FILES) \
 		$(R_MOCKED_FILES) \
 		$(C_LIBS) \
-		$(STATIC_LIBS)
+		$(STATIC_LIBS) \
+		$(LDFLAGS)
 
 $(RUNR_TRGTS): %_runner.c: %.c
 	ruby $(UNITY_ROOT)/auto/generate_test_runner.rb $< $@ $(GENRNR_CONF)
