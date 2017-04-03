@@ -181,15 +181,27 @@ blfs_backstore_t * blfs_backstore_create(const char * path, uint64_t file_size_b
     IFDEBUG(dzlog_debug("data_version:"));
     IFDEBUG(hdzlog_debug(data_version, BLFS_HEAD_HEADER_BYTES_VERSION));
 
-    uint8_t data_salt[BLFS_HEAD_HEADER_BYTES_SALT] = { 0x00 };
-    uint8_t data_mtrh[BLFS_HEAD_HEADER_BYTES_MTRH] = { 0x00 };
-    uint8_t data_tpmglobalver[BLFS_HEAD_HEADER_BYTES_TPMGLOBALVER] = { 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
-    uint8_t data_verification[BLFS_HEAD_HEADER_BYTES_VERIFICATION] = { 0x00 };
-    uint8_t data_numnuggets[BLFS_HEAD_HEADER_BYTES_NUMNUGGETS] = { 0x00 };
-    uint8_t data_flakespernugget[BLFS_HEAD_HEADER_BYTES_FLAKESPERNUGGET] = { 0x00 };
-    uint8_t data_flakesizebytes[BLFS_HEAD_HEADER_BYTES_FLAKESIZE_BYTES] = { 0x00 };
-    uint8_t data_initialized[BLFS_HEAD_HEADER_BYTES_INITIALIZED] = { 0x00 };
-    uint8_t data_rekeying[BLFS_HEAD_HEADER_BYTES_REKEYING] = { 0x00, 0x00, 0x00, 0x00 };
+    uint8_t data_salt[BLFS_HEAD_HEADER_BYTES_SALT];
+    uint8_t data_mtrh[BLFS_HEAD_HEADER_BYTES_MTRH];
+    uint8_t data_tpmglobalver[BLFS_HEAD_HEADER_BYTES_TPMGLOBALVER];
+    uint8_t data_verification[BLFS_HEAD_HEADER_BYTES_VERIFICATION];
+    uint8_t data_numnuggets[BLFS_HEAD_HEADER_BYTES_NUMNUGGETS];
+    uint8_t data_flakespernugget[BLFS_HEAD_HEADER_BYTES_FLAKESPERNUGGET];
+    uint8_t data_flakesizebytes[BLFS_HEAD_HEADER_BYTES_FLAKESIZE_BYTES];
+    uint8_t data_initialized[BLFS_HEAD_HEADER_BYTES_INITIALIZED];
+    uint8_t data_rekeying[BLFS_HEAD_HEADER_BYTES_REKEYING];
+
+    memset(data_salt, 0, BLFS_HEAD_HEADER_BYTES_SALT);
+    memset(data_mtrh, 0, BLFS_HEAD_HEADER_BYTES_MTRH);
+    memset(data_tpmglobalver, 0, BLFS_HEAD_HEADER_BYTES_TPMGLOBALVER);
+    memset(data_verification, 0, BLFS_HEAD_HEADER_BYTES_VERIFICATION);
+    memset(data_numnuggets, 0, BLFS_HEAD_HEADER_BYTES_NUMNUGGETS);
+    memset(data_flakespernugget, 0, BLFS_HEAD_HEADER_BYTES_FLAKESPERNUGGET);
+    memset(data_flakesizebytes, 0, BLFS_HEAD_HEADER_BYTES_FLAKESIZE_BYTES);
+    memset(data_initialized, 0, BLFS_HEAD_HEADER_BYTES_INITIALIZED);
+    memset(data_rekeying, 0xFF, BLFS_HEAD_HEADER_BYTES_REKEYING);
+
+    data_tpmglobalver[0] = 0x01;
 
     // Initialize headers (add them to cache so further opens don't hit disk)
     // TODO: maybe put this in a loop that references header_types_ordered
