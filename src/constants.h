@@ -58,6 +58,7 @@
 #define FALSE 0
 
 #define BITS_IN_A_BYTE 8
+#define BYTES_IN_A_MB 1048576
 
 #define MIN(a,b) __extension__ ({ __typeof__ (a) _a = (a); __typeof__ (b) _b = (b); _a < _b ? _a : _b; })
 #define CEIL(dividend,divisor) __extension__ ({ \
@@ -141,7 +142,7 @@ __extension__ ({ \
 #endif
 
 #define BLFS_DEFAULT_BYTES_FLAKE                4096U
-#define BLFS_DEFAULT_BYTES_BACKSTORE            1073741824ULL // 1GB
+#define BLFS_DEFAULT_BYTES_BACKSTORE            1024ULL // 1GB
 #define BLFS_DEFAULT_FLAKES_PER_NUGGET          64U
 #define BLFS_DEFAULT_BACKSTORE_FILE_PERMS       0666
 #define BLFS_DEFAULT_PASS                       "t" // Of course, its use is not secure...

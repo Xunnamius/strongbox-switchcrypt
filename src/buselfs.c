@@ -742,7 +742,7 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
             IFDEBUG(dzlog_debug("flake_internal_offset: %"PRIuFAST32, flake_internal_offset));
 
             // XXX: Packing it like this might actually be a security vulnerability. Need to just read in and verify
-            // the entire flake instead? Can't trust data from disk. Def performance hit, though.
+            // the entire flake instead? Can't trust data from disk.
             uint_fast32_t flake_index = first_affected_flake;
             uint_fast32_t flake_end = first_affected_flake + num_affected_flakes;
 
@@ -941,7 +941,7 @@ void blfs_rekey_nugget_journaled_with_write(buselfs_state_t * buselfs_state,
     memcpy(rekeying_nugget_data + nugget_internal_offset, buffer, length);
 
     jcount->keycount++;
-    bitmask_clear_mask(jentry->bitmask);
+    bitmask_clear_mask(jentry->bitmask); // FIXME
 
     blfs_chacha20_crypt(new_nugget_data,
                         rekeying_nugget_data,
@@ -1437,7 +1437,7 @@ buselfs_state_t * buselfs_main_actual(int argc, char * argv[], char * blockdevic
     char * cin_device_name;
     char backstore_path[BLFS_BACKSTORE_FILENAME_MAXLEN] = { 0x00 };
 
-    // XXX: Not free'd!
+    // XXX: Not free()'d!
     buselfs_state_t * buselfs_state = malloc(sizeof(*buselfs_state));
 
     if(buselfs_state == NULL)
@@ -1448,7 +1448,7 @@ buselfs_state_t * buselfs_main_actual(int argc, char * argv[], char * blockdevic
     uint8_t  cin_allow_insecure_start       = FALSE;
     uint8_t  cin_use_default_password       = FALSE;
     uint8_t  cin_backstore_mode             = BLFS_BACKSTORE_CREATE_MODE_UNKNOWN;
-    uint64_t cin_backstore_size             = BLFS_DEFAULT_BYTES_BACKSTORE;
+    uint64_t cin_backstore_size             = BLFS_DEFAULT_BYTES_BACKSTORE * BYTES_IN_A_MB;
     uint32_t cin_flake_size                 = BLFS_DEFAULT_BYTES_FLAKE;
     uint32_t cin_flakes_per_nugget          = BLFS_DEFAULT_FLAKES_PER_NUGGET;
 
@@ -1528,6 +1528,13 @@ buselfs_state_t * buselfs_main_actual(int argc, char * argv[], char * blockdevic
                 Throw(EXCEPTION_INVALID_BACKSTORESIZE);
 
             IFDEBUG3(printf("<bare debug>: saw --backstore-size, got value: %"PRIu64"\n", cin_backstore_size));
+
+            if(cin_backstore_size * BYTES_IN_A_MB < cin_backstore_size)
+                Throw(EXCEPTION_INVALID_BACKSTORESIZE);
+
+            cin_backstore_size *= BYTES_IN_A_MB;
+
+            IFDEBUG3(printf("<bare debug>: real value: %"PRIu64"\n", cin_backstore_size));
         }
 
         else if(strcmp(argv[argc], "--flake-size") == 0)
@@ -1583,7 +1590,7 @@ buselfs_state_t * buselfs_main_actual(int argc, char * argv[], char * blockdevic
     IFDEBUG3(printf("<bare debug>: defaults:\n"));
     IFDEBUG3(printf("<bare debug>: default allow_insecure_start = 0\n"));
     IFDEBUG3(printf("<bare debug>: default force_overwrite_backstore = 0\n"));
-    IFDEBUG3(printf("<bare debug>: default backstore_size = %"PRIu64"\n", BLFS_DEFAULT_BYTES_BACKSTORE));
+    IFDEBUG3(printf("<bare debug>: default backstore_size (MB) = %"PRIu64"\n", BLFS_DEFAULT_BYTES_BACKSTORE));
     IFDEBUG3(printf("<bare debug>: default flake_size = %"PRIu32"\n", BLFS_DEFAULT_BYTES_FLAKE));
     IFDEBUG3(printf("<bare debug>: default flakes_per_nugget = %"PRIu32"\n", BLFS_DEFAULT_FLAKES_PER_NUGGET));
     IFDEBUG3(printf("<bare debug>: cin_backstore_mode = %i\n", BLFS_BACKSTORE_CREATE_MODE_UNKNOWN));
