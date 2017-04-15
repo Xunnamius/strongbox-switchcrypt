@@ -707,13 +707,7 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
         {
             uint8_t nugget_key[BLFS_CRYPTO_BYTES_KDF_OUT];
 
-            bitmask_set_bits(entry->bitmask, first_affected_flake, num_affected_flakes);
-            blfs_commit_tjournal_entry(buselfs_state->backstore, entry);
-
             // XXX: Maybe update and commit the MTRH here first and again later?
-
-            IFDEBUG(dzlog_debug("entry->bitmask (post-update):"));
-            IFDEBUG(hdzlog_debug(entry->bitmask->mask, entry->bitmask->byte_length));
 
             if(BLFS_DEFAULT_DISABLE_KEY_CACHING)
             {
@@ -862,6 +856,11 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
             assert(flake_total_bytes_to_write == 0);
         }
 
+        bitmask_set_bits(entry->bitmask, first_affected_flake, num_affected_flakes);
+        blfs_commit_tjournal_entry(buselfs_state->backstore, entry);
+        IFDEBUG(dzlog_debug("entry->bitmask (post-update):"));
+        IFDEBUG(hdzlog_debug(entry->bitmask->mask, entry->bitmask->byte_length));
+        
         IFDEBUG(dzlog_debug("MERKLE TREE: update TJ entry"));
         update_in_merkle_tree(entry->bitmask->mask, entry->bitmask->byte_length, num_nuggets + 8 + nugget_offset, buselfs_state);
 
@@ -941,7 +940,6 @@ void blfs_rekey_nugget_journaled_with_write(buselfs_state_t * buselfs_state,
     memcpy(rekeying_nugget_data + nugget_internal_offset, buffer, length);
 
     jcount->keycount++;
-    bitmask_clear_mask(jentry->bitmask); // FIXME
 
     blfs_chacha20_crypt(new_nugget_data,
                         rekeying_nugget_data,
@@ -955,9 +953,9 @@ void blfs_rekey_nugget_journaled_with_write(buselfs_state_t * buselfs_state,
                         buselfs_state->backstore->nugget_size_bytes,
 						rekeying_nugget_index * buselfs_state->backstore->nugget_size_bytes);
 
-    // Update the merkle tree
     uint32_t flake_size = buselfs_state->backstore->flake_size_bytes;
 
+    // Update the merkle tree
     for(uint32_t flake_index = 0; flake_index < buselfs_state->backstore->flakes_per_nugget; flake_index++)
     {
         uint8_t flake_key[BLFS_CRYPTO_BYTES_FLAKE_TAG_KEY] = { 0x00 };
@@ -1017,7 +1015,7 @@ void blfs_rekey_nugget_journaled(buselfs_state_t * buselfs_state, uint32_t rekey
 
     Throw(EXCEPTION_MUST_HALT); // XXX: Not implemented!
 
-    // FIXME: crash recovery during rekeying. Implement me!
+    // FIXME: crash recovery during rekeying. Implement me sometime!
     
     // Re-encrypts a nugget with an entirely different key and updates the cache accordingly.
     // Do updates in the merkle tree. Deletes in the cache MUST take into account the strduping!
@@ -1043,6 +1041,7 @@ void blfs_rekey_nugget_journaled(buselfs_state_t * buselfs_state, uint32_t rekey
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 }
 
+// FIXME: mismatch between create and open; needs a fix! Don't try the open command just yet...
 void blfs_soft_open(buselfs_state_t * buselfs_state, uint8_t cin_allow_insecure_start)
 {
     IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
