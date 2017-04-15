@@ -148,9 +148,9 @@ $(EXENAME): $(SRC_FILES) $(VENDR_FILES)
 
 $(SRC_FILES) $(VENDR_FILES): %.o: %.c %.h
 ifneq "$(WE_PROD_NOW)" ""
-	$(CC) $(CFLAGS) $(IFLAGS) $(DEBUG_COMPILE_FLAG) -Wno-sequence-point -o $@ -c $<
+	$(CC) $(CFLAGS) $(IFLAGS) $(DEBUG_COMPILE_FLAG) -o $@ -c $<
 else
-	$(CC) $(CFLAGS) $(IFLAGS) $(DEBUG_MAKE_FLAGS) $(DEBUG_COMPILE_FLAG) -Wno-sequence-point -o $@ -c $<
+	$(CC) $(CFLAGS) $(IFLAGS) $(DEBUG_MAKE_FLAGS) $(DEBUG_COMPILE_FLAG) -o $@ -c $<
 endif
 
 $(RUNR_FILES) $(TEST_FILES): %.o: %.c
