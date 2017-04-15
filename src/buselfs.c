@@ -735,8 +735,9 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
             IFDEBUG(dzlog_debug("flake_size: %"PRIuFAST32, flake_size));
             IFDEBUG(dzlog_debug("flake_internal_offset: %"PRIuFAST32, flake_internal_offset));
 
-            // XXX: Packing it like this might actually be a security vulnerability. Need to just read in and verify
-            // the entire flake instead? Can't trust data from disk.
+            // XXX: Packing it like this might actually be a security
+            // vulnerability. Need to just read in and verify the entire flake
+            // instead? Can't trust data from disk.
             uint_fast32_t flake_index = first_affected_flake;
             uint_fast32_t flake_end = first_affected_flake + num_affected_flakes;
 
@@ -751,35 +752,39 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
                 uint8_t flake_data[flake_size];
                 IFDEBUG(memset(flake_data, 0, flake_size));
 
-                // XXX: The first one needs front padding
-                if(flake_internal_offset != 0)
+                // XXX: Data to write isn't aligned and/or is smaller than
+                // flake_size, so we need to verify its integrity
+                if(flake_internal_offset != 0 || flake_internal_offset + flake_write_length < flake_size)
                 {
-                    IFDEBUG(dzlog_debug("PADDING-LEFT!"));
+                    IFDEBUG(dzlog_debug("UNALIGNED! Write flake requires verification"));
+
+                    // Read in the entire flake
                     blfs_backstore_read_body(buselfs_state->backstore,
                                              flake_data,
-                                             flake_internal_offset,
+                                             flake_size,
                                              nugget_offset * nugget_size + flake_index * flake_size);
-                }
 
-                assert(flake_internal_offset + flake_write_length <= flake_size);
+                    // Generate a local flake key
+                    uint8_t local_flake_key[BLFS_CRYPTO_BYTES_FLAKE_TAG_KEY];
+                    uint8_t local_tag[BLFS_CRYPTO_BYTES_FLAKE_TAG_OUT];
 
-                // XXX: The last one needs back padding
-                if(flake_internal_offset + flake_write_length < flake_size)
-                {
-                    IFDEBUG(dzlog_debug("PADDING-RIGHT!"));
-                    IFDEBUG(dzlog_debug("blfs_backstore_read_body calculated dest pointer offset: %"PRIuFAST32,
-                                    flake_internal_offset + flake_write_length));
+                    if(BLFS_DEFAULT_DISABLE_KEY_CACHING)
+                    {
+                        IFDEBUG(dzlog_debug("KEY CACHING DISABLED!"));
+                        blfs_poly1305_key_from_data(local_flake_key, nugget_key, flake_index, count->keycount);
+                    }
 
-                    IFDEBUG(dzlog_debug("blfs_backstore_read_body calculated length: %"PRIuFAST32,
-                                    flake_size - (flake_internal_offset + flake_write_length)));
+                    else
+                    {
+                        IFDEBUG(dzlog_debug("KEY CACHING ENABLED!"));
+                        get_flake_key_using_keychain(local_flake_key, buselfs_state, nugget_offset, flake_index, count->keycount);
+                    }
 
-                    IFDEBUG(dzlog_debug("blfs_backstore_read_body calculated offset: %"PRIuFAST32,
-                                    nugget_offset * nugget_size + flake_index * flake_size + flake_internal_offset + flake_write_length));
+                    // Generate tag
+                    blfs_poly1305_generate_tag(local_tag, flake_data, flake_size, local_flake_key);
 
-                    blfs_backstore_read_body(buselfs_state->backstore,
-                                             flake_data + flake_internal_offset + flake_write_length,
-                                             flake_size - (flake_internal_offset + flake_write_length),
-                                             nugget_offset * nugget_size + flake_index * flake_size + flake_internal_offset + flake_write_length);
+                    // Check tag in Merkle Tree
+                    verify_in_merkle_tree(local_tag, sizeof local_tag, mt_offset + nugget_offset * flakes_per_nugget + flake_index, buselfs_state);
                 }
 
                 IFDEBUG(dzlog_debug("INCOMPLETE flake_data (initial 64 bytes):"));
@@ -860,7 +865,7 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
         blfs_commit_tjournal_entry(buselfs_state->backstore, entry);
         IFDEBUG(dzlog_debug("entry->bitmask (post-update):"));
         IFDEBUG(hdzlog_debug(entry->bitmask->mask, entry->bitmask->byte_length));
-        
+
         IFDEBUG(dzlog_debug("MERKLE TREE: update TJ entry"));
         update_in_merkle_tree(entry->bitmask->mask, entry->bitmask->byte_length, num_nuggets + 8 + nugget_offset, buselfs_state);
 
@@ -907,9 +912,10 @@ void blfs_rekey_nugget_journaled_with_write(buselfs_state_t * buselfs_state,
 {
     IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
 
-    // FIXME: This is not actually journaled. We'll save that for another version!
+    // XXX: Might want to switch up the ordering of these operations
 
-    // Set REKEYING header to rekeying_nugget_index
+    // Set REKEYING header to rekeying_nugget_index in order to recover using
+    // journal later if necessary
     blfs_header_t * rekeying_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_REKEYING);
     memcpy(rekeying_header->data, &rekeying_nugget_index, BLFS_HEAD_HEADER_BYTES_REKEYING);
     blfs_commit_header(buselfs_state->backstore, rekeying_header);
@@ -922,6 +928,7 @@ void blfs_rekey_nugget_journaled_with_write(buselfs_state_t * buselfs_state,
 
     blfs_keycount_t * jcount = blfs_open_keycount(buselfs_state->backstore, rekeying_nugget_index);
     blfs_tjournal_entry_t * jentry = blfs_open_tjournal_entry(buselfs_state->backstore, rekeying_nugget_index);
+
     uint8_t rekeying_nugget_data[buselfs_state->backstore->nugget_size_bytes];
     uint8_t new_nugget_data[buselfs_state->backstore->nugget_size_bytes];
     uint8_t nugget_key[BLFS_CRYPTO_BYTES_KDF_OUT] = { 0x00 };
@@ -932,10 +939,35 @@ void blfs_rekey_nugget_journaled_with_write(buselfs_state_t * buselfs_state,
     if(jcount == NULL || jentry == NULL)
         Throw(EXCEPTION_ALLOC_FAILURE);
 
+    // Read in *and verify* nugget FIRST
     buse_read(rekeying_nugget_data,
               buselfs_state->backstore->nugget_size_bytes,
               rekeying_nugget_index * buselfs_state->backstore->nugget_size_bytes,
               (void *) buselfs_state);
+
+    // Now we'll commit everything to the journal before proceeding
+    
+    uint8_t journaled_data_ciphertext[buselfs_state->backstore->nugget_size_bytes];
+    blfs_backstore_read_body(buselfs_state->backstore,
+                             journaled_data_ciphertext,
+                             buselfs_state->backstore->nugget_size_bytes,
+                             rekeying_nugget_index * buselfs_state->backstore->nugget_size_bytes);
+    
+    // Write nugget ciphertext and metadata to journal
+    blfs_backstore_write(buselfs_state->backstore,
+                         journaled_data_ciphertext,
+                         buselfs_state->backstore->nugget_size_bytes,
+                         buselfs_state->backstore->nugget_journaled_offset);
+
+    blfs_backstore_write(buselfs_state->backstore,
+                         (uint8_t *) &jcount->keycount,
+                         jcount->data_length,
+                         buselfs_state->backstore->kcs_journaled_offset);
+
+    blfs_backstore_write(buselfs_state->backstore,
+                         jentry->bitmask->mask,
+                         jentry->data_length,
+                         buselfs_state->backstore->tj_journaled_offset);
 
     memcpy(rekeying_nugget_data + nugget_internal_offset, buffer, length);
 
