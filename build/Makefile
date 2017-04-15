@@ -57,7 +57,7 @@ IFLAGS		:= -I/usr/local/include \
 			   -I$(MT_ROOT)/src
 
 LDFLAGS		:= -L$(VENDR_ROOT) -L/usr/local/lib \
-			   -lsodium -lzlog -lpthread -lm
+			   -lsodium -lzlog -lpthread -lm -lcrypto
 
 # Ruby configs for runner generation w/ Unity (automatic)
 GENRNR_CONF	:= $(CONFIG_ROOT)/unity_runner_config.yml
@@ -148,9 +148,9 @@ $(EXENAME): $(SRC_FILES) $(VENDR_FILES)
 
 $(SRC_FILES) $(VENDR_FILES): %.o: %.c %.h
 ifneq "$(WE_PROD_NOW)" ""
-	$(CC) $(CFLAGS) $(IFLAGS) $(DEBUG_COMPILE_FLAG) -o $@ -c $<
+	$(CC) $(CFLAGS) $(IFLAGS) $(DEBUG_COMPILE_FLAG) -Wno-sequence-point -o $@ -c $<
 else
-	$(CC) $(CFLAGS) $(IFLAGS) $(DEBUG_MAKE_FLAGS) $(DEBUG_COMPILE_FLAG) -o $@ -c $<
+	$(CC) $(CFLAGS) $(IFLAGS) $(DEBUG_MAKE_FLAGS) $(DEBUG_COMPILE_FLAG) -Wno-sequence-point -o $@ -c $<
 endif
 
 $(RUNR_FILES) $(TEST_FILES): %.o: %.c

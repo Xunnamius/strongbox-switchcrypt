@@ -3,7 +3,11 @@
 
 #include "constants.h"
 
+#include <openssl/conf.h>
+#include <openssl/evp.h>
+#include <openssl/err.h>
 #include <sodium.h>
+#include <string.h>
 
 /**
  * Accepts a password, length, and salt and returns BLFS_CRYPTO_BYTES_KDF_OUT

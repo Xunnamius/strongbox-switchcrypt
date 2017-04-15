@@ -217,3 +217,109 @@ void test_blfs_chacha20_crypt_BIGLY(void)
 
     TEST_ASSERT_EQUAL_MEMORY(data, crypted_data_round2, 4096);
 }
+
+void test_aesxts_in_openssl_is_supported(void)
+{
+    if(!BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
+        TEST_IGNORE_MESSAGE("BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION is in effect, so this test will be skipped!");
+
+    else
+    {
+        // XXX" AES key + AES-XEX key (512 bits)
+        uint8_t doublekey[64] = "0123456789012345678901234567890101234567890123456789012345678901";
+        uint8_t socalled_tweak[16] = { 0x01 };
+
+        uint8_t plaintext[] = "Zara is my dog. She is a good dog.";
+
+        uint8_t decryptedtext[sizeof plaintext];
+        uint8_t ciphertext[sizeof plaintext];
+
+        ERR_load_crypto_strings();
+        OpenSSL_add_all_algorithms();
+        OPENSSL_config(NULL);
+
+        printf("Plaintext: %s\n", (const char *) plaintext);
+
+        EVP_CIPHER_CTX * ctx = NULL;
+        int len = 0;
+
+        if(!(ctx = EVP_CIPHER_CTX_new()))
+        {
+            ERR_print_errors_fp(stderr);
+            TEST_FAIL();
+        }
+
+        if(EVP_EncryptInit_ex(ctx, EVP_aes_256_xts(), NULL, doublekey, socalled_tweak) != 1)
+        {
+            ERR_print_errors_fp(stderr);
+            TEST_FAIL();
+        }
+
+        if(EVP_EncryptUpdate(ctx, ciphertext, &len, plaintext, sizeof plaintext) != 1)
+        {
+            ERR_print_errors_fp(stderr);
+            TEST_FAIL();
+        }
+
+        if(EVP_EncryptFinal_ex(ctx, ciphertext + len, &len) != 1)
+        {
+            ERR_print_errors_fp(stderr);
+            TEST_FAIL();
+        }
+
+        EVP_CIPHER_CTX_free(ctx);
+
+        printf("Ciphertext: ");
+        BIO_dump_fp(stdout, (const char *) ciphertext, sizeof ciphertext);
+
+        len = 0;
+
+        if(!(ctx = EVP_CIPHER_CTX_new()))
+        {
+            ERR_print_errors_fp(stderr);
+            TEST_FAIL();
+        }
+
+        if(EVP_DecryptInit_ex(ctx, EVP_aes_256_xts(), NULL, doublekey, socalled_tweak) != 1)
+        {
+            ERR_print_errors_fp(stderr);
+            TEST_FAIL();
+        }
+
+        if(EVP_DecryptUpdate(ctx, decryptedtext, &len, ciphertext, sizeof ciphertext) != 1)
+        {
+            ERR_print_errors_fp(stderr);
+            TEST_FAIL();
+        }
+
+        if(EVP_DecryptFinal_ex(ctx, decryptedtext + len, &len) != 1)
+        {
+            ERR_print_errors_fp(stderr);
+            TEST_FAIL();
+        }
+
+        EVP_CIPHER_CTX_free(ctx);
+
+        printf("Decrypted: %s\n", (const char *) decryptedtext);
+
+        /*uint32_t keylen = sizeof(crypt_key) + sizeof(tweak_key);
+        uint8_t key[keylen];
+
+        memcpy(key, crypt_key, sizeof crypt_key);
+        memcpy(key + sizeof crypt_key, tweak_key, sizeof tweak_key);
+
+        xts_encrypt_ctx ectx[1];
+        xts_decrypt_ctx dctx[1];
+
+        xts_encrypt_key(key, keylen, ectx);
+        xts_decrypt_key(key, keylen, dctx);
+
+        uint8_t plaintext[sizeof orig_plaintext];
+        memcpy(plaintext, orig_plaintext, sizeof plaintext);
+
+        xts_encrypt_sector(plaintext, 5, sizeof plaintext, ectx);
+        xts_decrypt_sector(plaintext, 5, sizeof plaintext, dctx);
+
+        TEST_ASSERT_EQUAL_MEMORY(orig_plaintext, plaintext, sizeof orig_plaintext);*/
+    }
+}

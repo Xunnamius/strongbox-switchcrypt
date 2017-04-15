@@ -141,6 +141,10 @@ __extension__ ({ \
 #define BLFS_DEFAULT_DISABLE_KEY_CACHING        TRUE // It might be faster just to recompute...
 #endif
 
+#ifndef BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION
+#define BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION TRUE // Don't even think about it
+#endif
+
 #define BLFS_DEFAULT_BYTES_FLAKE                4096U
 #define BLFS_DEFAULT_BYTES_BACKSTORE            1024ULL // 1GB
 #define BLFS_DEFAULT_FLAKES_PER_NUGGET          64U
