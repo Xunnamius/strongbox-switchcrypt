@@ -155,4 +155,40 @@ void blfs_globalversion_commit(uint64_t id, uint64_t global_version);
  */
 void blfs_KDF_generate_salt(uint8_t * generated_salt);
 
+/**
+ * Accepts plaintext_data of length data_length, a flake_key of length
+ * BLFS_CRYPTO_BYTES_CHACHA_KEY, and a sector_tweak and yields ciphertext of
+ * length data_length into encrypted_data. StrongBox wasn't made for AES-XTS, so
+ * this is NOT a secure use of the mode!
+ *
+ * @param encrypted_data
+ * @param plaintext_data
+ * @param data_length
+ * @param flake_key
+ * @param sector_tweak
+ */
+void blfs_aesxts_encrypt(uint8_t * encrypted_data,
+                         const uint8_t * plaintext_data,
+                         uint32_t data_length,
+                         const uint8_t * flake_key,
+                         uint32_t sector_tweak);
+
+/**
+ * Accepts encrypted_data of length data_length, a flake_key of length
+ * BLFS_CRYPTO_BYTES_CHACHA_KEY, and a sector_tweak and yields plaintext of
+ * length data_length into plaintext_data. StrongBox wasn't made for AES-XTS, so
+ * this is NOT a secure use of the mode!
+ *
+ * @param encrypted_data
+ * @param plaintext_data
+ * @param data_length
+ * @param flake_key
+ * @param sector_tweak
+ */
+void blfs_aesxts_decrypt(uint8_t * plaintext_data,
+                         const uint8_t * encrypted_data,
+                         uint32_t data_length,
+                         const uint8_t * flake_key,
+                         uint32_t sector_tweak);
+
 #endif /* BLFS_CRYPT_H_ */

@@ -242,3 +242,120 @@ void blfs_KDF_generate_salt(uint8_t * generated_salt)
 
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 }
+
+void blfs_aesxts_encrypt(uint8_t * encrypted_data,
+                         const uint8_t * plaintext_data,
+                         uint32_t data_length,
+                         const uint8_t * flake_key,
+                         uint32_t sector_tweak)
+{
+    IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
+
+    if(!BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
+        Throw(EXCEPTION_BAD_AESXTS);
+
+    uint8_t doublekey[BLFS_CRYPTO_BYTES_AESXTS_KEY];
+    uint8_t iv_tweak[BLFS_CRYPTO_BYTES_AESXTS_TWEAK] = { 0x00 };
+
+    memcpy(doublekey, flake_key, BLFS_CRYPTO_BYTES_CHACHA_KEY);
+    memcpy(doublekey + BLFS_CRYPTO_BYTES_CHACHA_KEY, flake_key, BLFS_CRYPTO_BYTES_CHACHA_KEY);
+    memcpy(iv_tweak, (uint8_t *) &sector_tweak, sizeof sector_tweak);
+
+    IFDEBUG(dzlog_debug("sector_tweak: %"PRIu32, sector_tweak));
+    IFDEBUG(dzlog_debug("data in: (first 64 bytes):"));
+    IFDEBUG(hdzlog_debug(plaintext_data, MIN(64U, data_length)));
+
+    EVP_CIPHER_CTX * ctx = NULL;
+    int len = 0;
+
+    if(!(ctx = EVP_CIPHER_CTX_new()))
+    {
+        IFDEBUG(ERR_print_errors_fp(stdout));
+        Throw(EXCEPTION_AESXTS_BAD_RETVAL);
+    }
+
+    if(EVP_EncryptInit_ex(ctx, EVP_aes_256_xts(), NULL, doublekey, iv_tweak) != 1)
+    {
+        IFDEBUG(ERR_print_errors_fp(stdout));
+        Throw(EXCEPTION_AESXTS_BAD_RETVAL);
+    }
+
+    if(EVP_EncryptUpdate(ctx, encrypted_data, &len, plaintext_data, data_length) != 1)
+    {
+        IFDEBUG(ERR_print_errors_fp(stdout));
+        Throw(EXCEPTION_AESXTS_BAD_RETVAL);
+    }
+
+    if(EVP_EncryptFinal_ex(ctx, encrypted_data + len, &len) != 1)
+    {
+        IFDEBUG(ERR_print_errors_fp(stdout));
+        Throw(EXCEPTION_AESXTS_BAD_RETVAL);
+    }
+
+    EVP_CIPHER_CTX_free(ctx);
+
+    IFDEBUG(dzlog_debug("encrypted data out: (first 64 bytes):"));
+    IFDEBUG(hdzlog_debug(encrypted_data, MIN(64U, data_length)));
+
+    IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
+}
+
+void blfs_aesxts_decrypt(uint8_t * plaintext_data,
+                         const uint8_t * encrypted_data,
+                         uint32_t data_length,
+                         const uint8_t * flake_key,
+                         uint32_t sector_tweak)
+{
+    IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
+
+    if(!BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
+        Throw(EXCEPTION_BAD_AESXTS);
+
+    uint8_t doublekey[BLFS_CRYPTO_BYTES_AESXTS_KEY];
+    uint8_t iv_tweak[BLFS_CRYPTO_BYTES_AESXTS_TWEAK] = { 0x00 };
+
+    memcpy(doublekey, flake_key, BLFS_CRYPTO_BYTES_CHACHA_KEY);
+    memcpy(doublekey + BLFS_CRYPTO_BYTES_CHACHA_KEY, flake_key, BLFS_CRYPTO_BYTES_CHACHA_KEY);
+
+    assert(sizeof sector_tweak <= BLFS_CRYPTO_BYTES_AESXTS_TWEAK);
+
+    memcpy(iv_tweak, (uint8_t *) &sector_tweak, sizeof sector_tweak);
+
+    IFDEBUG(dzlog_debug("sector_tweak: %"PRIu32, sector_tweak));
+    IFDEBUG(dzlog_debug("data in: (first 64 bytes):"));
+    IFDEBUG(hdzlog_debug(encrypted_data, MIN(64U, data_length)));
+
+    EVP_CIPHER_CTX * ctx = NULL;
+    int len = 0;
+
+    if(!(ctx = EVP_CIPHER_CTX_new()))
+    {
+        IFDEBUG(ERR_print_errors_fp(stdout));
+        Throw(EXCEPTION_AESXTS_BAD_RETVAL);
+    }
+
+    if(EVP_DecryptInit_ex(ctx, EVP_aes_256_xts(), NULL, doublekey, iv_tweak) != 1)
+    {
+        IFDEBUG(ERR_print_errors_fp(stdout));
+        Throw(EXCEPTION_AESXTS_BAD_RETVAL);
+    }
+
+    if(EVP_DecryptUpdate(ctx, plaintext_data, &len, encrypted_data, data_length) != 1)
+    {
+        IFDEBUG(ERR_print_errors_fp(stdout));
+        Throw(EXCEPTION_AESXTS_BAD_RETVAL);
+    }
+
+    if(EVP_DecryptFinal_ex(ctx, plaintext_data + len, &len) != 1)
+    {
+        IFDEBUG(ERR_print_errors_fp(stdout));
+        Throw(EXCEPTION_AESXTS_BAD_RETVAL);
+    }
+
+    EVP_CIPHER_CTX_free(ctx);
+
+    IFDEBUG(dzlog_debug("plaintext data out: (first 64 bytes):"));
+    IFDEBUG(hdzlog_debug(plaintext_data, MIN(64U, data_length)));
+
+    IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
+}

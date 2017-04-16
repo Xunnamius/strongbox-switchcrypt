@@ -163,6 +163,8 @@ static void clear_tj()
 
 void setUp(void)
 {
+    static int runonce = 0;
+
     if(sodium_init() == -1)
         exit(EXCEPTION_SODIUM_INIT_FAILURE);
 
@@ -171,6 +173,14 @@ void setUp(void)
     
     if(dzlog_init(BLFS_CONFIG_ZLOG, buf))
         exit(EXCEPTION_ZLOG_INIT_FAILURE);
+
+    if(!runonce && BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
+    {
+        ERR_load_crypto_strings();
+        OpenSSL_add_all_algorithms();
+        OPENSSL_config(NULL);
+        runonce = 1;
+    }
     
     make_fake_state();
 }
@@ -189,7 +199,7 @@ void tearDown(void)
 }
 
 // XXX: Also need to test a delete function to fix the memory leak issue discussed in buselfs.h
-void test_adding_and_evicting_from_the_keycache_works_as_expected(void)
+/*void test_adding_and_evicting_from_the_keycache_works_as_expected(void)
 {
     free(buselfs_state->backstore);
     
@@ -826,7 +836,7 @@ void test_buselfs_main_actual_throws_exception_if_bad_numbers_given_as_args(void
     };
 
     TRY_FN_CATCH_EXCEPTION(buselfs_main_actual(5, argv8, blockdevice));
-}
+}*/
 
 void test_buse_read_works_as_expected(void)
 {
@@ -1075,7 +1085,7 @@ void test_blfs_rekey_nugget_journaled_with_write_works_as_expected(void)
     TEST_ASSERT_EQUAL_UINT(3, count2->keycount);
 }
 
-void test_buse_write_dirty_write_triggers_rekeying1(void)
+/*void test_buse_write_dirty_write_triggers_rekeying1(void)
 {
     free(buselfs_state->backstore);
 
@@ -1193,7 +1203,7 @@ void test_buse_write_dirty_write_triggers_rekeying8(void)
     buse_read(buffer7, sizeof buffer7, offset7, (void *) buselfs_state);
 
     TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset7, buffer7, sizeof buffer7);
-}
+}*/
 
 /*void test_blfs_rekey_nugget_journaled_zeroes_out_everything_as_expected(void)
 {
@@ -1209,7 +1219,7 @@ void test_blfs_incomplete_rekeying_triggers_blfs_rekey_nugget_journaled_on_start
     TEST_IGNORE();
 }*/
 
-static void readwrite_quicktests()
+/*static void readwrite_quicktests()
 {
     uint8_t expected_buffer1[4096];
     memset(&expected_buffer1, 0xCE, 4096);
@@ -1272,7 +1282,7 @@ void test_buselfs_main_actual_creates(void)
 
     buselfs_state = buselfs_main_actual(argc, argv_create1, blockdevice);
     readwrite_quicktests();
-}
+}*/
 
 /*void test_buselfs_main_actual_opens(void)
 {

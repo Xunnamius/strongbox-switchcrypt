@@ -6,7 +6,6 @@
 
 #include "buselfs.h"
 #include "bitmask.h"
-#include "crypto.h"
 #include "interact.h"
 #include "buse.h"
 #include "mt_err.h"
@@ -554,6 +553,7 @@ int buse_read(void * output_buffer, uint32_t length, uint64_t absolute_offset, v
 
         uint_fast32_t flake_index = first_affected_flake;
         uint_fast32_t flake_end = first_affected_flake + num_affected_flakes;
+        uint_fast32_t assert_buffer_read_length = 0;
 
         for(uint_fast32_t i = 0; flake_index < flake_end; flake_index++, i++)
         {
@@ -597,30 +597,79 @@ int buse_read(void * output_buffer, uint32_t length, uint64_t absolute_offset, v
                    2 * buselfs_state->backstore->num_nuggets + 7 + buselfs_state->backstore->num_nuggets * buselfs_state->backstore->flakes_per_nugget);
 
             verify_in_merkle_tree(tag, sizeof tag, mt_offset + nugget_offset * flakes_per_nugget + flake_index, buselfs_state);
+
+            if(BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
+            {
+                uint8_t flake_plaintext[flake_size];
+
+                blfs_aesxts_decrypt(flake_plaintext,
+                                    nugget_data + (i * flake_size),
+                                    flake_size,
+                                    flake_key,
+                                    nugget_offset * flakes_per_nugget + flake_index);
+
+                if(flake_index == first_affected_flake)
+                {
+                    uint32_t flake_internal_offset = nugget_internal_offset % flake_size;
+                    uint32_t flake_internal_length = flake_size - flake_internal_offset;
+
+                    assert(flake_internal_offset <= flake_size);
+                    memcpy(buffer, flake_plaintext + flake_internal_offset, flake_internal_length);
+
+                    buffer += flake_internal_length;
+                    assert_buffer_read_length += flake_internal_length;
+                }
+
+                else if(flake_index == flake_end - 1)
+                {
+                    uint32_t flake_internal_end = buffer_read_length - (flake_end - 1) * flake_size;
+
+                    assert(flake_internal_end <= flake_size);
+                    memcpy(buffer, flake_plaintext, flake_internal_end);
+
+                    buffer += flake_internal_end;
+                    assert_buffer_read_length += flake_internal_end;
+                }
+
+                else
+                {
+                    memcpy(buffer, flake_plaintext, flake_size);
+
+                    buffer += flake_size;
+                    assert_buffer_read_length += flake_size;
+                }
+            }
         }
 
-        IFDEBUG(dzlog_debug("blfs_chacha20_crypt calculated ptr: %p --[ + "
-                            "%"PRIuFAST32" - %"PRIuFAST32" * %"PRIuFAST32" => %"PRIuFAST32
-                            " ]> %p (crypting %"PRIuFAST32" bytes)",
-                            (void *) nugget_data,
-                            nugget_internal_offset,
-                            first_affected_flake,
-                            flake_size,
-                            nugget_internal_offset - first_affected_flake * flake_size,
-                            (void *) (nugget_data + (nugget_internal_offset - first_affected_flake * flake_size)),
-                            buffer_read_length));
+        assert(buffer_read_length == assert_buffer_read_length);
 
-        blfs_chacha20_crypt(buffer,
-                            nugget_data + (nugget_internal_offset - first_affected_flake * flake_size),
-                            buffer_read_length,
-                            nugget_key,
-                            count->keycount,
-                            nugget_internal_offset);
+        if(!BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
+        {
+            IFDEBUG(dzlog_debug("blfs_chacha20_crypt calculated ptr: %p --[ + "
+                                "%"PRIuFAST32" - %"PRIuFAST32" * %"PRIuFAST32" => %"PRIuFAST32
+                                " ]> %p (crypting %"PRIuFAST32" bytes)",
+                                (void *) nugget_data,
+                                nugget_internal_offset,
+                                first_affected_flake,
+                                flake_size,
+                                nugget_internal_offset - first_affected_flake * flake_size,
+                                (void *) (nugget_data + (nugget_internal_offset - first_affected_flake * flake_size)),
+                                buffer_read_length));
 
-        IFDEBUG(dzlog_debug("blfs_chacha20_crypt output (initial 64 bytes):"));
+            blfs_chacha20_crypt(buffer,
+                                nugget_data + (nugget_internal_offset - first_affected_flake * flake_size),
+                                buffer_read_length,
+                                nugget_key,
+                                count->keycount,
+                                nugget_internal_offset);
+        }
+
+        IFDEBUG(dzlog_debug("output_buffer final contents (initial 64 bytes):"));
         IFDEBUG(hdzlog_debug(output_buffer, MIN(64U, size)));
 
-        buffer += buffer_read_length;
+        if(!BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
+            buffer += buffer_read_length;
+
         length -= buffer_read_length;
         nugget_internal_offset = 0;
         nugget_offset++;
@@ -697,7 +746,6 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
         if(bitmask_any_bits_set(entry->bitmask, first_affected_flake, num_affected_flakes))
         {
             IFDEBUG(dzlog_notice("OVERWRITE DETECTED! PERFORMING IN-PLACE JOURNALED REKEYING + WRITE"));
-
             blfs_rekey_nugget_journaled_with_write(buselfs_state, nugget_offset, buffer, buffer_write_length, nugget_internal_offset);
 
             buffer += buffer_write_length;
@@ -787,26 +835,29 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
                     verify_in_merkle_tree(local_tag, sizeof local_tag, mt_offset + nugget_offset * flakes_per_nugget + flake_index, buselfs_state);
                 }
 
-                IFDEBUG(dzlog_debug("INCOMPLETE flake_data (initial 64 bytes):"));
-                IFDEBUG(hdzlog_debug(flake_data, MIN(64U, flake_size)));
+                if(!BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
+                {
+                    IFDEBUG(dzlog_debug("INCOMPLETE flake_data (initial 64 bytes):"));
+                    IFDEBUG(hdzlog_debug(flake_data, MIN(64U, flake_size)));
 
-                IFDEBUG(dzlog_debug("blfs_chacha20_crypt calculated src length: %"PRIuFAST32, flake_write_length));
+                    IFDEBUG(dzlog_debug("buffer at this point (initial 64 bytes):"));
+                    IFDEBUG(hdzlog_debug(buffer, MIN(64U, length)));
 
-                IFDEBUG(dzlog_debug("blfs_chacha20_crypt calculated dest offset: %"PRIuFAST32,
-                                i * flake_size));
+                    IFDEBUG(dzlog_debug("blfs_chacha20_crypt calculated src length: %"PRIuFAST32, flake_write_length));
 
-                IFDEBUG(dzlog_debug("blfs_chacha20_crypt calculated nio: %"PRIuFAST32,
-                                flake_index * flake_size + flake_internal_offset));
+                    IFDEBUG(dzlog_debug("blfs_chacha20_crypt calculated dest offset: %"PRIuFAST32,
+                                    i * flake_size));
 
-                IFDEBUG(dzlog_debug("buffer as seen by blfs_chacha20_crypt (initial 64 bytes):"));
-                IFDEBUG(hdzlog_debug(buffer, MIN(64U, length)));
+                    IFDEBUG(dzlog_debug("blfs_chacha20_crypt calculated nio: %"PRIuFAST32,
+                                    flake_index * flake_size + flake_internal_offset));
 
-                blfs_chacha20_crypt(flake_data + flake_internal_offset,
-                            buffer,
-                            flake_write_length,
-                            nugget_key,
-                            count->keycount,
-                            flake_index * flake_size + flake_internal_offset);
+                    blfs_chacha20_crypt(flake_data + flake_internal_offset,
+                                        buffer,
+                                        flake_write_length,
+                                        nugget_key,
+                                        count->keycount,
+                                        flake_index * flake_size + flake_internal_offset);
+                }
 
                 IFDEBUG(dzlog_debug("*complete* flake_data (initial 64 bytes):"));
                 IFDEBUG(hdzlog_debug(flake_data, MIN(64U, flake_size)));
@@ -826,6 +877,26 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
                     get_flake_key_using_keychain(flake_key, buselfs_state, nugget_offset, flake_index, count->keycount);
                 }
 
+                if(BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
+                {
+                    if(flake_internal_offset != 0 || flake_internal_offset + flake_write_length < flake_size)
+                    {
+                        blfs_aesxts_decrypt(flake_data,
+                                            flake_data,
+                                            flake_size,
+                                            flake_key,
+                                            nugget_offset * flakes_per_nugget + flake_index);
+                    }
+
+                    memcpy(flake_data + flake_internal_offset, buffer, flake_write_length);
+
+                    blfs_aesxts_encrypt(flake_data,
+                                        flake_data,
+                                        flake_size,
+                                        flake_key,
+                                        nugget_offset * flakes_per_nugget + flake_index);
+                }
+
                 blfs_poly1305_generate_tag(tag, flake_data, flake_size, flake_key);
 
                 IFDEBUG(dzlog_debug("flake_key (initial 64 bytes):"));
@@ -839,16 +910,27 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
 
                 update_in_merkle_tree(tag, sizeof tag, mt_offset + nugget_offset * flakes_per_nugget + flake_index, buselfs_state);
 
-                IFDEBUG(dzlog_debug("blfs_backstore_write_body offset: %"PRIuFAST32,
-                                    nugget_offset * nugget_size + flake_index * flake_size + flake_internal_offset));
-                
-                blfs_backstore_write_body(buselfs_state->backstore,
-                                         flake_data + flake_internal_offset,
-                                         flake_write_length,
-                                         nugget_offset * nugget_size + flake_index * flake_size + flake_internal_offset);
+                if(!BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
+                {
+                    IFDEBUG(dzlog_debug("blfs_backstore_write_body offset: %"PRIuFAST32,
+                                        nugget_offset * nugget_size + flake_index * flake_size + flake_internal_offset));
+                    
+                    blfs_backstore_write_body(buselfs_state->backstore,
+                                             flake_data + flake_internal_offset,
+                                             flake_write_length,
+                                             nugget_offset * nugget_size + flake_index * flake_size + flake_internal_offset);
 
-                IFDEBUG(dzlog_debug("blfs_backstore_write_body input (initial 64 bytes):"));
-                IFDEBUG(hdzlog_debug(flake_data + flake_internal_offset, MIN(64U, flake_write_length)));
+                    IFDEBUG(dzlog_debug("blfs_backstore_write_body input (initial 64 bytes):"));
+                    IFDEBUG(hdzlog_debug(flake_data + flake_internal_offset, MIN(64U, flake_write_length)));
+                }
+
+                else
+                {
+                    blfs_backstore_write_body(buselfs_state->backstore,
+                                             flake_data,
+                                             flake_size,
+                                             nugget_offset * nugget_size + flake_index * flake_size);
+                }
 
                 flake_internal_offset = 0;
 
@@ -972,18 +1054,21 @@ void blfs_rekey_nugget_journaled_with_write(buselfs_state_t * buselfs_state,
     memcpy(rekeying_nugget_data + nugget_internal_offset, buffer, length);
 
     jcount->keycount++;
+    
+    if(!BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
+    {
+        blfs_chacha20_crypt(new_nugget_data,
+                            rekeying_nugget_data,
+                            buselfs_state->backstore->nugget_size_bytes,
+                            nugget_key,
+                            jcount->keycount,
+                            0);
 
-    blfs_chacha20_crypt(new_nugget_data,
-                        rekeying_nugget_data,
-                        buselfs_state->backstore->nugget_size_bytes,
-                        nugget_key,
-                        jcount->keycount,
-                        0);
-
-    blfs_backstore_write_body(buselfs_state->backstore,
-                        new_nugget_data,
-                        buselfs_state->backstore->nugget_size_bytes,
-						rekeying_nugget_index * buselfs_state->backstore->nugget_size_bytes);
+        blfs_backstore_write_body(buselfs_state->backstore,
+                            new_nugget_data,
+                            buselfs_state->backstore->nugget_size_bytes,
+                            rekeying_nugget_index * buselfs_state->backstore->nugget_size_bytes);
+    }
 
     uint32_t flake_size = buselfs_state->backstore->flake_size_bytes;
 
@@ -1001,9 +1086,19 @@ void blfs_rekey_nugget_journaled_with_write(buselfs_state_t * buselfs_state,
         if(tag == NULL)
             Throw(EXCEPTION_ALLOC_FAILURE);
 
-        memcpy(flake_data, new_nugget_data + flake_index * flake_size, flake_size);
-
         blfs_poly1305_key_from_data(flake_key, nugget_key, flake_index, jcount->keycount);
+
+        if(BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
+        {
+            blfs_aesxts_encrypt(flake_data,
+                                rekeying_nugget_data + flake_index * flake_size,
+                                flake_size,
+                                flake_key,
+                                rekeying_nugget_index * buselfs_state->backstore->flakes_per_nugget + flake_index);
+        }
+
+        else
+            memcpy(flake_data, new_nugget_data + flake_index * flake_size, flake_size);
 
         if(!BLFS_DEFAULT_DISABLE_KEY_CACHING)
         {
@@ -1653,6 +1748,17 @@ buselfs_state_t * buselfs_main_actual(int argc, char * argv[], char * blockdevic
 
     if(sodium_init() == -1)
         Throw(EXCEPTION_SODIUM_INIT_FAILURE);
+
+    /* Initialize OpenSSL if we're going to be using AES-XTS emulation */
+
+    if(BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
+    {
+        printf("WARNING: AES-XTS emulation is ON! It is NOT secure!\n");
+
+        ERR_load_crypto_strings();
+        OpenSSL_add_all_algorithms();
+        OPENSSL_config(NULL);
+    }
 
     /* Initialize nugget key cache */
 

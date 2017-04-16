@@ -134,6 +134,12 @@ do {                                                                            
 // Why you call cache function when cache disabled?!?!
 #define EXCEPTION_BAD_CACHE                     0x22U
 
+// Why you call aes-xts function when aes-xts disabled?!?!
+#define EXCEPTION_BAD_AESXTS                    0x23U
+
+// OpenSSL returned something unexpected
+#define EXCEPTION_AESXTS_BAD_RETVAL             0x24U
+
 ///////////////////////
 // End Configuration //
 ///////////////////////

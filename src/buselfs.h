@@ -4,6 +4,7 @@
 #include "constants.h"
 #include "backstore.h"
 #include "io.h"
+#include "crypto.h"
 #include "khash.h"
 #include "merkletree.h"
 #include "sodium.h"

@@ -77,6 +77,8 @@ __extension__ ({ \
 // Crypto //
 ////////////
 
+#define BLFS_CRYPTO_BYTES_AESXTS_KEY            64U // OpenSSL AES-XTS 256-bit requires 64-bit keys (2 32-bit AES keys) 
+#define BLFS_CRYPTO_BYTES_AESXTS_TWEAK          16U // OpenSSL AES-XTS 256-bit requires 16-bit IV
 #define BLFS_CRYPTO_BYTES_CHACHA_BLOCK          64U // chacha outputs randomly accessible 512-bit (64-byte) blocks
 #define BLFS_CRYPTO_BYTES_CHACHA_KEY            32U // crypto_stream_chacha20_KEYBYTES
 #define BLFS_CRYPTO_BYTES_CHACHA_NONCE          8U  // crypto_stream_chacha20_NONCEBYTES
