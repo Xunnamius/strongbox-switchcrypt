@@ -1753,7 +1753,7 @@ buselfs_state_t * buselfs_main_actual(int argc, char * argv[], char * blockdevic
 
     if(BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
     {
-        printf("WARNING: AES-XTS emulation is ON! It is NOT secure!\n");
+        dzlog_warn("WARNING: AES-XTS emulation is ON! It is NOT secure!");
 
         ERR_load_crypto_strings();
         OpenSSL_add_all_algorithms();

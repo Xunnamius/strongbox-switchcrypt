@@ -146,7 +146,7 @@ __extension__ ({ \
 #endif
 
 #ifndef BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION
-#define BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION TRUE // Don't even think about it
+#define BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION FALSE // Don't even think about it
 #endif
 
 #define BLFS_DEFAULT_BYTES_FLAKE                4096U
