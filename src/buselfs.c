@@ -493,8 +493,6 @@ int buse_read(void * output_buffer, uint32_t length, uint64_t absolute_offset, v
     uint_fast32_t nugget_offset          = (uint_fast32_t) (absolute_offset / nugget_size); // nugget_index
     uint_fast32_t nugget_internal_offset = (uint_fast32_t) (absolute_offset % nugget_size); // internal point at which to start within nug
 
-    uint32_t aes_crypt_size = MAX(flake_size, BLFS_CRYPTO_BYTES_AESXTS_DATA_MIN);
-
     IFDEBUG(dzlog_debug("nugget_size: %"PRIuFAST32, nugget_size));
     IFDEBUG(dzlog_debug("flake_size: %"PRIuFAST32, flake_size));
     IFDEBUG(dzlog_debug("num_nuggets: %"PRIuFAST32, num_nuggets));
@@ -602,13 +600,11 @@ int buse_read(void * output_buffer, uint32_t length, uint64_t absolute_offset, v
 
             if(BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
             {
-                uint8_t flake_data_ciphered[aes_crypt_size];
-                memset(flake_data_ciphered, 0, aes_crypt_size);
-                memcpy(flake_data_ciphered, nugget_data + (i * flake_size), flake_size);
+                uint8_t flake_plaintext[flake_size];
 
-                blfs_aesxts_decrypt(flake_data_ciphered,
-                                    flake_data_ciphered,
-                                    aes_crypt_size,
+                blfs_aesxts_decrypt(flake_plaintext,
+                                    nugget_data + (i * flake_size),
+                                    flake_size,
                                     flake_key,
                                     nugget_offset * flakes_per_nugget + flake_index);
 
@@ -617,10 +613,8 @@ int buse_read(void * output_buffer, uint32_t length, uint64_t absolute_offset, v
                     uint32_t flake_internal_offset = nugget_internal_offset - first_affected_flake * flake_size;
                     uint32_t flake_internal_length = MIN(buffer_read_length, flake_size);
 
-                    assert(flake_internal_length + flake_internal_offset <= aes_crypt_size);
-                    assert(flake_internal_length <= length);
-
-                    memcpy(buffer, flake_data_ciphered + flake_internal_offset, flake_internal_length);
+                    assert(flake_internal_offset <= flake_size);
+                    memcpy(buffer, flake_plaintext + flake_internal_offset, flake_internal_length);
 
                     buffer += flake_internal_length;
                     assert_buffer_read_length += flake_internal_length;
@@ -631,9 +625,7 @@ int buse_read(void * output_buffer, uint32_t length, uint64_t absolute_offset, v
                     uint32_t flake_internal_end = buffer_read_length - (flake_end - 1) * flake_size;
 
                     assert(flake_internal_end <= flake_size);
-                    assert(flake_internal_end <= length);
-
-                    memcpy(buffer, flake_data_ciphered, flake_internal_end);
+                    memcpy(buffer, flake_plaintext, flake_internal_end);
 
                     buffer += flake_internal_end;
                     assert_buffer_read_length += flake_internal_end;
@@ -641,7 +633,7 @@ int buse_read(void * output_buffer, uint32_t length, uint64_t absolute_offset, v
 
                 else
                 {
-                    memcpy(buffer, flake_data_ciphered, flake_size);
+                    memcpy(buffer, flake_plaintext, flake_size);
 
                     buffer += flake_size;
                     assert_buffer_read_length += flake_size;
@@ -718,8 +710,6 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
     // XXX: For a bigger system, this cast could be a problem
     uint_fast32_t nugget_offset          = (uint_fast32_t) (absolute_offset / nugget_size); // nugget_index
     uint_fast32_t nugget_internal_offset = (uint_fast32_t) (absolute_offset % nugget_size); // internal point at which to start within nug
-
-    uint32_t aes_crypt_size = MAX(flake_size, BLFS_CRYPTO_BYTES_AESXTS_DATA_MIN);
 
     IFDEBUG(dzlog_debug("nugget_size: %"PRIuFAST32, nugget_size));
     IFDEBUG(dzlog_debug("flake_size: %"PRIuFAST32, flake_size));
@@ -889,28 +879,22 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
 
                 if(BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
                 {
-                    uint8_t flake_data_ciphered[aes_crypt_size];
-                    memset(flake_data_ciphered, 0, aes_crypt_size);
-                    memcpy(flake_data_ciphered, flake_data, flake_size);
-
                     if(flake_internal_offset != 0 || flake_internal_offset + flake_write_length < flake_size)
                     {
-                        blfs_aesxts_decrypt(flake_data_ciphered,
-                                            flake_data_ciphered,
-                                            aes_crypt_size,
+                        blfs_aesxts_decrypt(flake_data,
+                                            flake_data,
+                                            flake_size,
                                             flake_key,
                                             nugget_offset * flakes_per_nugget + flake_index);
                     }
 
-                    memcpy(flake_data_ciphered + flake_internal_offset, buffer, flake_write_length);
+                    memcpy(flake_data + flake_internal_offset, buffer, flake_write_length);
 
-                    blfs_aesxts_encrypt(flake_data_ciphered,
-                                        flake_data_ciphered,
-                                        aes_crypt_size,
+                    blfs_aesxts_encrypt(flake_data,
+                                        flake_data,
+                                        flake_size,
                                         flake_key,
                                         nugget_offset * flakes_per_nugget + flake_index);
-
-                    memcpy(flake_data, flake_data_ciphered, flake_size);
                 }
 
                 blfs_poly1305_generate_tag(tag, flake_data, flake_size, flake_key);
@@ -1087,7 +1071,6 @@ void blfs_rekey_nugget_journaled_with_write(buselfs_state_t * buselfs_state,
     }
 
     uint32_t flake_size = buselfs_state->backstore->flake_size_bytes;
-    uint32_t aes_crypt_size = MAX(flake_size, BLFS_CRYPTO_BYTES_AESXTS_DATA_MIN);
 
     // Update the merkle tree
     for(uint32_t flake_index = 0; flake_index < buselfs_state->backstore->flakes_per_nugget; flake_index++)
@@ -1107,17 +1090,11 @@ void blfs_rekey_nugget_journaled_with_write(buselfs_state_t * buselfs_state,
 
         if(BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
         {
-            uint8_t flake_data_ciphered[aes_crypt_size];
-            memset(flake_data_ciphered, 0, aes_crypt_size);
-            memcpy(flake_data_ciphered, rekeying_nugget_data + flake_index * flake_size, flake_size);
-
-            blfs_aesxts_encrypt(flake_data_ciphered,
-                                flake_data_ciphered,
-                                aes_crypt_size,
+            blfs_aesxts_encrypt(flake_data,
+                                rekeying_nugget_data + flake_index * flake_size,
+                                flake_size,
                                 flake_key,
                                 rekeying_nugget_index * buselfs_state->backstore->flakes_per_nugget + flake_index);
-
-            memcpy(flake_data, flake_data_ciphered, flake_size);
         }
 
         else
