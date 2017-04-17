@@ -934,14 +934,13 @@ void test_buse_writeread_works_as_expected1(void)
 
     blfs_run_mode_open(BACKSTORE_FILE_PATH, (uint8_t)(1), buselfs_state);
 
-    uint8_t plaintext[16] = "My dog the hog!";
-    uint8_t buffer1[16] = { 0x00 };
-    uint64_t offset1 = 0;
+    uint8_t buffer1[20] = { 0x00 };
+    uint64_t offset1 = 28;
 
-    buse_write(plaintext, sizeof buffer1, offset1, (void *) buselfs_state);
+    buse_write(decrypted_body + offset1, sizeof buffer1, offset1, (void *) buselfs_state);
     buse_read(buffer1, sizeof buffer1, offset1, (void *) buselfs_state);
 
-    TEST_ASSERT_EQUAL_MEMORY(plaintext, buffer1, sizeof buffer1);
+    TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset1, buffer1, sizeof buffer1);
 }
 
 /*void test_buse_writeread_works_as_expected2(void)
