@@ -8,8 +8,28 @@
 #include "unity.h"
 #include "crypto.h"
 
+#define TRY_FN_CATCH_EXCEPTION(fn_call)           \
+e_actual = EXCEPTION_NO_EXCEPTION;                \
+Try                                               \
+{                                                 \
+    fn_call;                                      \
+    TEST_FAIL();                                  \
+}                                                 \
+Catch(e_actual)                                   \
+    TEST_ASSERT_EQUAL_HEX_MESSAGE(e_expected, e_actual, "Encountered an unsuspected error condition!");
+
 void setUp(void)
 {
+    static int runonce = 0;
+
+    if(!runonce && BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
+    {
+        ERR_load_crypto_strings();
+        OpenSSL_add_all_algorithms();
+        OPENSSL_config(NULL);
+        runonce = 1;
+    }
+
     if(sodium_init() == -1)
         exit(EXCEPTION_SODIUM_INIT_FAILURE);
 
@@ -239,10 +259,6 @@ void test_aesxts_in_openssl_is_supported(void)
         uint8_t decryptedtext4[sizeof plaintext] = { 0x00 };
         uint8_t ciphertext[sizeof plaintext] = { 0x00 };
 
-        ERR_load_crypto_strings();
-        OpenSSL_add_all_algorithms();
-        OPENSSL_config(NULL);
-
         blfs_aesxts_encrypt(ciphertext, plaintext, sizeof ciphertext, flake_key1, sector_tweak1);
         blfs_aesxts_decrypt(decryptedtext1, ciphertext, sizeof decryptedtext1, flake_key1, sector_tweak1);
         blfs_aesxts_decrypt(decryptedtext2, ciphertext, sizeof decryptedtext2, flake_key2, sector_tweak1);
@@ -273,10 +289,6 @@ void test_aesxts_supports_sameptr_operations(void)
 
         memcpy(data, original_data, sizeof original_data);
 
-        ERR_load_crypto_strings();
-        OpenSSL_add_all_algorithms();
-        OPENSSL_config(NULL);
-
         blfs_aesxts_encrypt(data, data, sizeof data, flake_key, sector_tweak);
 
         TEST_ASSERT_TRUE(memcmp(original_data, data, sizeof data) != 0);
@@ -284,5 +296,28 @@ void test_aesxts_supports_sameptr_operations(void)
         blfs_aesxts_decrypt(data, data, sizeof data, flake_key, sector_tweak);
 
         TEST_ASSERT_EQUAL_MEMORY(original_data, data, sizeof data);
+    }
+}
+
+void test_aesxts_throws_exceptions_if_length_too_small(void)
+{
+    if(!BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
+        TEST_IGNORE_MESSAGE("BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION is in effect, so this test will be skipped!");
+
+    else
+    {
+        uint8_t flake_key[] = "01234567890123456789012345678901";
+        uint32_t sector_tweak = 5;
+        uint8_t plaintext[] = "Zara";
+        uint8_t ciphertext[sizeof plaintext] = { 0x00 };
+
+        CEXCEPTION_T e_expected = EXCEPTION_AESXTS_DATA_LENGTH_TOO_SMALL;
+        volatile CEXCEPTION_T e_actual = EXCEPTION_NO_EXCEPTION;
+
+        TRY_FN_CATCH_EXCEPTION(blfs_aesxts_encrypt(ciphertext, plaintext, sizeof ciphertext, flake_key, sector_tweak));
+
+        e_actual = EXCEPTION_NO_EXCEPTION;
+
+        TRY_FN_CATCH_EXCEPTION(blfs_aesxts_decrypt(plaintext, ciphertext, sizeof plaintext, flake_key, sector_tweak));
     }
 }

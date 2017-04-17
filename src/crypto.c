@@ -254,6 +254,9 @@ void blfs_aesxts_encrypt(uint8_t * encrypted_data,
     if(!BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
         Throw(EXCEPTION_BAD_AESXTS);
 
+    if(data_length < BLFS_CRYPTO_BYTES_AESXTS_DATA_MIN)
+        Throw(EXCEPTION_AESXTS_DATA_LENGTH_TOO_SMALL);
+
     uint8_t doublekey[BLFS_CRYPTO_BYTES_AESXTS_KEY];
     uint8_t iv_tweak[BLFS_CRYPTO_BYTES_AESXTS_TWEAK] = { 0x00 };
 
@@ -270,24 +273,32 @@ void blfs_aesxts_encrypt(uint8_t * encrypted_data,
 
     if(!(ctx = EVP_CIPHER_CTX_new()))
     {
+        IFDEBUG(dzlog_fatal("ERROR @ 1: %s", ERR_error_string(ERR_peek_last_error(), NULL)));
+
         IFDEBUG(ERR_print_errors_fp(stdout));
         Throw(EXCEPTION_AESXTS_BAD_RETVAL);
     }
 
     if(EVP_EncryptInit_ex(ctx, EVP_aes_256_xts(), NULL, doublekey, iv_tweak) != 1)
     {
+        IFDEBUG(dzlog_fatal("ERROR @ 2: %s", ERR_error_string(ERR_peek_last_error(), NULL)));
+
         IFDEBUG(ERR_print_errors_fp(stdout));
         Throw(EXCEPTION_AESXTS_BAD_RETVAL);
     }
 
     if(EVP_EncryptUpdate(ctx, encrypted_data, &len, plaintext_data, data_length) != 1)
     {
+        IFDEBUG(dzlog_fatal("ERROR @ 3: %s", ERR_error_string(ERR_peek_last_error(), NULL)));
+
         IFDEBUG(ERR_print_errors_fp(stdout));
         Throw(EXCEPTION_AESXTS_BAD_RETVAL);
     }
 
     if(EVP_EncryptFinal_ex(ctx, encrypted_data + len, &len) != 1)
     {
+        IFDEBUG(dzlog_fatal("ERROR @ 4: %s", ERR_error_string(ERR_peek_last_error(), NULL)));
+
         IFDEBUG(ERR_print_errors_fp(stdout));
         Throw(EXCEPTION_AESXTS_BAD_RETVAL);
     }
@@ -311,6 +322,9 @@ void blfs_aesxts_decrypt(uint8_t * plaintext_data,
     if(!BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
         Throw(EXCEPTION_BAD_AESXTS);
 
+    if(data_length < BLFS_CRYPTO_BYTES_AESXTS_DATA_MIN)
+        Throw(EXCEPTION_AESXTS_DATA_LENGTH_TOO_SMALL);
+
     uint8_t doublekey[BLFS_CRYPTO_BYTES_AESXTS_KEY];
     uint8_t iv_tweak[BLFS_CRYPTO_BYTES_AESXTS_TWEAK] = { 0x00 };
 
@@ -322,6 +336,10 @@ void blfs_aesxts_decrypt(uint8_t * plaintext_data,
     memcpy(iv_tweak, (uint8_t *) &sector_tweak, sizeof sector_tweak);
 
     IFDEBUG(dzlog_debug("sector_tweak: %"PRIu32, sector_tweak));
+    IFDEBUG(dzlog_debug("doublekey:"));
+    IFDEBUG(hdzlog_debug(doublekey, BLFS_CRYPTO_BYTES_AESXTS_KEY));
+    IFDEBUG(dzlog_debug("iv_tweak:"));
+    IFDEBUG(hdzlog_debug(iv_tweak, BLFS_CRYPTO_BYTES_AESXTS_TWEAK));
     IFDEBUG(dzlog_debug("data in: (first 64 bytes):"));
     IFDEBUG(hdzlog_debug(encrypted_data, MIN(64U, data_length)));
 
@@ -330,24 +348,28 @@ void blfs_aesxts_decrypt(uint8_t * plaintext_data,
 
     if(!(ctx = EVP_CIPHER_CTX_new()))
     {
+        IFDEBUG(dzlog_fatal("ERROR @ 1: %s", ERR_error_string(ERR_peek_last_error(), NULL)));
         IFDEBUG(ERR_print_errors_fp(stdout));
         Throw(EXCEPTION_AESXTS_BAD_RETVAL);
     }
 
     if(EVP_DecryptInit_ex(ctx, EVP_aes_256_xts(), NULL, doublekey, iv_tweak) != 1)
     {
+        IFDEBUG(dzlog_fatal("ERROR @ 2: %s", ERR_error_string(ERR_peek_last_error(), NULL)));
         IFDEBUG(ERR_print_errors_fp(stdout));
         Throw(EXCEPTION_AESXTS_BAD_RETVAL);
     }
 
     if(EVP_DecryptUpdate(ctx, plaintext_data, &len, encrypted_data, data_length) != 1)
     {
+        IFDEBUG(dzlog_fatal("ERROR @ 3: %s", ERR_error_string(ERR_peek_last_error(), NULL)));
         IFDEBUG(ERR_print_errors_fp(stdout));
         Throw(EXCEPTION_AESXTS_BAD_RETVAL);
     }
 
     if(EVP_DecryptFinal_ex(ctx, plaintext_data + len, &len) != 1)
     {
+        IFDEBUG(dzlog_fatal("ERROR @ 4: %s", ERR_error_string(ERR_peek_last_error(), NULL)));
         IFDEBUG(ERR_print_errors_fp(stdout));
         Throw(EXCEPTION_AESXTS_BAD_RETVAL);
     }

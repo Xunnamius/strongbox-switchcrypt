@@ -61,6 +61,7 @@
 #define BYTES_IN_A_MB 1048576
 
 #define MIN(a,b) __extension__ ({ __typeof__ (a) _a = (a); __typeof__ (b) _b = (b); _a < _b ? _a : _b; })
+#define MAX(a,b) __extension__ ({ __typeof__ (a) _a = (a); __typeof__ (b) _b = (b); _a > _b ? _a : _b; })
 #define CEIL(dividend,divisor) __extension__ ({ \
                                                 __typeof__ (dividend) _dd = (dividend); \
                                                 __typeof__ (divisor) _dr = (divisor); \
@@ -79,6 +80,7 @@ __extension__ ({ \
 
 #define BLFS_CRYPTO_BYTES_AESXTS_KEY            64U // OpenSSL AES-XTS 256-bit requires 64-bit keys (2 32-bit AES keys) 
 #define BLFS_CRYPTO_BYTES_AESXTS_TWEAK          16U // OpenSSL AES-XTS 256-bit requires 16-bit IV
+#define BLFS_CRYPTO_BYTES_AESXTS_DATA_MIN       16U // OpenSSL AES-XTS 256-bit will CHOKE AND DIE if passed less
 #define BLFS_CRYPTO_BYTES_CHACHA_BLOCK          64U // chacha outputs randomly accessible 512-bit (64-byte) blocks
 #define BLFS_CRYPTO_BYTES_CHACHA_KEY            32U // crypto_stream_chacha20_KEYBYTES
 #define BLFS_CRYPTO_BYTES_CHACHA_NONCE          8U  // crypto_stream_chacha20_NONCEBYTES

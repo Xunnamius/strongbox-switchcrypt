@@ -140,6 +140,9 @@ do {                                                                            
 // OpenSSL returned something unexpected
 #define EXCEPTION_AESXTS_BAD_RETVAL             0x24U
 
+// OpenSSL AES-XTS requires minimum data size of 16 bytes (cipher core req)
+#define EXCEPTION_AESXTS_DATA_LENGTH_TOO_SMALL  0x25U
+
 ///////////////////////
 // End Configuration //
 ///////////////////////
