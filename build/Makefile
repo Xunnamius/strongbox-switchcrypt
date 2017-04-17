@@ -21,7 +21,7 @@ MT_ROOT     := $(VENDR_ROOT)/merkle-tree
 # Buselfs internal debug level
 # XXX: Set to 0 when not debugging or suffer the (perf-related) consequences!
 #                  := -DBLFS_DEBUG_LEVEL=0
-DEBUG_COMPILE_FLAG := -DBLFS_DEBUG_LEVEL=0 -DBLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION=1
+DEBUG_COMPILE_FLAG := -DBLFS_DEBUG_LEVEL=3 -DBLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION=1
 
 # This is the name of the resulant executable
 EXENAME	:= buselfs
@@ -138,6 +138,8 @@ tests-O0: O0 tests
 all: $(EXENAME)
 test: check
 
+aes.o: ;
+
 # Workhorse targets
 
 $(EXENAME): $(SRC_FILES) $(VENDR_FILES)
@@ -161,7 +163,7 @@ $(RUNR_FILES) $(TEST_FILES): %.o: %.c
 # compilation tree to prevent definition collisions!
 $(TEST_TRGTS): test_%: test_%_runner.o test_%.o %.o test_%.d $(SRC_FILES) $(VENDR_FILES)
 	$(eval R_MOCKED_FILES := $(call distinct,$(patsubst %.h,%.c,$(call containing,mock_,$^))))
-	$(eval R_REMAIN_FILES := $(filter-out %.h %.c %.d $(if $(R_MOCKED_FILES),$(addprefix %,$(patsubst mock_%.c,%.o,$(R_MOCKED_FILES)))), $^))
+	$(eval R_REMAIN_FILES := $(filter-out aes.o %.h %.c %.d $(if $(R_MOCKED_FILES),$(addprefix %,$(patsubst mock_%.c,%.o,$(R_MOCKED_FILES)))), $^))
 	$(CC) $(CFLAGS) $(DEBUG_MAKE_FLAGS) $(IFLAGS) $(DEBUG_COMPILE_FLAG) -o $@ \
 		$(R_REMAIN_FILES) \
 		$(R_MOCKED_FILES) \

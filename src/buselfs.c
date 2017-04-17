@@ -641,9 +641,10 @@ int buse_read(void * output_buffer, uint32_t length, uint64_t absolute_offset, v
             }
         }
 
-        assert(buffer_read_length == assert_buffer_read_length);
+        if(BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
+            assert(buffer_read_length == assert_buffer_read_length);
 
-        if(!BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
+        else
         {
             IFDEBUG(dzlog_debug("blfs_chacha20_crypt calculated ptr: %p --[ + "
                                 "%"PRIuFAST32" - %"PRIuFAST32" * %"PRIuFAST32" => %"PRIuFAST32
@@ -888,6 +889,7 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
                                             nugget_offset * flakes_per_nugget + flake_index);
                     }
 
+                    IFDEBUG(dzlog_debug("flake_write_length: %"PRIuFAST32, flake_write_length));
                     memcpy(flake_data + flake_internal_offset, buffer, flake_write_length);
 
                     blfs_aesxts_encrypt(flake_data,
@@ -930,6 +932,9 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
                                              flake_data,
                                              flake_size,
                                              nugget_offset * nugget_size + flake_index * flake_size);
+
+                    IFDEBUG(dzlog_debug("blfs_backstore_write_body input (initial 64 bytes):"));
+                    IFDEBUG(hdzlog_debug(flake_data, MIN(64U, flake_size)));
                 }
 
                 flake_internal_offset = 0;
