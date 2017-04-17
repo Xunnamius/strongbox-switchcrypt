@@ -39,7 +39,7 @@ static int iofd;
 static buselfs_state_t * buselfs_state;
 static char blockdevice[100] = { 0x00 };
 
-static const uint8_t buffer_init_backstore_state[/*209*/] = {
+static const uint8_t buffer_init_backstore_state[/*273*/] = {
     // HEAD
     // header section
     
@@ -103,7 +103,7 @@ static const uint8_t buffer_init_backstore_state[/*209*/] = {
     0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 0x28,
 
     // BODY (offset 161)
-    // 3 nuggets * 2 flakes each * each flake is 8 bytes
+    // 3 nuggets * 2 flakes each * each flake is 16 bytes
     
     0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19,
     0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17,
