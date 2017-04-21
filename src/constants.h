@@ -149,6 +149,10 @@ __extension__ ({ \
 #define BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION FALSE // Don't even think about it
 #endif
 
+#ifndef BLFS_NO_READ_INTEGRITY
+#define BLFS_NO_READ_INTEGRITY FALSE // Reduce security guarantee to AES-XTS levels
+#endif
+
 #define BLFS_DEFAULT_BYTES_FLAKE                4096U
 #define BLFS_DEFAULT_BYTES_BACKSTORE            1024ULL // 1GB
 #define BLFS_DEFAULT_FLAKES_PER_NUGGET          64U

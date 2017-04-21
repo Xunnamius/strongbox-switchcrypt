@@ -20,6 +20,10 @@
 #include <errno.h>
 #include <unistd.h>
 
+#if BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION && BLFS_NO_READ_INTEGRITY
+#error "The BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION and BLFS_NO_READ_INTEGRITY compile flags CANNOT be used together!"
+#endif
+
 /**
  * Unimplemented BUSE internal function.
  */
@@ -555,88 +559,91 @@ int buse_read(void * output_buffer, uint32_t length, uint64_t absolute_offset, v
         uint_fast32_t flake_end = first_affected_flake + num_affected_flakes;
         uint_fast32_t assert_buffer_read_length = 0;
 
-        for(uint_fast32_t i = 0; flake_index < flake_end; flake_index++, i++)
+        if(!BLFS_NO_READ_INTEGRITY)
         {
-            uint8_t flake_key[BLFS_CRYPTO_BYTES_FLAKE_TAG_KEY];
-            uint8_t tag[BLFS_CRYPTO_BYTES_FLAKE_TAG_OUT];
-
-            if(BLFS_DEFAULT_DISABLE_KEY_CACHING)
+            for(uint_fast32_t i = 0; flake_index < flake_end; flake_index++, i++)
             {
-                IFDEBUG(dzlog_debug("KEY CACHING DISABLED!"));
-                blfs_poly1305_key_from_data(flake_key, nugget_key, flake_index, count->keycount);
-            }
+                uint8_t flake_key[BLFS_CRYPTO_BYTES_FLAKE_TAG_KEY];
+                uint8_t tag[BLFS_CRYPTO_BYTES_FLAKE_TAG_OUT];
 
-            else
-            {
-                IFDEBUG(dzlog_debug("KEY CACHING ENABLED!"));
-                get_flake_key_using_keychain(flake_key, buselfs_state, nugget_offset, flake_index, count->keycount);
-            }
-
-            IFDEBUG(dzlog_debug("flake_key (initial 64 bytes):"));
-            IFDEBUG(hdzlog_debug(flake_key, MIN(64U, BLFS_CRYPTO_BYTES_FLAKE_TAG_KEY)));
-
-            IFDEBUG(dzlog_debug("blfs_poly1305_generate_tag calculated ptr: %p --[ + "
-                                "%"PRIuFAST32" * %"PRIuFAST32" => %"PRIuFAST32
-                                " ]> %p (gen tag for %"PRIuFAST32" bytes)",
-                                (void *) nugget_data,
-                                flake_index,
-                                flake_size,
-                                flake_index * flake_size,
-                                (void *) (nugget_data + (i * flake_size)),
-                                flake_size));
-
-            blfs_poly1305_generate_tag(tag, nugget_data + (i * flake_size), flake_size, flake_key);
-
-            IFDEBUG(dzlog_debug("tag (initial 64 bytes):"));
-            IFDEBUG(hdzlog_debug(tag, MIN(64U, BLFS_CRYPTO_BYTES_FLAKE_TAG_OUT)));
-
-            IFDEBUG(dzlog_debug("verify_in_merkle_tree calculated offset: %"PRIuFAST32,
-                                mt_offset + nugget_offset * flakes_per_nugget + flake_index));
-
-            assert(mt_offset + nugget_offset * flakes_per_nugget + flake_index <=
-                   2 * buselfs_state->backstore->num_nuggets + 7 + buselfs_state->backstore->num_nuggets * buselfs_state->backstore->flakes_per_nugget);
-
-            verify_in_merkle_tree(tag, sizeof tag, mt_offset + nugget_offset * flakes_per_nugget + flake_index, buselfs_state);
-
-            if(BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
-            {
-                uint8_t flake_plaintext[flake_size];
-
-                blfs_aesxts_decrypt(flake_plaintext,
-                                    nugget_data + (i * flake_size),
-                                    flake_size,
-                                    flake_key,
-                                    nugget_offset * flakes_per_nugget + flake_index);
-
-                if(flake_index == first_affected_flake)
+                if(BLFS_DEFAULT_DISABLE_KEY_CACHING)
                 {
-                    uint32_t flake_internal_offset = nugget_internal_offset - first_affected_flake * flake_size;
-                    uint32_t flake_internal_length = MIN(buffer_read_length, flake_size);
-
-                    assert(flake_internal_offset <= flake_size);
-                    memcpy(buffer, flake_plaintext + flake_internal_offset, flake_internal_length);
-
-                    buffer += flake_internal_length;
-                    assert_buffer_read_length += flake_internal_length;
-                }
-
-                else if(flake_index == flake_end - 1)
-                {
-                    uint32_t flake_internal_end = buffer_read_length - (flake_end - 1) * flake_size;
-
-                    assert(flake_internal_end <= flake_size);
-                    memcpy(buffer, flake_plaintext, flake_internal_end);
-
-                    buffer += flake_internal_end;
-                    assert_buffer_read_length += flake_internal_end;
+                    IFDEBUG(dzlog_debug("KEY CACHING DISABLED!"));
+                    blfs_poly1305_key_from_data(flake_key, nugget_key, flake_index, count->keycount);
                 }
 
                 else
                 {
-                    memcpy(buffer, flake_plaintext, flake_size);
+                    IFDEBUG(dzlog_debug("KEY CACHING ENABLED!"));
+                    get_flake_key_using_keychain(flake_key, buselfs_state, nugget_offset, flake_index, count->keycount);
+                }
 
-                    buffer += flake_size;
-                    assert_buffer_read_length += flake_size;
+                IFDEBUG(dzlog_debug("flake_key (initial 64 bytes):"));
+                IFDEBUG(hdzlog_debug(flake_key, MIN(64U, BLFS_CRYPTO_BYTES_FLAKE_TAG_KEY)));
+
+                IFDEBUG(dzlog_debug("blfs_poly1305_generate_tag calculated ptr: %p --[ + "
+                                    "%"PRIuFAST32" * %"PRIuFAST32" => %"PRIuFAST32
+                                    " ]> %p (gen tag for %"PRIuFAST32" bytes)",
+                                    (void *) nugget_data,
+                                    flake_index,
+                                    flake_size,
+                                    flake_index * flake_size,
+                                    (void *) (nugget_data + (i * flake_size)),
+                                    flake_size));
+
+                blfs_poly1305_generate_tag(tag, nugget_data + (i * flake_size), flake_size, flake_key);
+
+                IFDEBUG(dzlog_debug("tag (initial 64 bytes):"));
+                IFDEBUG(hdzlog_debug(tag, MIN(64U, BLFS_CRYPTO_BYTES_FLAKE_TAG_OUT)));
+
+                IFDEBUG(dzlog_debug("verify_in_merkle_tree calculated offset: %"PRIuFAST32,
+                                    mt_offset + nugget_offset * flakes_per_nugget + flake_index));
+
+                assert(mt_offset + nugget_offset * flakes_per_nugget + flake_index <=
+                       2 * buselfs_state->backstore->num_nuggets + 7 + buselfs_state->backstore->num_nuggets * buselfs_state->backstore->flakes_per_nugget);
+
+                verify_in_merkle_tree(tag, sizeof tag, mt_offset + nugget_offset * flakes_per_nugget + flake_index, buselfs_state);
+
+                if(BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
+                {
+                    uint8_t flake_plaintext[flake_size];
+
+                    blfs_aesxts_decrypt(flake_plaintext,
+                                        nugget_data + (i * flake_size),
+                                        flake_size,
+                                        flake_key,
+                                        nugget_offset * flakes_per_nugget + flake_index);
+
+                    if(flake_index == first_affected_flake)
+                    {
+                        uint32_t flake_internal_offset = nugget_internal_offset - first_affected_flake * flake_size;
+                        uint32_t flake_internal_length = MIN(buffer_read_length, flake_size);
+
+                        assert(flake_internal_offset <= flake_size);
+                        memcpy(buffer, flake_plaintext + flake_internal_offset, flake_internal_length);
+
+                        buffer += flake_internal_length;
+                        assert_buffer_read_length += flake_internal_length;
+                    }
+
+                    else if(flake_index == flake_end - 1)
+                    {
+                        uint32_t flake_internal_end = buffer_read_length - (flake_end - 1) * flake_size;
+
+                        assert(flake_internal_end <= flake_size);
+                        memcpy(buffer, flake_plaintext, flake_internal_end);
+
+                        buffer += flake_internal_end;
+                        assert_buffer_read_length += flake_internal_end;
+                    }
+
+                    else
+                    {
+                        memcpy(buffer, flake_plaintext, flake_size);
+
+                        buffer += flake_size;
+                        assert_buffer_read_length += flake_size;
+                    }
                 }
             }
         }
@@ -1798,6 +1805,7 @@ buselfs_state_t * buselfs_main_actual(int argc, char * argv[], char * blockdevic
     assert(crypto_onetimeauth_poly1305_BYTES == BLFS_CRYPTO_BYTES_FLAKE_TAG_OUT);
     assert(crypto_onetimeauth_poly1305_KEYBYTES == BLFS_CRYPTO_BYTES_FLAKE_TAG_KEY);
     assert(HASH_LENGTH == BLFS_CRYPTO_BYTES_MTRH);
+    assert(!(BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION && BLFS_NO_READ_INTEGRITY) && "These two cannot be used together!");
 
     IFDEBUG(dzlog_debug("cin_flakes_per_nugget > BLFS_CRYPTO_BYTES_MTRH: (%"PRIu32" > %"PRIu32")",
                         cin_flakes_per_nugget, BLFS_CRYPTO_BYTES_MTRH * 8));
