@@ -36,7 +36,6 @@ Catch(e_actual)                                   \
 
 static int iofd;
 static buselfs_state_t * buselfs_state;
-static char blockdevice[100] = { 0x00 };
 
 static const uint8_t buffer_init_backstore_state[/*273*/] = {
     // HEAD

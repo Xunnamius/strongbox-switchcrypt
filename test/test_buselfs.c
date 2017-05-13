@@ -189,7 +189,7 @@ void tearDown(void)
 }
 
 // XXX: Also need to test a delete function to fix the memory leak issue discussed in buselfs.h
-/*void test_adding_and_evicting_from_the_keycache_works_as_expected(void)
+void test_adding_and_evicting_from_the_keycache_works_as_expected(void)
 {
     free(buselfs_state->backstore);
     
@@ -1185,7 +1185,7 @@ void test_buse_writeread_works_as_expected11(void)
 
     blfs_run_mode_open(BACKSTORE_FILE_PATH, (uint8_t)(1), buselfs_state);
 
-    uint8_t buffer[48] = { 0x00 };
+    uint8_t buffer[46] = { 0x00 };
     uint64_t offset = 1;
 
     buse_write(decrypted_body + offset, sizeof buffer, offset, (void *) buselfs_state);
@@ -1407,7 +1407,7 @@ void test_buse_write_dirty_write_triggers_rekeying8(void)
     buse_read(buffer7, sizeof buffer7, offset7, (void *) buselfs_state);
 
     TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset7, buffer7, sizeof buffer7);
-}*/
+}
 
 /*void test_blfs_rekey_nugget_journaled_zeroes_out_everything_as_expected(void)
 {

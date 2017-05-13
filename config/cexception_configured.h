@@ -143,6 +143,9 @@ do {                                                                            
 // OpenSSL AES-XTS requires minimum data size of 16 bytes (cipher core req)
 #define EXCEPTION_AESXTS_DATA_LENGTH_TOO_SMALL  0x25U
 
+// OpenSSL AES-CTR is not amused by your antics
+#define EXCEPTION_AESCTR_BAD_RETVAL             0x26U
+
 ///////////////////////
 // End Configuration //
 ///////////////////////

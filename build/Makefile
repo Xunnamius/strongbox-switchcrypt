@@ -22,7 +22,7 @@ MT_ROOT     := $(VENDR_ROOT)/merkle-tree
 # XXX: Set to 0 when not debugging or suffer the (perf-related) consequences!
 #                  := -DBLFS_DEBUG_LEVEL=0
 DEBUG_COMPILE_FLAG := -DBLFS_DEBUG_LEVEL=3 \
-					  -DBLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION=1 \
+					  -DBLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION=0 \
 					  -DBLFS_BADBADNOTGOOD_USE_AESCTR_EMULATION=0 \
 					  -DBLFS_NO_READ_INTEGRITY=0
 
@@ -106,7 +106,11 @@ ifeq "$(MAKECMDGOALS)" "all"
 	IFEMPTYGOALS := all
 endif
 
-WE_PROD_NOW := $(findstring all-,$(MAKECMDGOALS))$(findstring $(EXENAME),$(MAKECMDGOALS))$(IFEMPTYGOALS)
+ifeq "$(MAKECMDGOALS)" "$(EXENAME)"
+	IFEMPTYGOALS := $(EXENAME)
+endif
+
+WE_PROD_NOW := $(findstring all-,$(MAKECMDGOALS))$(IFEMPTYGOALS)
 
 #################
 # Custom Macros #

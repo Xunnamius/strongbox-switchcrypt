@@ -589,6 +589,8 @@ int buse_read(void * output_buffer, uint32_t length, uint64_t absolute_offset, v
                     get_flake_key_using_keychain(flake_key, buselfs_state, nugget_offset, flake_index, count->keycount);
                 }
 
+                IFDEBUG(dzlog_debug("nugget index (offset): %"PRIuFAST32, nugget_offset));
+                IFDEBUG(dzlog_debug("flake_index: %"PRIuFAST32" of %"PRIuFAST32, flake_index, flake_end-1));
                 IFDEBUG(dzlog_debug("flake_key (initial 64 bytes):"));
                 IFDEBUG(hdzlog_debug(flake_key, MIN(64U, BLFS_CRYPTO_BYTES_FLAKE_TAG_KEY)));
 
@@ -639,7 +641,7 @@ int buse_read(void * output_buffer, uint32_t length, uint64_t absolute_offset, v
 
                     else if(last_nugget && flake_index == flake_end - 1)
                     {
-                        uint32_t flake_internal_end_length = buffer_read_length - ((flake_end - 1) * flake_size - (first_nugget ? first_flake_internal_offset : 0));
+                        uint32_t flake_internal_end_length = buffer_read_length - (i * flake_size - (first_nugget ? first_flake_internal_offset : 0));
 
                         assert(flake_internal_end_length <= flake_size);
                         assert(flake_internal_end_length > 0);

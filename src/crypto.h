@@ -191,4 +191,29 @@ void blfs_aesxts_decrypt(uint8_t * plaintext_data,
                          const uint8_t * flake_key,
                          uint32_t sector_tweak);
 
+/**
+ * Accepts a byte array of data of length data_length and yields crypted_data
+ * of the same length via the result of XOR-ing the output of the AES-CTR
+ * stream mode run with the provided secret (nugget_key), ignored kcs_keycount,
+ * and initial block count (nonce; calculated from nugget_internal_offset).
+ *
+ * This function should be called within a per-nugget (conceptual) context.
+ *
+ * If you crypt something, and then pass crypted_data back in as data with the
+ * same keys and offsets, then you will get the original message back.
+ *
+ * @param crypted_data
+ * @param data
+ * @param data_length
+ * @param nugget_key
+ * @param kcs_keycount
+ * @param nugget_internal_offset
+ */
+void blfs_aesctr_crypt(uint8_t * crypted_data,
+                         const uint8_t * data,
+                         uint32_t data_length,
+                         const uint8_t * nugget_key,
+                         uint64_t kcs_keycount,
+                         uint64_t nugget_internal_offset);
+
 #endif /* BLFS_CRYPT_H_ */
