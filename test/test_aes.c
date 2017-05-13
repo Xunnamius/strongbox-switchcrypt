@@ -101,7 +101,7 @@ static const uint8_t buffer_init_backstore_state[/*273*/] = {
     0x18, 0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1F, 0x20,
     0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 0x28,
 
-    // BODY (offset 161)
+    // BODY (offset 177)
     // 3 nuggets * 2 flakes each * each flake is 16 bytes
     
     0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19,
@@ -124,11 +124,11 @@ static const uint8_t buffer_init_backstore_state[/*273*/] = {
 };
 
 static const uint8_t random_play_data[] = {
-    0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19,
-    0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17,
+    0x0e, 0xb3, 0x82, 0x62, 0x85, 0xb6, 0x30, 0xd9,
+    0xb8, 0xe2, 0x45, 0x70, 0x74, 0xf1, 0x2d, 0x96,
 
-    0x18, 0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1F, 0x20,
-    0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 0x28,
+    0xab, 0x4d, 0x62, 0xa5, 0x7a, 0x64, 0xd1, 0xdd,
+    0xa7, 0x34, 0xb9, 0xeb, 0x8b, 0xd9, 0x6d, 0xc8,
 
     0x29, 0x2A, 0x2B, 0x2C, 0x2D, 0x2F, 0x30, 0x31,
     0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39,
@@ -218,83 +218,7 @@ void tearDown(void)
     unlink(BACKSTORE_FILE_PATH);
 }
 
-/*void test_buse_read_works_as_expected(void)
-{
-    if(!BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
-        TEST_IGNORE_MESSAGE("BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION is NOT in effect. All AES-XTS emulation tests will be ignored!");
-
-    else
-    {
-        free(buselfs_state->backstore);
-
-        blfs_run_mode_open(BACKSTORE_FILE_PATH, (uint8_t)(0), buselfs_state);
-
-        uint8_t buffer1[1] = { 0x00 };
-        uint64_t offset1 = 0;
-
-        buse_read(buffer1, sizeof buffer1, offset1, (void *) buselfs_state);
-
-        TEST_ASSERT_EQUAL_MEMORY(random_play_data + offset1, buffer1, sizeof buffer1);
-
-        uint8_t buffer2[16] = { 0x00 };
-        uint64_t offset2 = 0;
-
-        buse_read(buffer2, sizeof buffer2, offset2, (void *) buselfs_state);
-
-        TEST_ASSERT_EQUAL_MEMORY(random_play_data + offset2, buffer2, sizeof buffer2);
-
-        uint8_t buffer3[20] = { 0x00 };
-        uint64_t offset3 = 0;
-
-        buse_read(buffer3, sizeof buffer3, offset3, (void *) buselfs_state);
-
-        TEST_ASSERT_EQUAL_MEMORY(random_play_data + offset3, buffer3, sizeof buffer3);
-
-        uint8_t buffer4[20] = { 0x00 };
-        uint64_t offset4 = 20;
-
-        buse_read(buffer4, sizeof buffer4, offset4, (void *) buselfs_state);
-
-        TEST_ASSERT_EQUAL_MEMORY(random_play_data + offset4, buffer4, sizeof buffer4);
-
-        uint8_t buffer5[48] = { 0x00 };
-        uint64_t offset5 = 0;
-
-        buse_read(buffer5, sizeof buffer5, offset5, (void *) buselfs_state);
-
-        TEST_ASSERT_EQUAL_MEMORY(random_play_data + offset5, buffer5, sizeof buffer5);
-
-        uint8_t buffer6[1] = { 0x00 };
-        uint64_t offset6 = 47;
-
-        buse_read(buffer6, sizeof buffer6, offset6, (void *) buselfs_state);
-
-        TEST_ASSERT_EQUAL_MEMORY(random_play_data + offset6, buffer6, sizeof buffer6);
-
-        uint8_t buffer7[35] = { 0x00 };
-        uint64_t offset7 = 10;
-
-        buse_read(buffer7, sizeof buffer7, offset7, (void *) buselfs_state);
-
-        TEST_ASSERT_EQUAL_MEMORY(random_play_data + offset7, buffer7, sizeof buffer7);
-
-        uint8_t buffer8[20] = { 0x00 };
-        uint64_t offset8 = 28;
-
-        buse_read(buffer8, sizeof buffer8, offset8, (void *) buselfs_state);
-
-        TEST_ASSERT_EQUAL_MEMORY(random_play_data + offset8, buffer8, sizeof buffer8);
-
-        uint8_t buffer9[8] = { 0x00 };
-        uint64_t offset9 = 1;
-
-        buse_read(buffer9, sizeof buffer9, offset9, (void *) buselfs_state);
-
-        TEST_ASSERT_EQUAL_MEMORY(random_play_data + offset9, buffer9, sizeof buffer9);
-    }
-}*/
-
-/*void test_buse_writeread_works_as_expected1(void)
+void test_buse_writeread_works_as_expected1(void)
 {
     if(!BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
         TEST_IGNORE_MESSAGE("BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION is NOT in effect. All AES-XTS emulation tests will be ignored!");
@@ -384,7 +308,7 @@ void test_buse_writeread_works_as_expected4(void)
 
         TEST_ASSERT_EQUAL_MEMORY(random_play_data + offset4, buffer4, sizeof buffer4);
     }
-}*/
+}
 
 void test_buse_writeread_works_as_expected5(void)
 {
@@ -409,7 +333,7 @@ void test_buse_writeread_works_as_expected5(void)
     }
 }
 
-/*void test_buse_writeread_works_as_expected6(void)
+void test_buse_writeread_works_as_expected6(void)
 {
     if(!BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
         TEST_IGNORE_MESSAGE("BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION is NOT in effect. All AES-XTS emulation tests will be ignored!");
@@ -476,56 +400,9 @@ void test_buse_writeread_works_as_expected8(void)
 
         TEST_ASSERT_EQUAL_MEMORY(random_play_data + offset, buffer, sizeof buffer);
     }
-}*/
-
-/*void test_blfs_rekey_nugget_journaled_with_write_works_as_expected(void)
-{
-    if(!BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
-        TEST_IGNORE_MESSAGE("BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION is NOT in effect. All AES-XTS emulation tests will be ignored!");
-
-    else
-    {
-        free(buselfs_state->backstore);
-
-        blfs_run_mode_open(BACKSTORE_FILE_PATH, (uint8_t)(0), buselfs_state);
-
-        blfs_tjournal_entry_t * entry0 = blfs_open_tjournal_entry(buselfs_state->backstore, 0);
-        blfs_tjournal_entry_t * entry1 = blfs_open_tjournal_entry(buselfs_state->backstore, 1);
-        blfs_tjournal_entry_t * entry2 = blfs_open_tjournal_entry(buselfs_state->backstore, 2);
-
-        blfs_keycount_t * count0 = blfs_open_keycount(buselfs_state->backstore, 0);
-        blfs_keycount_t * count1 = blfs_open_keycount(buselfs_state->backstore, 1);
-        blfs_keycount_t * count2 = blfs_open_keycount(buselfs_state->backstore, 2);
-
-        TEST_ASSERT_TRUE(bitmask_any_bits_set(entry0->bitmask, 0, 8));
-
-        blfs_rekey_nugget_journaled_with_write(buselfs_state, 0, random_play_data, 8, 0);
-
-        TEST_ASSERT_TRUE(bitmask_is_bit_set(entry0->bitmask, 0));
-        TEST_ASSERT_TRUE(bitmask_is_bit_set(entry0->bitmask, 1));
-        TEST_ASSERT_EQUAL_UINT(1, count0->keycount);
-
-        blfs_rekey_nugget_journaled_with_write(buselfs_state, 0, random_play_data + 1, 8, 1);
-
-        TEST_ASSERT_TRUE(bitmask_is_bit_set(entry0->bitmask, 0));
-        TEST_ASSERT_TRUE(bitmask_is_bit_set(entry0->bitmask, 1));
-        TEST_ASSERT_EQUAL_UINT(2, count0->keycount);
-
-        blfs_rekey_nugget_journaled_with_write(buselfs_state, 1, random_play_data + 18, 8, 2);
-
-        TEST_ASSERT_TRUE(bitmask_is_bit_set(entry1->bitmask, 0));
-        TEST_ASSERT_TRUE(bitmask_is_bit_set(entry1->bitmask, 1));
-        TEST_ASSERT_EQUAL_UINT(11, count1->keycount);
-
-        blfs_rekey_nugget_journaled_with_write(buselfs_state, 2, random_play_data + 44, 4, 12);
-
-        TEST_ASSERT_FALSE(bitmask_is_bit_set(entry2->bitmask, 0));
-        TEST_ASSERT_TRUE(bitmask_is_bit_set(entry2->bitmask, 1));
-        TEST_ASSERT_EQUAL_UINT(3, count2->keycount);
-    }
 }
 
-void test_buse_write_dirty_write_triggers_rekeying1(void)
+void test_buse_writeread_works_as_expected9(void)
 {
     if(!BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
         TEST_IGNORE_MESSAGE("BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION is NOT in effect. All AES-XTS emulation tests will be ignored!");
@@ -534,30 +411,11 @@ void test_buse_write_dirty_write_triggers_rekeying1(void)
     {
         free(buselfs_state->backstore);
 
-        blfs_run_mode_open(BACKSTORE_FILE_PATH, (uint8_t)(0), buselfs_state);
+        clear_tj();
 
-        uint8_t buffer[8] = { 0x00 };
-        uint64_t offset = 17;
+        blfs_run_mode_open(BACKSTORE_FILE_PATH, (uint8_t)(1), buselfs_state);
 
-        buse_write(random_play_data + offset, sizeof buffer, offset, (void *) buselfs_state);
-        buse_read(buffer, sizeof buffer, offset, (void *) buselfs_state);
-
-        TEST_ASSERT_EQUAL_MEMORY(random_play_data + offset, buffer, sizeof buffer);
-    }
-}
-
-void test_buse_write_dirty_write_triggers_rekeying2(void)
-{
-    if(!BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
-        TEST_IGNORE_MESSAGE("BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION is NOT in effect. All AES-XTS emulation tests will be ignored!");
-
-    else
-    {
-        free(buselfs_state->backstore);
-
-        blfs_run_mode_open(BACKSTORE_FILE_PATH, (uint8_t)(0), buselfs_state);
-
-        uint8_t buffer5[8] = { 0x00 };
+        uint8_t buffer5[48] = { 0x00 };
         uint64_t offset5 = 1;
 
         buse_write(random_play_data + offset5, sizeof buffer5, offset5, (void *) buselfs_state);
@@ -567,7 +425,7 @@ void test_buse_write_dirty_write_triggers_rekeying2(void)
     }
 }
 
-void test_buse_write_dirty_write_triggers_rekeying3(void)
+void test_buse_writeread_works_as_expected10(void)
 {
     if(!BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
         TEST_IGNORE_MESSAGE("BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION is NOT in effect. All AES-XTS emulation tests will be ignored!");
@@ -576,19 +434,21 @@ void test_buse_write_dirty_write_triggers_rekeying3(void)
     {
         free(buselfs_state->backstore);
 
-        blfs_run_mode_open(BACKSTORE_FILE_PATH, (uint8_t)(0), buselfs_state);
+        clear_tj();
 
-        uint8_t buffer6[1] = { 0x00 };
-        uint64_t offset6 = 47;
+        blfs_run_mode_open(BACKSTORE_FILE_PATH, (uint8_t)(1), buselfs_state);
 
-        buse_write(random_play_data + offset6, sizeof buffer6, offset6, (void *) buselfs_state);
-        buse_read(buffer6, sizeof buffer6, offset6, (void *) buselfs_state);
+        uint8_t buffer5[32] = { 0x00 };
+        uint64_t offset5 = 1;
 
-        TEST_ASSERT_EQUAL_MEMORY(random_play_data + offset6, buffer6, sizeof buffer6);
+        buse_write(random_play_data + offset5, sizeof buffer5, offset5, (void *) buselfs_state);
+        buse_read(buffer5, sizeof buffer5, offset5, (void *) buselfs_state);
+
+        TEST_ASSERT_EQUAL_MEMORY(random_play_data + offset5, buffer5, sizeof buffer5);
     }
 }
 
-void test_buse_write_dirty_write_triggers_rekeying4(void)
+void test_buse_writeread_works_as_expected11(void)
 {
     if(!BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
         TEST_IGNORE_MESSAGE("BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION is NOT in effect. All AES-XTS emulation tests will be ignored!");
@@ -597,19 +457,21 @@ void test_buse_write_dirty_write_triggers_rekeying4(void)
     {
         free(buselfs_state->backstore);
 
-        blfs_run_mode_open(BACKSTORE_FILE_PATH, (uint8_t)(0), buselfs_state);
+        clear_tj();
 
-        uint8_t buffer7[1] = { 0x00 };
-        uint64_t offset7 = 35;
+        blfs_run_mode_open(BACKSTORE_FILE_PATH, (uint8_t)(1), buselfs_state);
 
-        buse_write(random_play_data + offset7, sizeof buffer7, offset7, (void *) buselfs_state);
-        buse_read(buffer7, sizeof buffer7, offset7, (void *) buselfs_state);
+        uint8_t buffer5[32] = { 0x00 };
+        uint64_t offset5 = 0;
 
-        TEST_ASSERT_EQUAL_MEMORY(random_play_data + offset7, buffer7, sizeof buffer7);
+        buse_write(random_play_data + offset5, sizeof buffer5, offset5, (void *) buselfs_state);
+        buse_read(buffer5, sizeof buffer5, offset5, (void *) buselfs_state);
+
+        TEST_ASSERT_EQUAL_MEMORY(random_play_data + offset5, buffer5, sizeof buffer5);
     }
 }
 
-void test_buse_write_dirty_write_triggers_rekeying5(void)
+void test_buse_write_dirty_write_triggers_rekeying(void)
 {
     if(!BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
         TEST_IGNORE_MESSAGE("BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION is NOT in effect. All AES-XTS emulation tests will be ignored!");
@@ -618,148 +480,19 @@ void test_buse_write_dirty_write_triggers_rekeying5(void)
     {
         free(buselfs_state->backstore);
 
-        blfs_run_mode_open(BACKSTORE_FILE_PATH, (uint8_t)(0), buselfs_state);
+        blfs_run_mode_open(BACKSTORE_FILE_PATH, (uint8_t)(1), buselfs_state);
 
-        uint8_t buffer7[1] = { 0x00 };
-        uint64_t offset7 = 0;
+        uint8_t buffer[48] = { 0x00 };
+        uint64_t offset = 1;
 
-        buse_write(random_play_data + offset7, sizeof buffer7, offset7, (void *) buselfs_state);
-        buse_read(buffer7, sizeof buffer7, offset7, (void *) buselfs_state);
+        buse_write(random_play_data + offset, sizeof buffer, offset, (void *) buselfs_state);
+        buse_read(buffer, sizeof buffer, offset, (void *) buselfs_state);
 
-        TEST_ASSERT_EQUAL_MEMORY(random_play_data + offset7, buffer7, sizeof buffer7);
+        offset = 10;
+
+        buse_write(random_play_data + offset, sizeof buffer, offset, (void *) buselfs_state);
+        buse_read(buffer, sizeof buffer, offset, (void *) buselfs_state);
+
+        TEST_ASSERT_EQUAL_MEMORY(random_play_data + offset, buffer, sizeof buffer);
     }
 }
-
-void test_buse_write_dirty_write_triggers_rekeying6(void)
-{
-    if(!BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
-        TEST_IGNORE_MESSAGE("BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION is NOT in effect. All AES-XTS emulation tests will be ignored!");
-
-    else
-    {
-        free(buselfs_state->backstore);
-
-        blfs_run_mode_open(BACKSTORE_FILE_PATH, (uint8_t)(0), buselfs_state);
-
-        uint8_t buffer7[8] = { 0x00 };
-        uint64_t offset7 = 0;
-
-        buse_write(random_play_data + offset7, sizeof buffer7, offset7, (void *) buselfs_state);
-        buse_read(buffer7, sizeof buffer7, offset7, (void *) buselfs_state);
-
-        TEST_ASSERT_EQUAL_MEMORY(random_play_data + offset7, buffer7, sizeof buffer7);
-    }
-}
-
-void test_buse_write_dirty_write_triggers_rekeying7(void)
-{
-    if(!BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
-        TEST_IGNORE_MESSAGE("BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION is NOT in effect. All AES-XTS emulation tests will be ignored!");
-
-    else
-    {
-        free(buselfs_state->backstore);
-
-        blfs_run_mode_open(BACKSTORE_FILE_PATH, (uint8_t)(0), buselfs_state);
-
-        uint8_t buffer7[1] = { 0x00 };
-        uint64_t offset7 = 47;
-
-        buse_write(random_play_data + offset7, sizeof buffer7, offset7, (void *) buselfs_state);
-        buse_read(buffer7, sizeof buffer7, offset7, (void *) buselfs_state);
-
-        TEST_ASSERT_EQUAL_MEMORY(random_play_data + offset7, buffer7, sizeof buffer7);
-    }
-}
-
-void test_buse_write_dirty_write_triggers_rekeying8(void)
-{
-    if(!BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
-        TEST_IGNORE_MESSAGE("BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION is NOT in effect. All AES-XTS emulation tests will be ignored!");
-
-    else
-    {
-        free(buselfs_state->backstore);
-
-        blfs_run_mode_open(BACKSTORE_FILE_PATH, (uint8_t)(0), buselfs_state);
-
-        uint8_t buffer7[8] = { 0x00 };
-        uint64_t offset7 = 40;
-
-        buse_write(random_play_data + offset7, sizeof buffer7, offset7, (void *) buselfs_state);
-        buse_read(buffer7, sizeof buffer7, offset7, (void *) buselfs_state);
-
-        TEST_ASSERT_EQUAL_MEMORY(random_play_data + offset7, buffer7, sizeof buffer7);
-    }
-}
-
-static void readwrite_quicktests()
-{
-    uint8_t expected_buffer1[4096];
-    memset(&expected_buffer1, 0xCE, 4096);
-    expected_buffer1[4095] = 0xAB;
-    expected_buffer1[4094] = 0xAA;
-    uint32_t offset = 0;
-
-    for(; offset < 1024; offset++)
-    {
-        uint8_t buffer[sizeof expected_buffer1];
-
-        buse_write(expected_buffer1, sizeof buffer, sizeof(buffer) * offset, (void *) buselfs_state);
-        buse_read(buffer, sizeof buffer, sizeof(buffer) * offset, (void *) buselfs_state);
-
-        char strbuf[100];
-        snprintf(strbuf, sizeof strbuf, "Loop offset: %"PRIu32, offset);
-        TEST_ASSERT_EQUAL_MEMORY_MESSAGE(expected_buffer1, buffer, sizeof buffer, strbuf);
-    }
-
-    uint8_t expected_buffer2[5000] = { 0x00 };
-
-    for(; offset < 2048; offset+=2)
-    {
-        uint8_t buffer[sizeof expected_buffer2];
-
-        buse_write(expected_buffer2, sizeof buffer, sizeof(buffer) * offset, (void *) buselfs_state);
-        buse_read(buffer, sizeof buffer, sizeof(buffer) * offset, (void *) buselfs_state);
-
-        char strbuf[100];
-        snprintf(strbuf, sizeof strbuf, "Loop offset: %"PRIu32, offset);
-        TEST_ASSERT_EQUAL_MEMORY_MESSAGE(expected_buffer2, buffer, sizeof buffer, strbuf);
-    }
-
-    dzlog_info("test end io:");
-
-    // Test end writes
-    uint8_t buffer[sizeof expected_buffer1];
-    offset = buselfs_state->backstore->writeable_size_actual - sizeof(expected_buffer1);
-
-    buse_write(expected_buffer1, sizeof buffer, offset, (void *) buselfs_state);
-    buse_read(buffer, sizeof buffer, offset, (void *) buselfs_state);
-
-    char strbuf[100];
-    snprintf(strbuf, sizeof strbuf, "Loop offset (actual index #): %"PRIu32, offset);
-    TEST_ASSERT_EQUAL_MEMORY_MESSAGE(expected_buffer1, buffer, sizeof buffer, strbuf);
-}
-
-void test_buselfs_main_actual_creates(void)
-{
-    if(!BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
-        TEST_IGNORE_MESSAGE("BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION is NOT in effect. All AES-XTS emulation tests will be ignored!");
-
-    else
-    {
-        zlog_fini();
-
-        int argc = 4;
-
-        char * argv_create1[] = {
-            "progname",
-            "--default-password",
-            "create",
-            "device_actual1"
-        };
-
-        buselfs_state = buselfs_main_actual(argc, argv_create1, blockdevice);
-        readwrite_quicktests();
-    }
-}*/

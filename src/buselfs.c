@@ -24,6 +24,10 @@
 #error "The BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION and BLFS_NO_READ_INTEGRITY compile flags CANNOT be used together!"
 #endif
 
+#if BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION && BLFS_BADBADNOTGOOD_USE_AESCTR_EMULATION
+#error "The BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION and BLFS_BADBADNOTGOOD_USE_AESCTR_EMULATION compile flags CANNOT be used together!"
+#endif
+
 /**
  * Unimplemented BUSE internal function.
  */
@@ -505,6 +509,8 @@ int buse_read(void * output_buffer, uint32_t length, uint64_t absolute_offset, v
     IFDEBUG(dzlog_debug("nugget_offset: %"PRIuFAST32, nugget_offset));
     IFDEBUG(dzlog_debug("nugget_internal_offset: %"PRIuFAST32, nugget_internal_offset));
 
+    int first_nugget = TRUE;
+
     while(length != 0)
     {
         IFDEBUG(dzlog_debug("starting with length: %"PRIu32, length));
@@ -514,12 +520,18 @@ int buse_read(void * output_buffer, uint32_t length, uint64_t absolute_offset, v
         uint8_t nugget_key[BLFS_CRYPTO_BYTES_KDF_OUT];
         
         uint_fast32_t buffer_read_length = MIN(length, nugget_size - nugget_internal_offset); // nmlen
+        uint_fast32_t assert_buffer_read_length = 0;
         uint_fast32_t first_affected_flake = nugget_internal_offset / flake_size;
         uint_fast32_t num_affected_flakes =
             CEIL((nugget_internal_offset + buffer_read_length), flake_size) - first_affected_flake;
         uint_fast32_t nugget_read_length = num_affected_flakes * flake_size;
 
         uint8_t nugget_data[nugget_read_length];
+
+        int last_nugget = length - buffer_read_length == 0;
+
+        IFDEBUG(dzlog_debug("first nugget: %s", first_nugget ? "YES" : "NO"));
+        IFDEBUG(dzlog_debug("last nugget: %s", last_nugget ? "YES" : "NO"));
 
         IFDEBUG(dzlog_debug("buffer_read_length: %"PRIuFAST32, buffer_read_length));
         IFDEBUG(dzlog_debug("first_affected_flake: %"PRIuFAST32, first_affected_flake));
@@ -557,7 +569,6 @@ int buse_read(void * output_buffer, uint32_t length, uint64_t absolute_offset, v
 
         uint_fast32_t flake_index = first_affected_flake;
         uint_fast32_t flake_end = first_affected_flake + num_affected_flakes;
-        uint_fast32_t assert_buffer_read_length = 0;
 
         if(!BLFS_NO_READ_INTEGRITY)
         {
@@ -607,6 +618,7 @@ int buse_read(void * output_buffer, uint32_t length, uint64_t absolute_offset, v
                 if(BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
                 {
                     uint8_t flake_plaintext[flake_size];
+                    uint32_t first_flake_internal_offset = nugget_internal_offset - first_affected_flake * flake_size;
 
                     blfs_aesxts_decrypt(flake_plaintext,
                                         nugget_data + (i * flake_size),
@@ -614,27 +626,27 @@ int buse_read(void * output_buffer, uint32_t length, uint64_t absolute_offset, v
                                         flake_key,
                                         nugget_offset * flakes_per_nugget + flake_index);
 
-                    if(flake_index == first_affected_flake)
+                    if(first_nugget && flake_index == first_affected_flake)
                     {
-                        uint32_t flake_internal_offset = nugget_internal_offset - first_affected_flake * flake_size;
-                        uint32_t flake_internal_length = MIN(buffer_read_length, flake_size);
+                        uint32_t flake_internal_length = MIN(buffer_read_length, flake_size - first_flake_internal_offset);
 
-                        assert(flake_internal_offset <= flake_size);
-                        memcpy(buffer, flake_plaintext + flake_internal_offset, flake_internal_length);
+                        assert(first_flake_internal_offset + flake_internal_length <= flake_size);
+                        memcpy(buffer, flake_plaintext + first_flake_internal_offset, flake_internal_length);
 
                         buffer += flake_internal_length;
                         assert_buffer_read_length += flake_internal_length;
                     }
 
-                    else if(flake_index == flake_end - 1)
+                    else if(last_nugget && flake_index == flake_end - 1)
                     {
-                        uint32_t flake_internal_end = buffer_read_length - (flake_end - 1) * flake_size;
+                        uint32_t flake_internal_end_length = buffer_read_length - ((flake_end - 1) * flake_size - (first_nugget ? first_flake_internal_offset : 0));
 
-                        assert(flake_internal_end <= flake_size);
-                        memcpy(buffer, flake_plaintext, flake_internal_end);
+                        assert(flake_internal_end_length <= flake_size);
+                        assert(flake_internal_end_length > 0);
+                        memcpy(buffer, flake_plaintext, flake_internal_end_length);
 
-                        buffer += flake_internal_end;
-                        assert_buffer_read_length += flake_internal_end;
+                        buffer += flake_internal_end_length;
+                        assert_buffer_read_length += flake_internal_end_length;
                     }
 
                     else
@@ -649,7 +661,7 @@ int buse_read(void * output_buffer, uint32_t length, uint64_t absolute_offset, v
         }
 
         if(BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
-            assert(buffer_read_length == assert_buffer_read_length);
+        	assert(buffer_read_length == assert_buffer_read_length);
 
         else
         {
@@ -687,6 +699,8 @@ int buse_read(void * output_buffer, uint32_t length, uint64_t absolute_offset, v
         IFDEBUG(dzlog_debug("length: %"PRIu32, length));
         IFDEBUG(dzlog_debug("nugget_internal_offset: %"PRIuFAST32, nugget_internal_offset));
         IFDEBUG(dzlog_debug("nugget_offset: %"PRIuFAST32, nugget_offset));
+
+        first_nugget = FALSE;
     }
 
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
@@ -753,7 +767,7 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
 
         if(bitmask_any_bits_set(entry->bitmask, first_affected_flake, num_affected_flakes))
         {
-            IFDEBUG(dzlog_notice("OVERWRITE DETECTED! PERFORMING IN-PLACE JOURNALED REKEYING + WRITE"));
+            IFDEBUG(dzlog_notice("OVERWRITE DETECTED! PERFORMING IN-PLACE JOURNALED REKEYING + WRITE (l=%"PRIuFAST32")", buffer_write_length));
             blfs_rekey_nugget_journaled_with_write(buselfs_state, nugget_offset, buffer, buffer_write_length, nugget_internal_offset);
 
             buffer += buffer_write_length;
@@ -1107,6 +1121,11 @@ void blfs_rekey_nugget_journaled_with_write(buselfs_state_t * buselfs_state,
                                 flake_size,
                                 flake_key,
                                 rekeying_nugget_index * buselfs_state->backstore->flakes_per_nugget + flake_index);
+
+            blfs_backstore_write_body(buselfs_state->backstore,
+                            flake_data,
+                            flake_size,
+                            rekeying_nugget_index * buselfs_state->backstore->nugget_size_bytes + flake_index * flake_size);
         }
 
         else

@@ -50,6 +50,8 @@ make pre
 make check
 ```
 
+test_aes is used only for AES-XTS!
+
 ## File Structure and Internal Construction
 
 (todo)
