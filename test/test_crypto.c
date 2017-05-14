@@ -349,17 +349,17 @@ void test_blfs_aesctr_crypt_crypts_properly(void)
 
     TEST_ASSERT_EQUAL_MEMORY(data, crypted_data_round2, 20);
 
-    uint8_t crypted_data_round3[10] = { 0x00 };
+    uint8_t crypted_data_round3[1] = { 0x00 };
 
-    blfs_aesctr_crypt(crypted_data_round3, data, 10, nugget_key, kcs_keycount, nugget_internal_offset);
+    blfs_aesctr_crypt(crypted_data_round3, data, 1, nugget_key, kcs_keycount, nugget_internal_offset);
 
-    TEST_ASSERT_EQUAL_MEMORY(crypted_data, crypted_data_round3, 10);
+    TEST_ASSERT_EQUAL_MEMORY(crypted_data, crypted_data_round3, 1);
 
-    uint8_t crypted_data_round4[10] = { 0x00 };
+    uint8_t crypted_data_round4[1] = { 0x00 };
 
-    blfs_aesctr_crypt(crypted_data_round4, crypted_data_round3, 10, nugget_key, kcs_keycount, nugget_internal_offset);
+    blfs_aesctr_crypt(crypted_data_round4, crypted_data_round3, 1, nugget_key, kcs_keycount, nugget_internal_offset);
 
-    TEST_ASSERT_EQUAL_MEMORY(data, crypted_data_round4, 10);
+    TEST_ASSERT_EQUAL_MEMORY(data, crypted_data_round4, 1);
 }
 
 void test_blfs_aesctr_crypt_BIGLY(void)

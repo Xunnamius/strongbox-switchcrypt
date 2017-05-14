@@ -87,6 +87,12 @@ static struct buse_operations buseops = {
 };
 
 /**
+ * Pointer pointing to the currently active stream crypting function. See main.
+ */
+void (*stream_crypt)(uint8_t *, const uint8_t *, uint32_t, const uint8_t *, uint64_t, uint64_t)
+    = BLFS_BADBADNOTGOOD_USE_AESCTR_EMULATION ? &blfs_aesctr_crypt : &blfs_chacha20_crypt;
+
+/**
  * Updates the global merkle tree root hash.
  *
  * XXX: this function MUST be called before buselfs_state->merkle_tree_root_hash
@@ -667,7 +673,7 @@ int buse_read(void * output_buffer, uint32_t length, uint64_t absolute_offset, v
 
         else
         {
-            IFDEBUG(dzlog_debug("blfs_chacha20_crypt calculated ptr: %p --[ + "
+            IFDEBUG(dzlog_debug("blfs_crypt calculated ptr: %p --[ + "
                                 "%"PRIuFAST32" - %"PRIuFAST32" * %"PRIuFAST32" => %"PRIuFAST32
                                 " ]> %p (crypting %"PRIuFAST32" bytes)",
                                 (void *) nugget_data,
@@ -678,7 +684,7 @@ int buse_read(void * output_buffer, uint32_t length, uint64_t absolute_offset, v
                                 (void *) (nugget_data + (nugget_internal_offset - first_affected_flake * flake_size)),
                                 buffer_read_length));
 
-            blfs_chacha20_crypt(buffer,
+            stream_crypt(buffer,
                                 nugget_data + (nugget_internal_offset - first_affected_flake * flake_size),
                                 buffer_read_length,
                                 nugget_key,
@@ -867,15 +873,15 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
                     IFDEBUG(dzlog_debug("buffer at this point (initial 64 bytes):"));
                     IFDEBUG(hdzlog_debug(buffer, MIN(64U, length)));
 
-                    IFDEBUG(dzlog_debug("blfs_chacha20_crypt calculated src length: %"PRIuFAST32, flake_write_length));
+                    IFDEBUG(dzlog_debug("blfs_crypt calculated src length: %"PRIuFAST32, flake_write_length));
 
-                    IFDEBUG(dzlog_debug("blfs_chacha20_crypt calculated dest offset: %"PRIuFAST32,
+                    IFDEBUG(dzlog_debug("blfs_crypt calculated dest offset: %"PRIuFAST32,
                                     i * flake_size));
 
-                    IFDEBUG(dzlog_debug("blfs_chacha20_crypt calculated nio: %"PRIuFAST32,
+                    IFDEBUG(dzlog_debug("blfs_crypt calculated nio: %"PRIuFAST32,
                                     flake_index * flake_size + flake_internal_offset));
 
-                    blfs_chacha20_crypt(flake_data + flake_internal_offset,
+                    stream_crypt(flake_data + flake_internal_offset,
                                         buffer,
                                         flake_write_length,
                                         nugget_key,
@@ -1085,7 +1091,7 @@ void blfs_rekey_nugget_journaled_with_write(buselfs_state_t * buselfs_state,
     
     if(!BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
     {
-        blfs_chacha20_crypt(new_nugget_data,
+        stream_crypt(new_nugget_data,
                             rekeying_nugget_data,
                             buselfs_state->backstore->nugget_size_bytes,
                             nugget_key,

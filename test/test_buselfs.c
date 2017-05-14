@@ -863,9 +863,9 @@ void test_buselfs_main_actual_throws_exception_if_bad_numbers_given_as_args(void
 
 void test_buse_read_works_as_expected(void)
 {
-    if(BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
+    if(BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION || BLFS_BADBADNOTGOOD_USE_AESCTR_EMULATION)
     {
-        TEST_IGNORE_MESSAGE("BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION is in effect. All non- AES-XTS emulation tests will be ignored!");
+        TEST_IGNORE_MESSAGE("BLFS_BADBADNOTGOOD_USE_AES*_EMULATION is in effect. All non-AES-XTS emulation tests will be ignored!");
         return;
     }
 
