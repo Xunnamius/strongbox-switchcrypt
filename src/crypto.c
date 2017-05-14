@@ -254,7 +254,7 @@ void blfs_aesxts_encrypt(uint8_t * encrypted_data,
     if(!BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
         Throw(EXCEPTION_BAD_AESXTS);
 
-    if(data_length < BLFS_CRYPTO_BYTES_AESXTS_DATA_MIN)
+    if(data_length < BLFS_CRYPTO_BYTES_AES_DATA_MIN)
         Throw(EXCEPTION_AESXTS_DATA_LENGTH_TOO_SMALL);
 
     uint8_t doublekey[BLFS_CRYPTO_BYTES_AESXTS_KEY];
@@ -322,7 +322,7 @@ void blfs_aesxts_decrypt(uint8_t * plaintext_data,
     if(!BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
         Throw(EXCEPTION_BAD_AESXTS);
 
-    if(data_length < BLFS_CRYPTO_BYTES_AESXTS_DATA_MIN)
+    if(data_length < BLFS_CRYPTO_BYTES_AES_DATA_MIN)
         Throw(EXCEPTION_AESXTS_DATA_LENGTH_TOO_SMALL);
 
     uint8_t doublekey[BLFS_CRYPTO_BYTES_AESXTS_KEY];
@@ -391,26 +391,24 @@ void blfs_aesctr_crypt(uint8_t * crypted_data,
 {
     IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
 
+    if(!BLFS_BADBADNOTGOOD_USE_AESCTR_EMULATION)
+        Throw(EXCEPTION_BAD_AESCTR);
+
     uint64_t interblock_offset = nugget_internal_offset / BLFS_CRYPTO_BYTES_AES_BLOCK;
     uint64_t intrablock_offset = nugget_internal_offset % BLFS_CRYPTO_BYTES_AES_BLOCK;
-    uint64_t zero_str_length = CEIL((intrablock_offset + data_length), BLFS_CRYPTO_BYTES_AES_BLOCK) * BLFS_CRYPTO_BYTES_AES_BLOCK;
+    uint64_t num_aes_blocks = CEIL((intrablock_offset + data_length), BLFS_CRYPTO_BYTES_AES_BLOCK);
+    uint64_t zero_str_length = num_aes_blocks * BLFS_CRYPTO_BYTES_AES_BLOCK;
     uint64_t block_read_upper_bound = intrablock_offset + data_length;
 
     IFDEBUG(dzlog_debug("data in: (first 64 bytes):"));
     IFDEBUG(hdzlog_debug(data, MIN(64U, data_length)));
 
-    unsigned char * kcs_keycount_ptr = (unsigned char *) &kcs_keycount;
-    (void) kcs_keycount_ptr;
-
     IFDEBUG(dzlog_debug("blfs_aesctr_crypt"));
-    IFDEBUG(dzlog_debug("keycount = %"PRIu64, kcs_keycount));
-    IFDEBUG(dzlog_debug("keycount hex x2 (should match):"));
-    IFDEBUG(hdzlog_debug(&kcs_keycount, BLFS_CRYPTO_BYTES_AES_NONCE));
-    IFDEBUG(hdzlog_debug(kcs_keycount_ptr, BLFS_CRYPTO_BYTES_AES_NONCE));
     IFDEBUG(dzlog_debug("data_length = %"PRIu32, data_length));
     IFDEBUG(dzlog_debug("nugget_internal_offset = %"PRIu64, nugget_internal_offset));
     IFDEBUG(dzlog_debug("interblock_offset = %"PRIu64, interblock_offset));
     IFDEBUG(dzlog_debug("intrablock_offset = %"PRIu64, intrablock_offset));
+    IFDEBUG(dzlog_debug("num_aes_blocks = %"PRIu64, num_aes_blocks));
     IFDEBUG(dzlog_debug("zero_str_length = %"PRIu64, zero_str_length));
     IFDEBUG(dzlog_debug("block_read_upper_bound = %"PRIu64, block_read_upper_bound));
     IFDEBUG(dzlog_debug("block read range = (%"PRIu64" to %"PRIu64" - 1) <=> %"PRIu64" [total, zero indexed]",
@@ -418,20 +416,59 @@ void blfs_aesctr_crypt(uint8_t * crypted_data,
 
     assert(zero_str_length >= data_length);
 
-    unsigned char * zero_str = calloc(zero_str_length, sizeof(char));
-    unsigned char * xor_str = malloc(zero_str_length);
+    uint8_t * xor_str = calloc(zero_str_length, sizeof(xor_str));
 
-    if(zero_str == NULL || xor_str == NULL)
+    if(xor_str == NULL)
         Throw(EXCEPTION_ALLOC_FAILURE);
 
-    if(crypto_stream_aes128ctr_xor(
-        xor_str,
-        zero_str,
-        zero_str_length,
-        (unsigned char *) &interblock_offset,
-        nugget_key) != 0) 
-    {// XXX: why badbadnotgood? Because we ignore kcs_keycount_ptr here...
-        Throw(EXCEPTION_AESCTR_BAD_RETVAL);
+    uint8_t iv_zero[BLFS_CRYPTO_BYTES_AES_IV] = { 0x00 };
+    uint64_t counter = interblock_offset;
+
+    assert(sizeof(kcs_keycount) + sizeof(counter) == BLFS_CRYPTO_BYTES_AES_IV);
+
+    for(uint64_t i = 0; i < num_aes_blocks; i++, counter++)
+    {
+        int len = 0;
+        EVP_CIPHER_CTX * ctx = NULL;
+        uint8_t stream_nonce[BLFS_CRYPTO_BYTES_AES_BLOCK] = { 0x00 };
+        uint8_t * xor_str_ptr = xor_str + (i * sizeof(stream_nonce));
+
+        memcpy(stream_nonce, (uint8_t *) &kcs_keycount, sizeof(kcs_keycount));
+        memcpy(stream_nonce + sizeof(kcs_keycount), (uint8_t *) &counter, sizeof(counter));
+
+        if(!(ctx = EVP_CIPHER_CTX_new()))
+        {
+            IFDEBUG(dzlog_fatal("ERROR @ 1: %s", ERR_error_string(ERR_peek_last_error(), NULL)));
+
+            IFDEBUG(ERR_print_errors_fp(stdout));
+            Throw(EXCEPTION_AESCTR_BAD_RETVAL);
+        }
+
+        if(EVP_EncryptInit_ex(ctx, EVP_aes_256_ecb(), NULL, nugget_key, iv_zero) != 1)
+        {
+            IFDEBUG(dzlog_fatal("ERROR @ 2: %s", ERR_error_string(ERR_peek_last_error(), NULL)));
+
+            IFDEBUG(ERR_print_errors_fp(stdout));
+            Throw(EXCEPTION_AESCTR_BAD_RETVAL);
+        }
+
+        if(EVP_EncryptUpdate(ctx, xor_str_ptr, &len, stream_nonce, sizeof(stream_nonce)) != 1)
+        {
+            IFDEBUG(dzlog_fatal("ERROR @ 3: %s", ERR_error_string(ERR_peek_last_error(), NULL)));
+
+            IFDEBUG(ERR_print_errors_fp(stdout));
+            Throw(EXCEPTION_AESCTR_BAD_RETVAL);
+        }
+
+        if(EVP_EncryptFinal_ex(ctx, xor_str_ptr + len, &len) != 1)
+        {
+            IFDEBUG(dzlog_fatal("ERROR @ 4: %s", ERR_error_string(ERR_peek_last_error(), NULL)));
+
+            IFDEBUG(ERR_print_errors_fp(stdout));
+            Throw(EXCEPTION_AESCTR_BAD_RETVAL);
+        }
+
+        EVP_CIPHER_CTX_free(ctx);
     }
 
     for(uint64_t i = intrablock_offset, j = block_read_upper_bound, k = 0; i < j; ++i, ++k)
@@ -440,11 +477,9 @@ void blfs_aesctr_crypt(uint8_t * crypted_data,
         crypted_data[k] = data[k] ^ xor_str[i];
     }
 
-
     IFDEBUG(dzlog_debug("crypted data out: (first 64 bytes):"));
     IFDEBUG(hdzlog_debug(crypted_data, MIN(64U, data_length)));
 
-    free(zero_str);
     free(xor_str);
 
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));

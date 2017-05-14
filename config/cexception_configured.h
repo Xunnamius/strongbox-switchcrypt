@@ -146,6 +146,9 @@ do {                                                                            
 // OpenSSL AES-CTR is not amused by your antics
 #define EXCEPTION_AESCTR_BAD_RETVAL             0x26U
 
+// Why you call aes-ctr function when aes-ctr disabled?!?!
+#define EXCEPTION_BAD_AESCTR                    0x27U
+
 ///////////////////////
 // End Configuration //
 ///////////////////////

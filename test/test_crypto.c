@@ -322,14 +322,20 @@ void test_aesxts_throws_exceptions_if_length_too_small(void)
     }
 }
 
-/*void test_blfs_aesctr_crypt_crypts_properly(void)
+void test_blfs_aesctr_crypt_crypts_properly(void)
 {
+    if(!BLFS_BADBADNOTGOOD_USE_AESCTR_EMULATION)
+    {
+        TEST_IGNORE_MESSAGE("BLFS_BADBADNOTGOOD_USE_AESCTR_EMULATION is NOT in effect, so this test will be skipped!");
+        return;
+    }
+
     uint8_t data[20] = "20chardat20chardat!";
     uint8_t crypted_data[20] = { 0x00 };
     uint64_t kcs_keycount = 10242048;
     uint64_t nugget_internal_offset = 64;
 
-    uint8_t nugget_key[BLFS_CRYPTO_BYTES_CHACHA_KEY] = {
+    uint8_t nugget_key[BLFS_CRYPTO_BYTES_AES_KEY] = {
         0xd9, 0x76, 0xff, 0x4c, 0xd9, 0xaa, 0x1, 0xea, 0xa5, 0xad, 0xdc, 0x68,
         0xcf, 0xe1, 0x8f, 0xc1, 0xa7, 0xa5, 0x10, 0x4b, 0x63, 0x1b, 0x46, 0x2d,
         0x78, 0xda, 0xb6, 0x18, 0x18, 0x6, 0x19, 0xab
@@ -343,21 +349,27 @@ void test_aesxts_throws_exceptions_if_length_too_small(void)
 
     TEST_ASSERT_EQUAL_MEMORY(data, crypted_data_round2, 20);
 
-    uint8_t crypted_data_round3[16] = { 0x00 };
+    uint8_t crypted_data_round3[10] = { 0x00 };
 
-    blfs_aesctr_crypt(crypted_data_round3, data, 16, nugget_key, kcs_keycount, nugget_internal_offset);
+    blfs_aesctr_crypt(crypted_data_round3, data, 10, nugget_key, kcs_keycount, nugget_internal_offset);
 
-    TEST_ASSERT_EQUAL_MEMORY(crypted_data, crypted_data_round3, 16);
+    TEST_ASSERT_EQUAL_MEMORY(crypted_data, crypted_data_round3, 10);
 
-    uint8_t crypted_data_round4[16] = { 0x00 };
+    uint8_t crypted_data_round4[10] = { 0x00 };
 
-    blfs_aesctr_crypt(crypted_data_round4, crypted_data_round3, 16, nugget_key, kcs_keycount, nugget_internal_offset);
+    blfs_aesctr_crypt(crypted_data_round4, crypted_data_round3, 10, nugget_key, kcs_keycount, nugget_internal_offset);
 
-    TEST_ASSERT_EQUAL_MEMORY(data, crypted_data_round4, 16);
+    TEST_ASSERT_EQUAL_MEMORY(data, crypted_data_round4, 10);
 }
 
 void test_blfs_aesctr_crypt_BIGLY(void)
 {
+    if(!BLFS_BADBADNOTGOOD_USE_AESCTR_EMULATION)
+    {
+        TEST_IGNORE_MESSAGE("BLFS_BADBADNOTGOOD_USE_AESCTR_EMULATION is NOT in effect, so this test will be skipped!");
+        return;
+    }
+
     uint8_t data[4096] = { 0x00 };
     randombytes_buf(data, sizeof data);
 
@@ -365,7 +377,7 @@ void test_blfs_aesctr_crypt_BIGLY(void)
     uint64_t kcs_keycount = 123456789101112;
     uint64_t nugget_internal_offset = 72;
 
-    uint8_t nugget_key[BLFS_CRYPTO_BYTES_CHACHA_KEY] = {
+    uint8_t nugget_key[BLFS_CRYPTO_BYTES_AES_KEY] = {
         0xd9, 0x76, 0xff, 0x4c, 0x54, 0xaa, 0x1, 0xea, 0xa5, 0xad, 0xdc, 0x68,
         0xcf, 0xe1, 0x8f, 0xc1, 0xa7, 0xa5, 0x45, 0x4b, 0x63, 0xaa, 0x46, 0x2d,
         0x78, 0xda, 0xb6, 0x99, 0x18, 0x6, 0x19, 0xab
@@ -378,4 +390,4 @@ void test_blfs_aesctr_crypt_BIGLY(void)
     blfs_aesctr_crypt(crypted_data_round2, crypted_data, sizeof data, nugget_key, kcs_keycount, nugget_internal_offset);
 
     TEST_ASSERT_EQUAL_MEMORY(data, crypted_data_round2, 4096);
-}*/
+}
