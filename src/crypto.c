@@ -9,6 +9,7 @@
 #include <assert.h>
 #include <string.h>
 #include <inttypes.h>
+#include "openssl/aes.h"
 
 void blfs_password_to_secret(uint8_t * secret, const char * passwd, uint32_t passwd_length, const uint8_t * salt)
 {
@@ -421,54 +422,25 @@ void blfs_aesctr_crypt(uint8_t * crypted_data,
     if(xor_str == NULL)
         Throw(EXCEPTION_ALLOC_FAILURE);
 
-    uint8_t iv_zero[BLFS_CRYPTO_BYTES_AES_IV] = { 0x00 };
     uint64_t counter = interblock_offset;
+    uint8_t stream_nonce[BLFS_CRYPTO_BYTES_AES_BLOCK] = { 0x00 };
 
     assert(sizeof(kcs_keycount) + sizeof(counter) == BLFS_CRYPTO_BYTES_AES_IV);
+    memcpy(stream_nonce, (uint8_t *) &kcs_keycount, sizeof(kcs_keycount));
 
     for(uint64_t i = 0; i < num_aes_blocks; i++, counter++)
     {
         int len = 0;
-        EVP_CIPHER_CTX * ctx = NULL;
-        uint8_t stream_nonce[BLFS_CRYPTO_BYTES_AES_BLOCK] = { 0x00 };
+        AES_KEY aes_key;
+
+        uint8_t raw_key[BLFS_CRYPTO_BYTES_AES_KEY] = { 0x00 };
         uint8_t * xor_str_ptr = xor_str + (i * sizeof(stream_nonce));
 
-        memcpy(stream_nonce, (uint8_t *) &kcs_keycount, sizeof(kcs_keycount));
         memcpy(stream_nonce + sizeof(kcs_keycount), (uint8_t *) &counter, sizeof(counter));
+        memcpy(raw_key, nugget_key, sizeof(raw_key)); // XXX: cutting off the key, bad bad not good! Need key schedule!
 
-        if(!(ctx = EVP_CIPHER_CTX_new()))
-        {
-            IFDEBUG(dzlog_fatal("ERROR @ 1: %s", ERR_error_string(ERR_peek_last_error(), NULL)));
-
-            IFDEBUG(ERR_print_errors_fp(stdout));
-            Throw(EXCEPTION_AESCTR_BAD_RETVAL);
-        }
-
-        if(EVP_EncryptInit_ex(ctx, EVP_aes_128_ecb(), NULL, nugget_key, iv_zero) != 1)
-        {
-            IFDEBUG(dzlog_fatal("ERROR @ 2: %s", ERR_error_string(ERR_peek_last_error(), NULL)));
-
-            IFDEBUG(ERR_print_errors_fp(stdout));
-            Throw(EXCEPTION_AESCTR_BAD_RETVAL);
-        }
-
-        if(EVP_EncryptUpdate(ctx, xor_str_ptr, &len, stream_nonce, sizeof(stream_nonce)) != 1)
-        {
-            IFDEBUG(dzlog_fatal("ERROR @ 3: %s", ERR_error_string(ERR_peek_last_error(), NULL)));
-
-            IFDEBUG(ERR_print_errors_fp(stdout));
-            Throw(EXCEPTION_AESCTR_BAD_RETVAL);
-        }
-
-        if(EVP_EncryptFinal_ex(ctx, xor_str_ptr + len, &len) != 1)
-        {
-            IFDEBUG(dzlog_fatal("ERROR @ 4: %s", ERR_error_string(ERR_peek_last_error(), NULL)));
-
-            IFDEBUG(ERR_print_errors_fp(stdout));
-            Throw(EXCEPTION_AESCTR_BAD_RETVAL);
-        }
-
-        EVP_CIPHER_CTX_free(ctx);
+        AES_set_encrypt_key((const uint8_t *) raw_key, 128, &aes_key);
+        AES_encrypt(stream_nonce, xor_str_ptr, &aes_key);
     }
 
     for(uint64_t i = intrablock_offset, j = block_read_upper_bound, k = 0; i < j; ++i, ++k)
