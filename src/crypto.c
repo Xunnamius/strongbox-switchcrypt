@@ -444,7 +444,7 @@ void blfs_aesctr_crypt(uint8_t * crypted_data,
             Throw(EXCEPTION_AESCTR_BAD_RETVAL);
         }
 
-        if(EVP_EncryptInit_ex(ctx, EVP_aes_256_ecb(), NULL, nugget_key, iv_zero) != 1)
+        if(EVP_EncryptInit_ex(ctx, EVP_aes_128_ecb(), NULL, nugget_key, iv_zero) != 1)
         {
             IFDEBUG(dzlog_fatal("ERROR @ 2: %s", ERR_error_string(ERR_peek_last_error(), NULL)));
 
