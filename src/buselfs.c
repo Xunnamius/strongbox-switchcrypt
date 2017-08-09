@@ -204,6 +204,7 @@ static void verify_in_merkle_tree(uint8_t * data, size_t length, uint32_t index,
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 }
 
+// TODO: retire rekeying logic
 static void populate_key_cache(buselfs_state_t * buselfs_state, int rekeying, uint32_t rekeying_nugget_index)
 {
     blfs_keycount_t rekeying_count;
@@ -258,6 +259,7 @@ static void populate_key_cache(buselfs_state_t * buselfs_state, int rekeying, ui
     }
 }
 
+// TODO: retire rekeying logic
 static void populate_mt(buselfs_state_t * buselfs_state, int rekeying, uint32_t rekeying_nugget_index)
 {
     blfs_keycount_t rekeying_count;
@@ -752,6 +754,20 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
     IFDEBUG(dzlog_debug("buffer to write (initial 64 bytes):"));
             IFDEBUG(hdzlog_debug(input_buffer, /*MIN(64U, */size/*)*/));
 
+    blfs_header_t * tpmv_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_TPMGLOBALVER);
+    uint64_t tpmv_value = *(uint64_t *) tpmv_header->data;
+
+    IFDEBUG(dzlog_debug("tpmv_header->data:"));
+    IFDEBUG(dzlog_debug("was %"PRIu64, tpmv_value));
+
+    tpmv_value++;
+
+    IFDEBUG(dzlog_debug("now %"PRIu64, tpmv_value));
+
+    memcpy(tpmv_header->data, (uint8_t *) &tpmv_value, BLFS_HEAD_HEADER_BYTES_TPMGLOBALVER);
+
+    blfs_globalversion_commit(BLFS_TPM_ID, tpmv_value); // TODO: needs to be guaranteed monotonic, not based on header
+
     while(length != 0)
     {
         IFDEBUG(dzlog_debug("starting with length: %"PRIu32, length));
@@ -996,19 +1012,6 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
         IFDEBUG(dzlog_debug("nugget_offset: %"PRIuFAST32, nugget_offset));
     }
 
-    blfs_header_t * tpmv_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_TPMGLOBALVER);
-    uint64_t tpmv_value = *(uint64_t *) tpmv_header->data;
-
-    IFDEBUG(dzlog_debug("tpmv_header->data:"));
-    IFDEBUG(dzlog_debug("was %"PRIu64, tpmv_value));
-
-    tpmv_value++;
-
-    IFDEBUG(dzlog_debug("now %"PRIu64, tpmv_value));
-
-    memcpy(tpmv_header->data, (uint8_t *) &tpmv_value, BLFS_HEAD_HEADER_BYTES_TPMGLOBALVER);
-
-    blfs_globalversion_commit(BLFS_TPM_ID, tpmv_value);
     blfs_commit_header(buselfs_state->backstore, tpmv_header);
 
     IFDEBUG(dzlog_debug("MERKLE TREE: update TPM header"));
@@ -1068,7 +1071,8 @@ void blfs_rekey_nugget_journaled_with_write(buselfs_state_t * buselfs_state,
                              journaled_data_ciphertext,
                              buselfs_state->backstore->nugget_size_bytes,
                              rekeying_nugget_index * buselfs_state->backstore->nugget_size_bytes);
-    
+
+    // TODO: retire rekeying journaling in favor of buselfs_state->crash_recovery
     // Write nugget ciphertext and metadata to journal
     blfs_backstore_write(buselfs_state->backstore,
                          journaled_data_ciphertext,
@@ -1087,7 +1091,9 @@ void blfs_rekey_nugget_journaled_with_write(buselfs_state_t * buselfs_state,
 
     memcpy(rekeying_nugget_data + nugget_internal_offset, buffer, length);
 
-    jcount->keycount++;
+    // XXX: if we're in crash recovery mode, the very next keycount might be
+    // burned, so we must take that possibility into account when rekeying.
+    jcount->keycount = jcount->keycount + (buselfs_state->crash_recovery ? 2 : 1);
     
     if(!BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
     {
@@ -1168,6 +1174,7 @@ void blfs_rekey_nugget_journaled_with_write(buselfs_state_t * buselfs_state,
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 }
 
+// TODO: retire this outdated recovery logic in favor of buselfs_state->crash_recovery
 void blfs_rekey_nugget_journaled(buselfs_state_t * buselfs_state, uint32_t rekeying_nugget_index)
 {
     IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
@@ -1207,12 +1214,12 @@ void blfs_rekey_nugget_journaled(buselfs_state_t * buselfs_state, uint32_t rekey
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 }
 
-// FIXME: mismatch between create and open; needs a fix! Don't try the open command just yet...
+// FIXME: mismatch between create and open; needs a fix! Though the recovery code is working, don't try the open command
+// just yet...
 void blfs_soft_open(buselfs_state_t * buselfs_state, uint8_t cin_allow_insecure_start)
 {
     IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
 
-    int rekeying = FALSE;
     char passwd[BLFS_PASSWORD_BUF_SIZE] = { 0x00 };
 
     if(buselfs_state->default_password != NULL)
@@ -1240,11 +1247,6 @@ void blfs_soft_open(buselfs_state_t * buselfs_state, uint8_t cin_allow_insecure_
     IFDEBUG(dzlog_debug("buselfs_state->backstore->master_secret:"));
     IFDEBUG(hdzlog_debug(buselfs_state->backstore->master_secret, BLFS_CRYPTO_BYTES_KDF_OUT));
     
-    // Verify global header
-    blfs_header_t * tpmv_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_TPMGLOBALVER);
-    IFDEBUG(dzlog_debug("tpmv_header->data: %"PRIu64, *(uint64_t *) tpmv_header->data));
-    blfs_globalversion_verify(BLFS_TPM_ID, *(uint64_t *) tpmv_header->data);
-    
     // Use chacha20 with master secret to check verification header
     blfs_header_t * verf_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_VERIFICATION);
     uint8_t verify_pwd[BLFS_HEAD_HEADER_BYTES_VERIFICATION] = { 0x00 };
@@ -1259,7 +1261,29 @@ void blfs_soft_open(buselfs_state_t * buselfs_state, uint8_t cin_allow_insecure_
     if(memcmp(verf_header->data, verify_pwd, BLFS_HEAD_HEADER_BYTES_VERIFICATION) != 0)
         Throw(EXCEPTION_BAD_PASSWORD);
 
-    // Do we need to rekey?
+    // Verify global header and determine if recovery should be triggered
+    blfs_header_t * tpmv_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_TPMGLOBALVER);
+    uint64_t tpmv_value = *(uint64_t *) tpmv_header->data;
+
+    IFDEBUG(dzlog_debug("tpmv_header->data: %"PRIu64, tpmv_value));
+
+    int global_correctness = blfs_globalversion_verify(BLFS_TPM_ID, tpmv_value);
+    
+    if(global_correctness == BLFS_GLOBAL_CORRECTNESS_POTENTIAL_CRASH)
+    {
+        /* potential crash occurred; c == d + 1 */
+        dzlog_error("Error: global version integrity failure occurred. Assessing...");
+    }
+
+    else if(global_correctness != BLFS_GLOBAL_CORRECTNESS_ALL_GOOD)
+    {
+        /* bad manipulation occurred; c < d or c > d + 1 */
+        dzlog_fatal("!!!!!!! ERROR: FATAL BLOCK DEVICE BACKSTORE GLOBAL VERSION CHECK FAILURE !!!!!!!");
+        Throw(EXCEPTION_INTEGRITY_FAILURE);
+    }
+
+    // XXX: retire this logic entirely in the future
+    /*// Do we need to rekey?
     blfs_header_t * rekeying_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_REKEYING);
     uint8_t zero_rekeying[BLFS_HEAD_HEADER_BYTES_REKEYING];
     uint32_t rekeying_nugget_index = 0;
@@ -1274,15 +1298,15 @@ void blfs_soft_open(buselfs_state_t * buselfs_state, uint8_t cin_allow_insecure_
         rekeying_nugget_index = *(uint32_t *) rekeying_header->data;
 
         IFDEBUG(dzlog_debug("rekeying_nugget_index = %"PRIu32, rekeying_nugget_index));
-    }
+    }*/
 
     printf("Populating key cache...\n");
 
-    populate_key_cache(buselfs_state, rekeying, rekeying_nugget_index);
+    populate_key_cache(buselfs_state, 0, 0);
 
     printf("Populating merkle tree...\n");
 
-    populate_mt(buselfs_state, rekeying, rekeying_nugget_index);
+    populate_mt(buselfs_state, 0, 0);
 
     printf("Almost done...\n");
 
@@ -1303,34 +1327,41 @@ void blfs_soft_open(buselfs_state_t * buselfs_state, uint8_t cin_allow_insecure_
 
     if(memcmp(mtrh_header->data, buselfs_state->merkle_tree_root_hash, BLFS_HEAD_HEADER_BYTES_MTRH) != 0)
     {
-        if(init_header->data[0] == BLFS_HEAD_WAS_WIPED_VALUE)
-        {
-            IFDEBUG(dzlog_debug("WIPE DETECTED! Forcing an update of MTRH without triggering integrity warning..."));
-            init_header->data[0] = BLFS_HEAD_IS_INITIALIZED_VALUE;
-            blfs_commit_header(buselfs_state->backstore, init_header);
+        dzlog_fatal("!!!!!!! ERROR: FATAL BLOCK DEVICE BACKSTORE MT INTEGRITY CHECK FAILURE !!!!!!!");
 
-            // XXX: Wipes are only to make testing this construction easier. In
-            // an actual product, the "wipe" functionality, which amounts to an
-            // allowed rollback, would be phased out entirely and users would
-            // just create a new buselfs+backstore instance.
-        }
+        if(cin_allow_insecure_start)
+            dzlog_warn("The allow-insecure-start flag detected. Forcing start anyway...");
 
         else
         {
-            dzlog_fatal("!!!!!!! WARNING: BLOCK DEVICE BACKSTORE INTEGRITY CHECK FAILED !!!!!!!");
-
-            if(cin_allow_insecure_start)
-                dzlog_warn("allow-insecure-start flag detected. Forcing start anyway...");
-
-            else
-                Throw(EXCEPTION_INTEGRITY_FAILURE);
+            dzlog_warn("Use the allow-insecure-start flag to ignore integrity violation (at your own peril).");
+            Throw(EXCEPTION_INTEGRITY_FAILURE);
         }
+    }
+
+    else if(global_correctness != BLFS_GLOBAL_CORRECTNESS_ALL_GOOD)
+    {
+        dzlog_warn("Integrity check passed, but the global version is off by one. A rollback (or crash) may have"
+                   "occurred. Proceed with caution.");
+
+        tpmv_value++;
+        buselfs_state->crash_recovery = TRUE;
+
+        memcpy(tpmv_header->data, (uint8_t *) &tpmv_value, BLFS_HEAD_HEADER_BYTES_TPMGLOBALVER);
+
+        blfs_commit_header(buselfs_state->backstore, tpmv_header);
+
+        IFDEBUG(dzlog_debug("MERKLE TREE: update TPM header"));
+        update_in_merkle_tree(tpmv_header->data, BLFS_HEAD_HEADER_BYTES_TPMGLOBALVER, 0, buselfs_state);
+
+        commit_merkle_tree_root_hash(buselfs_state);
     }
 
     commit_merkle_tree_root_hash(buselfs_state);
 
-    if(rekeying)
-        blfs_rekey_nugget_journaled(buselfs_state, *(uint32_t *) rekeying_header->data);
+    // Retire this old logic in favor of the new logic
+    //if(rekeying)
+    //    blfs_rekey_nugget_journaled(buselfs_state, *(uint32_t *) rekeying_header->data);
 
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 }
@@ -1535,9 +1566,14 @@ void blfs_run_mode_open(const char * backstore_path, uint8_t cin_allow_insecure_
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 }
 
+// TODO: retire and remove this start mode?
 void blfs_run_mode_wipe(const char * backstore_path, uint8_t cin_allow_insecure_start, buselfs_state_t * buselfs_state)
 {
-    IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
+    (void) backstore_path;
+    (void) cin_allow_insecure_start;
+    (void) buselfs_state;
+
+    /*IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
     IFDEBUG(dzlog_debug("running in WIPE mode!"));
 
     // XXX: In real life, some sort of "wipe" functionality for something like
@@ -1592,7 +1628,7 @@ void blfs_run_mode_wipe(const char * backstore_path, uint8_t cin_allow_insecure_
     blfs_globalversion_commit(BLFS_TPM_ID, 0);
 
     IFDEBUG(dzlog_debug("EXITING PROGRAM!"));
-    Throw(EXCEPTION_MUST_HALT);
+    Throw(EXCEPTION_MUST_HALT);*/
 }
 
 buselfs_state_t * buselfs_main_actual(int argc, char * argv[], char * blockdevice)
@@ -1847,6 +1883,7 @@ buselfs_state_t * buselfs_main_actual(int argc, char * argv[], char * blockdevic
 
     /* Setup backstore file access */
 
+    buselfs_state->crash_recovery = FALSE;
     buselfs_state->default_password = cin_use_default_password ? BLFS_DEFAULT_PASS : NULL;
 
     if(cin_backstore_mode == BLFS_BACKSTORE_CREATE_MODE_CREATE)

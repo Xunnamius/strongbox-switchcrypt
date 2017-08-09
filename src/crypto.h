@@ -134,8 +134,10 @@ void blfs_chacha20_crypt(uint8_t * crypted_data,
  *
  * @param id
  * @param global_version
+ *
+ * @returns int (see constants.h)
  */
-void blfs_globalversion_verify(uint64_t id, uint64_t global_version);
+int blfs_globalversion_verify(uint64_t id, uint64_t global_version);
 
 /**
  * Accepts a global_version and commits it into an internal TPM/TrustZone

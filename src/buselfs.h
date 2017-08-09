@@ -59,6 +59,13 @@ typedef struct buselfs_state_t
      * be disturbed. Useful for unit testing.
      */
     char * default_password;
+
+    /**
+     * If we're in crash recover mode (TRUE) or not (FALSE). If we are, then
+     * all rekeying efforts must increment the keycount store entries by +2
+     * instead of +1 to avoid any unpleasantness.
+     */
+    int crash_recovery;
 } buselfs_state_t;
 
 // These are all the external caching functions:

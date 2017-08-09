@@ -5,6 +5,7 @@
  */
 
 #include "crypto.h"
+#include "mmc_cmds.h"
 
 #include <assert.h>
 #include <string.h>
@@ -200,20 +201,40 @@ void blfs_chacha20_crypt(uint8_t * crypted_data,
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 }
 
-void blfs_globalversion_verify(uint64_t id, uint64_t global_version)
+int blfs_globalversion_verify(uint64_t id, uint64_t global_version)
 {
     IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
 
     IFDEBUG(dzlog_debug("id = %"PRIu64, id));
     IFDEBUG(dzlog_debug("global_version = %"PRIu64, global_version));
 
-    (void) id;
-    (void) global_version;
+    uint8_t data[BLFS_CRYPTO_RPMB_BLOCK];
 
-    // TODO: spin our wheels here for a bit to simulate verification
-    // EXCEPTION_TPM_VERSION_CHECK_FAILURE
+    sb_rpmb_read_block((uint16_t) id, data);
+
+    IFDEBUG(dzlog_debug("RPMB block read in:"));
+    IFDEBUG(hdzlog_debug(data, BLFS_CRYPTO_RPMB_BLOCK));
+
+    uint8_t * first_8 = malloc(8);
+    memcpy(first_8, data, 8);
+
+    IFDEBUG(dzlog_debug("first_8:"));
+    IFDEBUG(hdzlog_debug(first_8, 8));
+
+    uint64_t actual_gversion = *(uint64_t *) first_8;
+    IFDEBUG(dzlog_debug("actual_gversion = %"PRIu64, actual_gversion));
+
+    //Throw(EXCEPTION_TPM_VERSION_CHECK_FAILURE);
 
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
+
+    if(actual_gversion < global_version || actual_gversion > global_version + 1)
+        return BLFS_GLOBAL_CORRECTNESS_ILLEGAL_MANIP;
+
+    if(actual_gversion == global_version + 1)
+        return BLFS_GLOBAL_CORRECTNESS_POTENTIAL_CRASH;
+
+    return BLFS_GLOBAL_CORRECTNESS_ALL_GOOD;
 }
 
 void blfs_globalversion_commit(uint64_t id, uint64_t global_version)
@@ -223,11 +244,13 @@ void blfs_globalversion_commit(uint64_t id, uint64_t global_version)
     IFDEBUG(dzlog_debug("id = %"PRIu64, id));
     IFDEBUG(dzlog_debug("global_version = %"PRIu64, global_version));
 
-    (void) id;
-    (void) global_version;
+    uint8_t data[BLFS_CRYPTO_RPMB_BLOCK] = { 0 };
+    memcpy(data, (uint8_t *) &global_version, sizeof(global_version));
 
-    // TODO: spin our wheels here for a bit to simulate committing
-    // EXCEPTION_TPM_VERSION_CHECK_FAILURE
+    IFDEBUG(dzlog_debug("RPMB block to commit:"));
+    IFDEBUG(hdzlog_debug(data, BLFS_CRYPTO_RPMB_BLOCK));
+
+    sb_rpmb_write_block((uint16_t) id, data);
 
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 }
@@ -430,7 +453,6 @@ void blfs_aesctr_crypt(uint8_t * crypted_data,
 
     for(uint64_t i = 0; i < num_aes_blocks; i++, counter++)
     {
-        int len = 0;
         AES_KEY aes_key;
 
         uint8_t raw_key[BLFS_CRYPTO_BYTES_AES_KEY] = { 0x00 };

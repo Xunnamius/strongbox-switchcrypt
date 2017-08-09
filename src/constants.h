@@ -7,7 +7,9 @@
 
 #define BLFS_CURRENT_VERSION 274U
 #define BLFS_LEAST_COMPAT_VERSION 274U
-#define BLFS_TPM_ID 0
+#define BLFS_TPM_ID 5U // XXX: In an actual application, this would be dynamic!
+#define BLFS_RPMB_DEVICE "thirtycharactersecurecounterkey!"
+#define BLFS_RPMB_KEY "/dev/mmcblk0rpmb"
 
 #define BLFS_CONFIG_ZLOG "../config/zlog_conf.conf"
 
@@ -93,6 +95,8 @@ __extension__ ({ \
 #define BLFS_CRYPTO_BYTES_TJ_HASH_OUT           16U // crypto_onetimeauth_poly1305_BYTES
 #define BLFS_CRYPTO_BYTES_FLAKE_TAG_KEY         32U // crypto_onetimeauth_poly1305_KEYBYTES; <= BLFS_CRYPTO_BYTES_KDF_OUT
 #define BLFS_CRYPTO_BYTES_MTRH                  32U // HASH_LENGTH ; this x8 is also an upper bound on flakes per nugget
+#define BLFS_CRYPTO_RPMB_KEY                    32U // See spec
+#define BLFS_CRYPTO_RPMB_BLOCK                  256U // See spec
 
 ////////////
 // Header //
@@ -125,6 +129,10 @@ __extension__ ({ \
 #define BLFS_HEAD_BYTES_KEYCOUNT                8U // uint64_t
 #define BLFS_HEAD_IS_INITIALIZED_VALUE          0x3CU
 #define BLFS_HEAD_WAS_WIPED_VALUE               0x3DU
+
+#define BLFS_GLOBAL_CORRECTNESS_ALL_GOOD        0
+#define BLFS_GLOBAL_CORRECTNESS_POTENTIAL_CRASH 1 // potential crash occurred; c == d + 1
+#define BLFS_GLOBAL_CORRECTNESS_ILLEGAL_MANIP   2 // bad manipulation occurred; c < d or c > d + 1
 
 ///////////////
 // Backstore //
