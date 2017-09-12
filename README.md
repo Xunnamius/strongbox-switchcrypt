@@ -26,9 +26,11 @@ You may wish to run the included unit tests first before actually utilizing buse
 First, of course, `make` buselfs:
 
 ```
-make clean # only if you were running tests or making things before now. Important for different O/DEBUG levels!
+sudo make clean # only if you were running tests or making things before now. Important for different O/DEBUG levels!
 make
 ```
+
+`sudo` is only required if you ran `sudo make check` at some point.
 
 Command syntax:
 
@@ -45,12 +47,14 @@ Run these tests to make (about 90%) sure:
 Note that the password for all tests is always **"t"** (no quotes, of course).
 
 ```
-make clean
+sudo make clean
 make pre
-make check
+sudo make check
 ```
 
-test_aes is used only for AES-XTS!
+`test_aes` is used only for AES-XTS!
+
+`sudo` is required due to ioctl calls made to privileged devices (like the RPMB).
 
 ## File Structure and Internal Construction
 

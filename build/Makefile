@@ -21,7 +21,7 @@ MT_ROOT     := $(VENDR_ROOT)/merkle-tree
 # Buselfs internal debug level
 # XXX: Set to 0 when not debugging or suffer the (perf-related) consequences!
 # XXX: BLFS_MANUAL_GV_FALLBACK should be set to -1 instead of 0 or ^
-DEBUG_COMPILE_FLAG := -DBLFS_DEBUG_LEVEL=3 \
+DEBUG_COMPILE_FLAG := -DBLFS_DEBUG_LEVEL=0 \
 					  -DBLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION=0 \
 					  -DBLFS_BADBADNOTGOOD_USE_AESCTR_EMULATION=0 \
 					  -DBLFS_NO_READ_INTEGRITY=0 \
