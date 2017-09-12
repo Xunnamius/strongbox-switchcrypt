@@ -1279,7 +1279,7 @@ void blfs_soft_open(buselfs_state_t * buselfs_state, uint8_t cin_allow_insecure_
     {
         /* bad manipulation occurred; c < d or c > d + 1 */
         dzlog_fatal("!!!!!!! ERROR: FATAL BLOCK DEVICE BACKSTORE GLOBAL VERSION CHECK FAILURE !!!!!!!");
-        Throw(EXCEPTION_INTEGRITY_FAILURE);
+        Throw(EXCEPTION_GLOBAL_CORRECTNESS_FAILURE);
     }
 
     // XXX: retire this logic entirely in the future

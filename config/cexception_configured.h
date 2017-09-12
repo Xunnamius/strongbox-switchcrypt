@@ -61,7 +61,7 @@ do {                                                                            
 // Bad flake size encountered
 #define EXCEPTION_INVALID_FLAKESIZE             0x0AU
 
-// Bad flake size encountered
+// Bad backstore size encountered
 #define EXCEPTION_INVALID_BACKSTORESIZE         0x16U
 
 // Bad flakes/nugget value encountered
@@ -121,7 +121,7 @@ do {                                                                            
 // You entered the wrong password
 #define EXCEPTION_BAD_PASSWORD                  0x1DU
 
-// You entered the wrong password
+// An integrity violation occurred while trying to initialize (likely GV related)
 #define EXCEPTION_INTEGRITY_FAILURE             0x1EU
 
 // A condition has occurred that has forced the software to exit immediately
@@ -157,6 +157,9 @@ do {                                                                            
 
 // Calculated mac doesn't match mac returned in RPMB frame during ioctl operation
 #define EXCEPTION_RPMB_MAC_MISMATCH             0x2AU
+
+// Calculated mac doesn't match mac returned in RPMB frame during ioctl operation
+#define EXCEPTION_GLOBAL_CORRECTNESS_FAILURE    0x2BU
 
 ///////////////////////
 // End Configuration //
