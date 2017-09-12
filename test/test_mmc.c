@@ -61,8 +61,8 @@ void test_rpmb_read_counter_works_as_expected(void)
             Throw(EXCEPTION_OPEN_FAILURE);
         }
 
-        TEST_ASSERT_INT_MESSAGE(0, rpmb_read_counter(dev_fd, &cnt), "(rpmb_read_counter failed)");
-        TEST_ASSERT_EQUAL_TRUE(cnt);
+        TEST_ASSERT_EQUAL_INT_MESSAGE(0, rpmb_read_counter(dev_fd, &cnt), "(rpmb_read_counter failed)");
+        TEST_ASSERT_TRUE(cnt);
 
         rpmb_read_counter(dev_fd, &cnt2);
 
