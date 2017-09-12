@@ -394,7 +394,7 @@ void test_blfs_aesctr_crypt_BIGLY(void)
 
 void test_blfs_globalversion_verifycommit_works_as_expected(void)
 {
-    const uint64_t fake_global_version = 10 + randombytes_uniform(UINT_MAX - 11);
+    const uint64_t fake_global_version = 10 + randombytes_uniform(UINT_MAX - 20);
 
     if(BLFS_MANUAL_GV_FALLBACK >= 0)
         printf("Notice: BLFS_MANUAL_GV_FALLBACK >= 0! The following tests will not pass!\n");
