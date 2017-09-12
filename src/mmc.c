@@ -58,7 +58,7 @@ static int do_rpmb_op(int fd, const rpmb_frame * frame_in, rpmb_frame * frame_ou
             }
 
             /* Write request */
-            ioc.write_flag |= (1 << 31);
+            ioc.write_flag |= (1U << 31);
             err = ioctl(fd, MMC_IOC_CMD, &ioc);
 
             if(err < 0)

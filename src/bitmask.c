@@ -57,10 +57,10 @@ void bitmask_set_bit(bitmask_t * bitmask, uint_fast32_t index)
 
     IFDEBUG(uint8_t old_val_at_index = bitmask->mask[mask_index]);
     IFDEBUG(dzlog_debug(
-                        "bitmask->mask[mask_index => %"PRIuFAST32"] |= 1 << (7 - %"PRIuFAST32") => 0x%x",
-                        mask_index, bit_index, 1 << (7 - bit_index)));
+                        "bitmask->mask[mask_index => %"PRIuFAST32"] |= 1U << (7 - %"PRIuFAST32") => 0x%x",
+                        mask_index, bit_index, 1U << (7 - bit_index)));
 
-    bitmask->mask[mask_index] |= 1 << (7 - bit_index);
+    bitmask->mask[mask_index] |= 1U << (7 - bit_index);
 
     IFDEBUG(dzlog_debug("bitmask->mask[mask_index] (was 0x%x, now 0x%x)", old_val_at_index, bitmask->mask[mask_index]));
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
@@ -78,10 +78,10 @@ void bitmask_clear_bit(bitmask_t * bitmask, uint_fast32_t index)
 
     IFDEBUG(uint8_t old_val_at_index = bitmask->mask[mask_index]);
     IFDEBUG(dzlog_debug(
-                        "bitmask->mask[mask_index => %"PRIuFAST32"] &= ~(1 << (7 - %"PRIuFAST32") => 0x%x",
-                        mask_index, bit_index, ~(1 << (7 - bit_index))));
+                        "bitmask->mask[mask_index => %"PRIuFAST32"] &= ~(1U << (7 - %"PRIuFAST32") => 0x%x",
+                        mask_index, bit_index, ~(1U << (7 - bit_index))));
 
-    bitmask->mask[mask_index] &= ~(1 << (7 - bit_index));
+    bitmask->mask[mask_index] &= ~(1U << (7 - bit_index));
 
     IFDEBUG(dzlog_debug("bitmask->mask[mask_index] (was 0x%x, now 0x%x)", old_val_at_index, bitmask->mask[mask_index]));
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
@@ -99,10 +99,10 @@ void bitmask_toggle_bit(bitmask_t * bitmask, uint_fast32_t index)
 
     IFDEBUG(uint8_t old_val_at_index = bitmask->mask[mask_index]);
     IFDEBUG(dzlog_debug(
-                       "bitmask->mask[mask_index => %"PRIuFAST32"] ^= 1 << (7 - %"PRIuFAST32") => 0x%x",
-                        mask_index, bit_index, 1 << (7 - bit_index)));
+                       "bitmask->mask[mask_index => %"PRIuFAST32"] ^= 1U << (7 - %"PRIuFAST32") => 0x%x",
+                        mask_index, bit_index, 1U << (7 - bit_index)));
 
-    bitmask->mask[mask_index] ^= 1 << (7 - bit_index);
+    bitmask->mask[mask_index] ^= 1U << (7 - bit_index);
 
     IFDEBUG(dzlog_debug("bitmask->mask[mask_index] (was 0x%x, now 0x%x)", old_val_at_index, bitmask->mask[mask_index]));
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
@@ -178,15 +178,15 @@ void bitmask_set_bits(bitmask_t * bitmask, uint_fast32_t start_index, uint_fast3
     IFDEBUG(uint8_t old_val_at_index = bitmask->mask[mask_start_index]);
     IFDEBUG(dzlog_debug(
                         "bitmask->mask[mask_start_index => %"PRIuFAST32"] "
-                        "|= ((1 << (8 - %"PRIuFAST32")) - 1) ^ (%"PRIuFAST64" < 0 ? ((1 << abs(%"PRIuFAST64")) - 1) : 0)) => 0x%x ^ 0x%x",
+                        "|= ((1U << (8 - %"PRIuFAST32")) - 1) ^ (%"PRIuFAST64" < 0 ? ((1U << abs(%"PRIuFAST64")) - 1) : 0)) => 0x%x ^ 0x%x",
                         mask_start_index,
                         bit_start_index,
                         bits_remaining,
                         bits_remaining,
-                        ((1 << (8 - bit_start_index)) - 1),
-                        (bits_remaining < 0 ? ((1 << abs(bits_remaining)) - 1) : 0)));
+                        ((1U << (8 - bit_start_index)) - 1),
+                        (bits_remaining < 0 ? ((1U << abs(bits_remaining)) - 1) : 0)));
 
-    bitmask->mask[mask_start_index] |= ((1 << (8 - bit_start_index)) - 1) ^ (bits_remaining < 0 ? ((1 << abs(bits_remaining)) - 1) : 0);
+    bitmask->mask[mask_start_index] |= ((1U << (8 - bit_start_index)) - 1) ^ (bits_remaining < 0 ? ((1U << abs(bits_remaining)) - 1) : 0);
 
     IFDEBUG(dzlog_debug("bitmask->mask[mask_start_index] (was 0x%x, now 0x%x)", old_val_at_index, bitmask->mask[mask_start_index]));
 
@@ -197,10 +197,10 @@ void bitmask_set_bits(bitmask_t * bitmask, uint_fast32_t start_index, uint_fast3
         IFDEBUG(uint8_t old_val_at_index_inner = bitmask->mask[i]);
         IFDEBUG(dzlog_debug(
                             "bitmask->mask[i => %"PRIuFAST64"] "
-                            "|= ~((1 << (8 - (%"PRIuFAST64" < 8 ? %"PRIuFAST64" : 8))) - 1) => 0x%x",
-                            i, bits_remaining, bits_remaining, ~((1 << (8 - (bits_remaining < 8 ? bits_remaining : 8))) - 1)));
+                            "|= ~((1U << (8 - (%"PRIuFAST64" < 8 ? %"PRIuFAST64" : 8))) - 1) => 0x%x",
+                            i, bits_remaining, bits_remaining, ~((1U << (8 - (bits_remaining < 8 ? bits_remaining : 8))) - 1)));
 
-        bitmask->mask[i] |= ~((1 << (8 - (bits_remaining < 8 ? bits_remaining : 8))) - 1);
+        bitmask->mask[i] |= ~((1U << (8 - (bits_remaining < 8 ? bits_remaining : 8))) - 1);
 
         IFDEBUG(dzlog_debug("bitmask->mask[i] (was 0x%x, now 0x%x)", old_val_at_index_inner, bitmask->mask[i]));
     }
@@ -230,15 +230,15 @@ void bitmask_clear_bits(bitmask_t * bitmask, uint_fast32_t start_index, uint_fas
     IFDEBUG(uint8_t old_val_at_index = bitmask->mask[mask_start_index]);
     IFDEBUG(dzlog_debug(
                         "bitmask->mask[mask_start_index => %"PRIuFAST32"] "
-                        "&= ~(((1 << (8 - %"PRIuFAST32")) - 1) ^ (%"PRIuFAST64" < 0 ? ((1 << abs(%"PRIuFAST64")) - 1) : 0)) => 0x%x ^ 0x%x",
+                        "&= ~(((1U << (8 - %"PRIuFAST32")) - 1) ^ (%"PRIuFAST64" < 0 ? ((1U << abs(%"PRIuFAST64")) - 1) : 0)) => 0x%x ^ 0x%x",
                         mask_start_index,
                         bit_start_index,
                         bits_remaining,
                         bits_remaining,
-                        ~((1 << (8 - bit_start_index)) - 1),
-                        (bits_remaining < 0 ? ((1 << abs(bits_remaining)) - 1) : 0)));
+                        ~((1U << (8 - bit_start_index)) - 1),
+                        (bits_remaining < 0 ? ((1U << abs(bits_remaining)) - 1) : 0)));
 
-    bitmask->mask[mask_start_index] &= ~(((1 << (8 - bit_start_index)) - 1) ^ (bits_remaining < 0 ? ((1 << abs(bits_remaining)) - 1) : 0));
+    bitmask->mask[mask_start_index] &= ~(((1U << (8 - bit_start_index)) - 1) ^ (bits_remaining < 0 ? ((1U << abs(bits_remaining)) - 1) : 0));
 
     IFDEBUG(dzlog_debug("bitmask->mask[mask_start_index] (was 0x%x, now 0x%x)", old_val_at_index, bitmask->mask[mask_start_index]));
 
@@ -249,10 +249,10 @@ void bitmask_clear_bits(bitmask_t * bitmask, uint_fast32_t start_index, uint_fas
         IFDEBUG(uint8_t old_val_at_index_inner = bitmask->mask[i]);
         IFDEBUG(dzlog_debug(
                             "bitmask->mask[i => %"PRIuFAST64"] "
-                            "&= (1 << (8 - (%"PRIuFAST64" < 8 ? %"PRIuFAST64" : 8))) - 1 => 0x%x",
-                            i, bits_remaining, bits_remaining, (1 << (8 - (bits_remaining < 8 ? bits_remaining : 8))) - 1));
+                            "&= (1U << (8 - (%"PRIuFAST64" < 8 ? %"PRIuFAST64" : 8))) - 1 => 0x%x",
+                            i, bits_remaining, bits_remaining, (1U << (8 - (bits_remaining < 8 ? bits_remaining : 8))) - 1));
 
-        bitmask->mask[i] &= (1 << (8 - (bits_remaining < 8 ? bits_remaining : 8))) - 1;
+        bitmask->mask[i] &= (1U << (8 - (bits_remaining < 8 ? bits_remaining : 8))) - 1;
 
         IFDEBUG(dzlog_debug("bitmask->mask[i] (was 0x%x, now 0x%x)", old_val_at_index_inner, bitmask->mask[i]));
     }
@@ -282,15 +282,15 @@ void bitmask_toggle_bits(bitmask_t * bitmask, uint_fast32_t start_index, uint_fa
     IFDEBUG(uint8_t old_val_at_index = bitmask->mask[mask_start_index]);
     IFDEBUG(dzlog_debug(
                         "bitmask->mask[mask_start_index => %"PRIuFAST32"] "
-                        "^= ((1 << (8 - %"PRIuFAST32")) - 1) ^ (%"PRIuFAST64" < 0 ? ((1 << abs(%"PRIuFAST64")) - 1) : 0) => 0x%x ^ 0x%x",
+                        "^= ((1U << (8 - %"PRIuFAST32")) - 1) ^ (%"PRIuFAST64" < 0 ? ((1U << abs(%"PRIuFAST64")) - 1) : 0) => 0x%x ^ 0x%x",
                         mask_start_index,
                         bit_start_index,
                         bits_remaining,
                         bits_remaining,
-                        ((1 << (8 - bit_start_index)) - 1),
-                        (bits_remaining < 0 ? ((1 << abs(bits_remaining)) - 1) : 0)));
+                        ((1U << (8 - bit_start_index)) - 1),
+                        (bits_remaining < 0 ? ((1U << abs(bits_remaining)) - 1) : 0)));
 
-    bitmask->mask[mask_start_index] ^= ((1 << (8 - bit_start_index)) - 1) ^ (bits_remaining < 0 ? ((1 << abs(bits_remaining)) - 1) : 0);
+    bitmask->mask[mask_start_index] ^= ((1U << (8 - bit_start_index)) - 1) ^ (bits_remaining < 0 ? ((1U << abs(bits_remaining)) - 1) : 0);
 
     IFDEBUG(dzlog_debug("bitmask->mask[mask_start_index] (was 0x%x, now 0x%x)", old_val_at_index, bitmask->mask[mask_start_index]));
 
@@ -301,11 +301,11 @@ void bitmask_toggle_bits(bitmask_t * bitmask, uint_fast32_t start_index, uint_fa
         IFDEBUG(uint8_t old_val_at_index_inner = bitmask->mask[i]);
         IFDEBUG(dzlog_debug(
                             "bitmask->mask[i => %"PRIuFAST64"] "
-                            "^= ~((1 << (8 - (%"PRIuFAST64" < 8 ? %"PRIuFAST64" : 8))) - 1) => 0x%x",
-                            i, bits_remaining, bits_remaining, ~((1 << (8 - (bits_remaining < 8 ? bits_remaining : 8))) - 1)));
+                            "^= ~((1U << (8 - (%"PRIuFAST64" < 8 ? %"PRIuFAST64" : 8))) - 1) => 0x%x",
+                            i, bits_remaining, bits_remaining, ~((1U << (8 - (bits_remaining < 8 ? bits_remaining : 8))) - 1)));
         IFDEBUG(dzlog_debug("bitmask->mask[i] (was 0x%x, now 0x%x)", old_val_at_index_inner, bitmask->mask[i]));
 
-        bitmask->mask[i] ^= ~((1 << (8 - (bits_remaining < 8 ? bits_remaining : 8))) - 1);
+        bitmask->mask[i] ^= ~((1U << (8 - (bits_remaining < 8 ? bits_remaining : 8))) - 1);
 
         IFDEBUG(dzlog_debug("bitmask->mask[i] (was 0x%x, now 0x%x)", old_val_at_index_inner, bitmask->mask[i]));
     }
@@ -333,7 +333,7 @@ int bitmask_are_bits_set(bitmask_t * bitmask, uint_fast32_t start_index, uint_fa
     int_fast64_t bits_remaining = ((int_fast64_t)(length)) - (8 - bit_start_index);
     uint8_t is_set = 1;
 
-    uint8_t filter = ((uint8_t)((1 << (8 - bit_start_index)) - 1)) ^ (bits_remaining < 0 ? ((1 << abs(bits_remaining)) - 1) : 0);
+    uint8_t filter = ((uint8_t)((1U << (8 - bit_start_index)) - 1)) ^ (bits_remaining < 0 ? ((1U << abs(bits_remaining)) - 1) : 0);
 
     IFDEBUG(uint8_t old_val_at_index = is_set);
     IFDEBUG(dzlog_debug(
@@ -352,7 +352,7 @@ int bitmask_are_bits_set(bitmask_t * bitmask, uint_fast32_t start_index, uint_fa
     {
         assert(bits_remaining > 0);
 
-        uint8_t not_filter = ~(((1 << (8 - (bits_remaining < 8 ? bits_remaining : 8))) - 1));
+        uint8_t not_filter = ~(((1U << (8 - (bits_remaining < 8 ? bits_remaining : 8))) - 1));
 
         IFDEBUG(uint8_t old_val_at_index_inner = is_set);
         IFDEBUG(dzlog_debug(
@@ -392,7 +392,7 @@ int bitmask_any_bits_set(bitmask_t * bitmask, uint_fast32_t start_index, uint_fa
     uint_fast64_t mask_count = (bit_start_index + length - 1) / 8;
     int_fast64_t bits_remaining = ((int_fast64_t)(length)) - (8 - bit_start_index);
 
-    uint8_t filter = ((uint8_t)((1 << (8 - bit_start_index)) - 1)) ^ (bits_remaining < 0 ? ((1 << abs(bits_remaining)) - 1) : 0);
+    uint8_t filter = ((uint8_t)((1U << (8 - bit_start_index)) - 1)) ^ (bits_remaining < 0 ? ((1U << abs(bits_remaining)) - 1) : 0);
 
     if(filter & bitmask->mask[mask_start_index])
     {
@@ -404,7 +404,7 @@ int bitmask_any_bits_set(bitmask_t * bitmask, uint_fast32_t start_index, uint_fa
     {
         assert(bits_remaining > 0);
 
-        uint8_t not_filter = ~(((1 << (8 - (bits_remaining < 8 ? bits_remaining : 8))) - 1));
+        uint8_t not_filter = ~(((1U << (8 - (bits_remaining < 8 ? bits_remaining : 8))) - 1));
 
         if(not_filter & bitmask->mask[i])
         {
