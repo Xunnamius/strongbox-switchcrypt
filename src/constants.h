@@ -9,8 +9,8 @@
 #define BLFS_LEAST_COMPAT_VERSION 274U
 
 #define BLFS_TPM_ID 5U // XXX: In an actual application, this would be dynamic!
-#define BLFS_RPMB_DEVICE "thirtycharactersecurecounterkey!" // XXX: ^
-#define BLFS_RPMB_KEY "/dev/mmcblk0rpmb"
+#define BLFS_RPMB_KEY "thirtycharactersecurecounterkey!" // XXX: ^
+#define BLFS_RPMB_DEVICE "/dev/mmcblk0rpmb"
 
 #define VECTOR_GROWTH_FACTOR    2
 #define VECTOR_INIT_SIZE        10

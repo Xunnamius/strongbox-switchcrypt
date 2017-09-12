@@ -18,6 +18,8 @@ Try                                               \
 Catch(e_actual)                                   \
     TEST_ASSERT_EQUAL_HEX_MESSAGE(e_expected, e_actual, "Encountered an unsuspected error condition!");
 
+#define _TEST_BLFS_TPM_ID 0
+
 void setUp(void)
 {
     static int runonce = 0;
@@ -390,4 +392,36 @@ void test_blfs_aesctr_crypt_BIGLY(void)
     TEST_ASSERT_EQUAL_MEMORY(data, crypted_data_round2, 4096);
 }
 
-// TODO: GV counter tests
+void test_blfs_globalversion_verifycommit_works_as_expected(void)
+{
+    const uint64_t fake_global_version = randombytes_uniform(UINT_MAX);
+
+    if(BLFS_MANUAL_GV_FALLBACK >= 0)
+        printf("Notice: BLFS_MANUAL_GV_FALLBACK >= 0! The following tests will not pass!\n");
+
+    blfs_globalversion_commit(_TEST_BLFS_TPM_ID, fake_global_version);
+    
+    TEST_ASSERT_EQUAL_INT_MESSAGE(
+        BLFS_GLOBAL_CORRECTNESS_ALL_GOOD,
+        blfs_globalversion_verify(_TEST_BLFS_TPM_ID, fake_global_version),
+        "(expecting BLFS_GLOBAL_CORRECTNESS_ALL_GOOD)"
+    );
+    
+    TEST_ASSERT_EQUAL_INT_MESSAGE(
+        BLFS_GLOBAL_CORRECTNESS_POTENTIAL_CRASH,
+        blfs_globalversion_verify(_TEST_BLFS_TPM_ID, fake_global_version - 1),
+        "(expecting BLFS_GLOBAL_CORRECTNESS_POTENTIAL_CRASH)"
+    );
+
+    TEST_ASSERT_EQUAL_INT_MESSAGE(
+        BLFS_GLOBAL_CORRECTNESS_ILLEGAL_MANIP,
+        blfs_globalversion_verify(_TEST_BLFS_TPM_ID, fake_global_version - 2),
+        "(expecting BLFS_GLOBAL_CORRECTNESS_ILLEGAL_MANIP (1))"
+    );
+
+    TEST_ASSERT_EQUAL_INT_MESSAGE(
+        BLFS_GLOBAL_CORRECTNESS_ILLEGAL_MANIP,
+        blfs_globalversion_verify(_TEST_BLFS_TPM_ID, fake_global_version + 1),
+        "(expecting BLFS_GLOBAL_CORRECTNESS_ILLEGAL_MANIP (2))"
+    );
+}
