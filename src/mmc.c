@@ -178,7 +178,6 @@ void rpmb_read_block(uint16_t blk_addr, uint8_t * data_out)
 
     /* Verify data against key */
     uint8_t mac[BLFS_CRYPTO_RPMB_MAC_OUT];
-
     rpmb_frame * frame_out = &frame_out_p[0];
 
     crypto_auth_hmacsha256(mac, frame_out->data, sizeof(*frame_out) - offsetof(struct rpmb_frame, data), key);
@@ -190,7 +189,6 @@ void rpmb_read_block(uint16_t blk_addr, uint8_t * data_out)
     /* Output */
     frame_out = &frame_out_p[0];
     assert(sizeof(frame_out->data) == BLFS_CRYPTO_RPMB_BLOCK);
-    printf("\n\n-->> 0ppp%p <<--\n\n", frame_out->data);
     memcpy(data_out, frame_out->data, BLFS_CRYPTO_RPMB_BLOCK);
 
     free(frame_out_p);
