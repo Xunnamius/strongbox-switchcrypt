@@ -78,10 +78,10 @@ void test_rpmb_readwrite_block_works_as_expected_with_small_input(void)
     else
     {
         const uint8_t data_in[BLFS_CRYPTO_RPMB_BLOCK] = "small";
-        uint8_t data_out[BLFS_CRYPTO_RPMB_BLOCK] = { 0 };
+        uint8_t * data_out = calloc(BLFS_CRYPTO_RPMB_BLOCK, sizeof(*data_out));
 
         rpmb_write_block(_TEST_BLFS_TPM_ID, data_in);
-        //rpmb_read_block(_TEST_BLFS_TPM_ID, data_out);
+        rpmb_read_block(_TEST_BLFS_TPM_ID, data_out);
 
         TEST_ASSERT_EQUAL_MEMORY(data_in, data_out, sizeof data_in);
     }
