@@ -202,7 +202,7 @@ void rpmb_read_block(uint16_t blk_addr, uint8_t * data_out)
     /* Output */
     frame_out = &frame_out_p[i];
     assert(sizeof(frame_out->data) == BLFS_CRYPTO_RPMB_BLOCK);
-    printf("->> 0ppp%p <<-", frame_out->data);
+    printf("\n\n-->> 0ppp%p <<--\n\n", frame_out->data);
     memcpy(data_out, frame_out->data, BLFS_CRYPTO_RPMB_BLOCK);
 
     free(frame_out_p);
