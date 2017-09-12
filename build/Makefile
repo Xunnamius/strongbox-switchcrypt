@@ -17,15 +17,15 @@ CONFIG_ROOT	:= ../config
 UNITY_ROOT	:= $(VENDR_ROOT)/unity
 CMOCK_ROOT	:= $(VENDR_ROOT)/cmock
 MT_ROOT     := $(VENDR_ROOT)/merkle-tree
-MMC_ROOT    := $(VENDR_ROOT)/mmc-utils
 
 # Buselfs internal debug level
 # XXX: Set to 0 when not debugging or suffer the (perf-related) consequences!
-#                  := -DBLFS_DEBUG_LEVEL=0
+# XXX: BLFS_MANUAL_GV_FALLBACK should be set to -1 instead of 0 or ^
 DEBUG_COMPILE_FLAG := -DBLFS_DEBUG_LEVEL=0 \
 					  -DBLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION=0 \
 					  -DBLFS_BADBADNOTGOOD_USE_AESCTR_EMULATION=0 \
-					  -DBLFS_NO_READ_INTEGRITY=0
+					  -DBLFS_NO_READ_INTEGRITY=0 \
+					  -DBLFS_MANUAL_GV_FALLBACK=0
 
 # This is the name of the resulant executable
 EXENAME	:= buselfs
@@ -36,11 +36,7 @@ EXENAME	:= buselfs
 EXECSRC	:= $(SRC_ROOT)/main.c
 
 # These should typically be in VENDR_ROOT, though they don't have to be
-EXPLICIT_LIBS := $(MT_ROOT)/src/libMerkleTree.a \
-				 $(MMC_ROOT)/lsmmc.o \
-				 $(MMC_ROOT)/mmc_cmds.o \
-				 $(MMC_ROOT)/3rdparty/hmac_sha/sha2.o \
-				 $(MMC_ROOT)/3rdparty/hmac_sha/hmac_sha2.o
+EXPLICIT_LIBS := $(MT_ROOT)/src/libMerkleTree.a
 
 C_LIBS := $(UNITY_ROOT)/src/unity.c $(CMOCK_ROOT)/src/cmock.c
 
@@ -63,8 +59,7 @@ IFLAGS		:= -I/usr/local/include \
 			   -I$(SRC_ROOT) \
 			   -I$(UNITY_ROOT)/src \
 			   -I$(CMOCK_ROOT)/src \
-			   -I$(MT_ROOT)/src \
-			   -I$(MMC_ROOT)
+			   -I$(MT_ROOT)/src
 
 LDFLAGS		:= -L$(VENDR_ROOT) -L/usr/local/lib \
 			   -lsodium -lzlog -lpthread -lm -lcrypto
@@ -208,8 +203,6 @@ check: tests
 	$(patsubst %,./% &&,$(TEST_TRGTS)) true
 
 vendor: $(VENDR_FILES)
-	$(MAKE) clean -C ../vendor/mmc-utils
-	$(MAKE) mmc -C ../vendor/mmc-utils
 	$(MAKE) clean -C ../vendor/merkle-tree
 	$(MAKE) release -C ../vendor/merkle-tree
 #	$(MAKE) debug -C ../vendor/merkle-tree

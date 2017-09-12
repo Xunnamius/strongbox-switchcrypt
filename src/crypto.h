@@ -129,21 +129,25 @@ void blfs_chacha20_crypt(uint8_t * crypted_data,
                          uint64_t nugget_internal_offset);
 
 /**
- * Accepts a global_version and checks it against an internal TPM/TrustZone
- * (monotonic?) value located using id.
+ * Accepts a global_version and checks it against an internal RPMB value located
+ * using id.
  *
  * @param id
  * @param global_version
  *
- * @returns int (see constants.h)
+ * @returns BLFS_GLOBAL_CORRECTNESS_ILLEGAL_MANIP   if verification failed in
+ *                                                  an obviously malicious way
+ * @returns BLFS_GLOBAL_CORRECTNESS_POTENTIAL_CRASH if verification likely
+ *                                                  failed due to a benign crash
+ * @returns BLFS_GLOBAL_CORRECTNESS_ALL_GOOD        if verification passes!
  */
 int blfs_globalversion_verify(uint64_t id, uint64_t global_version);
 
 /**
- * Accepts a global_version and commits it into an internal TPM/TrustZone
- * bucket located using id. If monotonic, then the only supported commit is an
- * increment of the global_version or this function's behavior is undefined.
- *
+ * Accepts a global_version and commits it into an internal RPMB bucket located
+ * using id. If monotonic, then the only supported commit is an increment of the
+ * global_version or this function's behavior is undefined.
+ * 
  * @param id
  * @param global_version
  */

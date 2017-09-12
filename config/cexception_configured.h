@@ -23,7 +23,7 @@ do {                                                                            
     else if(id == EXCEPTION_MUST_HALT)                                                      \
         dzlog_warn("WARN: execution was suddenly halted\n");                                \
     else                                                                                    \
-        dzlog_fatal("Fatal error: program terminated with uncaught exception [0x%x]", id);    \
+        dzlog_fatal("Fatal error: program terminated with uncaught exception [0x%x]", id);  \
     exit(id);                                                                               \
 } while(0)
 
@@ -148,6 +148,15 @@ do {                                                                            
 
 // Why you call aes-ctr function when aes-ctr disabled?!?!
 #define EXCEPTION_BAD_AESCTR                    0x27U
+
+// A failure occurred during an RPMB operation (in low level ioctl)
+#define EXCEPTION_RPMB_IOCTL_FAILURE            0x28U
+
+// A failure occurred during an RPMB operation (in high level RPMB frame)
+#define EXCEPTION_RPMB_OP_FAILURE               0x29U
+
+// Calculated mac doesn't match mac returned in RPMB frame during ioctl operation
+#define EXCEPTION_RPMB_MAC_MISMATCH             0x2AU
 
 ///////////////////////
 // End Configuration //

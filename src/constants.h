@@ -118,6 +118,7 @@
 #define BLFS_CRYPTO_BYTES_FLAKE_TAG_KEY         32U // crypto_onetimeauth_poly1305_KEYBYTES; <= BLFS_CRYPTO_BYTES_KDF_OUT
 #define BLFS_CRYPTO_BYTES_MTRH                  32U // HASH_LENGTH ; this x8 is also an upper bound on flakes per nugget
 #define BLFS_CRYPTO_RPMB_KEY                    32U // See spec
+#define BLFS_CRYPTO_RPMB_MAC_OUT                32U // See spec
 #define BLFS_CRYPTO_RPMB_BLOCK                  256U // See spec
 
 ////////////
@@ -155,6 +156,10 @@
 #define BLFS_GLOBAL_CORRECTNESS_ALL_GOOD        0
 #define BLFS_GLOBAL_CORRECTNESS_POTENTIAL_CRASH 1 // potential crash occurred; c == d + 1
 #define BLFS_GLOBAL_CORRECTNESS_ILLEGAL_MANIP   2 // bad manipulation occurred; c < d or c > d + 1
+
+#ifndef BLFS_MANUAL_GV_FALLBACK
+#define BLFS_MANUAL_GV_FALLBACK -1
+#endif
 
 ///////////////
 // Backstore //

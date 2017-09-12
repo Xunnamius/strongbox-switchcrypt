@@ -389,3 +389,5 @@ void test_blfs_aesctr_crypt_BIGLY(void)
 
     TEST_ASSERT_EQUAL_MEMORY(data, crypted_data_round2, 4096);
 }
+
+// TODO: GV counter tests

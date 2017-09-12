@@ -5,7 +5,7 @@
  */
 
 #include "crypto.h"
-#include "mmc_cmds.h"
+#include "./mmc.h"
 
 #include <assert.h>
 #include <string.h>
@@ -209,8 +209,23 @@ int blfs_globalversion_verify(uint64_t id, uint64_t global_version)
     IFDEBUG(dzlog_debug("global_version = %"PRIu64, global_version));
 
     uint8_t data[BLFS_CRYPTO_RPMB_BLOCK];
+    CEXCEPTION_T e_actual = EXCEPTION_NO_EXCEPTION;
 
-    sb_rpmb_read_block((uint16_t) id, data);
+    Try
+    {
+        rpmb_read_block((uint16_t) id, data);
+    }
+
+    Catch(e_actual)
+    {
+        if(e_actual == EXCEPTION_OPEN_FAILURE && BLFS_MANUAL_GV_FALLBACK != -1)
+        {
+            dzlog_warn("Fallback to GV!");
+            return BLFS_MANUAL_GV_FALLBACK;
+        }
+
+        Throw(e_actual);
+    }
 
     IFDEBUG(dzlog_debug("RPMB block read in:"));
     IFDEBUG(hdzlog_debug(data, BLFS_CRYPTO_RPMB_BLOCK));
@@ -250,7 +265,20 @@ void blfs_globalversion_commit(uint64_t id, uint64_t global_version)
     IFDEBUG(dzlog_debug("RPMB block to commit:"));
     IFDEBUG(hdzlog_debug(data, BLFS_CRYPTO_RPMB_BLOCK));
 
-    sb_rpmb_write_block((uint16_t) id, data);
+    CEXCEPTION_T e_actual = EXCEPTION_NO_EXCEPTION;
+
+    Try
+    {
+        rpmb_write_block((uint16_t) id, data);
+    }
+
+    Catch(e_actual)
+    {
+        if(e_actual == EXCEPTION_OPEN_FAILURE && BLFS_MANUAL_GV_FALLBACK != -1)
+            dzlog_warn("Fallback to GV!");
+        else
+            Throw(e_actual);
+    }
 
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 }

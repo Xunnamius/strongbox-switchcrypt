@@ -1,4 +1,4 @@
-.PHONY: buselfs clean check tests
+.PHONY: buselfs clean check
 
 buselfs:
 	$(MAKE) all -C build
@@ -7,7 +7,6 @@ clean:
 	$(MAKE) clean -C build
 
 check:
+	$(MAKE) pre -C build
 	$(MAKE) check -C build
-
-tests:
-	$(MAKE) tests -C build
+	echo "Be sure to run 'make clean' if you try to build buselfs after this!"
