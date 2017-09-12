@@ -77,7 +77,7 @@ void test_rpmb_readwrite_block_works_as_expected_with_small_input(void)
 
     else
     {
-        const uint8_t data_in[6] = "small";
+        const uint8_t data_in[BLFS_CRYPTO_RPMB_BLOCK] = "small";
         uint8_t data_out[BLFS_CRYPTO_RPMB_BLOCK];
 
         rpmb_write_block(_TEST_BLFS_TPM_ID, data_in);
@@ -132,8 +132,10 @@ void test_rpmb_write_block_works_as_expected_with_too_big_input(void)
     else
     {
         uint8_t data_in[512];
-        memset(&data_in, 111, sizeof data_in);
         uint8_t data_out[BLFS_CRYPTO_RPMB_BLOCK];
+        
+        memset(data_in, 111, 255);
+        memset(data_in + 255, 222, 257);
 
         rpmb_write_block(_TEST_BLFS_TPM_ID, data_in);
         rpmb_read_block(_TEST_BLFS_TPM_ID, data_out);
