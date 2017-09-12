@@ -167,13 +167,13 @@ void rpmb_read_block(uint16_t blk_addr, uint8_t * data_out)
     ret = do_rpmb_op(dev_fd, &frame_in, frame_out_p, blocks_cnt);
 
     if(ret != 0)
-        Throw(EXCEPTION_RPMB_OP_FAILURE);
+        Throw(EXCEPTION_RPMB_IOCTL_FAILURE);
 
     /* Check RPMB response */
     if(frame_out_p[blocks_cnt - 1].result != 0)
     {
         IFDEBUG(dzlog_warn("RPMB operation failed, retcode 0x%04x\n", be16toh(frame_out_p[blocks_cnt - 1].result)));
-        Throw(EXCEPTION_RPMB_IOCTL_FAILURE);
+        Throw(EXCEPTION_RPMB_OP_FAILURE);
     }
 
     /* Verify data against key */
@@ -202,7 +202,7 @@ void rpmb_read_block(uint16_t blk_addr, uint8_t * data_out)
     /* Output */
     frame_out = &frame_out_p[i];
     assert(sizeof(frame_out->data) == BLFS_CRYPTO_RPMB_BLOCK);
-    printf("0x%x", frame_out->data[0]);
+    printf("->> 0ppp%p <<-", frame_out->data);
     memcpy(data_out, frame_out->data, BLFS_CRYPTO_RPMB_BLOCK);
 
     free(frame_out_p);
@@ -236,7 +236,7 @@ void rpmb_write_block(uint16_t blk_addr, const uint8_t * data)
     if(ret != 0)
     {
         IFDEBUG(dzlog_warn("RPMB read counter operation failed mysteriously"));
-        Throw(EXCEPTION_RPMB_IOCTL_FAILURE);
+        Throw(EXCEPTION_RPMB_OP_FAILURE);
     }
 
     frame_in.write_counter = htobe32(cnt);
@@ -254,13 +254,13 @@ void rpmb_write_block(uint16_t blk_addr, const uint8_t * data)
     ret = do_rpmb_op(dev_fd, &frame_in, &frame_out, 1);
 
     if(ret != 0)
-        Throw(EXCEPTION_RPMB_OP_FAILURE);
+        Throw(EXCEPTION_RPMB_IOCTL_FAILURE);
 
     /* Check RPMB response */
     if(frame_out.result != 0)
     {
         IFDEBUG(dzlog_warn("RPMB operation failed, retcode 0x%04x\n", be16toh(frame_out.result)));
-        Throw(EXCEPTION_RPMB_IOCTL_FAILURE);
+        Throw(EXCEPTION_RPMB_OP_FAILURE);
     }
 
     close(dev_fd);
