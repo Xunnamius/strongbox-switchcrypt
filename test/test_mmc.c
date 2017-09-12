@@ -61,8 +61,7 @@ void test_rpmb_read_counter_works_as_expected(void)
             Throw(EXCEPTION_OPEN_FAILURE);
         }
 
-        TEST_ASSERT_EQUAL_INT_MESSAGE(0, rpmb_read_counter(dev_fd, &cnt), "(rpmb_read_counter failed)");
-        TEST_ASSERT_TRUE(cnt);
+        TEST_ASSERT_EQUAL_INT_MESSAGE(0, rpmb_read_counter(dev_fd, &cnt), "(rpmb_read_counter failed; 7 = key problem)");
 
         rpmb_read_counter(dev_fd, &cnt2);
 
@@ -78,7 +77,7 @@ void test_rpmb_readwrite_block_works_as_expected_with_small_input(void)
     else
     {
         const uint8_t data_in[6] = "small";
-        uint8_t data_out[sizeof data_in];
+        uint8_t data_out[BLFS_CRYPTO_RPMB_BLOCK];
 
         rpmb_write_block(_TEST_BLFS_TPM_ID, data_in);
         rpmb_read_block(_TEST_BLFS_TPM_ID, data_out);
@@ -98,7 +97,7 @@ void test_rpmb_write_block_works_as_expected_with_big_input(void)
                                                         "thathastwohundredandfiftysixcharactersinitbecausecharactersarealsobytes"
                                                         "sotwohundredandfiftysixcharactersisthesamethingastwohundredandfiftysixb"
                                                         "ytesfunnyhowitallworksoutinthenendifyouletit!";
-        uint8_t data_out[sizeof data_in];
+        uint8_t data_out[BLFS_CRYPTO_RPMB_BLOCK];
 
         rpmb_write_block(_TEST_BLFS_TPM_ID, data_in);
         rpmb_read_block(_TEST_BLFS_TPM_ID, data_out);
@@ -115,7 +114,7 @@ void test_rpmb_write_block_works_as_expected_with_big_zero_input(void)
     else
     {
         const uint8_t data_in[BLFS_CRYPTO_RPMB_BLOCK] = { 0 };
-        uint8_t data_out[sizeof data_in];
+        uint8_t data_out[BLFS_CRYPTO_RPMB_BLOCK];
 
         rpmb_write_block(_TEST_BLFS_TPM_ID, data_in);
         rpmb_read_block(_TEST_BLFS_TPM_ID, data_out);
