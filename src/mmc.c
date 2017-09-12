@@ -138,7 +138,7 @@ out:
 
 void rpmb_read_block(uint16_t blk_addr, uint8_t * data_out)
 {
-    int i, ret, dev_fd = -1;
+    int ret, dev_fd = -1;
     uint8_t key[BLFS_CRYPTO_RPMB_KEY] = BLFS_RPMB_KEY;
     uint16_t blocks_cnt = 1;
 
@@ -180,27 +180,16 @@ void rpmb_read_block(uint16_t blk_addr, uint8_t * data_out)
     uint8_t mac[BLFS_CRYPTO_RPMB_MAC_OUT];
 
     crypto_auth_hmacsha256_state state;
-    rpmb_frame * frame_out = NULL;
+    rpmb_frame * frame_out = &frame_out_p[0];
 
-    crypto_auth_hmacsha256_init(&state, key, sizeof(key));
-
-    for(i = 0; i < blocks_cnt; i++)
-    {
-        frame_out = &frame_out_p[i];
-        crypto_auth_hmacsha256_update(&state, frame_out->data, sizeof(*frame_out) - offsetof(rpmb_frame, data));
-    }
-
-    crypto_auth_hmacsha256_final(&state, mac);
-
-    /* Impossible */
-    assert(frame_out);
+    crypto_auth_hmacsha256(frame_out->key_mac, frame_out->data, sizeof(*frame_out) - offsetof(rpmb_frame, data), key);
 
     /* Compare calculated MAC and MAC from last frame */
     if(memcmp(mac, frame_out->key_mac, sizeof(mac)))
         Throw(EXCEPTION_RPMB_MAC_MISMATCH);
 
     /* Output */
-    frame_out = &frame_out_p[i];
+    frame_out = &frame_out_p[0];
     assert(sizeof(frame_out->data) == BLFS_CRYPTO_RPMB_BLOCK);
     printf("\n\n-->> 0ppp%p <<--\n\n", frame_out->data);
     memcpy(data_out, frame_out->data, BLFS_CRYPTO_RPMB_BLOCK);
