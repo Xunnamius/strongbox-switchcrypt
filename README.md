@@ -19,7 +19,7 @@ This is a complete rewrite of the old buselogfs code. This is a Buse + Chacha20 
 - [ruby]() (if you're going to be running the tests)
 - [OpenSSL]() (if you're going to be running AES-XTS emulation mode; no flake sizes less than 16 bytes!)
 - std=c11
-- /dev/mmcblk0rpmb (adjustable)
+- /dev/mmcblk0rpmb (i.e. a device that offers a RPMB API)
 
 ## Usage
 
@@ -33,8 +33,6 @@ First, of course, `make` buselfs:
 # make clean # only if you were running tests or making things before now. Important for different O/DEBUG levels!
 # make
 ```
-
-`sudo` is only required if you ran `sudo make *` at some point.
 
 Command syntax:
 
@@ -62,7 +60,9 @@ Note that the password for all tests is always **"t"** (no quotes, of course).
 # make check
 ```
 
-`test_aes` is used only for AES-XTS!
+### Available Tests
+
+(todo) `test_aes` is used only for AES-XTS!
 
 ## File Structure and Internal Construction
 
