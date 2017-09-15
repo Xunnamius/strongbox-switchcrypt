@@ -1431,15 +1431,12 @@ static void readwrite_quicktests()
     expected_buffer1[4094] = 0xAA;
     uint32_t offset = 0;
 
-    dzlog_notice("test start io");
-
     for(; offset < 1024; offset++)
     {
         uint8_t buffer[sizeof expected_buffer1];
 
         char strbuf[100];
         snprintf(strbuf, sizeof strbuf, "loop offset: %"PRIu32, offset);
-        dzlog_notice("first attempt: %"PRIu32, offset);
 
         buse_write(expected_buffer1, sizeof buffer, sizeof(buffer) * offset, (void *) buselfs_state);
         buse_read(buffer, sizeof buffer, sizeof(buffer) * offset, (void *) buselfs_state);
@@ -1449,7 +1446,6 @@ static void readwrite_quicktests()
 
     uint8_t expected_buffer2[5000] = { 0x00 };
     memset(&expected_buffer2, 0xFA, 5000);
-    dzlog_notice("test next io");
 
     for(; offset < 2048; offset+=2)
     {
@@ -1457,7 +1453,6 @@ static void readwrite_quicktests()
 
         char strbuf[100];
         snprintf(strbuf, sizeof strbuf, "loop offset: %"PRIu32, offset);
-        dzlog_notice("second attempt: %"PRIu32, offset);
 
         buse_write(expected_buffer2, sizeof buffer, sizeof(buffer) * offset, (void *) buselfs_state);
         buse_read(buffer, sizeof buffer, sizeof(buffer) * offset, (void *) buselfs_state);
@@ -1465,15 +1460,12 @@ static void readwrite_quicktests()
         TEST_ASSERT_EQUAL_MEMORY_MESSAGE(expected_buffer2, buffer, sizeof buffer, strbuf);
     }
 
-    dzlog_notice("test end io:");
-
     // Test end writes
     uint8_t buffer[sizeof expected_buffer1];
     offset = buselfs_state->backstore->writeable_size_actual - sizeof(expected_buffer1);
 
     char strbuf[100];
     snprintf(strbuf, sizeof strbuf, "loop offset (final): %"PRIu32, offset);
-    dzlog_notice("final attempt: %"PRIu32, offset);
 
     buse_write(expected_buffer1, sizeof buffer, offset, (void *) buselfs_state);
     buse_read(buffer, sizeof buffer, offset, (void *) buselfs_state);
