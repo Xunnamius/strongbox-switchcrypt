@@ -19,6 +19,120 @@
 #include <limits.h>
 #include <errno.h>
 #include <unistd.h>
+#include <sys/types.h>
+
+#if BLFS_DEBUG_MONITOR_POWER > 0
+
+#include "energymon-time-util.h"
+
+static FILE * metrics_output_fd = NULL;
+
+void blfs_energymon_init(buselfs_state_t * buselfs_state)
+{
+    uid_t euid = geteuid();
+
+    if(euid != 0)
+        Throw(EXCEPTION_MUST_BE_ROOT);
+
+    if(metrics_output_fd != NULL)
+        Throw(EXCEPTION_ENERGYMON_ALREADY_INITED);
+
+    // Setup energymon
+    errno = 0;
+
+    if(energymon_get_default(buselfs_state->energymon_monitor))
+    {
+        dzlog_fatal("energymon_get_default error: %s", strerror(errno));
+        Throw(EXCEPTION_ENERGYMON_GET_DEFAULT_FAILURE);
+    }
+
+    errno = 0;
+
+    if(buselfs_state->energymon_monitor->finit(buselfs_state->energymon_monitor))
+    {
+        dzlog_fatal("finit error: %s", strerror(errno));
+        Throw(EXCEPTION_ENERGYMON_FINIT_FAILURE);
+    }
+
+    errno = 0;
+    metrics_output_fd = fopen(BLFS_ENERGYMON_OUTPUT_PATH, "a");
+    
+    if(metrics_output_fd == NULL || errno)
+    {
+        dzlog_fatal("failed to fopen metrics_output_fd: %s", strerror(errno));
+        Throw(EXCEPTION_OPEN_FAILURE);
+    }
+}
+
+void blfs_energymon_collect_metrics(Metrics * metrics, buselfs_state_t * buselfs_state)
+{
+    // Grab the initial energy use and time
+    errno = 0;
+    metrics->energy_uj = buselfs_state->energymon_monitor->fread(buselfs_state->energymon_monitor);
+
+    if(!metrics->energy_uj && errno)
+    {
+        dzlog_fatal("energymon metric collection error: %s", strerror(errno));
+        buselfs_state->energymon_monitor->ffinish(buselfs_state->energymon_monitor);
+        Throw(EXCEPTION_ENERGYMON_METRIC_COLLECTION_FAILURE);
+    }
+
+    metrics->time_ns = energymon_gettime_ns();
+}
+
+void blfs_energymon_writeout_metrics(char * tag,
+                                     Metrics * read_metrics_start,
+                                     Metrics * read_metrics_end,
+                                     Metrics * write_metrics_start,
+                                     Metrics * write_metrics_end)
+{
+    // Crunch the results
+    double tr_energy = read_metrics_end->energy_uj - read_metrics_start->energy_uj;
+    double tr_duration = read_metrics_end->time_ns - read_metrics_start->time_ns;
+
+    double tw_energy = write_metrics_end->energy_uj - write_metrics_start->energy_uj;
+    double tw_duration = write_metrics_end->time_ns - write_metrics_start->time_ns;
+
+    tr_energy /= 1000000.0;
+    tw_energy /= 1000000.0;
+
+    tr_duration /= 1000000000.0;
+    tw_duration /= 1000000000.0;
+
+    double tr_power = tr_energy * 1000.0 / tr_duration;
+    double tw_power = tw_energy * 1000.0 / tw_duration;
+
+    // Output the results
+    fprintf(metrics_output_fd,
+            "tag: %s\ntr_energy: %f\ntr_duration: %f\ntr_power: %f\ntw_energy: %f\ntw_duration: %f\ntw_power: %f\n---\n",
+            tag,
+            tw_energy,
+            tw_duration,
+            tw_power,
+            tr_energy,
+            tr_duration,
+            tr_power);
+
+    // Flush the results
+    fflush(metrics_output_fd);
+}
+
+void blfs_energymon_fini(buselfs_state_t * buselfs_state)
+{
+    // TODO
+    metrics_output_fd = 0;
+
+    if(buselfs_state->energymon_monitor->ffinish(buselfs_state->energymon_monitor))
+    {
+        dzlog_fatal("ffinish error: %s", strerror(errno));
+        Throw(EXCEPTION_ENERGYMON_FFINISH_FAILURE);
+    }
+
+    fflush(metrics_output_fd);
+    fclose(metrics_output_fd);
+}
+
+#endif /* BLFS_DEBUG_MONITOR_POWER > 0 */
 
 #if BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION && BLFS_NO_READ_INTEGRITY
 #error "The BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION and BLFS_NO_READ_INTEGRITY compile flags CANNOT be used together!"

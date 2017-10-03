@@ -11,12 +11,23 @@
 
 #define BLFS_CONFIG_ZLOG "../config/zlog_conf.conf"
 
+/** START: energy/power metric collection */
+
+// XXX: Must be file path
+#define BLFS_ENERGYMON_OUTPUT_PATH "/home/odroid/bd3/repos/energy-AES-1/results/strongbox-metrics.results"
+
+/** END: energy/power metric collection */
+
 // 0 - no debugging, log writing, or any such output
 // 1U - light debugging to designated log file
 // 2U - ^ and some informative messages to stdout
 // 3U - ^ except now it's a clusterfuck of debug messages
 #ifndef BLFS_DEBUG_LEVEL
 #define BLFS_DEBUG_LEVEL 0
+#endif
+
+#ifndef BLFS_DEBUG_MONITOR_POWER
+#define BLFS_DEBUG_MONITOR_POWER 0
 #endif
 
 #ifndef _XOPEN_SOURCE
@@ -49,6 +60,12 @@
 #define IFDEBUG3(expression) expression
 #else
 #define IFDEBUG3(expression)
+#endif
+
+#if BLFS_DEBUG_MONITOR_POWER > 0
+#define IFENERGYMON(expression) expression
+#else
+#define IFENERGYMON(expression)
 #endif
 
 #define STRINGIZE_STR_FN(X) #X

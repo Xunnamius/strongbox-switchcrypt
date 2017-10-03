@@ -9,6 +9,18 @@
 #include "merkletree.h"
 #include "sodium.h"
 
+#if BLFS_DEBUG_MONITOR_POWER > 0
+
+#include "energymon/energymon-default.h"
+
+// Struct that holds duration/energy/power data
+typedef struct Metrics {
+    uint64_t time_ns;
+    uint64_t energy_uj;
+} Metrics;
+
+#endif /* BLFS_DEBUG_MONITOR_POWER > 0 */
+
 KHASH_MAP_INIT_STR(BLFS_KHASH_NUGGET_KEY_CACHE_NAME, uint8_t *)
 
 /**
@@ -59,6 +71,9 @@ typedef struct buselfs_state_t
      * be disturbed. Useful for unit testing.
      */
     char * default_password;
+
+    // TODO
+    IFENERGYMON(energymon * energymon_monitor);
 } buselfs_state_t;
 
 // These are all the external caching functions:
@@ -197,4 +212,23 @@ buselfs_state_t * buselfs_main_actual(int argc, char * argv[], char * blockdevic
  */
 int buselfs_main(int argc, char * argv[]);
 
+#if BLFS_DEBUG_MONITOR_POWER > 0
+
+// TODO
+void blfs_energymon_init(buselfs_state_t * buselfs_state);
+
+// TODO
+void blfs_energymon_collect_metrics(Metrics * metrics, buselfs_state_t * buselfs_state);
+
+// TODO
+void blfs_energymon_writeout_metrics(char * tag,
+                                     Metrics * read_metrics_start,
+                                     Metrics * read_metrics_end,
+                                     Metrics * write_metrics_start,
+                                     Metrics * write_metrics_end);
+
+// TODO
+void blfs_energymon_fini(buselfs_state_t * buselfs_state);
+
+#endif /* BLFS_DEBUG_MONITOR_POWER > 0 */
 #endif /* BLFS_BUSELFS_H_ */

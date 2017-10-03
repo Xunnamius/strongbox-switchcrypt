@@ -14,9 +14,10 @@ VENDR_ROOT	:= ../vendor
 TEST_ROOT	:= ../test
 CONFIG_ROOT	:= ../config
 
-UNITY_ROOT	:= $(VENDR_ROOT)/unity
-CMOCK_ROOT	:= $(VENDR_ROOT)/cmock
-MT_ROOT     := $(VENDR_ROOT)/merkle-tree
+UNITY_ROOT		:= $(VENDR_ROOT)/unity
+CMOCK_ROOT		:= $(VENDR_ROOT)/cmock
+MT_ROOT     	:= $(VENDR_ROOT)/merkle-tree
+ENERGYMON_ROOT  := $(VENDR_ROOT)/energymon
 
 # Buselfs internal debug level
 # XXX: Set to 0 when not debugging or suffer the (perf-related) consequences!
@@ -24,7 +25,8 @@ MT_ROOT     := $(VENDR_ROOT)/merkle-tree
 DEBUG_COMPILE_FLAG := -DBLFS_DEBUG_LEVEL=0 \
 					  -DBLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION=0 \
 					  -DBLFS_BADBADNOTGOOD_USE_AESCTR_EMULATION=0 \
-					  -DBLFS_NO_READ_INTEGRITY=0
+					  -DBLFS_NO_READ_INTEGRITY=0 \
+					  -DBLFS_DEBUG_MONITOR_POWER=1
 
 # This is the name of the resulant executable
 EXENAME	:= buselfs
@@ -35,8 +37,12 @@ EXENAME	:= buselfs
 EXECSRC	:= $(SRC_ROOT)/main.c
 
 # These should typically be in VENDR_ROOT, though they don't have to be
-STATIC_LIBS := $(VENDR_ROOT)/merkle-tree/src/libMerkleTree.a
-C_LIBS := $(UNITY_ROOT)/src/unity.c $(CMOCK_ROOT)/src/cmock.c
+STATIC_LIBS := $(VENDR_ROOT)/merkle-tree/src/libMerkleTree.a \
+			   $(ENERGYMON_ROOT)/src/energymon-time-util.c \
+			   $(ENERGYMON_ROOT)/src/ptime/ptime.c
+
+C_TEST_LIBS := $(UNITY_ROOT)/src/unity.c \
+			   $(CMOCK_ROOT)/src/cmock.c
 
 CC  := /usr/bin/gcc
 CCV := $(shell expr `gcc --version | grep ^gcc | awk '{print $$3}'` \>= 4.9)
@@ -57,10 +63,11 @@ IFLAGS		:= -I/usr/local/include \
 			   -I$(SRC_ROOT) \
 			   -I$(UNITY_ROOT)/src \
 			   -I$(CMOCK_ROOT)/src \
-			   -I$(MT_ROOT)/src
+			   -I$(MT_ROOT)/src \
+			   -I$(ENERGYMON_ROOT)/src
 
 LDFLAGS		:= -L$(VENDR_ROOT) -L/usr/local/lib \
-			   -lsodium -lzlog -lpthread -lm -lcrypto
+			   -lsodium -lzlog -lpthread -lm -lcrypto -lenergymon-default
 
 # Ruby configs for runner generation w/ Unity (automatic)
 GENRNR_CONF	:= $(CONFIG_ROOT)/unity_runner_config.yml
@@ -72,6 +79,10 @@ CMOCK_CONF := $(CONFIG_ROOT)/cmock_config.yml
 # e.g. HDRS_TO_MOCK := interactions my_lib
 # You can then include the mocked header in your source e.g. #include "mock_my_lib.h"
 HDRS_TO_MOCK := io
+
+# Scarecrows (empty targets)
+# aes.o metrics.o: ;
+SCARECROWS := aes.o metrics.o
 
 ########################
 # Pre-processing Setup #
@@ -145,7 +156,7 @@ tests-O0: O0 tests
 all: $(EXENAME)
 test: check
 
-aes.o: ;
+$(SCARECROWS): ;
 
 # Workhorse targets
 
@@ -170,11 +181,11 @@ $(RUNR_FILES) $(TEST_FILES): %.o: %.c
 # compilation tree to prevent definition collisions!
 $(TEST_TRGTS): test_%: test_%_runner.o test_%.o %.o test_%.d $(SRC_FILES) $(VENDR_FILES)
 	$(eval R_MOCKED_FILES := $(call distinct,$(patsubst %.h,%.c,$(call containing,mock_,$^))))
-	$(eval R_REMAIN_FILES := $(filter-out aes.o %.h %.c %.d $(if $(R_MOCKED_FILES),$(addprefix %,$(patsubst mock_%.c,%.o,$(R_MOCKED_FILES)))), $^))
+	$(eval R_REMAIN_FILES := $(filter-out $(SCARECROWS) %.h %.c %.d $(if $(R_MOCKED_FILES),$(addprefix %,$(patsubst mock_%.c,%.o,$(R_MOCKED_FILES)))), $^))
 	$(CC) $(CFLAGS) $(DEBUG_MAKE_FLAGS) $(IFLAGS) $(DEBUG_COMPILE_FLAG) -o $@ \
 		$(R_REMAIN_FILES) \
 		$(R_MOCKED_FILES) \
-		$(C_LIBS) \
+		$(C_TEST_LIBS) \
 		$(STATIC_LIBS) \
 		$(LDFLAGS)
 

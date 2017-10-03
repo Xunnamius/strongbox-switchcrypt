@@ -149,6 +149,24 @@ do {                                                                            
 // Why you call aes-ctr function when aes-ctr disabled?!?!
 #define EXCEPTION_BAD_AESCTR                    0x27U
 
+// Must be root to run this program with this configuration
+#define EXCEPTION_MUST_BE_ROOT                  0x28U
+
+// TODO
+#define EXCEPTION_ENERGYMON_GET_DEFAULT_FAILURE 0x29U
+
+// TODO
+#define EXCEPTION_ENERGYMON_FINIT_FAILURE       0x2AU
+
+// TODO
+#define EXCEPTION_ENERGYMON_METRIC_COLLECTION_FAILURE   0x2BU
+
+// TODO
+#define EXCEPTION_ENERGYMON_ALREADY_INITED      0x2CU
+
+// TODO
+#define EXCEPTION_ENERGYMON_FFINISH_FAILURE     0x2DU
+
 ///////////////////////
 // End Configuration //
 ///////////////////////

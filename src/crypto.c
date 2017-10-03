@@ -430,7 +430,6 @@ void blfs_aesctr_crypt(uint8_t * crypted_data,
 
     for(uint64_t i = 0; i < num_aes_blocks; i++, counter++)
     {
-        int len = 0;
         AES_KEY aes_key;
 
         uint8_t raw_key[BLFS_CRYPTO_BYTES_AES_KEY] = { 0x00 };
