@@ -125,12 +125,14 @@ static const uint8_t decrypted_body[] = {
 
 static void make_fake_state()
 {
-    buselfs_state = malloc(sizeof(*buselfs_state));
+    buselfs_state = malloc(sizeof *buselfs_state);
 
     buselfs_state->backstore                    = NULL;
     buselfs_state->cache_nugget_keys            = kh_init(BLFS_KHASH_NUGGET_KEY_CACHE_NAME);
     buselfs_state->merkle_tree                  = mt_create();
     buselfs_state->default_password             = BLFS_DEFAULT_PASS;
+
+    IFENERGYMON(buselfs_state->energymon_monitor = malloc(sizeof *(buselfs_state->energymon_monitor)));
 
     iofd = open(BACKSTORE_FILE_PATH, O_CREAT | O_RDWR | O_TRUNC, 0777);
 

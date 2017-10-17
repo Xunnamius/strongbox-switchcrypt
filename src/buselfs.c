@@ -1717,6 +1717,7 @@ buselfs_state_t * buselfs_main_actual(int argc, char * argv[], char * blockdevic
 
     // XXX: Not free()'d!
     buselfs_state_t * buselfs_state = malloc(sizeof(*buselfs_state));
+    IFENERGYMON(buselfs_state->energymon_monitor = malloc(sizeof *(buselfs_state->energymon_monitor)));
 
     if(buselfs_state == NULL)
         Throw(EXCEPTION_ALLOC_FAILURE);
