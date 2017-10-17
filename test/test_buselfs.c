@@ -1643,9 +1643,10 @@ void test_blfs_energymon_collect_metrics_works_as_expected(void)
     sleep(3);
     blfs_energymon_collect_metrics(&metrics_end, buselfs_state);
 
-    TEST_ASSERT_GREATER_THAN_MESSAGE(metrics_start.energy_uj, metrics_end.energy_uj, "metrics_end.energy_uj <= metrics_start.energy_uj");
+    TEST_ASSERT_TRUE_MESSAGE(metrics_start.energy_uj, "metrics_start.energy_uj == 0");
+    TEST_ASSERT_NOT_EQUAL_MESSAGE(metrics_start.energy_uj, metrics_end.energy_uj, "metrics_end.energy_uj <= metrics_start.energy_uj");
 
-    TEST_ASSERT_GREATER_THAN_MESSAGE(0, metrics_start.time_ns, "metrics_start.time_ns <= 0");
+    TEST_ASSERT_TRUE_MESSAGE(metrics_start.time_ns, "metrics_start.time_ns == 0");
     TEST_ASSERT_NOT_EQUAL_MESSAGE(metrics_start.time_ns, metrics_end.time_ns, "metrics_end.time_ns == metrics_start.time_ns");
 }
 
