@@ -105,12 +105,12 @@ void blfs_energymon_writeout_metrics(char * tag,
     fprintf(metrics_output_fd,
             "tag: %s\ntr_energy: %f\ntr_duration: %f\ntr_power: %f\ntw_energy: %f\ntw_duration: %f\ntw_power: %f\n---\n",
             tag,
-            tw_energy,
-            tw_duration,
-            tw_power,
             tr_energy,
             tr_duration,
-            tr_power);
+            tr_power,
+            tw_energy,
+            tw_duration,
+            tw_power);
 
     // Flush the results
     fflush(metrics_output_fd);
