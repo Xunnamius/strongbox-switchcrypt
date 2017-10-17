@@ -98,8 +98,8 @@ void blfs_energymon_writeout_metrics(char * tag,
     tr_duration /= 1000000000.0;
     tw_duration /= 1000000000.0;
 
-    double tr_power = tr_energy * 1000.0 / tr_duration;
-    double tw_power = tw_energy * 1000.0 / tw_duration;
+    double tr_power = tr_energy / tr_duration;
+    double tw_power = tw_energy / tw_duration;
 
     // Output the results
     fprintf(metrics_output_fd,
