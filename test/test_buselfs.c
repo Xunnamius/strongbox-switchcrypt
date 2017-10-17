@@ -1589,40 +1589,6 @@ void test_blfs_energymon_init_works_as_expected(void)
     blfs_energymon_init(buselfs_state);
 }
 
-void test_blfs_energymon_init_throws_exception_if_already_inited(void)
-{
-    if(!BLFS_DEBUG_MONITOR_POWER)
-    {
-        TEST_IGNORE_MESSAGE("BLFS_DEBUG_MONITOR_POWER is disabled. All metric gathering tests are disabled!");
-        return;
-    }
-
-    if(is_dummy_source())
-    {
-        TEST_IGNORE_MESSAGE("Dummy source detected. This test will be skipped.");
-        return;
-    }
-
-    if(!is_sudo())
-    {
-        TEST_IGNORE_MESSAGE("Test skipped. You must be sudo to run this test.");
-        return;
-    }
-
-    buselfs_state_t test_state;
-    
-    blfs_energymon_init(buselfs_state);
-
-    CEXCEPTION_T e_expected = EXCEPTION_ENERGYMON_ALREADY_INITED;
-    volatile CEXCEPTION_T e_actual = EXCEPTION_NO_EXCEPTION;
-
-    TRY_FN_CATCH_EXCEPTION(blfs_energymon_init(buselfs_state));
-
-    e_actual = EXCEPTION_NO_EXCEPTION;
-
-    TRY_FN_CATCH_EXCEPTION(blfs_energymon_init(&test_state));
-}
-
 void test_blfs_energymon_fini_works_as_expected(void)
 {
     if(!BLFS_DEBUG_MONITOR_POWER)
@@ -1677,7 +1643,6 @@ void test_blfs_energymon_collect_metrics_works_as_expected(void)
     sleep(3);
     blfs_energymon_collect_metrics(&metrics_end, buselfs_state);
 
-    TEST_ASSERT_GREATER_THAN_MESSAGE(0, metrics_start.energy_uj, "metrics_start.energy_uj <= 0");
     TEST_ASSERT_GREATER_THAN_MESSAGE(metrics_start.energy_uj, metrics_end.energy_uj, "metrics_end.energy_uj <= metrics_start.energy_uj");
 
     TEST_ASSERT_GREATER_THAN_MESSAGE(0, metrics_start.time_ns, "metrics_start.time_ns <= 0");
