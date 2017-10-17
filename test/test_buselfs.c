@@ -1583,7 +1583,7 @@ void test_blfs_energymon_init_works_as_expected(void)
         return;
     }
     
-    TEST_ASSERT_NULL(buselfs_state->energymon_monitor);
+    buselfs_state->energymon_monitor = NULL;
     blfs_energymon_init(buselfs_state);
     TEST_ASSERT_NOT_NULL(buselfs_state->energymon_monitor);
 }
