@@ -164,8 +164,15 @@ static void clear_tj()
 static int is_dummy_source()
 {
     char em_source[16];
-    (void) buselfs_state->energymon_monitor->fsource(em_source, sizeof em_source);
+    energymon mon;
+    energymon_get_default(&mon);
+    (void) mon.fsource(em_source, sizeof em_source);
     return !strcmp(em_source, "Dummy Source");
+}
+
+static int is_sudo()
+{
+    return !geteuid();
 }
 
 void setUp(void)
@@ -195,6 +202,7 @@ void tearDown(void)
     unlink(BACKSTORE_FILE_PATH);
 }
 
+/*
 // XXX: Also need to test a delete function to fix the memory leak issue discussed in buselfs.h
 void test_adding_and_evicting_from_the_keycache_works_as_expected(void)
 {
@@ -1414,7 +1422,7 @@ void test_buse_write_dirty_write_triggers_rekeying8(void)
     buse_read(buffer7, sizeof buffer7, offset7, (void *) buselfs_state);
 
     TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset7, buffer7, sizeof buffer7);
-}
+}*///#uncomment
 
 /*void test_blfs_rekey_nugget_journaled_zeroes_out_everything_as_expected(void)
 {
@@ -1430,7 +1438,8 @@ void test_blfs_incomplete_rekeying_triggers_blfs_rekey_nugget_journaled_on_start
     TEST_IGNORE();
 }*/
 
-static void readwrite_quicktests()
+//#uncomment
+/*static void readwrite_quicktests()
 {
     uint8_t expected_buffer1[4096];
     memset(&expected_buffer1, 0xCE, 4096);
@@ -1495,7 +1504,7 @@ void test_buselfs_main_actual_creates(void)
 
     buselfs_state = buselfs_main_actual(argc, argv_create1, blockdevice);
     readwrite_quicktests();
-}
+}*/
 
 /*void test_buselfs_main_actual_opens(void)
 {
@@ -1567,6 +1576,12 @@ void test_blfs_energymon_init_works_as_expected(void)
         TEST_IGNORE_MESSAGE("Dummy source detected. This test will be skipped.");
         return;
     }
+
+    if(!is_sudo())
+    {
+        TEST_IGNORE_MESSAGE("Test skipped. You must be sudo to run this test.");
+        return;
+    }
     
     TEST_ASSERT_NULL(buselfs_state->energymon_monitor);
     blfs_energymon_init(buselfs_state);
@@ -1584,6 +1599,12 @@ void test_blfs_energymon_init_throws_exception_if_already_inited(void)
     if(is_dummy_source())
     {
         TEST_IGNORE_MESSAGE("Dummy source detected. This test will be skipped.");
+        return;
+    }
+
+    if(!is_sudo())
+    {
+        TEST_IGNORE_MESSAGE("Test skipped. You must be sudo to run this test.");
         return;
     }
 
@@ -1609,6 +1630,18 @@ void test_blfs_energymon_fini_works_as_expected(void)
         return;
     }
 
+    if(is_dummy_source())
+    {
+        TEST_IGNORE_MESSAGE("Dummy source detected. This test will be skipped.");
+        return;
+    }
+
+    if(!is_sudo())
+    {
+        TEST_IGNORE_MESSAGE("Test skipped. You must be sudo to run this test.");
+        return;
+    }
+
     blfs_energymon_init(buselfs_state);
     blfs_energymon_fini(buselfs_state);
     blfs_energymon_init(buselfs_state);
@@ -1626,6 +1659,12 @@ void test_blfs_energymon_collect_metrics_works_as_expected(void)
     if(is_dummy_source())
     {
         TEST_IGNORE_MESSAGE("Dummy source detected. This test will be skipped.");
+        return;
+    }
+
+    if(!is_sudo())
+    {
+        TEST_IGNORE_MESSAGE("Test skipped. You must be sudo to run this test.");
         return;
     }
     
@@ -1651,6 +1690,18 @@ void test_blfs_energymon_writeout_metrics_works_as_expected(void)
         TEST_IGNORE_MESSAGE("BLFS_DEBUG_MONITOR_POWER is disabled. All metric gathering tests are disabled!");
         return;
     }
+
+    if(is_dummy_source())
+    {
+        TEST_IGNORE_MESSAGE("Dummy source detected. This test will be skipped.");
+        return;
+    }
+
+    if(!is_sudo())
+    {
+        TEST_IGNORE_MESSAGE("Test skipped. You must be sudo to run this test.");
+        return;
+    }
     
     Metrics metrics_read_start  = { .energy_uj = 50000000,  .time_ns = 100000000000 };
     Metrics metrics_read_end    = { .energy_uj = 100000000, .time_ns = 150000000000 };
@@ -1660,6 +1711,7 @@ void test_blfs_energymon_writeout_metrics_works_as_expected(void)
     FILE * metrics_output_fd = fopen(BLFS_ENERGYMON_OUTPUT_PATH, "w+");
     long fsize = 0;
 
+    blfs_energymon_init(buselfs_state);
     blfs_energymon_writeout_metrics("test", &metrics_read_start, &metrics_read_end, &metrics_write_start, &metrics_write_end);
 
     fseek(metrics_output_fd, 0, SEEK_END);
