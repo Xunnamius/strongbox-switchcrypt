@@ -198,6 +198,7 @@ void tearDown(void)
     if(!BLFS_DEFAULT_DISABLE_KEY_CACHING)
         kh_destroy(BLFS_KHASH_NUGGET_KEY_CACHE_NAME, buselfs_state->cache_nugget_keys);
 
+    free(buselfs_state->energymon_monitor);
     free(buselfs_state);
     zlog_fini();
     close(iofd);
@@ -1585,9 +1586,7 @@ void test_blfs_energymon_init_works_as_expected(void)
         return;
     }
     
-    buselfs_state->energymon_monitor = NULL;
     blfs_energymon_init(buselfs_state);
-    TEST_ASSERT_NOT_NULL(buselfs_state->energymon_monitor);
 }
 
 void test_blfs_energymon_init_throws_exception_if_already_inited(void)
