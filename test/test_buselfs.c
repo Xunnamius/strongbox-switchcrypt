@@ -1686,7 +1686,7 @@ void test_blfs_energymon_writeout_metrics_works_as_expected(void)
     fseek(metrics_output_fd, 0, SEEK_SET);
 
     char results[fsize];
-    assert(fread(results, sizeof char, sizeof results, metrics_output_fd) > 0);
+    assert(fread(results, sizeof(char), fsize, metrics_output_fd) > 0);
 
     printf("metrics_output_fd:\n%s\n", results);
 
