@@ -72,7 +72,6 @@ typedef struct buselfs_state_t
      */
     char * default_password;
 
-    // TODO
     IFENERGYMON(energymon * energymon_monitor);
 } buselfs_state_t;
 
