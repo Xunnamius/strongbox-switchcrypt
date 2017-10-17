@@ -161,6 +161,13 @@ static void clear_tj()
     blfs_backstore_close(backstore);
 }
 
+static int is_dummy_source()
+{
+    char em_source[16];
+    (void) buselfs_state->energymon_monitor->fsource(em_source, sizeof em_source);
+    return !strcmp(em_source, "Dummy Source");
+}
+
 void setUp(void)
 {
     if(sodium_init() == -1)
@@ -1545,3 +1552,122 @@ void test_buselfs_main_actual_creates(void)
 
     setUp();
 }*/
+
+/* Metrics Tests */
+void test_blfs_energymon_init_works_as_expected(void)
+{
+    if(!BLFS_DEBUG_MONITOR_POWER)
+    {
+        TEST_IGNORE_MESSAGE("BLFS_DEBUG_MONITOR_POWER is disabled. All metric gathering tests are disabled!");
+        return;
+    }
+
+    if(is_dummy_source())
+    {
+        TEST_IGNORE_MESSAGE("Dummy source detected. This test will be skipped.");
+        return;
+    }
+    
+    TEST_ASSERT_NULL(buselfs_state->energymon_monitor);
+    blfs_energymon_init(buselfs_state);
+    TEST_ASSERT_NOT_NULL(buselfs_state->energymon_monitor);
+}
+
+void test_blfs_energymon_init_throws_exception_if_already_inited(void)
+{
+    if(!BLFS_DEBUG_MONITOR_POWER)
+    {
+        TEST_IGNORE_MESSAGE("BLFS_DEBUG_MONITOR_POWER is disabled. All metric gathering tests are disabled!");
+        return;
+    }
+
+    if(is_dummy_source())
+    {
+        TEST_IGNORE_MESSAGE("Dummy source detected. This test will be skipped.");
+        return;
+    }
+
+    buselfs_state_t test_state;
+    
+    blfs_energymon_init(buselfs_state);
+
+    CEXCEPTION_T e_expected = EXCEPTION_ENERGYMON_ALREADY_INITED;
+    volatile CEXCEPTION_T e_actual = EXCEPTION_NO_EXCEPTION;
+
+    TRY_FN_CATCH_EXCEPTION(blfs_energymon_init(buselfs_state));
+
+    e_actual = EXCEPTION_NO_EXCEPTION;
+
+    TRY_FN_CATCH_EXCEPTION(blfs_energymon_init(&test_state));
+}
+
+void test_blfs_energymon_fini_works_as_expected(void)
+{
+    if(!BLFS_DEBUG_MONITOR_POWER)
+    {
+        TEST_IGNORE_MESSAGE("BLFS_DEBUG_MONITOR_POWER is disabled. All metric gathering tests are disabled!");
+        return;
+    }
+
+    blfs_energymon_init(buselfs_state);
+    blfs_energymon_fini(buselfs_state);
+    blfs_energymon_init(buselfs_state);
+    blfs_energymon_fini(buselfs_state);
+}
+
+void test_blfs_energymon_collect_metrics_works_as_expected(void)
+{
+    if(!BLFS_DEBUG_MONITOR_POWER)
+    {
+        TEST_IGNORE_MESSAGE("BLFS_DEBUG_MONITOR_POWER is disabled. All metric gathering tests are disabled!");
+        return;
+    }
+
+    if(is_dummy_source())
+    {
+        TEST_IGNORE_MESSAGE("Dummy source detected. This test will be skipped.");
+        return;
+    }
+    
+    Metrics metrics_start;
+    Metrics metrics_end;
+
+    blfs_energymon_init(buselfs_state);
+    blfs_energymon_collect_metrics(&metrics_start, buselfs_state);
+    sleep(3);
+    blfs_energymon_collect_metrics(&metrics_end, buselfs_state);
+
+    TEST_ASSERT_GREATER_THAN_MESSAGE(0, metrics_start.energy_uj, "metrics_start.energy_uj <= 0");
+    TEST_ASSERT_GREATER_THAN_MESSAGE(metrics_start.energy_uj, metrics_end.energy_uj, "metrics_end.energy_uj <= metrics_start.energy_uj");
+
+    TEST_ASSERT_GREATER_THAN_MESSAGE(0, metrics_start.time_ns, "metrics_start.time_ns <= 0");
+    TEST_ASSERT_GREATER_THAN_MESSAGE(metrics_start.time_ns, metrics_end.time_ns, "metrics_end.time_ns <= metrics_start.time_ns");
+}
+
+void test_blfs_energymon_writeout_metrics_works_as_expected(void)
+{
+    if(!BLFS_DEBUG_MONITOR_POWER)
+    {
+        TEST_IGNORE_MESSAGE("BLFS_DEBUG_MONITOR_POWER is disabled. All metric gathering tests are disabled!");
+        return;
+    }
+    
+    Metrics metrics_read_start  = { .energy_uj = 50000000,  .time_ns = 100000000000 };
+    Metrics metrics_read_end    = { .energy_uj = 100000000, .time_ns = 150000000000 };
+    Metrics metrics_write_start = { .energy_uj = 200000000, .time_ns = 250000000000 };
+    Metrics metrics_write_end   = { .energy_uj = 400000000, .time_ns = 450000000000 };
+
+    FILE * metrics_output_fd = fopen(BLFS_ENERGYMON_OUTPUT_PATH, "w+");
+    long fsize = 0;
+
+    blfs_energymon_writeout_metrics("test", &metrics_read_start, &metrics_read_end, &metrics_write_start, &metrics_write_end);
+
+    fseek(metrics_output_fd, 0, SEEK_END);
+    fsize = ftell(metrics_output_fd);
+    fseek(metrics_output_fd, 0, SEEK_SET);
+
+    fclose(metrics_output_fd);
+    remove(BLFS_ENERGYMON_OUTPUT_PATH);
+
+    TEST_ASSERT_TRUE_MESSAGE(fsize, "expected a write (fsize == 0)");
+}

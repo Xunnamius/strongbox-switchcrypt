@@ -119,9 +119,6 @@ void blfs_energymon_writeout_metrics(char * tag,
 
 void blfs_energymon_fini(buselfs_state_t * buselfs_state)
 {
-    // TODO
-    metrics_output_fd = 0;
-
     if(buselfs_state->energymon_monitor->ffinish(buselfs_state->energymon_monitor))
     {
         dzlog_fatal("ffinish error: %s", strerror(errno));
@@ -130,6 +127,8 @@ void blfs_energymon_fini(buselfs_state_t * buselfs_state)
 
     fflush(metrics_output_fd);
     fclose(metrics_output_fd);
+    
+    metrics_output_fd = 0;
 }
 
 #endif /* BLFS_DEBUG_MONITOR_POWER > 0 */

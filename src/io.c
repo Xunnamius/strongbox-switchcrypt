@@ -176,7 +176,7 @@ blfs_backstore_t * blfs_backstore_create(const char * path, uint64_t file_size_b
     ftruncate(backstore->io_fd, file_size_bytes);
     backstore->file_size_actual = file_size_bytes;
     
-    #pragma GCC diagnostic pop 
+    #pragma GCC diagnostic pop
 
     // Header data
     uint64_t data_version_int = BLFS_CURRENT_VERSION;
