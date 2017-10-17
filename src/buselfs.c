@@ -34,9 +34,6 @@ void blfs_energymon_init(buselfs_state_t * buselfs_state)
     if(euid != 0)
         Throw(EXCEPTION_MUST_BE_ROOT);
 
-    if(metrics_output_fd != NULL)
-        Throw(EXCEPTION_ENERGYMON_ALREADY_INITED);
-
     // Setup energymon
     errno = 0;
 
@@ -55,7 +52,9 @@ void blfs_energymon_init(buselfs_state_t * buselfs_state)
     }
 
     errno = 0;
-    metrics_output_fd = fopen(BLFS_ENERGYMON_OUTPUT_PATH, "a");
+
+    if(metrics_output_fd == NULL)
+        metrics_output_fd = fopen(BLFS_ENERGYMON_OUTPUT_PATH, "a");
     
     if(metrics_output_fd == NULL || errno)
     {
