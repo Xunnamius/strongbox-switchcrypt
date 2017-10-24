@@ -198,14 +198,16 @@ void tearDown(void)
     if(!BLFS_DEFAULT_DISABLE_KEY_CACHING)
         kh_destroy(BLFS_KHASH_NUGGET_KEY_CACHE_NAME, buselfs_state->cache_nugget_keys);
 
-    free(buselfs_state->energymon_monitor);
+    if(buselfs_state->energymon_monitor != NULL)
+        free(buselfs_state->energymon_monitor);
+
     free(buselfs_state);
+
     zlog_fini();
     close(iofd);
     unlink(BACKSTORE_FILE_PATH);
 }
 
-/*
 // XXX: Also need to test a delete function to fix the memory leak issue discussed in buselfs.h
 void test_adding_and_evicting_from_the_keycache_works_as_expected(void)
 {
@@ -620,7 +622,7 @@ void test_blfs_run_mode_create_initializes_keycache_and_merkle_tree_properly(voi
         blfs_backstore_close(buselfs_state->backstore);
     }
 }
-
+/*
 void test_blfs_run_mode_open_works_as_expected(void)
 {
     free(buselfs_state->backstore);
@@ -741,7 +743,7 @@ void test_blfs_run_mode_open_properly_opens_wiped_backstores(void)
     TEST_ASSERT_EQUAL_UINT8(BLFS_HEAD_IS_INITIALIZED_VALUE, init_header_data2[0]);
 
     blfs_backstore_close(buselfs_state->backstore);
-}
+}*/
 
 void test_buselfs_main_actual_throws_exception_if_wrong_argc(void)
 {
@@ -1425,7 +1427,7 @@ void test_buse_write_dirty_write_triggers_rekeying8(void)
     buse_read(buffer7, sizeof buffer7, offset7, (void *) buselfs_state);
 
     TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset7, buffer7, sizeof buffer7);
-}*///#uncomment
+}
 
 /*void test_blfs_rekey_nugget_journaled_zeroes_out_everything_as_expected(void)
 {
@@ -1441,8 +1443,8 @@ void test_blfs_incomplete_rekeying_triggers_blfs_rekey_nugget_journaled_on_start
     TEST_IGNORE();
 }*/
 
-//#uncomment
-/*static void readwrite_quicktests()
+
+static void readwrite_quicktests()
 {
     uint8_t expected_buffer1[4096];
     memset(&expected_buffer1, 0xCE, 4096);
@@ -1507,7 +1509,7 @@ void test_buselfs_main_actual_creates(void)
 
     buselfs_state = buselfs_main_actual(argc, argv_create1, blockdevice);
     readwrite_quicktests();
-}*/
+}
 
 /*void test_buselfs_main_actual_opens(void)
 {

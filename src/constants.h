@@ -64,8 +64,21 @@
 
 #if BLFS_DEBUG_MONITOR_POWER > 0
 #define IFENERGYMON(expression) expression
+#define ENERGYMON_INIT_IFENERGYMON \
+    Metrics metrics_start; \
+    Metrics metrics_end
+#define ENERGYMON_START_IFENERGYMON \
+    blfs_energymon_collect_metrics(&metrics_start, buselfs_state)
+#define ENERGYMON_END_IFENERGYMON \
+    blfs_energymon_collect_metrics(&metrics_end, buselfs_state)
+#define ENERGYMON_OUTPUT_IFENERGYMON(name) \
+    blfs_energymon_writeout_metrics_simple(name, &metrics_start, &metrics_end)
 #else
 #define IFENERGYMON(expression)
+#define ENERGYMON_INIT_IFENERGYMON
+#define ENERGYMON_START_IFENERGYMON
+#define ENERGYMON_END_IFENERGYMON
+#define ENERGYMON_OUTPUT_IFENERGYMON(name)
 #endif
 
 #define STRINGIZE_STR_FN(X) #X

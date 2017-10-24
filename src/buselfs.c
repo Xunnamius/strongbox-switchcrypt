@@ -37,6 +37,9 @@ void blfs_energymon_init(buselfs_state_t * buselfs_state)
     // Setup energymon
     errno = 0;
 
+    if(buselfs_state->energymon_monitor == NULL)
+        buselfs_state->energymon_monitor = malloc(sizeof *(buselfs_state->energymon_monitor));
+
     if(energymon_get_default(buselfs_state->energymon_monitor))
     {
         dzlog_fatal("energymon_get_default error: %s", strerror(errno));
@@ -79,6 +82,7 @@ void blfs_energymon_collect_metrics(Metrics * metrics, buselfs_state_t * buselfs
     metrics->time_ns = energymon_gettime_ns();
 }
 
+// TODO: document/comment these!
 void blfs_energymon_writeout_metrics(char * tag,
                                      Metrics * read_metrics_start,
                                      Metrics * read_metrics_end,
@@ -89,31 +93,54 @@ void blfs_energymon_writeout_metrics(char * tag,
     double tr_energy = read_metrics_end->energy_uj - read_metrics_start->energy_uj;
     double tr_duration = read_metrics_end->time_ns - read_metrics_start->time_ns;
 
-    double tw_energy = write_metrics_end->energy_uj - write_metrics_start->energy_uj;
-    double tw_duration = write_metrics_end->time_ns - write_metrics_start->time_ns;
+    double tw_energy = 0;
+    double tw_duration = 0;
+    double tr_power = 0;
+    double tw_power = 0;
 
     tr_energy /= 1000000.0;
-    tw_energy /= 1000000.0;
-
     tr_duration /= 1000000000.0;
-    tw_duration /= 1000000000.0;
+    tr_power = tr_energy / tr_duration;
 
-    double tr_power = tr_energy / tr_duration;
-    double tw_power = tw_energy / tw_duration;
+    if(write_metrics_start != NULL && write_metrics_end != NULL)
+    {
+        tw_energy = write_metrics_end->energy_uj - write_metrics_start->energy_uj;
+        tw_duration = write_metrics_end->time_ns - write_metrics_start->time_ns;
 
-    // Output the results
-    fprintf(metrics_output_fd,
-            "tag: %s\ntr_energy: %f\ntr_duration: %f\ntr_power: %f\ntw_energy: %f\ntw_duration: %f\ntw_power: %f\n---\n",
-            tag,
-            tr_energy,
-            tr_duration,
-            tr_power,
-            tw_energy,
-            tw_duration,
-            tw_power);
+        tw_energy /= 1000000.0;
+        tw_duration /= 1000000000.0;
+        tw_power = tw_energy / tw_duration;
+
+        // Output the results
+        fprintf(metrics_output_fd,
+                "tag: %s\ntr_energy: %f\ntr_duration: %f\ntr_power: %f\ntw_energy: %f\ntw_duration: %f\ntw_power: %f\n---\n",
+                tag,
+                tr_energy,
+                tr_duration,
+                tr_power,
+                tw_energy,
+                tw_duration,
+                tw_power);
+    }
+
+    else
+    {
+        // Output the results
+        fprintf(metrics_output_fd,
+                "tag: %s\nt_energy: %f\nt_duration: %f\nt_power: %f\n---\n",
+                tag,
+                tr_energy,
+                tr_duration,
+                tr_power);
+    }
 
     // Flush the results
     fflush(metrics_output_fd);
+}
+
+void blfs_energymon_writeout_metrics_simple(char * tag, Metrics * metrics_start, Metrics * metrics_end)
+{
+    blfs_energymon_writeout_metrics(tag, metrics_start, metrics_end, NULL, NULL);
 }
 
 void blfs_energymon_fini(buselfs_state_t * buselfs_state)
@@ -126,6 +153,9 @@ void blfs_energymon_fini(buselfs_state_t * buselfs_state)
 
     fflush(metrics_output_fd);
     fclose(metrics_output_fd);
+    
+    if(buselfs_state->energymon_monitor != NULL)
+        free(buselfs_state->energymon_monitor);
     
     metrics_output_fd = 0;
 }
@@ -1716,10 +1746,18 @@ buselfs_state_t * buselfs_main_actual(int argc, char * argv[], char * blockdevic
 
     // XXX: Not free()'d!
     buselfs_state_t * buselfs_state = malloc(sizeof(*buselfs_state));
-    IFENERGYMON(buselfs_state->energymon_monitor = malloc(sizeof *(buselfs_state->energymon_monitor)));
 
     if(buselfs_state == NULL)
         Throw(EXCEPTION_ALLOC_FAILURE);
+
+    IFENERGYMON(blfs_energymon_init(buselfs_state));
+    IFENERGYMON(dzlog_info("Energymon interface initialized!"));
+    IFENERGYMON(IFDEBUG(dzlog_debug("Energymon output: %s", BLFS_ENERGYMON_OUTPUT_PATH)));
+
+    IFENERGYMON(IFDEBUG(dzlog_debug("beginning startup energy monitoring...")));
+
+    ENERGYMON_INIT_IFENERGYMON;
+    ENERGYMON_START_IFENERGYMON;
 
     buselfs_state->backstore = NULL;
 
@@ -1988,6 +2026,10 @@ buselfs_state_t * buselfs_main_actual(int argc, char * argv[], char * blockdevic
 
     sprintf(blockdevice, BLFS_BACKSTORE_DEVICEPATH, cin_device_name);
     IFDEBUG(dzlog_debug("RETURN: blockdevice = %s", blockdevice));
+
+    ENERGYMON_END_IFENERGYMON;
+    ENERGYMON_OUTPUT_IFENERGYMON("blfs_startup");
+    IFENERGYMON(blfs_energymon_fini(buselfs_state));
     
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 
