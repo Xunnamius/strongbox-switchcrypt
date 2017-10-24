@@ -213,20 +213,23 @@ int buselfs_main(int argc, char * argv[]);
 
 #if BLFS_DEBUG_MONITOR_POWER > 0
 
-// TODO
+// TODO:
 void blfs_energymon_init(buselfs_state_t * buselfs_state);
 
-// TODO
+// TODO:
 void blfs_energymon_collect_metrics(Metrics * metrics, buselfs_state_t * buselfs_state);
 
-// TODO
+// TODO:
 void blfs_energymon_writeout_metrics(char * tag,
                                      Metrics * read_metrics_start,
                                      Metrics * read_metrics_end,
                                      Metrics * write_metrics_start,
                                      Metrics * write_metrics_end);
 
-// TODO
+// TODO:
+void blfs_energymon_writeout_metrics_simple(char * tag, Metrics * metrics_start, Metrics * metrics_end);
+
+// TODO:
 void blfs_energymon_fini(buselfs_state_t * buselfs_state);
 
 #endif /* BLFS_DEBUG_MONITOR_POWER > 0 */

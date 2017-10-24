@@ -622,7 +622,7 @@ void test_blfs_run_mode_create_initializes_keycache_and_merkle_tree_properly(voi
         blfs_backstore_close(buselfs_state->backstore);
     }
 }
-/*
+
 void test_blfs_run_mode_open_works_as_expected(void)
 {
     free(buselfs_state->backstore);
@@ -743,7 +743,7 @@ void test_blfs_run_mode_open_properly_opens_wiped_backstores(void)
     TEST_ASSERT_EQUAL_UINT8(BLFS_HEAD_IS_INITIALIZED_VALUE, init_header_data2[0]);
 
     blfs_backstore_close(buselfs_state->backstore);
-}*/
+}
 
 void test_buselfs_main_actual_throws_exception_if_wrong_argc(void)
 {

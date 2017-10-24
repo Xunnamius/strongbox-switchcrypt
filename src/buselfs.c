@@ -37,8 +37,7 @@ void blfs_energymon_init(buselfs_state_t * buselfs_state)
     // Setup energymon
     errno = 0;
 
-    if(buselfs_state->energymon_monitor == NULL)
-        buselfs_state->energymon_monitor = malloc(sizeof *(buselfs_state->energymon_monitor));
+    buselfs_state->energymon_monitor = malloc(sizeof *(buselfs_state->energymon_monitor));
 
     if(energymon_get_default(buselfs_state->energymon_monitor))
     {
@@ -154,10 +153,10 @@ void blfs_energymon_fini(buselfs_state_t * buselfs_state)
     fflush(metrics_output_fd);
     fclose(metrics_output_fd);
     
-    if(buselfs_state->energymon_monitor != NULL)
-        free(buselfs_state->energymon_monitor);
+    free(buselfs_state->energymon_monitor);
     
     metrics_output_fd = 0;
+    buselfs_state->energymon_monitor = NULL;
 }
 
 #endif /* BLFS_DEBUG_MONITOR_POWER > 0 */
@@ -1750,6 +1749,9 @@ buselfs_state_t * buselfs_main_actual(int argc, char * argv[], char * blockdevic
     if(buselfs_state == NULL)
         Throw(EXCEPTION_ALLOC_FAILURE);
 
+    buselfs_state->backstore = NULL;
+    buselfs_state->energymon_monitor = NULL;
+
     IFENERGYMON(blfs_energymon_init(buselfs_state));
     IFENERGYMON(dzlog_info("Energymon interface initialized!"));
     IFENERGYMON(IFDEBUG(dzlog_debug("Energymon output: %s", BLFS_ENERGYMON_OUTPUT_PATH)));
@@ -1758,8 +1760,6 @@ buselfs_state_t * buselfs_main_actual(int argc, char * argv[], char * blockdevic
 
     ENERGYMON_INIT_IFENERGYMON;
     ENERGYMON_START_IFENERGYMON;
-
-    buselfs_state->backstore = NULL;
 
     uint8_t  cin_allow_insecure_start       = FALSE;
     uint8_t  cin_use_default_password       = FALSE;
