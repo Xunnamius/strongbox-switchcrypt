@@ -630,13 +630,14 @@ int buse_read(void * output_buffer, uint32_t length, uint64_t absolute_offset, v
     buselfs_state_t * buselfs_state = (buselfs_state_t *) userdata;
     uint_fast32_t size = length;
 
-    IFENERGYMON(
-        Metrics metrics_init_start, metrics_init_end,
-                metrics_read_loop_start, metrics_read_loop_end,
-                metrics_integrity_loop_start, metrics_integrity_loop_end;
+    IFENERGYMON(Metrics metrics_init_start);
+    IFENERGYMON(Metrics metrics_init_end);
+    IFENERGYMON(Metrics metrics_read_loop_start);
+    IFENERGYMON(Metrics metrics_read_loop_end);
+    IFENERGYMON(Metrics metrics_integrity_loop_start);
+    IFENERGYMON(Metrics metrics_integrity_loop_end);
 
-        blfs_energymon_collect_metrics(&metrics_init_start, buselfs_state)
-    );
+    IFENERGYMON(blfs_energymon_collect_metrics(&metrics_init_start, buselfs_state));
 
     IFDEBUG(dzlog_debug("output_buffer (ptr): %p", (void *) output_buffer));
     IFDEBUG(dzlog_debug("buffer (ptr): %p", (void *) buffer));
@@ -881,18 +882,20 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
 {
     IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
 
-    IFENERGYMON(
-        Metrics metrics_init_start, metrics_init_end,
-                metrics_outer_write_loop_start, metrics_outer_write_loop_end,
-                metrics_inner_write_loop_start, metrics_inner_write_loop_end,
-                metrics_rekey_start, metrics_rekey_end;
-
-        blfs_energymon_collect_metrics(&metrics_init_start, buselfs_state)
-    );
+    IFENERGYMON(Metrics metrics_init_start);
+    IFENERGYMON(Metrics metrics_init_end);
+    IFENERGYMON(Metrics metrics_outer_write_loop_start);
+    IFENERGYMON(Metrics metrics_outer_write_loop_end);
+    IFENERGYMON(Metrics metrics_inner_write_loop_start);
+    IFENERGYMON(Metrics metrics_inner_write_loop_end);
+    IFENERGYMON(Metrics metrics_rekey_start);
+    IFENERGYMON(Metrics metrics_rekey_end);
 
     const uint8_t * buffer = (const uint8_t *) input_buffer;
     buselfs_state_t * buselfs_state = (buselfs_state_t *) userdata;
     uint_fast32_t size = length;
+
+    IFENERGYMON(blfs_energymon_collect_metrics(&metrics_init_start, buselfs_state));
 
     IFDEBUG(dzlog_debug("input_buffer (ptr): %p", (void *) input_buffer));
     IFDEBUG(dzlog_debug("buffer (ptr): %p", (void *) buffer));
@@ -1181,7 +1184,7 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
         IFDEBUG(dzlog_debug("nugget_internal_offset: %"PRIuFAST32, nugget_internal_offset));
         IFDEBUG(dzlog_debug("nugget_offset: %"PRIuFAST32, nugget_offset));
 
-        IFENERGYMON(blfs_energymon_collect_metrics(&metrics_inner_write_loop_end, buselfs_state));
+        IFENERGYMON(blfs_energymon_collect_metrics(&metrics_outer_write_loop_end, buselfs_state));
         IFENERGYMON(blfs_energymon_writeout_metrics_simple("buse_write.outer_write_loop",
                                                            &metrics_outer_write_loop_start,
                                                            &metrics_outer_write_loop_end));
