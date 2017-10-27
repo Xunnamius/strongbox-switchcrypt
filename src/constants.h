@@ -5,8 +5,8 @@
 // Configurable //
 //////////////////
 
-#define BLFS_CURRENT_VERSION 277U
-#define BLFS_LEAST_COMPAT_VERSION 277U
+#define BLFS_CURRENT_VERSION 280U
+#define BLFS_LEAST_COMPAT_VERSION 280U
 #define BLFS_TPM_ID 0
 
 #define BLFS_CONFIG_ZLOG "../config/zlog_conf.conf"

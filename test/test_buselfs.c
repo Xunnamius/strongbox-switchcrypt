@@ -1,7 +1,3 @@
-/*
- * @author Bernard Dickens
- */
-
 #include "unity.h"
 #include "buselfs.h"
 #include "merkletree.h"
@@ -163,11 +159,15 @@ static void clear_tj()
 
 static int is_dummy_source()
 {
+    #if BLFS_DEBUG_MONITOR_POWER > 0
     char em_source[16];
     energymon mon;
     energymon_get_default(&mon);
     (void) mon.fsource(em_source, sizeof em_source);
     return !strcmp(em_source, "Dummy Source");
+    #else
+    return 0;
+    #endif
 }
 
 static int is_sudo()
@@ -202,7 +202,7 @@ void tearDown(void)
     close(iofd);
     unlink(BACKSTORE_FILE_PATH);
 }
-/*
+
 // XXX: Also need to test a delete function to fix the memory leak issue discussed in buselfs.h
 void test_adding_and_evicting_from_the_keycache_works_as_expected(void)
 {
@@ -874,7 +874,7 @@ void test_buselfs_main_actual_throws_exception_if_bad_numbers_given_as_args(void
     };
 
     TRY_FN_CATCH_EXCEPTION(buselfs_main_actual(5, argv8, blockdevice));
-}*/
+}
 
 /* Metrics Tests */
 void test_blfs_energymon_init_works_as_expected(void)
@@ -897,7 +897,9 @@ void test_blfs_energymon_init_works_as_expected(void)
         return;
     }
     
+    #if BLFS_DEBUG_MONITOR_POWER > 0
     blfs_energymon_init(buselfs_state);
+    #endif
 }
 
 void test_blfs_energymon_fini_works_as_expected(void)
@@ -920,10 +922,14 @@ void test_blfs_energymon_fini_works_as_expected(void)
         return;
     }
 
+    #if BLFS_DEBUG_MONITOR_POWER > 0
+
     blfs_energymon_init(buselfs_state);
     blfs_energymon_fini(buselfs_state);
     blfs_energymon_init(buselfs_state);
     blfs_energymon_fini(buselfs_state);
+
+    #endif
 }
 
 void test_blfs_energymon_collect_metrics_works_as_expected(void)
@@ -945,6 +951,8 @@ void test_blfs_energymon_collect_metrics_works_as_expected(void)
         TEST_IGNORE_MESSAGE("Test skipped. You must be sudo to run this test.");
         return;
     }
+
+    #if BLFS_DEBUG_MONITOR_POWER > 0
     
     Metrics metrics_start;
     Metrics metrics_end;
@@ -960,6 +968,8 @@ void test_blfs_energymon_collect_metrics_works_as_expected(void)
 
     TEST_ASSERT_TRUE_MESSAGE(metrics_start.time_ns, "metrics_start.time_ns == 0");
     TEST_ASSERT_NOT_EQUAL_MESSAGE(metrics_start.time_ns, metrics_end.time_ns, "metrics_end.time_ns == metrics_start.time_ns");
+
+    #endif
 }
 
 void test_blfs_energymon_writeout_metrics_works_as_expected(void)
@@ -982,6 +992,8 @@ void test_blfs_energymon_writeout_metrics_works_as_expected(void)
         return;
     }
     
+    #if BLFS_DEBUG_MONITOR_POWER > 0
+
     Metrics metrics_read_start  = { .energy_uj = 50000000,  .time_ns = 100000000000 };
     Metrics metrics_read_end    = { .energy_uj = 100000000, .time_ns = 150000000000 };
     Metrics metrics_write_start = { .energy_uj = 200000000, .time_ns = 250000000000 };
@@ -1008,6 +1020,8 @@ void test_blfs_energymon_writeout_metrics_works_as_expected(void)
     blfs_energymon_fini(buselfs_state);
 
     TEST_ASSERT_TRUE_MESSAGE(fsize, "expected a write (fsize == 0)");
+
+    #endif
 }
 
 // XXX: All read and write tests should go below this line!

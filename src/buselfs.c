@@ -1,7 +1,7 @@
 /*
  * Backend virtual block device for any LFS using BUSE
  *
- * @author Bernard Dickens
+ * @author ANON
  */
 
 #include "buselfs.h"
@@ -1806,7 +1806,7 @@ buselfs_state_t * buselfs_main_actual(int argc, char * argv[], char * blockdevic
         Throw(EXCEPTION_ALLOC_FAILURE);
 
     buselfs_state->backstore = NULL;
-    buselfs_state->energymon_monitor = NULL;
+    IFENERGYMON(buselfs_state->energymon_monitor = NULL);
 
     IFENERGYMON(blfs_energymon_init(buselfs_state));
     IFENERGYMON(dzlog_info("Energymon interface initialized!"));

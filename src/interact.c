@@ -1,7 +1,7 @@
 /*
  * <description>
  *
- * @author Bernard Dickens
+ * @author ANON
  */
 
 #include "interact.h"

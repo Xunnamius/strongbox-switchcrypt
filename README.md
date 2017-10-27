@@ -3,6 +3,8 @@
 This is a complete rewrite of the old buselogfs code. This is a Buse + Chacha20 + Poly1305 + LFS encrypted filesystem. It uses Argon2 as its KDF.
 
 (todo: advantages, disadvantages, tradeoffs, etc)
+(Use `make tests` to run all the tests)
+(The ONLY test that works with BLFS_DEBUG_MONITOR_POWER=1 is test_buselfs!)
 
 ## Things to Address
 
@@ -46,7 +48,6 @@ Note that the password for all tests is always **"t"** (no quotes, of course).
 
 ```
 make clean
-make pre
 make check
 ```
 

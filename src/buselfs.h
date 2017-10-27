@@ -72,7 +72,7 @@ typedef struct buselfs_state_t
      */
     char * default_password;
 
-    IFENERGYMON(energymon * energymon_monitor);
+    IFENERGYMON(energymon * energymon_monitor;)
 } buselfs_state_t;
 
 // These are all the external caching functions:
