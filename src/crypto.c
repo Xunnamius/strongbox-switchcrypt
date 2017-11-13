@@ -417,7 +417,8 @@ void blfs_aesctr_crypt(uint8_t * crypted_data,
 
     assert(zero_str_length >= data_length);
 
-    uint8_t * xor_str = calloc(zero_str_length, sizeof(xor_str));
+    // cppcheck-suppress pointerSize
+    uint8_t * xor_str = calloc(zero_str_length, sizeof xor_str);
 
     if(xor_str == NULL)
         Throw(EXCEPTION_ALLOC_FAILURE);

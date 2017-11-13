@@ -52,12 +52,12 @@ static uint32_t previous_percent = 0;
 
 void interact_print_percent_done(uint32_t percent)
 {
-    if(percent <= 0 || ((percent - 1) / 10 == 0 && previous_percent < 10))
+    if(!percent || ((percent - 1) / 10 == 0 && previous_percent < 10))
         printf("\b\b");
     else
         printf("\b\b\b");
 
     previous_percent = percent;
-    printf("%i%%", percent);
+    printf("%ui%%", percent);
     fflush(stdout);
 }

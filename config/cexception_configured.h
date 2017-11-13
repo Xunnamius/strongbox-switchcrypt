@@ -23,7 +23,7 @@ do {                                                                            
     else if(id == EXCEPTION_MUST_HALT)                                                      \
         dzlog_warn("WARN: execution was suddenly halted\n");                                \
     else                                                                                    \
-        dzlog_fatal("Fatal error: program terminated with uncaught exception [0x%x]", id);    \
+        dzlog_fatal("Fatal error: program terminated with uncaught exception [0x%x]", id);  \
     exit(id);                                                                               \
 } while(0)
 
@@ -32,140 +32,140 @@ do {                                                                            
 ////////////////////////
 
 // Not an exception
-#define EXCEPTION_NO_EXCEPTION                  CEXCEPTION_NONE
+#define EXCEPTION_NO_EXCEPTION                          CEXCEPTION_NONE
 
 // Someone tried to walk off an array or something untoward
-#define EXCEPTION_OUT_OF_BOUNDS                 0x02U
+#define EXCEPTION_OUT_OF_BOUNDS                         0x02U
 
 // Malloc/Calloc/Realloc etc went and failed on us
-#define EXCEPTION_ALLOC_FAILURE                 0x03U
+#define EXCEPTION_ALLOC_FAILURE                         0x03U
 
 // A bad dynamic length/size was provided to some function
-#define EXCEPTION_SIZE_T_OUT_OF_BOUNDS          0x04U
+#define EXCEPTION_SIZE_T_OUT_OF_BOUNDS                  0x04U
 
 // Something went wrong with zlog_init
-#define EXCEPTION_ZLOG_INIT_FAILURE             0x05U
+#define EXCEPTION_ZLOG_INIT_FAILURE                     0x05U
 
 // One of our sanity checks failed
-#define EXCEPTION_ASSERT_FAILURE                0x06U
+#define EXCEPTION_ASSERT_FAILURE                        0x06U
 
 // One of our sanity checks failed
-#define EXCEPTION_OUT_OF_MEMORY                 0x07U
+#define EXCEPTION_OUT_OF_MEMORY                         0x07U
 
 // Sodium failed to initialize
-#define EXCEPTION_SODIUM_INIT_FAILURE           0x08U
+#define EXCEPTION_SODIUM_INIT_FAILURE                   0x08U
 
 // Chacha20 returned something unexpected
-#define EXCEPTION_CHACHA20_BAD_RETVAL           0x09U
+#define EXCEPTION_CHACHA20_BAD_RETVAL                   0x09U
 
 // Bad flake size encountered
-#define EXCEPTION_INVALID_FLAKESIZE             0x0AU
+#define EXCEPTION_INVALID_FLAKESIZE                     0x0AU
 
 // Bad flake size encountered
-#define EXCEPTION_INVALID_BACKSTORESIZE         0x16U
+#define EXCEPTION_INVALID_BACKSTORESIZE                 0x16U
 
 // Bad flakes/nugget value encountered
-#define EXCEPTION_INVALID_FLAKES_PER_NUGGET     0x0BU
+#define EXCEPTION_INVALID_FLAKES_PER_NUGGET             0x0BU
 
 // Too many flakes per nugget were specified
-#define EXCEPTION_TOO_MANY_FLAKES_PER_NUGGET    0x0CU
+#define EXCEPTION_TOO_MANY_FLAKES_PER_NUGGET            0x0CU
 
 // We failed to open something, probably a file descriptor
-#define EXCEPTION_OPEN_FAILURE                  0x0DU
+#define EXCEPTION_OPEN_FAILURE                          0x0DU
 
 // Bad header type
-#define EXCEPTION_BAD_HEADER_TYPE               0x0EU
+#define EXCEPTION_BAD_HEADER_TYPE                       0x0EU
 
 // A file already exists in the location at which we want to make something new
-#define EXCEPTION_FILE_ALREADY_EXISTS           0x0FU
+#define EXCEPTION_FILE_ALREADY_EXISTS                   0x0FU
 
 // A file we're looking for does not exist at the path specified
-#define EXCEPTION_FILE_DOES_NOT_EXIST           0x10U
+#define EXCEPTION_FILE_DOES_NOT_EXIST                   0x10U
 
 // Tried to open a backstore that is corrupted or otherwise not properly formatted
-#define EXCEPTION_BACKSTORE_NOT_INITIALIZED     0x11U
+#define EXCEPTION_BACKSTORE_NOT_INITIALIZED             0x11U
 
 // The backstore you're trying to load is too old. Make a new one
-#define EXCEPTION_INCOMPAT_BACKSTORE_VERSION    0x12U
+#define EXCEPTION_INCOMPAT_BACKSTORE_VERSION            0x12U
 
 // An invalid operation (probably cache-related) was attempted
-#define EXCEPTION_INVALID_OPERATION             0x13U
+#define EXCEPTION_INVALID_OPERATION                     0x13U
 
 // The backstore size provided is WAY too small!
-#define EXCEPTION_BACKSTORE_SIZE_TOO_SMALL      0x14U
+#define EXCEPTION_BACKSTORE_SIZE_TOO_SMALL              0x14U
 
 // The options passed were not formatted properly, or some required options were missing
-#define EXCEPTION_BAD_ARGUMENT_FORM             0x15U
+#define EXCEPTION_BAD_ARGUMENT_FORM                     0x15U
 
 // New password verification step (during create, not open/wipe) failure
-#define EXCEPTION_PASSWORD_MISMATCH             0x17U
+#define EXCEPTION_PASSWORD_MISMATCH                     0x17U
 
 // Bad mode command specified during startup
-#define EXCEPTION_UNKNOWN_MODE                  0x01U
+#define EXCEPTION_UNKNOWN_MODE                          0x01U
 
 // Something went wrong while trying to grab the merkle tree root hash
-#define EXCEPTION_MERKLE_TREE_ROOT_FAILURE      0x18U
+#define EXCEPTION_MERKLE_TREE_ROOT_FAILURE              0x18U
 
 // Something went wrong while trying to add a node to the merkle tree
-#define EXCEPTION_MERKLE_TREE_ADD_FAILURE       0x19U // probably a hash length issue
+#define EXCEPTION_MERKLE_TREE_ADD_FAILURE               0x19U // probably a hash length issue
 
 // Something went wrong while trying to update a node in the merkle tree
-#define EXCEPTION_MERKLE_TREE_UPDATE_FAILURE    0x1AU
+#define EXCEPTION_MERKLE_TREE_UPDATE_FAILURE            0x1AU
 
 // Something went wrong while trying to verify a node in the merkle tree
-#define EXCEPTION_MERKLE_TREE_VERIFY_FAILURE    0x1BU
+#define EXCEPTION_MERKLE_TREE_VERIFY_FAILURE            0x1BU
 
 // Something went wrong with TPM verification/bad id
-#define EXCEPTION_TPM_VERSION_CHECK_FAILURE     0x1CU
+#define EXCEPTION_TPM_VERSION_CHECK_FAILURE             0x1CU
 
 // You entered the wrong password
-#define EXCEPTION_BAD_PASSWORD                  0x1DU
+#define EXCEPTION_BAD_PASSWORD                          0x1DU
 
 // You entered the wrong password
-#define EXCEPTION_INTEGRITY_FAILURE             0x1EU
+#define EXCEPTION_INTEGRITY_FAILURE                     0x1EU
 
 // A condition has occurred that has forced the software to exit immediately
-#define EXCEPTION_MUST_HALT                     0x1FU
+#define EXCEPTION_MUST_HALT                             0x1FU
 
 // This error only happens when BLFS_DEBUG_LEVEL > 0; bad read/write offset/len
-#define EXCEPTION_DEBUGGING_OVERFLOW            0x20U
-#define EXCEPTION_DEBUGGING_UNDERFLOW           0x21U
+#define EXCEPTION_DEBUGGING_OVERFLOW                    0x20U
+#define EXCEPTION_DEBUGGING_UNDERFLOW                   0x21U
 
 // Why you call cache function when cache disabled?!?!
-#define EXCEPTION_BAD_CACHE                     0x22U
+#define EXCEPTION_BAD_CACHE                             0x22U
 
 // Why you call aes-xts function when aes-xts disabled?!?!
-#define EXCEPTION_BAD_AESXTS                    0x23U
+#define EXCEPTION_BAD_AESXTS                            0x23U
 
 // OpenSSL returned something unexpected
-#define EXCEPTION_AESXTS_BAD_RETVAL             0x24U
+#define EXCEPTION_AESXTS_BAD_RETVAL                     0x24U
 
 // OpenSSL AES-XTS requires minimum data size of 16 bytes (cipher core req)
-#define EXCEPTION_AESXTS_DATA_LENGTH_TOO_SMALL  0x25U
+#define EXCEPTION_AESXTS_DATA_LENGTH_TOO_SMALL          0x25U
 
 // OpenSSL AES-CTR is not amused by your antics
-#define EXCEPTION_AESCTR_BAD_RETVAL             0x26U
+#define EXCEPTION_AESCTR_BAD_RETVAL                     0x26U
 
 // Why you call aes-ctr function when aes-ctr disabled?!?!
-#define EXCEPTION_BAD_AESCTR                    0x27U
+#define EXCEPTION_BAD_AESCTR                            0x27U
 
 // Must be root to run this program with this configuration
-#define EXCEPTION_MUST_BE_ROOT                  0x28U
+#define EXCEPTION_MUST_BE_ROOT                          0x28U
 
 // TODO
-#define EXCEPTION_ENERGYMON_GET_DEFAULT_FAILURE 0x29U
+#define EXCEPTION_ENERGYMON_GET_DEFAULT_FAILURE         0x29U
 
 // TODO
-#define EXCEPTION_ENERGYMON_FINIT_FAILURE       0x2AU
+#define EXCEPTION_ENERGYMON_FINIT_FAILURE               0x2AU
 
 // TODO
 #define EXCEPTION_ENERGYMON_METRIC_COLLECTION_FAILURE   0x2BU
 
 // TODO
-#define EXCEPTION_ENERGYMON_ALREADY_INITED      0x2CU
+#define EXCEPTION_ENERGYMON_ALREADY_INITED              0x2CU
 
 // TODO
-#define EXCEPTION_ENERGYMON_FFINISH_FAILURE     0x2DU
+#define EXCEPTION_ENERGYMON_FFINISH_FAILURE             0x2DU
 
 ///////////////////////
 // End Configuration //

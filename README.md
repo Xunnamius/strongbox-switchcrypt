@@ -48,6 +48,7 @@ Note that the password for all tests is always **"t"** (no quotes, of course).
 
 ```
 make clean
+make pre
 make check
 ```
 

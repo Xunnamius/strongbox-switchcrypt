@@ -1974,13 +1974,13 @@ buselfs_state_t * buselfs_main_actual(int argc, char * argv[], char * blockdevic
 
     errno = 0;
 
-    if(cin_backstore_size > UINT_MAX || cin_backstore_size <= 0)
+    if(!cin_backstore_size || cin_backstore_size > UINT_MAX)
         Throw(EXCEPTION_INVALID_BACKSTORESIZE);
 
-    if(cin_flake_size > UINT_MAX || cin_flake_size <= 0)
+    if(!cin_flake_size || cin_flake_size > UINT_MAX)
         Throw(EXCEPTION_INVALID_FLAKESIZE);
 
-    if(cin_flakes_per_nugget > UINT_MAX || cin_flakes_per_nugget <= 0)
+    if(!cin_flakes_per_nugget || cin_flakes_per_nugget > UINT_MAX)
         Throw(EXCEPTION_INVALID_FLAKES_PER_NUGGET);
 
     /* Prepare to setup the backstore file */
