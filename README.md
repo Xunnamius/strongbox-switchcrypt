@@ -18,7 +18,7 @@ This is a complete rewrite of the old buselogfs code. This is a Buse + Chacha20 
 - [make]()
 - [gcc]() (sorry, I'm using some GCC extensions to make life easier)
 - [ruby]() (if you're going to be running the tests)
-- [OpenSSL]() (if you're going to be running AES-XTS emulation mode; no flake sizes less than 16 bytes!)
+- [OpenSSL]() (provides swappable algorithm base)
 - std=c11
 
 ## Usage

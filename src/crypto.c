@@ -9,6 +9,7 @@
 #include <assert.h>
 #include <string.h>
 #include <inttypes.h>
+// TODO: make sure things work without OpenSSL and other similar deps when apropos flags are false
 #include "openssl/aes.h"
 
 void blfs_password_to_secret(uint8_t * secret, const char * passwd, uint32_t passwd_length, const uint8_t * salt)
