@@ -191,7 +191,7 @@ void blfs_aesxts_encrypt(uint8_t * encrypted_data,
     if(!BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
         Throw(EXCEPTION_BAD_AESXTS);
 
-    if(data_length < BLFS_CRYPTO_BYTES_AES_DATA_MIN)
+    if(data_length < BLFS_CRYPTO_BYTES_AESXTS_DATA_MIN)
         Throw(EXCEPTION_AESXTS_DATA_LENGTH_TOO_SMALL);
 
     uint8_t doublekey[BLFS_CRYPTO_BYTES_AESXTS_KEY];
@@ -259,7 +259,7 @@ void blfs_aesxts_decrypt(uint8_t * plaintext_data,
     if(!BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
         Throw(EXCEPTION_BAD_AESXTS);
 
-    if(data_length < BLFS_CRYPTO_BYTES_AES_DATA_MIN)
+    if(data_length < BLFS_CRYPTO_BYTES_AESXTS_DATA_MIN)
         Throw(EXCEPTION_AESXTS_DATA_LENGTH_TOO_SMALL);
 
     uint8_t doublekey[BLFS_CRYPTO_BYTES_AESXTS_KEY];

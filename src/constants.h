@@ -127,10 +127,13 @@ __extension__ ({ \
 
 #define BLFS_CRYPTO_BYTES_AESXTS_KEY            64U // OpenSSL AES-XTS 256-bit requires 64-bit keys (2 32-bit AES keys) 
 #define BLFS_CRYPTO_BYTES_AESXTS_TWEAK          16U // OpenSSL AES-XTS 256-bit requires 16-bit IV
-#define BLFS_CRYPTO_BYTES_AES_DATA_MIN          16U // XXX: OpenSSL AES-XTS 256-bit will CHOKE AND DIE!!! if passed less
-#define BLFS_CRYPTO_BYTES_AES_BLOCK             16U // AES works with 16-byte blocks
-#define BLFS_CRYPTO_BYTES_AES_KEY               16U // crypto_stream_aes128ctr_KEYBYTES
-#define BLFS_CRYPTO_BYTES_AES_IV                16U // We use AES-128 in ECB mode with 16 byte "IV"
+#define BLFS_CRYPTO_BYTES_AESXTS_DATA_MIN       16U // XXX: OpenSSL AES-XTS 256-bit will CHOKE AND DIE!!! if passed less
+#define BLFS_CRYPTO_BYTES_AES128_BLOCK          16U // OpenSSL AES-128 works with 16-byte blocks
+#define BLFS_CRYPTO_BYTES_AES128_KEY            16U // AES 128 key size
+#define BLFS_CRYPTO_BYTES_AES128_IV             16U // We use AES-128 in ECB mode with 16 byte "IV"
+#define BLFS_CRYPTO_BYTES_AES256_BLOCK          16U // OpenSSL AES-256 works with 16-byte blocks
+#define BLFS_CRYPTO_BYTES_AES256_KEY            32U // AES 256 key size
+#define BLFS_CRYPTO_BYTES_AES256_IV             32U // We use AES-256 in ECB mode with 32 byte "IV"
 #define BLFS_CRYPTO_BYTES_CHACHA_BLOCK          64U // chacha outputs randomly accessible 512-bit (64-byte) blocks
 #define BLFS_CRYPTO_BYTES_CHACHA_KEY            32U // crypto_stream_chacha20_KEYBYTES
 #define BLFS_CRYPTO_BYTES_CHACHA_NONCE          8U  // crypto_stream_chacha20_NONCEBYTES

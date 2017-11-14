@@ -6,6 +6,7 @@
 
 static stream_cipher_e test_these_ciphers[] = {
     sc_chacha20,
+    sc_aes128_ctr,
     sc_aes256_ctr,
 };
 
@@ -59,7 +60,7 @@ void test_algos_crypt_properly(void)
         uint64_t kcs_keycount = 10242048;
         uint64_t nugget_internal_offset = 64;
 
-        uint8_t nugget_key[BLFS_CRYPTO_BYTES_AES_KEY] = {
+        uint8_t nugget_key[BLFS_CRYPTO_BYTES_AES256_KEY] = {
             0xd9, 0x76, 0xff, 0x4c, 0xd9, 0xaa, 0x1, 0xea,
             0xa5, 0xad, 0xdc, 0x68, 0xcf, 0xe1, 0x8f, 0xc1
         };
@@ -101,7 +102,7 @@ void test_algos_BIGLY(void)
         uint64_t kcs_keycount = 123456789101112;
         uint64_t nugget_internal_offset = 72;
 
-        uint8_t nugget_key[BLFS_CRYPTO_BYTES_AES_KEY] = {
+        uint8_t nugget_key[BLFS_CRYPTO_BYTES_AES256_KEY] = {
             0xd9, 0x76, 0xff, 0x4c, 0xd9, 0xaa, 0x1, 0xea,
             0xa5, 0xad, 0xdc, 0x68, 0xcf, 0xe1, 0x8f, 0xc1
         };

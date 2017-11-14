@@ -31,9 +31,8 @@ typedef struct sc_context_t {
                         uint64_t,
                         uint64_t,
                         uint64_t,
-                        unsigned char *,
-                        unsigned char *,
-                        unsigned char *);
+                        uint8_t *,
+                        uint8_t *);
 } sc_context_t;
 
 /**
@@ -55,7 +54,7 @@ static void generic_sc_impl(sc_context_t * sc_context)
     IFDEBUG(dzlog_debug("data in: (first 64 bytes):"));
     IFDEBUG(hdzlog_debug(sc_context->data, MIN(64U, sc_context->data_length)));
 
-    unsigned char * kcs_keycount_ptr = (unsigned char *) &sc_context->kcs_keycount;
+    uint8_t * kcs_keycount_ptr = (uint8_t *) &sc_context->kcs_keycount;
 
     IFDEBUG(dzlog_debug(sc_context->output_name));
     IFDEBUG(dzlog_debug("keycount = %"PRIu64, sc_context->kcs_keycount));
@@ -73,10 +72,9 @@ static void generic_sc_impl(sc_context_t * sc_context)
 
     assert(zero_str_length >= sc_context->data_length);
 
-    unsigned char * zero_str = calloc(zero_str_length, sizeof(*zero_str));
-    unsigned char * xor_str  = calloc(zero_str_length, sizeof(*xor_str));
+    uint8_t * xor_str  = calloc(zero_str_length, sizeof(*xor_str));
 
-    if(zero_str == NULL || xor_str == NULL)
+    if(xor_str == NULL)
         Throw(EXCEPTION_ALLOC_FAILURE);
 
     IFDEBUG(dzlog_debug(">>>> entering LAMBDA function"));
@@ -88,7 +86,6 @@ static void generic_sc_impl(sc_context_t * sc_context)
                             zero_str_length,
                             block_read_upper_bound,
                             kcs_keycount_ptr,
-                            zero_str,
                             xor_str);
 
     IFDEBUG(dzlog_debug("<<<< leaving LAMBDA function"));
@@ -102,8 +99,83 @@ static void generic_sc_impl(sc_context_t * sc_context)
     IFDEBUG(dzlog_debug("crypted data out: (first 64 bytes):"));
     IFDEBUG(hdzlog_debug(sc_context->crypted_data, MIN(64U, sc_context->data_length)));
 
-    free(zero_str);
     free(xor_str);
+
+    IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
+}
+
+/**
+ * This is a generic implementation of using the AES block cipher in CTR mode to
+ * crypt some amount of data. Makes adding new AES-based algo versions much
+ * easier!
+ *
+ * @param sc_context
+ */
+static void generic_sc_aes_impl(const char * output_name,
+                                uint64_t output_size_bytes,
+                                uint64_t key_size_bytes,
+                                uint64_t iv_size_bytes,
+                                uint8_t * crypted_data,
+                                const uint8_t * data,
+                                uint32_t data_length,
+                                const uint8_t * nugget_key,
+                                uint64_t kcs_keycount,
+                                uint64_t nugget_internal_offset)
+{
+    IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
+
+    sc_context_t sc_context = {
+        .output_name = output_name,
+        .output_size_bytes = output_size_bytes,
+        .crypted_data = crypted_data,
+        .data = data,
+        .data_length = data_length,
+        .nugget_key = nugget_key,
+        .kcs_keycount = kcs_keycount,
+        .nugget_internal_offset = nugget_internal_offset,
+        .data_handle = LAMBDA(void,
+            (void * context,
+             uint64_t interblock_offset,
+             uint64_t intrablock_offset,
+             uint64_t num_blocks,
+             uint64_t zero_str_length,
+             uint64_t block_read_upper_bound,
+             uint8_t * kcs_keycount_ptr,
+             uint8_t * xor_str)
+            {
+                (void) intrablock_offset;
+                (void) block_read_upper_bound;
+                (void) zero_str_length;
+                (void) kcs_keycount_ptr;
+
+                sc_context_t * sc_context = (sc_context_t *) context;
+
+                uint64_t counter = interblock_offset;
+                uint8_t stream_nonce[iv_size_bytes];
+
+                memset(stream_nonce, 0, sizeof(stream_nonce));
+
+                assert(sizeof(sc_context->kcs_keycount) + sizeof(counter) <= sizeof(stream_nonce));
+                memcpy(stream_nonce, (uint8_t *) &(sc_context->kcs_keycount), sizeof(sc_context->kcs_keycount));
+
+                for(uint64_t i = 0; i < num_blocks; i++, counter++)
+                {
+                    AES_KEY aes_key;
+
+                    uint8_t raw_key[key_size_bytes];
+                    uint8_t * xor_str_ptr = xor_str + (i * sizeof(stream_nonce));
+
+                    memcpy(stream_nonce + sizeof(sc_context->kcs_keycount), (uint8_t *) &counter, sizeof(counter));
+                    memcpy(raw_key, sc_context->nugget_key, sizeof(raw_key)); // XXX: cutting off the key, bad bad not good! Need key schedule!
+
+                    AES_set_encrypt_key((const uint8_t *) raw_key, (int)(key_size_bytes * 8), &aes_key);
+                    AES_encrypt(stream_nonce, xor_str_ptr, &aes_key);
+                }
+            }
+        ),
+    };
+
+    generic_sc_impl(&sc_context);
 
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 }
@@ -114,7 +186,7 @@ static void generic_sc_impl(sc_context_t * sc_context)
  * Accepts a byte array of data of length data_length and yields crypted_data of
  * the same length via the result of XOR-ing the output of some stream cipher
  * run with the provided secret (nugget_key), likely using kcs_keycount as a
- * none, and initial block count (also could be the nonce; calculated from
+ * nonce, and initial block count (also could be the nonce; calculated from
  * nugget_internal_offset).
  *
  * This function should be called within a per-nugget (conceptual) context.
@@ -156,13 +228,17 @@ static void sc_impl_chacha20(uint8_t * crypted_data,
              uint64_t num_blocks,
              uint64_t zero_str_length,
              uint64_t block_read_upper_bound,
-             unsigned char * kcs_keycount_ptr,
-             unsigned char * zero_str,
-             unsigned char * xor_str)
+             uint8_t * kcs_keycount_ptr,
+             uint8_t * xor_str)
             {
                 (void) intrablock_offset;
                 (void) num_blocks;
                 (void) block_read_upper_bound;
+
+                uint8_t * zero_str = calloc(zero_str_length, sizeof(*zero_str));
+
+                if(zero_str == NULL)
+                    Throw(EXCEPTION_ALLOC_FAILURE);
 
                 sc_context_t * sc_context = (sc_context_t *) context;
 
@@ -176,11 +252,36 @@ static void sc_impl_chacha20(uint8_t * crypted_data,
                 {
                     Throw(EXCEPTION_CHACHA20_BAD_RETVAL);
                 }
+
+                free(zero_str);
             }
         ),
     };
 
     generic_sc_impl(&sc_context);
+
+    IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
+}
+
+static void sc_impl_aes128_ctr(uint8_t * crypted_data,
+                               const uint8_t * data,
+                               uint32_t data_length,
+                               const uint8_t * nugget_key,
+                               uint64_t kcs_keycount,
+                               uint64_t nugget_internal_offset)
+{
+    IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
+
+    generic_sc_aes_impl("sc_aes128_ctr",
+                        BLFS_CRYPTO_BYTES_AES128_BLOCK,
+                        BLFS_CRYPTO_BYTES_AES128_KEY,
+                        BLFS_CRYPTO_BYTES_AES128_IV,
+                        crypted_data,
+                        data,
+                        data_length,
+                        nugget_key,
+                        kcs_keycount,
+                        nugget_internal_offset);
 
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 }
@@ -194,58 +295,16 @@ static void sc_impl_aes256_ctr(uint8_t * crypted_data,
 {
     IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
 
-    sc_context_t sc_context = {
-        .output_name = "sc_aes256_ctr",
-        .output_size_bytes = BLFS_CRYPTO_BYTES_AES_BLOCK,
-        .crypted_data = crypted_data,
-        .data = data,
-        .data_length = data_length,
-        .nugget_key = nugget_key,
-        .kcs_keycount = kcs_keycount,
-        .nugget_internal_offset = nugget_internal_offset,
-        .data_handle = LAMBDA(void,
-            (void * context,
-             uint64_t interblock_offset,
-             uint64_t intrablock_offset,
-             uint64_t num_blocks,
-             uint64_t zero_str_length,
-             uint64_t block_read_upper_bound,
-             unsigned char * kcs_keycount_ptr,
-             unsigned char * zero_str,
-             unsigned char * xor_str)
-            {
-                (void) intrablock_offset;
-                (void) block_read_upper_bound;
-                (void) zero_str_length;
-                (void) kcs_keycount_ptr;
-                (void) zero_str;
-
-                sc_context_t * sc_context = (sc_context_t *) context;
-
-                uint64_t counter = interblock_offset;
-                uint8_t stream_nonce[BLFS_CRYPTO_BYTES_AES_BLOCK] = { 0x00 };
-
-                assert(sizeof(sc_context->kcs_keycount) + sizeof(counter) == BLFS_CRYPTO_BYTES_AES_IV);
-                memcpy(stream_nonce, (uint8_t *) &(sc_context->kcs_keycount), sizeof(sc_context->kcs_keycount));
-
-                for(uint64_t i = 0; i < num_blocks; i++, counter++)
-                {
-                    AES_KEY aes_key;
-
-                    uint8_t raw_key[BLFS_CRYPTO_BYTES_AES_KEY] = { 0x00 };
-                    uint8_t * xor_str_ptr = xor_str + (i * sizeof(stream_nonce));
-
-                    memcpy(stream_nonce + sizeof(sc_context->kcs_keycount), (uint8_t *) &counter, sizeof(counter));
-                    memcpy(raw_key, sc_context->nugget_key, sizeof(raw_key)); // XXX: cutting off the key, bad bad not good! Need key schedule!
-
-                    AES_set_encrypt_key((const uint8_t *) raw_key, 128, &aes_key);
-                    AES_encrypt(stream_nonce, xor_str_ptr, &aes_key);
-                }
-            }
-        ),
-    };
-
-    generic_sc_impl(&sc_context);
+    generic_sc_aes_impl("sc_aes256_ctr",
+                        BLFS_CRYPTO_BYTES_AES256_BLOCK,
+                        BLFS_CRYPTO_BYTES_AES256_KEY,
+                        BLFS_CRYPTO_BYTES_AES256_IV,
+                        crypted_data,
+                        data,
+                        data_length,
+                        nugget_key,
+                        kcs_keycount,
+                        nugget_internal_offset);
 
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 }
@@ -268,23 +327,34 @@ stream_crypt_common blfs_to_stream_context(stream_cipher_e stream_cipher)
             break;
         }
 
+        case sc_aes128_ctr:
+        {
+            fn = &sc_impl_aes128_ctr;
+            break;
+        }
+
         case sc_aes256_ctr:
         {
             fn = &sc_impl_aes256_ctr;
             break;
         }
 
-        case sc_aes128_ctr:
+        case sc_salsa8:
         /*{
             break;
         }*/
 
-        case sc_hc128:
+        case sc_salsa12:
         /*{
             break;
         }*/
 
         case sc_salsa20:
+        /*{
+            break;
+        }*/
+
+        case sc_hc128:
         /*{
             break;
         }*/

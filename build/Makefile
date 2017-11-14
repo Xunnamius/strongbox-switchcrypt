@@ -20,6 +20,7 @@ UNITY_ROOT		:= $(VENDR_ROOT)/unity
 CMOCK_ROOT		:= $(VENDR_ROOT)/cmock
 MT_ROOT     	:= $(VENDR_ROOT)/merkle-tree
 ENERGYMON_ROOT  := $(VENDR_ROOT)/energymon
+ESTREAM_ROOT    := $(VENDR_ROOT)/libestream
 
 # Buselfs internal debug level
 # XXX: Set to 0 when not debugging or suffer the (perf-related) consequences!
@@ -39,6 +40,7 @@ EXECSRC	:= $(SRC_ROOT)/main.c
 
 # These should typically be in VENDR_ROOT, though they don't have to be
 STATIC_LIBS := $(VENDR_ROOT)/merkle-tree/src/libMerkleTree.a \
+			   $(ESTREAM_ROOT)/libestream.a \
 			   $(ENERGYMON_ROOT)/src/energymon-time-util.c \
 			   $(ENERGYMON_ROOT)/src/ptime/ptime.c
 
@@ -65,7 +67,8 @@ IFLAGS		:= -I/usr/local/include \
 			   -I$(UNITY_ROOT)/src \
 			   -I$(CMOCK_ROOT)/src \
 			   -I$(MT_ROOT)/src \
-			   -I$(ENERGYMON_ROOT)/src
+			   -I$(ENERGYMON_ROOT)/src \
+			   -I$(ESTREAM_ROOT)
 
 LDFLAGS		:= -L$(VENDR_ROOT) -L/usr/local/lib \
 			   -lsodium -lzlog -lpthread -lm -lcrypto -lenergymon-default
@@ -83,7 +86,7 @@ HDRS_TO_MOCK := io
 
 # Scarecrows (empty targets)
 # aes.o metrics.o: ;
-SCARECROWS := aes.o metrics.o
+SCARECROWS := aes.o
 
 ########################
 # Pre-processing Setup #
@@ -216,6 +219,8 @@ vendor: $(VENDR_FILES)
 	$(MAKE) clean -C ../vendor/merkle-tree
 	$(MAKE) release -C ../vendor/merkle-tree
 #	$(MAKE) debug -C ../vendor/merkle-tree
+	$(MAKE) clean -C ../vendor/libestream
+	$(MAKE) libestream.a -C ../vendor/libestream
 
 src: $(SRC_FILES)
 
