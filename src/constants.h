@@ -120,6 +120,9 @@ __extension__ ({ \
                  __fn__; \
                })
 
+// XXX: Only works for stack initialized arrays!
+#define COUNT(x) __extension__ ({ (sizeof(x) / sizeof((x)[0])); })
+
 ////////////
 // Crypto //
 ////////////

@@ -127,7 +127,7 @@ do {                                                                            
 // A condition has occurred that has forced the software to exit immediately
 #define EXCEPTION_MUST_HALT                             0x1FU
 
-// This error only happens when BLFS_DEBUG_LEVEL > 0; bad read/write offset/len
+// These errors only happen when BLFS_DEBUG_LEVEL > 0; bad read/write offset/len
 #define EXCEPTION_DEBUGGING_OVERFLOW                    0x20U
 #define EXCEPTION_DEBUGGING_UNDERFLOW                   0x21U
 
@@ -152,19 +152,19 @@ do {                                                                            
 // Must be root to run this program with this configuration
 #define EXCEPTION_MUST_BE_ROOT                          0x28U
 
-// TODO
+// Energymon subsystem failed to retrieve its default context
 #define EXCEPTION_ENERGYMON_GET_DEFAULT_FAILURE         0x29U
 
-// TODO
+// Energymon subsystem failed on finit
 #define EXCEPTION_ENERGYMON_FINIT_FAILURE               0x2AU
 
-// TODO
+// Energymon subsystem failed during metric collection
 #define EXCEPTION_ENERGYMON_METRIC_COLLECTION_FAILURE   0x2BU
 
-// TODO
+// Someone attempted to re-init the Energymon subsystem (not allowed)
 #define EXCEPTION_ENERGYMON_ALREADY_INITED              0x2CU
 
-// TODO
+// Energymon subsystem failed on ffinish
 #define EXCEPTION_ENERGYMON_FFINISH_FAILURE             0x2DU
 
 // The requested stream cipher algorithm is not yet implemented
