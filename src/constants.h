@@ -45,15 +45,13 @@
 typedef enum stream_cipher_e {
     sc_default,
     sc_not_impl,
-    sc_chacha8,
-    sc_chacha12,
     sc_chacha20,
     sc_salsa8,
     sc_salsa12,
     sc_salsa20,
     sc_aes128_ctr,
     sc_aes256_ctr,
-    sc_aes512_ctr,
+    sc_hc128,
     sc_rabbit,
     sc_sosemanuk,
 } stream_cipher_e;
