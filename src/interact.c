@@ -58,6 +58,6 @@ void interact_print_percent_done(uint32_t percent)
         printf("\b\b\b");
 
     previous_percent = percent;
-    printf("%ui%%", percent);
+    printf("%i%%", (int) percent);
     fflush(stdout);
 }
