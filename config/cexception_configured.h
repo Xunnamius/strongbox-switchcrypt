@@ -167,6 +167,12 @@ do {                                                                            
 // TODO
 #define EXCEPTION_ENERGYMON_FFINISH_FAILURE             0x2DU
 
+// The requested stream cipher algorithm is not yet implemented
+#define EXCEPTION_SC_ALGO_NO_IMPL                       0x2EU
+
+// The requested stream cipher algorithm does not exist
+#define EXCEPTION_SC_ALGO_NOT_FOUND                     0x2FU
+
 ///////////////////////
 // End Configuration //
 ///////////////////////

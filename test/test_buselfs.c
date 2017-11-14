@@ -1,5 +1,6 @@
 #include "unity.h"
 #include "buselfs.h"
+#include "swappable.h"
 #include "merkletree.h"
 #include "mt_err.h"
 #include "khash.h"
@@ -127,6 +128,8 @@ static void make_fake_state()
     buselfs_state->cache_nugget_keys            = kh_init(BLFS_KHASH_NUGGET_KEY_CACHE_NAME);
     buselfs_state->merkle_tree                  = mt_create();
     buselfs_state->default_password             = BLFS_DEFAULT_PASS;
+
+    blfs_set_stream_context(buselfs_state, sc_default);
 
     iofd = open(BACKSTORE_FILE_PATH, O_CREAT | O_RDWR | O_TRUNC, 0777);
 
@@ -954,8 +957,8 @@ void test_blfs_energymon_collect_metrics_works_as_expected(void)
 
     #if BLFS_DEBUG_MONITOR_POWER > 0
     
-    Metrics metrics_start;
-    Metrics metrics_end;
+    metrics_t metrics_start;
+    metrics_t metrics_end;
 
     blfs_energymon_init(buselfs_state);
     blfs_energymon_collect_metrics(&metrics_start, buselfs_state);
@@ -994,10 +997,10 @@ void test_blfs_energymon_writeout_metrics_works_as_expected(void)
     
     #if BLFS_DEBUG_MONITOR_POWER > 0
 
-    Metrics metrics_read_start  = { .energy_uj = 50000000,  .time_ns = 100000000000 };
-    Metrics metrics_read_end    = { .energy_uj = 100000000, .time_ns = 150000000000 };
-    Metrics metrics_write_start = { .energy_uj = 200000000, .time_ns = 250000000000 };
-    Metrics metrics_write_end   = { .energy_uj = 400000000, .time_ns = 450000000000 };
+    metrics_t metrics_read_start  = { .energy_uj = 50000000,  .time_ns = 100000000000 };
+    metrics_t metrics_read_end    = { .energy_uj = 100000000, .time_ns = 150000000000 };
+    metrics_t metrics_write_start = { .energy_uj = 200000000, .time_ns = 250000000000 };
+    metrics_t metrics_write_end   = { .energy_uj = 400000000, .time_ns = 450000000000 };
 
     FILE * metrics_output_fd = fopen(BLFS_ENERGYMON_OUTPUT_PATH, "w+");
     long fsize = 0;
@@ -1028,7 +1031,7 @@ void test_blfs_energymon_writeout_metrics_works_as_expected(void)
 
 void test_buse_read_works_as_expected(void)
 {
-    if(BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION || BLFS_BADBADNOTGOOD_USE_AESCTR_EMULATION)
+    if(BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
     {
         TEST_IGNORE_MESSAGE("BLFS_BADBADNOTGOOD_USE_AES*_EMULATION is in effect. All non-AES-XTS emulation tests will be ignored!");
         return;

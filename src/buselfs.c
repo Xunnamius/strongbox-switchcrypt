@@ -7,6 +7,7 @@
 #include "buselfs.h"
 #include "bitmask.h"
 #include "interact.h"
+#include "swappable.h"
 #include "buse.h"
 #include "mt_err.h"
 
@@ -65,7 +66,7 @@ void blfs_energymon_init(buselfs_state_t * buselfs_state)
     }
 }
 
-void blfs_energymon_collect_metrics(Metrics * metrics, buselfs_state_t * buselfs_state)
+void blfs_energymon_collect_metrics(metrics_t * metrics, buselfs_state_t * buselfs_state)
 {
     // Grab the initial energy use and time
     errno = 0;
@@ -83,10 +84,10 @@ void blfs_energymon_collect_metrics(Metrics * metrics, buselfs_state_t * buselfs
 
 // TODO: document/comment these!
 void blfs_energymon_writeout_metrics(char * tag,
-                                     Metrics * read_metrics_start,
-                                     Metrics * read_metrics_end,
-                                     Metrics * write_metrics_start,
-                                     Metrics * write_metrics_end)
+                                     metrics_t * read_metrics_start,
+                                     metrics_t * read_metrics_end,
+                                     metrics_t * write_metrics_start,
+                                     metrics_t * write_metrics_end)
 {
     // Crunch the results
     double tr_energy = read_metrics_end->energy_uj - read_metrics_start->energy_uj;
@@ -137,7 +138,7 @@ void blfs_energymon_writeout_metrics(char * tag,
     fflush(metrics_output_fd);
 }
 
-void blfs_energymon_writeout_metrics_simple(char * tag, Metrics * metrics_start, Metrics * metrics_end)
+void blfs_energymon_writeout_metrics_simple(char * tag, metrics_t * metrics_start, metrics_t * metrics_end)
 {
     blfs_energymon_writeout_metrics(tag, metrics_start, metrics_end, NULL, NULL);
 }
@@ -163,10 +164,6 @@ void blfs_energymon_fini(buselfs_state_t * buselfs_state)
 
 #if BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION && BLFS_NO_READ_INTEGRITY
 #error "The BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION and BLFS_NO_READ_INTEGRITY compile flags CANNOT be used together!"
-#endif
-
-#if BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION && BLFS_BADBADNOTGOOD_USE_AESCTR_EMULATION
-#error "The BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION and BLFS_BADBADNOTGOOD_USE_AESCTR_EMULATION compile flags CANNOT be used together!"
 #endif
 
 /**
@@ -226,12 +223,6 @@ static struct buse_operations buseops = {
     .trim = buse_trim,
     .size = 0
 };
-
-/**
- * Pointer pointing to the currently active stream crypting function. See main.
- */
-void (*stream_crypt)(uint8_t *, const uint8_t *, uint32_t, const uint8_t *, uint64_t, uint64_t)
-    = BLFS_BADBADNOTGOOD_USE_AESCTR_EMULATION ? &blfs_aesctr_crypt : &blfs_chacha20_crypt;
 
 /**
  * Updates the global merkle tree root hash.
@@ -630,12 +621,12 @@ int buse_read(void * output_buffer, uint32_t length, uint64_t absolute_offset, v
     buselfs_state_t * buselfs_state = (buselfs_state_t *) userdata;
     uint_fast32_t size = length;
 
-    IFENERGYMON(Metrics metrics_init_start);
-    IFENERGYMON(Metrics metrics_init_end);
-    IFENERGYMON(Metrics metrics_read_loop_start);
-    IFENERGYMON(Metrics metrics_read_loop_end);
-    IFENERGYMON(Metrics metrics_integrity_loop_start);
-    IFENERGYMON(Metrics metrics_integrity_loop_end);
+    IFENERGYMON(metrics_t metrics_init_start);
+    IFENERGYMON(metrics_t metrics_init_end);
+    IFENERGYMON(metrics_t metrics_read_loop_start);
+    IFENERGYMON(metrics_t metrics_read_loop_end);
+    IFENERGYMON(metrics_t metrics_integrity_loop_start);
+    IFENERGYMON(metrics_t metrics_integrity_loop_end);
 
     IFENERGYMON(blfs_energymon_collect_metrics(&metrics_init_start, buselfs_state));
 
@@ -826,7 +817,7 @@ int buse_read(void * output_buffer, uint32_t length, uint64_t absolute_offset, v
         }
 
         if(BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
-        	assert(buffer_read_length == assert_buffer_read_length);
+            assert(buffer_read_length == assert_buffer_read_length);
 
         else
         {
@@ -841,7 +832,7 @@ int buse_read(void * output_buffer, uint32_t length, uint64_t absolute_offset, v
                                 (void *) (nugget_data + (nugget_internal_offset - first_affected_flake * flake_size)),
                                 buffer_read_length));
 
-            stream_crypt(buffer,
+            buselfs_state->default_crypt_context(buffer,
                                 nugget_data + (nugget_internal_offset - first_affected_flake * flake_size),
                                 buffer_read_length,
                                 nugget_key,
@@ -882,14 +873,14 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
 {
     IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
 
-    IFENERGYMON(Metrics metrics_init_start);
-    IFENERGYMON(Metrics metrics_init_end);
-    IFENERGYMON(Metrics metrics_outer_write_loop_start);
-    IFENERGYMON(Metrics metrics_outer_write_loop_end);
-    IFENERGYMON(Metrics metrics_inner_write_loop_start);
-    IFENERGYMON(Metrics metrics_inner_write_loop_end);
-    IFENERGYMON(Metrics metrics_rekey_start);
-    IFENERGYMON(Metrics metrics_rekey_end);
+    IFENERGYMON(metrics_t metrics_init_start);
+    IFENERGYMON(metrics_t metrics_init_end);
+    IFENERGYMON(metrics_t metrics_outer_write_loop_start);
+    IFENERGYMON(metrics_t metrics_outer_write_loop_end);
+    IFENERGYMON(metrics_t metrics_inner_write_loop_start);
+    IFENERGYMON(metrics_t metrics_inner_write_loop_end);
+    IFENERGYMON(metrics_t metrics_rekey_start);
+    IFENERGYMON(metrics_t metrics_rekey_end);
 
     const uint8_t * buffer = (const uint8_t *) input_buffer;
     buselfs_state_t * buselfs_state = (buselfs_state_t *) userdata;
@@ -1065,7 +1056,7 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
                     IFDEBUG(dzlog_debug("blfs_crypt calculated nio: %"PRIuFAST32,
                                     flake_index * flake_size + flake_internal_offset));
 
-                    stream_crypt(flake_data + flake_internal_offset,
+                    buselfs_state->default_crypt_context(flake_data + flake_internal_offset,
                                         buffer,
                                         flake_write_length,
                                         nugget_key,
@@ -1288,7 +1279,7 @@ void blfs_rekey_nugget_journaled_with_write(buselfs_state_t * buselfs_state,
     
     if(!BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
     {
-        stream_crypt(new_nugget_data,
+        buselfs_state->default_crypt_context(new_nugget_data,
                             rekeying_nugget_data,
                             buselfs_state->backstore->nugget_size_bytes,
                             nugget_key,
@@ -1870,6 +1861,8 @@ buselfs_state_t * buselfs_main_actual(int argc, char * argv[], char * blockdevic
 
         Throw(EXCEPTION_MUST_HALT);
     }
+
+    blfs_set_stream_context(buselfs_state, sc_default);
 
     /* Process arguments */
     cin_device_name = argv[--argc];

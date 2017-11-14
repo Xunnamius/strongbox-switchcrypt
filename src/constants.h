@@ -5,8 +5,8 @@
 // Configurable //
 //////////////////
 
-#define BLFS_CURRENT_VERSION 280U
-#define BLFS_LEAST_COMPAT_VERSION 280U
+#define BLFS_CURRENT_VERSION 285U
+#define BLFS_LEAST_COMPAT_VERSION 285U
 #define BLFS_TPM_ID 0
 
 #define BLFS_CONFIG_ZLOG "../config/zlog_conf.conf"
@@ -42,6 +42,22 @@
 #define _GNU_SOURCE
 #endif
 
+typedef enum stream_cipher_e {
+    sc_default,
+    sc_not_impl,
+    sc_chacha8,
+    sc_chacha12,
+    sc_chacha20,
+    sc_salsa8,
+    sc_salsa12,
+    sc_salsa20,
+    sc_aes128_ctr,
+    sc_aes256_ctr,
+    sc_aes512_ctr,
+    sc_rabbit,
+    sc_sosemanuk,
+} stream_cipher_e;
+
 #include <string.h> /* strdup() */
 
 ///////////////////
@@ -65,8 +81,8 @@
 #if BLFS_DEBUG_MONITOR_POWER > 0
 #define IFENERGYMON(expression) expression
 #define ENERGYMON_INIT_IFENERGYMON \
-    Metrics metrics_start; \
-    Metrics metrics_end
+    metrics_t metrics_start; \
+    metrics_t metrics_end
 #define ENERGYMON_START_IFENERGYMON \
     blfs_energymon_collect_metrics(&metrics_start, buselfs_state)
 #define ENERGYMON_END_IFENERGYMON \

@@ -17,7 +17,7 @@ This is a complete rewrite of the old buselogfs code. This is a Buse + Chacha20 
 - [libsodium]()
 - [make]()
 - [gcc]() (sorry, I'm using some GCC extensions to make life easier)
-- [ruby]() (if you're going to be running the tests)
+- [ruby]() (required iff you're going to be running the tests)
 - [OpenSSL]() (provides swappable algorithm base)
 - std=c11
 
