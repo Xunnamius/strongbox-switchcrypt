@@ -11,6 +11,10 @@
 #include <string.h>
 #include <inttypes.h>
 #include "openssl/aes.h"
+#include "hc-128.h"
+#include "rabbit.h"
+#include "salsa20.h"
+#include "sosemanuk.h"
 
 /**
  * This struct represents the execution context of a generic stream cipher (sc).
