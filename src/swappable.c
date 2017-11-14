@@ -279,11 +279,6 @@ stream_crypt_common blfs_to_stream_context(stream_cipher_e stream_cipher)
             break;
         }*/
 
-        case sc_aes512_ctr:
-        /*{
-            break;
-        }*/
-
         case sc_hc128:
         /*{
             break;
