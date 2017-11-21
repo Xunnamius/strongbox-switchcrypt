@@ -69,6 +69,7 @@ static void generic_sc_impl(sc_context_t * sc_context)
     IFDEBUG(dzlog_debug("nugget_internal_offset = %"PRIu64, sc_context->nugget_internal_offset));
     IFDEBUG(dzlog_debug("interblock_offset = %"PRIu64, interblock_offset));
     IFDEBUG(dzlog_debug("intrablock_offset = %"PRIu64, intrablock_offset));
+    IFDEBUG(dzlog_debug("num_blocks = %"PRIu64, num_blocks));
     IFDEBUG(dzlog_debug("zero_str_length = %"PRIu64, zero_str_length));
     IFDEBUG(dzlog_debug("block_read_upper_bound = %"PRIu64, block_read_upper_bound));
     IFDEBUG(dzlog_debug("block read range = (%"PRIu64" to %"PRIu64" - 1) <=> %"PRIu64" [total, zero indexed]",
@@ -156,24 +157,22 @@ static void generic_sc_aes_impl(const char * output_name,
 
                 uint64_t counter = interblock_offset;
                 uint8_t stream_nonce[iv_size_bytes];
+                uint8_t raw_key[key_size_bytes];
 
-                memset(stream_nonce, 0, sizeof(stream_nonce));
+                AES_KEY aes_key;
 
                 assert(sizeof(sc_context->kcs_keycount) + sizeof(counter) <= sizeof(stream_nonce));
-                memcpy(stream_nonce, (uint8_t *) &(sc_context->kcs_keycount), sizeof(sc_context->kcs_keycount));
+
+                memset(stream_nonce, 0, sizeof(stream_nonce));
+                memcpy(stream_nonce, (uint8_t *) kcs_keycount_ptr, sizeof(sc_context->kcs_keycount));
+                memcpy(raw_key, sc_context->nugget_key, sizeof(raw_key)); // XXX: cutting off the key, bad bad not good! Need key schedule!
 
                 for(uint64_t i = 0; i < num_blocks; i++, counter++)
                 {
-                    AES_KEY aes_key;
-
-                    uint8_t raw_key[key_size_bytes];
-                    uint8_t * xor_str_ptr = xor_str + (i * sizeof(stream_nonce));
-
                     memcpy(stream_nonce + sizeof(sc_context->kcs_keycount), (uint8_t *) &counter, sizeof(counter));
-                    memcpy(raw_key, sc_context->nugget_key, sizeof(raw_key)); // XXX: cutting off the key, bad bad not good! Need key schedule!
 
                     AES_set_encrypt_key((const uint8_t *) raw_key, (int)(key_size_bytes * 8), &aes_key);
-                    AES_encrypt(stream_nonce, xor_str_ptr, &aes_key);
+                    AES_encrypt(stream_nonce, xor_str + (i * sizeof(stream_nonce)), &aes_key);
                 }
             }
         ),
@@ -313,6 +312,63 @@ static void sc_impl_aes256_ctr(uint8_t * crypted_data,
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 }
 
+static void sc_impl_salsa8(uint8_t * crypted_data,
+                           const uint8_t * data,
+                           uint32_t data_length,
+                           const uint8_t * nugget_key,
+                           uint64_t kcs_keycount,
+                           uint64_t nugget_internal_offset)
+{
+    IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
+
+    sc_context_t sc_context = {
+        .output_name = "sc_salsa8",
+        .output_size_bytes = BLFS_CRYPTO_BYTES_SALSA8_BLOCK,
+        .crypted_data = crypted_data,
+        .data = data,
+        .data_length = data_length,
+        .nugget_key = nugget_key,
+        .kcs_keycount = kcs_keycount,
+        .nugget_internal_offset = nugget_internal_offset,
+        .data_handle = LAMBDA(void,
+            (void * context,
+             uint64_t interblock_offset,
+             uint64_t intrablock_offset,
+             uint64_t num_blocks,
+             uint64_t zero_str_length,
+             uint64_t block_read_upper_bound,
+             uint8_t * kcs_keycount_ptr,
+             uint8_t * xor_str)
+            {
+                (void) intrablock_offset;
+                (void) block_read_upper_bound;
+                (void) zero_str_length;
+
+                sc_context_t * sc_context = (sc_context_t *) context;
+
+                salsa20_master_state key_state;
+                salsa20_state output_state;
+
+                uint8_t key[BLFS_CRYPTO_BYTES_SALSA8_KEY];
+                // uint8_t iv[BLFS_CRYPTO_BYTES_SALSA8_IV]; // XXX: represented by the 8 byte keycount
+
+                memcpy(key, sc_context->nugget_key, sizeof key);
+
+                salsa20_init_key(&key_state, SALSA20_8, key, SALSA20_256_BITS);
+                salsa20_init_iv(&output_state, &key_state, kcs_keycount_ptr);
+                salsa20_set_counter(&output_state, interblock_offset); // FIXME: print addr of xor str, see if it's the same!
+
+                for(uint64_t i = 0; i < num_blocks; ++i)
+                    salsa20_extract(&output_state, xor_str + (i * sc_context->output_size_bytes));
+            }
+        ),
+    };
+
+    generic_sc_impl(&sc_context);
+
+    IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
+}
+
 void blfs_set_stream_context(buselfs_state_t * buselfs_state, stream_cipher_e stream_cipher)
 {
     buselfs_state->default_crypt_context = blfs_to_stream_context(stream_cipher);
@@ -344,35 +400,38 @@ stream_crypt_common blfs_to_stream_context(stream_cipher_e stream_cipher)
         }
 
         case sc_salsa8:
-        /*{
+        {
+            fn = &sc_impl_salsa8;
             break;
-        }*/
+        }
 
         case sc_salsa12:
-        /*{
+        {
             break;
-        }*/
+        }
 
         case sc_salsa20:
-        /*{
+        {
             break;
-        }*/
+        }
 
         case sc_hc128:
-        /*{
+        {
             break;
-        }*/
+        }
 
         case sc_rabbit:
-        /*{
+        {
             break;
-        }*/
+        }
 
         case sc_sosemanuk:
-        /*{
+        {
             break;
-        }*/
+        }
 
+        case sc_chacha8:
+        case sc_chacha12:
         case sc_not_impl:
         {
             Throw(EXCEPTION_SC_ALGO_NO_IMPL);

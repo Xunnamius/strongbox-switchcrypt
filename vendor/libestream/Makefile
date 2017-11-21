@@ -10,7 +10,7 @@ CFLAGS = -Ofast -flto -DNDEBUG
 #CFLAGS += -DLITTLE_ENDIAN
 
 CC = gcc
-AR = ar
+AR = gcc-ar
 
 LIB_OBJS := buffered.o hc-128.o protocol.o rabbit.o salsa20.o sosemanuk.o util.o umac.o
 TESTS := algorithms_test buffering_test umac_test performance_test

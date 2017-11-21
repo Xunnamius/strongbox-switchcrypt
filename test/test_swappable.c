@@ -5,8 +5,7 @@
 #include "swappable.h"
 
 static stream_cipher_e test_these_ciphers[] = {
-    sc_chacha20,
-    sc_aes128_ctr,
+    sc_salsa8,
     sc_aes256_ctr,
 };
 
