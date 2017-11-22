@@ -219,10 +219,10 @@ void test_rpmb_write_block_works_as_expected_with_too_big_input(void)
 
     else
     {
-        uint8_t data_in[512];
+        uint8_t data_in[512] = { 'A', 'a' };
         uint8_t data_out[BLFS_CRYPTO_RPMB_BLOCK];
 
-        memset(data_in, 111, 255);
+        memset(data_in + 2, 111, 253);
         memset(data_in + 255, 222, 257);
 
         rpmb_write_block(BLFS_TPM_ID, data_in);
