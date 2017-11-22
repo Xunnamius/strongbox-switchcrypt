@@ -13,6 +13,7 @@
 #define BLFS_TPM_ID 1 // XXX: ensure different than prod value
 
 #include "unity.h"
+#include "buselfs.h"
 #include "../src/mmc.h"
 
 #define BACKSTORE_FILE_PATH "/tmp/test.io.bin"
