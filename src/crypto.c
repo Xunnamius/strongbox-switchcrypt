@@ -137,7 +137,7 @@ void blfs_poly1305_generate_tag(uint8_t * tag, const uint8_t * data, uint32_t da
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 }
 
-void blfs_globalversion_verify(uint64_t id, uint64_t global_version)
+int blfs_globalversion_verify(uint64_t id, uint64_t global_version)
 {
     IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
 
