@@ -1,7 +1,3 @@
-/*
- * @author Bernard Dickens
- */
-
 #include <string.h>
 
 #include "unity.h"

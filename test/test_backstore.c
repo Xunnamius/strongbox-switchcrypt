@@ -1,7 +1,3 @@
-/*
- * @author Bernard Dickens
- */
-
 #include <limits.h>
 #include <string.h>
 

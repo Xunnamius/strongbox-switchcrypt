@@ -5,17 +5,18 @@
 // Configurable //
 //////////////////
 
-#define BLFS_CURRENT_VERSION 274U
-#define BLFS_LEAST_COMPAT_VERSION 274U
-
-#define BLFS_TPM_ID 5U // XXX: In an actual application, this would be dynamic!
-#define BLFS_RPMB_KEY "thirtycharactersecurecounterkey!" // XXX: ^
-#define BLFS_RPMB_DEVICE "/dev/mmcblk0rpmb"
-
-#define VECTOR_GROWTH_FACTOR    2
-#define VECTOR_INIT_SIZE        10
+#define BLFS_CURRENT_VERSION 285U
+#define BLFS_LEAST_COMPAT_VERSION 285U
+#define BLFS_TPM_ID 0
 
 #define BLFS_CONFIG_ZLOG "../config/zlog_conf.conf"
+
+/** START: energy/power metric collection */
+
+// XXX: Must be file path
+#define BLFS_ENERGYMON_OUTPUT_PATH "/home/odroid/bd3/repos/energy-AES-1/results/strongbox-metrics.results"
+
+/** END: energy/power metric collection */
 
 // 0 - no debugging, log writing, or any such output
 // 1U - light debugging to designated log file
@@ -23,6 +24,10 @@
 // 3U - ^ except now it's a clusterfuck of debug messages
 #ifndef BLFS_DEBUG_LEVEL
 #define BLFS_DEBUG_LEVEL 0
+#endif
+
+#ifndef BLFS_DEBUG_MONITOR_POWER
+#define BLFS_DEBUG_MONITOR_POWER 0
 #endif
 
 #ifndef _XOPEN_SOURCE
@@ -36,6 +41,22 @@
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE
 #endif
+
+typedef enum stream_cipher_e {
+    sc_default,
+    sc_not_impl,
+    sc_chacha8,
+    sc_chacha12,
+    sc_chacha20,
+    sc_salsa8,
+    sc_salsa12,
+    sc_salsa20,
+    sc_aes128_ctr,
+    sc_aes256_ctr,
+    sc_hc128,
+    sc_rabbit,
+    sc_sosemanuk,
+} stream_cipher_e;
 
 #include <string.h> /* strdup() */
 
@@ -55,6 +76,25 @@
 #define IFDEBUG3(expression) expression
 #else
 #define IFDEBUG3(expression)
+#endif
+
+#if BLFS_DEBUG_MONITOR_POWER > 0
+#define IFENERGYMON(expression) expression
+#define ENERGYMON_INIT_IFENERGYMON \
+    metrics_t metrics_start; \
+    metrics_t metrics_end
+#define ENERGYMON_START_IFENERGYMON \
+    blfs_energymon_collect_metrics(&metrics_start, buselfs_state)
+#define ENERGYMON_END_IFENERGYMON \
+    blfs_energymon_collect_metrics(&metrics_end, buselfs_state)
+#define ENERGYMON_OUTPUT_IFENERGYMON(name) \
+    blfs_energymon_writeout_metrics_simple(name, &metrics_start, &metrics_end)
+#else
+#define IFENERGYMON(expression)
+#define ENERGYMON_INIT_IFENERGYMON
+#define ENERGYMON_START_IFENERGYMON
+#define ENERGYMON_END_IFENERGYMON
+#define ENERGYMON_OUTPUT_IFENERGYMON(name)
 #endif
 
 #define STRINGIZE_STR_FN(X) #X
@@ -98,19 +138,16 @@
         ret;                                        \
     })
 
+// XXX: Only works for stack initialized arrays!
+#define COUNT(x) __extension__ ({ (sizeof(x) / sizeof((x)[0])); })
+
 ////////////
 // Crypto //
 ////////////
 
 #define BLFS_CRYPTO_BYTES_AESXTS_KEY            64U // OpenSSL AES-XTS 256-bit requires 64-bit keys (2 32-bit AES keys) 
 #define BLFS_CRYPTO_BYTES_AESXTS_TWEAK          16U // OpenSSL AES-XTS 256-bit requires 16-bit IV
-#define BLFS_CRYPTO_BYTES_AES_DATA_MIN          16U // XXX: OpenSSL AES-XTS 256-bit will CHOKE AND DIE!!! if passed less
-#define BLFS_CRYPTO_BYTES_AES_BLOCK             16U // AES works with 16-byte blocks
-#define BLFS_CRYPTO_BYTES_AES_KEY               16U // crypto_stream_aes128ctr_KEYBYTES
-#define BLFS_CRYPTO_BYTES_AES_IV                16U // We use AES-128 in ECB mode with 16 byte "IV"
-#define BLFS_CRYPTO_BYTES_CHACHA_BLOCK          64U // chacha outputs randomly accessible 512-bit (64-byte) blocks
-#define BLFS_CRYPTO_BYTES_CHACHA_KEY            32U // crypto_stream_chacha20_KEYBYTES
-#define BLFS_CRYPTO_BYTES_CHACHA_NONCE          8U  // crypto_stream_chacha20_NONCEBYTES
+#define BLFS_CRYPTO_BYTES_AESXTS_DATA_MIN       16U // XXX: OpenSSL AES-XTS 256-bit will CHOKE AND DIE!!! if passed less
 #define BLFS_CRYPTO_BYTES_KDF_OUT               32U // crypto_box_SEEDBYTES
 #define BLFS_CRYPTO_BYTES_KDF_SALT              16U // crypto_pwhash_SALTBYTES
 #define BLFS_CRYPTO_BYTES_FLAKE_TAG_OUT         16U // crypto_onetimeauth_poly1305_BYTES
@@ -120,6 +157,34 @@
 #define BLFS_CRYPTO_RPMB_KEY                    32U // See spec
 #define BLFS_CRYPTO_RPMB_MAC_OUT                32U // See spec
 #define BLFS_CRYPTO_RPMB_BLOCK                  256U // See spec
+
+#define BLFS_CRYPTO_BYTES_AES128_BLOCK          16U // OpenSSL AES-128 outputs 16-byte blocks
+#define BLFS_CRYPTO_BYTES_AES128_KEY            16U // AES 128 key size
+#define BLFS_CRYPTO_BYTES_AES128_IV             16U // We use AES-128 in ECB mode with 16 byte "IV"
+#define BLFS_CRYPTO_BYTES_AES256_BLOCK          16U // OpenSSL AES-256 outputs 16-byte blocks
+#define BLFS_CRYPTO_BYTES_AES256_KEY            32U // AES 256 key size
+#define BLFS_CRYPTO_BYTES_AES256_IV             32U // We use AES-256 in ECB mode with 32 byte "IV"
+#define BLFS_CRYPTO_BYTES_CHACHA_BLOCK          64U // Chacha20/20 outputs randomly accessible 512-bit (64-byte) blocks
+#define BLFS_CRYPTO_BYTES_CHACHA_KEY            32U // crypto_stream_chacha20_KEYBYTES
+#define BLFS_CRYPTO_BYTES_CHACHA_NONCE          8U  // crypto_stream_chacha20_NONCEBYTES
+#define BLFS_CRYPTO_BYTES_SALSA20_BLOCK         64U // Salsa20/20 outputs 64-byte blocks
+#define BLFS_CRYPTO_BYTES_SALSA20_KEY           32U // Salsa20/20 uses 32 byte keys
+#define BLFS_CRYPTO_BYTES_SALSA20_IV            8U  // Salsa20/20 uses 8 byte IV
+#define BLFS_CRYPTO_BYTES_SALSA12_BLOCK         64U // Salsa20/12 outputs 64-byte blocks
+#define BLFS_CRYPTO_BYTES_SALSA12_KEY           32U // Salsa20/12 uses 32 byte keys
+#define BLFS_CRYPTO_BYTES_SALSA12_IV            8U  // Salsa20/12 uses 8 byte IV
+#define BLFS_CRYPTO_BYTES_SALSA8_BLOCK          64U // Salsa20/8 outputs 64-byte blocks
+#define BLFS_CRYPTO_BYTES_SALSA8_KEY            32U // Salsa20/8 uses 32 byte keys
+#define BLFS_CRYPTO_BYTES_SALSA8_IV             8U  // Salsa20/8 uses 8 byte IV
+#define BLFS_CRYPTO_BYTES_RABBIT_BLOCK          16U // Rabbit outputs 16-byte blocks
+#define BLFS_CRYPTO_BYTES_RABBIT_KEY            16U // Rabbit uses 16 byte keys
+#define BLFS_CRYPTO_BYTES_RABBIT_IV             8U  // Rabbit uses 8 byte IV
+#define BLFS_CRYPTO_BYTES_HC128_BLOCK           4U  // HC-128 outputs 4-byte blocks
+#define BLFS_CRYPTO_BYTES_HC128_KEY             16U // HC-128 uses 16 byte keys
+#define BLFS_CRYPTO_BYTES_HC128_IV              16U // HC-128 uses 16 byte IV
+#define BLFS_CRYPTO_BYTES_SOSEK_BLOCK           16U // Sosemanuk outputs 16-byte blocks
+#define BLFS_CRYPTO_BYTES_SOSEK_KEY             16U // Sosemanuk uses 16 byte keys
+#define BLFS_CRYPTO_BYTES_SOSEK_IV              16U // Sosemanuk uses 16 byte IV
 
 ////////////
 // Header //

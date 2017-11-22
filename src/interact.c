@@ -1,7 +1,7 @@
 /*
  * <description>
  *
- * @author Bernard Dickens
+ * @author ANON
  */
 
 #include "interact.h"
@@ -24,9 +24,14 @@ void interact_prompt_user(const char * prompt, char * response, size_t length)
 
     char * r;
 
+    #pragma GCC diagnostic push
+    #pragma GCC diagnostic ignored "-Wunused-result"
+
     printf("%s", prompt);
     scanf("%ms", &r);
     printf("\n");
+
+    #pragma GCC diagnostic pop 
 
     IFDEBUG(dzlog_debug("prompt = %s", prompt));
     IFDEBUG(dzlog_debug("r = %s", r));
@@ -47,12 +52,12 @@ static uint32_t previous_percent = 0;
 
 void interact_print_percent_done(uint32_t percent)
 {
-    if(percent <= 0 || ((percent - 1) / 10 == 0 && previous_percent < 10))
+    if(!percent || ((percent - 1) / 10 == 0 && previous_percent < 10))
         printf("\b\b");
     else
         printf("\b\b\b");
 
     previous_percent = percent;
-    printf("%i%%", percent);
+    printf("%i%%", (int) percent);
     fflush(stdout);
 }

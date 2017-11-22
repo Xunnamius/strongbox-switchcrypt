@@ -1,7 +1,7 @@
 /*
  * <description>
  *
- * @author Bernard Dickens
+ * @author ANON
  */
 
 #include "io.h"
@@ -170,8 +170,13 @@ blfs_backstore_t * blfs_backstore_create(const char * path, uint64_t file_size_b
 
     blfs_backstore_t * backstore = backstore_setup_actual_pre(path);
 
+    #pragma GCC diagnostic push
+    #pragma GCC diagnostic ignored "-Wunused-result"
+
     ftruncate(backstore->io_fd, file_size_bytes);
     backstore->file_size_actual = file_size_bytes;
+    
+    #pragma GCC diagnostic pop
 
     // Header data
     uint64_t data_version_int = BLFS_CURRENT_VERSION;
@@ -288,7 +293,6 @@ void blfs_backstore_read(blfs_backstore_t * backstore, uint8_t * buffer, uint32_
 {
     IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
 
-    int bytes_read;
     uint32_t size = length;
     uint8_t * temp_buffer = malloc(sizeof(uint8_t) * length);
     uint8_t * original_buffer = temp_buffer;
@@ -311,7 +315,7 @@ void blfs_backstore_read(blfs_backstore_t * backstore, uint8_t * buffer, uint32_
     {
         errno = 0;
 
-        bytes_read = read(backstore->io_fd, temp_buffer, length);
+        int bytes_read = read(backstore->io_fd, temp_buffer, length);
 
         if(bytes_read == -1 || errno)
         {
@@ -339,7 +343,6 @@ void blfs_backstore_write(blfs_backstore_t * backstore, const uint8_t * buffer, 
 {
     IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
 
-    int bytes_written;
     uint8_t * temp_buffer = malloc(sizeof(uint8_t) * length);
     uint8_t * original_buffer = temp_buffer;
 
@@ -365,7 +368,7 @@ void blfs_backstore_write(blfs_backstore_t * backstore, const uint8_t * buffer, 
     {
         errno = 0;
 
-        bytes_written = write(backstore->io_fd, temp_buffer, length);
+        int bytes_written = write(backstore->io_fd, temp_buffer, length);
 
         if(bytes_written == -1 || errno)
         {

@@ -1,6 +1,3 @@
-/*
- * @author Bernard Dickens
- */
 #include "unity.h"
 #include "buselfs.h"
 #include "merkletree.h"

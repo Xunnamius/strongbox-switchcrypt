@@ -3,6 +3,8 @@
 This is a complete rewrite of the old buselogfs code. This is a Buse + Chacha20 + Poly1305 + LFS encrypted filesystem. It uses Argon2 as its KDF.
 
 (todo: advantages, disadvantages, tradeoffs, etc)
+(Use `make tests` to run all the tests)
+(The ONLY test that works with BLFS_DEBUG_MONITOR_POWER=1 is test_buselfs!)
 
 ## Things to Address
 
@@ -16,8 +18,8 @@ This is a complete rewrite of the old buselogfs code. This is a Buse + Chacha20 
 - [libsodium]()
 - [make]()
 - [gcc]() (sorry, I'm using some GCC extensions to make life easier)
-- [ruby]() (if you're going to be running the tests)
-- [OpenSSL]() (if you're going to be running AES-XTS emulation mode; no flake sizes less than 16 bytes!)
+- [ruby]() (required iff you're going to be running the tests)
+- [OpenSSL]() (provides swappable algorithm base)
 - std=c11
 - /dev/mmcblk0rpmb (i.e. a device that offers a RPMB API)
 

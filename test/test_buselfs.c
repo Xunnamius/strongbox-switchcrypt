@@ -1,9 +1,6 @@
-/*
- * @author Bernard Dickens
- */
-
 #include "unity.h"
 #include "buselfs.h"
+#include "swappable.h"
 #include "merkletree.h"
 #include "mt_err.h"
 #include "khash.h"
@@ -48,9 +45,9 @@ static const uint8_t buffer_init_backstore_state[/*209*/] = {
     0x8f, 0xa2, 0x0d, 0x92, 0x35, 0xd6, 0xc2, 0x4c, 0xe4, 0xbc, 0x4f, 0x47,
     0xa4, 0xce, 0x69, 0xa8, // BLFS_HEAD_HEADER_BYTES_SALT
 
-   0x05, 0x3b, 0xd1, 0x85, 0xfd, 0xed, 0xc9, 0x22, 0x33, 0x66, 0x48, 0x27,
-   0x32, 0x4e, 0x80, 0x07, 0x4c, 0x4f, 0xdc, 0x4f, 0xd5, 0x75, 0x99, 0xee,
-   0xa2, 0x88, 0x18, 0x22, 0x57, 0xf5, 0x79, 0xcb, // BLFS_HEAD_HEADER_BYTES_MTRH
+    0x05, 0x3b, 0xd1, 0x85, 0xfd, 0xed, 0xc9, 0x22, 0x33, 0x66, 0x48, 0x27,
+    0x32, 0x4e, 0x80, 0x07, 0x4c, 0x4f, 0xdc, 0x4f, 0xd5, 0x75, 0x99, 0xee,
+    0xa2, 0x88, 0x18, 0x22, 0x57, 0xf5, 0x79, 0xcb, // BLFS_HEAD_HEADER_BYTES_MTRH
 
     0x06, 0x07, 0x08, 0x09, 0x06, 0x07, 0x08, 0x09, // BLFS_HEAD_HEADER_BYTES_TPMGLOBALVER
 
@@ -125,16 +122,18 @@ static const uint8_t decrypted_body[] = {
 
 static void make_fake_state()
 {
-    buselfs_state = malloc(sizeof(*buselfs_state));
+    buselfs_state = malloc(sizeof *buselfs_state);
 
     buselfs_state->backstore                    = NULL;
     buselfs_state->cache_nugget_keys            = kh_init(BLFS_KHASH_NUGGET_KEY_CACHE_NAME);
     buselfs_state->merkle_tree                  = mt_create();
     buselfs_state->default_password             = BLFS_DEFAULT_PASS;
 
+    blfs_set_stream_context(buselfs_state, sc_default);
+
     iofd = open(BACKSTORE_FILE_PATH, O_CREAT | O_RDWR | O_TRUNC, 0777);
 
-    buselfs_state->backstore = malloc(sizeof(blfs_backstore_t));
+    buselfs_state->backstore                    = malloc(sizeof(blfs_backstore_t));
     buselfs_state->backstore->io_fd             = iofd;
     buselfs_state->backstore->body_real_offset  = 161;
     buselfs_state->backstore->file_size_actual  = (uint64_t)(sizeof buffer_init_backstore_state);
@@ -161,6 +160,24 @@ static void clear_tj()
     blfs_backstore_close(backstore);
 }
 
+static int is_dummy_source()
+{
+    #if BLFS_DEBUG_MONITOR_POWER > 0
+    char em_source[16];
+    energymon mon;
+    energymon_get_default(&mon);
+    (void) mon.fsource(em_source, sizeof em_source);
+    return !strcmp(em_source, "Dummy Source");
+    #else
+    return 0;
+    #endif
+}
+
+static int is_sudo()
+{
+    return !geteuid();
+}
+
 void setUp(void)
 {
     if(sodium_init() == -1)
@@ -183,6 +200,7 @@ void tearDown(void)
         kh_destroy(BLFS_KHASH_NUGGET_KEY_CACHE_NAME, buselfs_state->cache_nugget_keys);
 
     free(buselfs_state);
+
     zlog_fini();
     close(iofd);
     unlink(BACKSTORE_FILE_PATH);
@@ -861,9 +879,159 @@ void test_buselfs_main_actual_throws_exception_if_bad_numbers_given_as_args(void
     TRY_FN_CATCH_EXCEPTION(buselfs_main_actual(5, argv8, blockdevice));
 }
 
+/* Metrics Tests */
+void test_blfs_energymon_init_works_as_expected(void)
+{
+    if(!BLFS_DEBUG_MONITOR_POWER)
+    {
+        TEST_IGNORE_MESSAGE("BLFS_DEBUG_MONITOR_POWER is disabled. All metric gathering tests are disabled!");
+        return;
+    }
+
+    if(is_dummy_source())
+    {
+        TEST_IGNORE_MESSAGE("Dummy source detected. This test will be skipped.");
+        return;
+    }
+
+    if(!is_sudo())
+    {
+        TEST_IGNORE_MESSAGE("Test skipped. You must be sudo to run this test.");
+        return;
+    }
+    
+    #if BLFS_DEBUG_MONITOR_POWER > 0
+    blfs_energymon_init(buselfs_state);
+    #endif
+}
+
+void test_blfs_energymon_fini_works_as_expected(void)
+{
+    if(!BLFS_DEBUG_MONITOR_POWER)
+    {
+        TEST_IGNORE_MESSAGE("BLFS_DEBUG_MONITOR_POWER is disabled. All metric gathering tests are disabled!");
+        return;
+    }
+
+    if(is_dummy_source())
+    {
+        TEST_IGNORE_MESSAGE("Dummy source detected. This test will be skipped.");
+        return;
+    }
+
+    if(!is_sudo())
+    {
+        TEST_IGNORE_MESSAGE("Test skipped. You must be sudo to run this test.");
+        return;
+    }
+
+    #if BLFS_DEBUG_MONITOR_POWER > 0
+
+    blfs_energymon_init(buselfs_state);
+    blfs_energymon_fini(buselfs_state);
+    blfs_energymon_init(buselfs_state);
+    blfs_energymon_fini(buselfs_state);
+
+    #endif
+}
+
+void test_blfs_energymon_collect_metrics_works_as_expected(void)
+{
+    if(!BLFS_DEBUG_MONITOR_POWER)
+    {
+        TEST_IGNORE_MESSAGE("BLFS_DEBUG_MONITOR_POWER is disabled. All metric gathering tests are disabled!");
+        return;
+    }
+
+    if(is_dummy_source())
+    {
+        TEST_IGNORE_MESSAGE("Dummy source detected. This test will be skipped.");
+        return;
+    }
+
+    if(!is_sudo())
+    {
+        TEST_IGNORE_MESSAGE("Test skipped. You must be sudo to run this test.");
+        return;
+    }
+
+    #if BLFS_DEBUG_MONITOR_POWER > 0
+    
+    metrics_t metrics_start;
+    metrics_t metrics_end;
+
+    blfs_energymon_init(buselfs_state);
+    blfs_energymon_collect_metrics(&metrics_start, buselfs_state);
+    sleep(3);
+    blfs_energymon_collect_metrics(&metrics_end, buselfs_state);
+    blfs_energymon_fini(buselfs_state);
+
+    TEST_ASSERT_TRUE_MESSAGE(metrics_end.energy_uj, "metrics_start.energy_uj == 0");
+    TEST_ASSERT_NOT_EQUAL_MESSAGE(metrics_start.energy_uj, metrics_end.energy_uj, "metrics_end.energy_uj <= metrics_start.energy_uj");
+
+    TEST_ASSERT_TRUE_MESSAGE(metrics_start.time_ns, "metrics_start.time_ns == 0");
+    TEST_ASSERT_NOT_EQUAL_MESSAGE(metrics_start.time_ns, metrics_end.time_ns, "metrics_end.time_ns == metrics_start.time_ns");
+
+    #endif
+}
+
+void test_blfs_energymon_writeout_metrics_works_as_expected(void)
+{
+    if(!BLFS_DEBUG_MONITOR_POWER)
+    {
+        TEST_IGNORE_MESSAGE("BLFS_DEBUG_MONITOR_POWER is disabled. All metric gathering tests are disabled!");
+        return;
+    }
+
+    if(is_dummy_source())
+    {
+        TEST_IGNORE_MESSAGE("Dummy source detected. This test will be skipped.");
+        return;
+    }
+
+    if(!is_sudo())
+    {
+        TEST_IGNORE_MESSAGE("Test skipped. You must be sudo to run this test.");
+        return;
+    }
+    
+    #if BLFS_DEBUG_MONITOR_POWER > 0
+
+    metrics_t metrics_read_start  = { .energy_uj = 50000000,  .time_ns = 100000000000 };
+    metrics_t metrics_read_end    = { .energy_uj = 100000000, .time_ns = 150000000000 };
+    metrics_t metrics_write_start = { .energy_uj = 200000000, .time_ns = 250000000000 };
+    metrics_t metrics_write_end   = { .energy_uj = 400000000, .time_ns = 450000000000 };
+
+    FILE * metrics_output_fd = fopen(BLFS_ENERGYMON_OUTPUT_PATH, "w+");
+    long fsize = 0;
+
+    blfs_energymon_init(buselfs_state);
+    blfs_energymon_writeout_metrics("test", &metrics_read_start, &metrics_read_end, &metrics_write_start, &metrics_write_end);
+
+    fseek(metrics_output_fd, 0, SEEK_END);
+    fsize = ftell(metrics_output_fd);
+    fseek(metrics_output_fd, 0, SEEK_SET);
+
+    char results[fsize];
+    assert(fread(results, sizeof(char), fsize, metrics_output_fd) > 0);
+
+    printf("metrics_output_fd:\n%s\n", results);
+
+    fclose(metrics_output_fd);
+    remove(BLFS_ENERGYMON_OUTPUT_PATH);
+
+    blfs_energymon_fini(buselfs_state);
+
+    TEST_ASSERT_TRUE_MESSAGE(fsize, "expected a write (fsize == 0)");
+
+    #endif
+}
+
+// XXX: All read and write tests should go below this line!
+
 void test_buse_read_works_as_expected(void)
 {
-    if(BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION || BLFS_BADBADNOTGOOD_USE_AESCTR_EMULATION)
+    if(BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
     {
         TEST_IGNORE_MESSAGE("BLFS_BADBADNOTGOOD_USE_AES*_EMULATION is in effect. All non-AES-XTS emulation tests will be ignored!");
         return;
@@ -871,6 +1039,7 @@ void test_buse_read_works_as_expected(void)
 
     free(buselfs_state->backstore);
 
+    IFENERGYMON(blfs_energymon_init(buselfs_state));
     blfs_run_mode_open(BACKSTORE_FILE_PATH, (uint8_t)(0), buselfs_state);
 
     uint8_t buffer1[1] = { 0x00 };
@@ -935,6 +1104,8 @@ void test_buse_read_works_as_expected(void)
     buse_read(buffer9, sizeof buffer9, offset9, (void *) buselfs_state);
 
     TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset9, buffer9, sizeof buffer9);
+
+    IFENERGYMON(blfs_energymon_fini(buselfs_state));
 }
 
 void test_buse_writeread_works_as_expected1(void)
@@ -954,8 +1125,10 @@ void test_buse_writeread_works_as_expected1(void)
     uint8_t buffer1[20] = { 0x00 };
     uint64_t offset1 = 28;
 
+    IFENERGYMON(blfs_energymon_init(buselfs_state));
     buse_write(decrypted_body + offset1, sizeof buffer1, offset1, (void *) buselfs_state);
     buse_read(buffer1, sizeof buffer1, offset1, (void *) buselfs_state);
+    IFENERGYMON(blfs_energymon_fini(buselfs_state));
 
     TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset1, buffer1, sizeof buffer1);
 }
@@ -977,8 +1150,10 @@ void test_buse_writeread_works_as_expected2(void)
     uint8_t buffer2[20] = { 0x00 };
     uint64_t offset2 = 28;
 
+    IFENERGYMON(blfs_energymon_init(buselfs_state));
     buse_write(decrypted_body + offset2, sizeof buffer2, offset2, (void *) buselfs_state);
     buse_read(buffer2, sizeof buffer2, offset2, (void *) buselfs_state);
+    IFENERGYMON(blfs_energymon_fini(buselfs_state));
 
     TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset2, buffer2, sizeof buffer2);
 }
@@ -1000,8 +1175,10 @@ void test_buse_writeread_works_as_expected3(void)
     uint8_t buffer3[48] = { 0x00 };
     uint64_t offset3 = 0;
 
+    IFENERGYMON(blfs_energymon_init(buselfs_state));
     buse_write(decrypted_body + offset3, sizeof buffer3, offset3, (void *) buselfs_state);
     buse_read(buffer3, sizeof buffer3, offset3, (void *) buselfs_state);
+    IFENERGYMON(blfs_energymon_fini(buselfs_state));
 
     TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset3, buffer3, sizeof buffer3);
 }
@@ -1023,8 +1200,10 @@ void test_buse_writeread_works_as_expected4(void)
     uint8_t buffer4[8] = { 0x00 };
     uint64_t offset4 = 0;
 
+    IFENERGYMON(blfs_energymon_init(buselfs_state));
     buse_write(decrypted_body + offset4, sizeof buffer4, offset4, (void *) buselfs_state);
     buse_read(buffer4, sizeof buffer4, offset4, (void *) buselfs_state);
+    IFENERGYMON(blfs_energymon_fini(buselfs_state));
 
     TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset4, buffer4, sizeof buffer4);
 }
@@ -1047,8 +1226,10 @@ void test_buse_writeread_works_as_expected5(void)
     uint8_t buffer5[8] = { 0x00 };
     uint64_t offset5 = 1;
 
+    IFENERGYMON(blfs_energymon_init(buselfs_state));
     buse_write(decrypted_body + offset5, sizeof buffer5, offset5, (void *) buselfs_state);
     buse_read(buffer5, sizeof buffer5, offset5, (void *) buselfs_state);
+    IFENERGYMON(blfs_energymon_fini(buselfs_state));
 
     TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset5, buffer5, sizeof buffer5);
 }
@@ -1070,8 +1251,10 @@ void test_buse_writeread_works_as_expected6(void)
     uint8_t buffer6[1] = { 0x00 };
     uint64_t offset6 = 47;
 
+    IFENERGYMON(blfs_energymon_init(buselfs_state));
     buse_write(decrypted_body + offset6, sizeof buffer6, offset6, (void *) buselfs_state);
     buse_read(buffer6, sizeof buffer6, offset6, (void *) buselfs_state);
+    IFENERGYMON(blfs_energymon_fini(buselfs_state));
 
     TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset6, buffer6, sizeof buffer6);
 }
@@ -1093,8 +1276,10 @@ void test_buse_writeread_works_as_expected7(void)
     uint8_t buffer7[1] = { 0x00 };
     uint64_t offset7 = 35;
 
+    IFENERGYMON(blfs_energymon_init(buselfs_state));
     buse_write(decrypted_body + offset7, sizeof buffer7, offset7, (void *) buselfs_state);
     buse_read(buffer7, sizeof buffer7, offset7, (void *) buselfs_state);
+    IFENERGYMON(blfs_energymon_fini(buselfs_state));
 
     TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset7, buffer7, sizeof buffer7);
 }
@@ -1116,8 +1301,10 @@ void test_buse_writeread_works_as_expected8(void)
     uint8_t buffer[8] = { 0x00 };
     uint64_t offset = 17;
 
+    IFENERGYMON(blfs_energymon_init(buselfs_state));
     buse_write(decrypted_body + offset, sizeof buffer, offset, (void *) buselfs_state);
     buse_read(buffer, sizeof buffer, offset, (void *) buselfs_state);
+    IFENERGYMON(blfs_energymon_fini(buselfs_state));
 
     TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset, buffer, sizeof buffer);
 }
@@ -1140,8 +1327,10 @@ void test_buse_writeread_works_as_expected9(void)
     uint8_t buffer[32] = { 0x00 };
     uint64_t offset = 0;
 
+    IFENERGYMON(blfs_energymon_init(buselfs_state));
     buse_write(decrypted_body + offset, sizeof buffer, offset, (void *) buselfs_state);
     buse_read(buffer, sizeof buffer, offset, (void *) buselfs_state);
+    IFENERGYMON(blfs_energymon_fini(buselfs_state));
 
     TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset, buffer, sizeof buffer);
 }
@@ -1164,8 +1353,10 @@ void test_buse_writeread_works_as_expected10(void)
     uint8_t buffer[32] = { 0x00 };
     uint64_t offset = 1;
 
+    IFENERGYMON(blfs_energymon_init(buselfs_state));
     buse_write(decrypted_body + offset, sizeof buffer, offset, (void *) buselfs_state);
     buse_read(buffer, sizeof buffer, offset, (void *) buselfs_state);
+    IFENERGYMON(blfs_energymon_fini(buselfs_state));
 
     TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset, buffer, sizeof buffer);
 }
@@ -1188,8 +1379,10 @@ void test_buse_writeread_works_as_expected11(void)
     uint8_t buffer[46] = { 0x00 };
     uint64_t offset = 1;
 
+    IFENERGYMON(blfs_energymon_init(buselfs_state));
     buse_write(decrypted_body + offset, sizeof buffer, offset, (void *) buselfs_state);
     buse_read(buffer, sizeof buffer, offset, (void *) buselfs_state);
+    IFENERGYMON(blfs_energymon_fini(buselfs_state));
 
     TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset, buffer, sizeof buffer);
 }
@@ -1216,6 +1409,8 @@ void test_blfs_rekey_nugget_journaled_with_write_works_as_expected(void)
 
     TEST_ASSERT_TRUE(bitmask_any_bits_set(entry0->bitmask, 0, 8));
 
+    IFENERGYMON(blfs_energymon_init(buselfs_state));
+
     blfs_rekey_nugget_journaled_with_write(buselfs_state, 0, decrypted_body, 8, 0);
 
     TEST_ASSERT_TRUE(bitmask_is_bit_set(entry0->bitmask, 0));
@@ -1239,6 +1434,8 @@ void test_blfs_rekey_nugget_journaled_with_write_works_as_expected(void)
     TEST_ASSERT_FALSE(bitmask_is_bit_set(entry2->bitmask, 0));
     TEST_ASSERT_TRUE(bitmask_is_bit_set(entry2->bitmask, 1));
     TEST_ASSERT_EQUAL_UINT(3, count2->keycount);
+
+    IFENERGYMON(blfs_energymon_fini(buselfs_state));
 }
 
 void test_buse_write_dirty_write_triggers_rekeying1(void)
@@ -1256,8 +1453,10 @@ void test_buse_write_dirty_write_triggers_rekeying1(void)
     uint8_t buffer[8] = { 0x00 };
     uint64_t offset = 17;
 
+    IFENERGYMON(blfs_energymon_init(buselfs_state));
     buse_write(decrypted_body + offset, sizeof buffer, offset, (void *) buselfs_state);
     buse_read(buffer, sizeof buffer, offset, (void *) buselfs_state);
+    IFENERGYMON(blfs_energymon_fini(buselfs_state));
 
     TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset, buffer, sizeof buffer);
 }
@@ -1277,8 +1476,10 @@ void test_buse_write_dirty_write_triggers_rekeying2(void)
     uint8_t buffer5[8] = { 0x00 };
     uint64_t offset5 = 1;
 
+    IFENERGYMON(blfs_energymon_init(buselfs_state));
     buse_write(decrypted_body + offset5, sizeof buffer5, offset5, (void *) buselfs_state);
     buse_read(buffer5, sizeof buffer5, offset5, (void *) buselfs_state);
+    IFENERGYMON(blfs_energymon_fini(buselfs_state));
 
     TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset5, buffer5, sizeof buffer5);
 }
@@ -1298,8 +1499,10 @@ void test_buse_write_dirty_write_triggers_rekeying3(void)
     uint8_t buffer6[1] = { 0x00 };
     uint64_t offset6 = 47;
 
+    IFENERGYMON(blfs_energymon_init(buselfs_state));
     buse_write(decrypted_body + offset6, sizeof buffer6, offset6, (void *) buselfs_state);
     buse_read(buffer6, sizeof buffer6, offset6, (void *) buselfs_state);
+    IFENERGYMON(blfs_energymon_fini(buselfs_state));
 
     TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset6, buffer6, sizeof buffer6);
 }
@@ -1319,8 +1522,10 @@ void test_buse_write_dirty_write_triggers_rekeying4(void)
     uint8_t buffer7[1] = { 0x00 };
     uint64_t offset7 = 35;
 
+    IFENERGYMON(blfs_energymon_init(buselfs_state));
     buse_write(decrypted_body + offset7, sizeof buffer7, offset7, (void *) buselfs_state);
     buse_read(buffer7, sizeof buffer7, offset7, (void *) buselfs_state);
+    IFENERGYMON(blfs_energymon_fini(buselfs_state));
 
     TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset7, buffer7, sizeof buffer7);
 }
@@ -1340,8 +1545,10 @@ void test_buse_write_dirty_write_triggers_rekeying5(void)
     uint8_t buffer7[1] = { 0x00 };
     uint64_t offset7 = 0;
 
+    IFENERGYMON(blfs_energymon_init(buselfs_state));
     buse_write(decrypted_body + offset7, sizeof buffer7, offset7, (void *) buselfs_state);
     buse_read(buffer7, sizeof buffer7, offset7, (void *) buselfs_state);
+    IFENERGYMON(blfs_energymon_fini(buselfs_state));
 
     TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset7, buffer7, sizeof buffer7);
 }
@@ -1361,8 +1568,10 @@ void test_buse_write_dirty_write_triggers_rekeying6(void)
     uint8_t buffer7[8] = { 0x00 };
     uint64_t offset7 = 0;
 
+    IFENERGYMON(blfs_energymon_init(buselfs_state));
     buse_write(decrypted_body + offset7, sizeof buffer7, offset7, (void *) buselfs_state);
     buse_read(buffer7, sizeof buffer7, offset7, (void *) buselfs_state);
+    IFENERGYMON(blfs_energymon_fini(buselfs_state));
 
     TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset7, buffer7, sizeof buffer7);
 }
@@ -1382,8 +1591,10 @@ void test_buse_write_dirty_write_triggers_rekeying7(void)
     uint8_t buffer7[1] = { 0x00 };
     uint64_t offset7 = 47;
 
+    IFENERGYMON(blfs_energymon_init(buselfs_state));
     buse_write(decrypted_body + offset7, sizeof buffer7, offset7, (void *) buselfs_state);
     buse_read(buffer7, sizeof buffer7, offset7, (void *) buselfs_state);
+    IFENERGYMON(blfs_energymon_fini(buselfs_state));
 
     TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset7, buffer7, sizeof buffer7);
 }
@@ -1403,8 +1614,10 @@ void test_buse_write_dirty_write_triggers_rekeying8(void)
     uint8_t buffer7[8] = { 0x00 };
     uint64_t offset7 = 40;
 
+    IFENERGYMON(blfs_energymon_init(buselfs_state));
     buse_write(decrypted_body + offset7, sizeof buffer7, offset7, (void *) buselfs_state);
     buse_read(buffer7, sizeof buffer7, offset7, (void *) buselfs_state);
+    IFENERGYMON(blfs_energymon_fini(buselfs_state));
 
     TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset7, buffer7, sizeof buffer7);
 }
@@ -1423,6 +1636,7 @@ void test_blfs_incomplete_rekeying_triggers_blfs_rekey_nugget_journaled_on_start
     TEST_IGNORE();
 }*/
 
+
 static void readwrite_quicktests()
 {
     uint8_t expected_buffer1[4096];
@@ -1430,6 +1644,8 @@ static void readwrite_quicktests()
     expected_buffer1[4095] = 0xAB;
     expected_buffer1[4094] = 0xAA;
     uint32_t offset = 0;
+
+    IFENERGYMON(blfs_energymon_init(buselfs_state));
 
     for(; offset < 1024; offset++)
     {
@@ -1471,6 +1687,8 @@ static void readwrite_quicktests()
     buse_read(buffer, sizeof buffer, offset, (void *) buselfs_state);
 
     TEST_ASSERT_EQUAL_MEMORY_MESSAGE(expected_buffer1, buffer, sizeof buffer, strbuf);
+
+    IFENERGYMON(blfs_energymon_fini(buselfs_state));
 }
 
 void test_buselfs_main_actual_creates(void)

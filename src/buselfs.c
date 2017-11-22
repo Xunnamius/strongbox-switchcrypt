@@ -1,12 +1,13 @@
 /*
  * Backend virtual block device for any LFS using BUSE
  *
- * @author Bernard Dickens
+ * @author ANON
  */
 
 #include "buselfs.h"
 #include "bitmask.h"
 #include "interact.h"
+#include "swappable.h"
 #include "buse.h"
 #include "mt_err.h"
 
@@ -19,13 +20,150 @@
 #include <limits.h>
 #include <errno.h>
 #include <unistd.h>
+#include <sys/types.h>
+
+#if BLFS_DEBUG_MONITOR_POWER > 0
+
+#include "energymon-time-util.h"
+
+static FILE * metrics_output_fd = NULL;
+
+void blfs_energymon_init(buselfs_state_t * buselfs_state)
+{
+    uid_t euid = geteuid();
+
+    if(euid != 0)
+        Throw(EXCEPTION_MUST_BE_ROOT);
+
+    // Setup energymon
+    errno = 0;
+
+    buselfs_state->energymon_monitor = malloc(sizeof *(buselfs_state->energymon_monitor));
+
+    if(energymon_get_default(buselfs_state->energymon_monitor))
+    {
+        dzlog_fatal("energymon_get_default error: %s", strerror(errno));
+        Throw(EXCEPTION_ENERGYMON_GET_DEFAULT_FAILURE);
+    }
+
+    errno = 0;
+
+    if(buselfs_state->energymon_monitor->finit(buselfs_state->energymon_monitor))
+    {
+        dzlog_fatal("finit error: %s", strerror(errno));
+        Throw(EXCEPTION_ENERGYMON_FINIT_FAILURE);
+    }
+
+    errno = 0;
+
+    if(metrics_output_fd == NULL)
+        metrics_output_fd = fopen(BLFS_ENERGYMON_OUTPUT_PATH, "a");
+    
+    if(metrics_output_fd == NULL || errno)
+    {
+        dzlog_fatal("failed to fopen metrics_output_fd: %s", strerror(errno));
+        Throw(EXCEPTION_OPEN_FAILURE);
+    }
+}
+
+void blfs_energymon_collect_metrics(metrics_t * metrics, buselfs_state_t * buselfs_state)
+{
+    // Grab the initial energy use and time
+    errno = 0;
+    metrics->energy_uj = buselfs_state->energymon_monitor->fread(buselfs_state->energymon_monitor);
+
+    if(!metrics->energy_uj && errno)
+    {
+        dzlog_fatal("energymon metric collection error: %s", strerror(errno));
+        buselfs_state->energymon_monitor->ffinish(buselfs_state->energymon_monitor);
+        Throw(EXCEPTION_ENERGYMON_METRIC_COLLECTION_FAILURE);
+    }
+
+    metrics->time_ns = energymon_gettime_ns();
+}
+
+// TODO: document/comment these!
+void blfs_energymon_writeout_metrics(char * tag,
+                                     metrics_t * read_metrics_start,
+                                     metrics_t * read_metrics_end,
+                                     metrics_t * write_metrics_start,
+                                     metrics_t * write_metrics_end)
+{
+    // Crunch the results
+    double tr_energy = read_metrics_end->energy_uj - read_metrics_start->energy_uj;
+    double tr_duration = read_metrics_end->time_ns - read_metrics_start->time_ns;
+
+    double tw_energy = 0;
+    double tw_duration = 0;
+    double tr_power = 0;
+    double tw_power = 0;
+
+    tr_energy /= 1000000.0;
+    tr_duration /= 1000000000.0;
+    tr_power = tr_energy / tr_duration;
+
+    if(write_metrics_start != NULL && write_metrics_end != NULL)
+    {
+        tw_energy = write_metrics_end->energy_uj - write_metrics_start->energy_uj;
+        tw_duration = write_metrics_end->time_ns - write_metrics_start->time_ns;
+
+        tw_energy /= 1000000.0;
+        tw_duration /= 1000000000.0;
+        tw_power = tw_energy / tw_duration;
+
+        // Output the results
+        fprintf(metrics_output_fd,
+                "tag: %s\ntr_energy: %f\ntr_duration: %f\ntr_power: %f\ntw_energy: %f\ntw_duration: %f\ntw_power: %f\n---\n",
+                tag,
+                tr_energy,
+                tr_duration,
+                tr_power,
+                tw_energy,
+                tw_duration,
+                tw_power);
+    }
+
+    else
+    {
+        // Output the results
+        fprintf(metrics_output_fd,
+                "tag: %s\nt_energy: %f\nt_duration: %f\nt_power: %f\n---\n",
+                tag,
+                tr_energy,
+                tr_duration,
+                tr_power);
+    }
+
+    // Flush the results
+    fflush(metrics_output_fd);
+}
+
+void blfs_energymon_writeout_metrics_simple(char * tag, metrics_t * metrics_start, metrics_t * metrics_end)
+{
+    blfs_energymon_writeout_metrics(tag, metrics_start, metrics_end, NULL, NULL);
+}
+
+void blfs_energymon_fini(buselfs_state_t * buselfs_state)
+{
+    if(buselfs_state->energymon_monitor->ffinish(buselfs_state->energymon_monitor))
+    {
+        dzlog_fatal("ffinish error: %s", strerror(errno));
+        Throw(EXCEPTION_ENERGYMON_FFINISH_FAILURE);
+    }
+
+    fflush(metrics_output_fd);
+    fclose(metrics_output_fd);
+    
+    free(buselfs_state->energymon_monitor);
+    
+    metrics_output_fd = 0;
+    buselfs_state->energymon_monitor = NULL;
+}
+
+#endif /* BLFS_DEBUG_MONITOR_POWER > 0 */
 
 #if BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION && BLFS_NO_READ_INTEGRITY
 #error "The BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION and BLFS_NO_READ_INTEGRITY compile flags CANNOT be used together!"
-#endif
-
-#if BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION && BLFS_BADBADNOTGOOD_USE_AESCTR_EMULATION
-#error "The BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION and BLFS_BADBADNOTGOOD_USE_AESCTR_EMULATION compile flags CANNOT be used together!"
 #endif
 
 /**
@@ -85,12 +223,6 @@ static struct buse_operations buseops = {
     .trim = buse_trim,
     .size = 0
 };
-
-/**
- * Pointer pointing to the currently active stream crypting function. See main.
- */
-void (*stream_crypt)(uint8_t *, const uint8_t *, uint32_t, const uint8_t *, uint64_t, uint64_t)
-    = BLFS_BADBADNOTGOOD_USE_AESCTR_EMULATION ? &blfs_aesctr_crypt : &blfs_chacha20_crypt;
 
 /**
  * Updates the global merkle tree root hash.
@@ -491,6 +623,15 @@ int buse_read(void * output_buffer, uint32_t length, uint64_t absolute_offset, v
     buselfs_state_t * buselfs_state = (buselfs_state_t *) userdata;
     uint_fast32_t size = length;
 
+    IFENERGYMON(metrics_t metrics_init_start);
+    IFENERGYMON(metrics_t metrics_init_end);
+    IFENERGYMON(metrics_t metrics_read_loop_start);
+    IFENERGYMON(metrics_t metrics_read_loop_end);
+    IFENERGYMON(metrics_t metrics_integrity_loop_start);
+    IFENERGYMON(metrics_t metrics_integrity_loop_end);
+
+    IFENERGYMON(blfs_energymon_collect_metrics(&metrics_init_start, buselfs_state));
+
     IFDEBUG(dzlog_debug("output_buffer (ptr): %p", (void *) output_buffer));
     IFDEBUG(dzlog_debug("buffer (ptr): %p", (void *) buffer));
     IFDEBUG(dzlog_debug("length: %"PRIu32, length));
@@ -522,6 +663,8 @@ int buse_read(void * output_buffer, uint32_t length, uint64_t absolute_offset, v
     while(length != 0)
     {
         IFDEBUG(dzlog_debug("starting with length: %"PRIu32, length));
+
+        IFENERGYMON(blfs_energymon_collect_metrics(&metrics_read_loop_start, buselfs_state));
 
         assert(length > 0 && length <= size);
 
@@ -580,6 +723,8 @@ int buse_read(void * output_buffer, uint32_t length, uint64_t absolute_offset, v
 
         if(!BLFS_NO_READ_INTEGRITY)
         {
+            IFENERGYMON(blfs_energymon_collect_metrics(&metrics_integrity_loop_start, buselfs_state));
+
             for(uint_fast32_t i = 0; flake_index < flake_end; flake_index++, i++)
             {
                 uint8_t flake_key[BLFS_CRYPTO_BYTES_FLAKE_TAG_KEY];
@@ -668,10 +813,13 @@ int buse_read(void * output_buffer, uint32_t length, uint64_t absolute_offset, v
                     }
                 }
             }
+
+            IFENERGYMON(blfs_energymon_collect_metrics(&metrics_integrity_loop_end, buselfs_state));
+            IFENERGYMON(blfs_energymon_writeout_metrics_simple("buse_read.integ_loop", &metrics_integrity_loop_start, &metrics_integrity_loop_end));
         }
 
         if(BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
-        	assert(buffer_read_length == assert_buffer_read_length);
+            assert(buffer_read_length == assert_buffer_read_length);
 
         else
         {
@@ -686,7 +834,7 @@ int buse_read(void * output_buffer, uint32_t length, uint64_t absolute_offset, v
                                 (void *) (nugget_data + (nugget_internal_offset - first_affected_flake * flake_size)),
                                 buffer_read_length));
 
-            stream_crypt(buffer,
+            buselfs_state->default_crypt_context(buffer,
                                 nugget_data + (nugget_internal_offset - first_affected_flake * flake_size),
                                 buffer_read_length,
                                 nugget_key,
@@ -711,7 +859,13 @@ int buse_read(void * output_buffer, uint32_t length, uint64_t absolute_offset, v
         IFDEBUG(dzlog_debug("nugget_offset: %"PRIuFAST32, nugget_offset));
 
         first_nugget = FALSE;
+
+        IFENERGYMON(blfs_energymon_collect_metrics(&metrics_read_loop_end, buselfs_state));
+        IFENERGYMON(blfs_energymon_writeout_metrics_simple("buse_read.read_loop", &metrics_read_loop_start, &metrics_read_loop_end));
     }
+
+    IFENERGYMON(blfs_energymon_collect_metrics(&metrics_init_end, buselfs_state));
+    IFENERGYMON(blfs_energymon_writeout_metrics_simple("buse_read", &metrics_init_start, &metrics_init_end));
 
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
     return 0;
@@ -721,9 +875,20 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
 {
     IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
 
+    IFENERGYMON(metrics_t metrics_init_start);
+    IFENERGYMON(metrics_t metrics_init_end);
+    IFENERGYMON(metrics_t metrics_outer_write_loop_start);
+    IFENERGYMON(metrics_t metrics_outer_write_loop_end);
+    IFENERGYMON(metrics_t metrics_inner_write_loop_start);
+    IFENERGYMON(metrics_t metrics_inner_write_loop_end);
+    IFENERGYMON(metrics_t metrics_rekey_start);
+    IFENERGYMON(metrics_t metrics_rekey_end);
+
     const uint8_t * buffer = (const uint8_t *) input_buffer;
     buselfs_state_t * buselfs_state = (buselfs_state_t *) userdata;
     uint_fast32_t size = length;
+
+    IFENERGYMON(blfs_energymon_collect_metrics(&metrics_init_start, buselfs_state));
 
     IFDEBUG(dzlog_debug("input_buffer (ptr): %p", (void *) input_buffer));
     IFDEBUG(dzlog_debug("buffer (ptr): %p", (void *) buffer));
@@ -752,7 +917,7 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
     IFDEBUG(dzlog_debug("nugget_internal_offset: %"PRIuFAST32, nugget_internal_offset));
 
     IFDEBUG(dzlog_debug("buffer to write (initial 64 bytes):"));
-            IFDEBUG(hdzlog_debug(input_buffer, /*MIN(64U, */size/*)*/));
+    IFDEBUG(hdzlog_debug(input_buffer, /*MIN(64U, */size/*)*/));
 
     blfs_header_t * tpmv_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_TPMGLOBALVER);
     uint64_t tpmv_value = *(uint64_t *) tpmv_header->data;
@@ -771,6 +936,8 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
     while(length != 0)
     {
         IFDEBUG(dzlog_debug("starting with length: %"PRIu32, length));
+
+        IFENERGYMON(blfs_energymon_collect_metrics(&metrics_outer_write_loop_start, buselfs_state));
 
         assert(length > 0 && length <= size);
 
@@ -791,8 +958,13 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
 
         if(bitmask_any_bits_set(entry->bitmask, first_affected_flake, num_affected_flakes))
         {
+            IFENERGYMON(blfs_energymon_collect_metrics(&metrics_rekey_start, buselfs_state));
+
             IFDEBUG(dzlog_notice("OVERWRITE DETECTED! PERFORMING IN-PLACE JOURNALED REKEYING + WRITE (l=%"PRIuFAST32")", buffer_write_length));
             blfs_rekey_nugget_journaled_with_write(buselfs_state, nugget_offset, buffer, buffer_write_length, nugget_internal_offset);
+
+            IFENERGYMON(blfs_energymon_collect_metrics(&metrics_rekey_end, buselfs_state));
+            IFENERGYMON(blfs_energymon_writeout_metrics_simple("buse_write.outer_write_loop.rekey", &metrics_rekey_start, &metrics_rekey_end));
 
             buffer += buffer_write_length;
         }
@@ -835,8 +1007,11 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
             uint_fast32_t flake_index = first_affected_flake;
             uint_fast32_t flake_end = first_affected_flake + num_affected_flakes;
 
+
             for(uint_fast32_t i = 0; flake_index < flake_end; flake_index++, i++)
             {
+                IFENERGYMON(blfs_energymon_collect_metrics(&metrics_inner_write_loop_start, buselfs_state));
+
                 uint_fast32_t flake_write_length = MIN(flake_total_bytes_to_write, flake_size - flake_internal_offset);
 
                 IFDEBUG(dzlog_debug("flake_write_length: %"PRIuFAST32, flake_write_length));
@@ -897,7 +1072,7 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
                     IFDEBUG(dzlog_debug("blfs_crypt calculated nio: %"PRIuFAST32,
                                     flake_index * flake_size + flake_internal_offset));
 
-                    stream_crypt(flake_data + flake_internal_offset,
+                    buselfs_state->default_crypt_context(flake_data + flake_internal_offset,
                                         buffer,
                                         flake_write_length,
                                         nugget_key,
@@ -988,6 +1163,11 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
                 
                 flake_total_bytes_to_write -= flake_write_length;
                 buffer += flake_write_length;
+
+                IFENERGYMON(blfs_energymon_collect_metrics(&metrics_inner_write_loop_end, buselfs_state));
+                IFENERGYMON(blfs_energymon_writeout_metrics_simple("buse_write.inner_write_loop",
+                                                                   &metrics_inner_write_loop_start,
+                                                                   &metrics_inner_write_loop_end));
             }
 
             assert(flake_total_bytes_to_write == 0);
@@ -1010,6 +1190,11 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
         IFDEBUG(dzlog_debug("length: %"PRIu32, length));
         IFDEBUG(dzlog_debug("nugget_internal_offset: %"PRIuFAST32, nugget_internal_offset));
         IFDEBUG(dzlog_debug("nugget_offset: %"PRIuFAST32, nugget_offset));
+
+        IFENERGYMON(blfs_energymon_collect_metrics(&metrics_outer_write_loop_end, buselfs_state));
+        IFENERGYMON(blfs_energymon_writeout_metrics_simple("buse_write.outer_write_loop",
+                                                           &metrics_outer_write_loop_start,
+                                                           &metrics_outer_write_loop_end));
     }
 
     blfs_commit_header(buselfs_state->backstore, tpmv_header);
@@ -1018,6 +1203,9 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
     update_in_merkle_tree(tpmv_header->data, BLFS_HEAD_HEADER_BYTES_TPMGLOBALVER, 0, buselfs_state);
 
     commit_merkle_tree_root_hash(buselfs_state);
+
+    IFENERGYMON(blfs_energymon_collect_metrics(&metrics_init_end, buselfs_state));
+    IFENERGYMON(blfs_energymon_writeout_metrics_simple("buse_write", &metrics_init_start, &metrics_init_end));
 
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
     return 0;
@@ -1097,7 +1285,7 @@ void blfs_rekey_nugget_journaled_with_write(buselfs_state_t * buselfs_state,
     
     if(!BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
     {
-        stream_crypt(new_nugget_data,
+        buselfs_state->default_crypt_context(new_nugget_data,
                             rekeying_nugget_data,
                             buselfs_state->backstore->nugget_size_bytes,
                             nugget_key,
@@ -1645,6 +1833,16 @@ buselfs_state_t * buselfs_main_actual(int argc, char * argv[], char * blockdevic
         Throw(EXCEPTION_ALLOC_FAILURE);
 
     buselfs_state->backstore = NULL;
+    IFENERGYMON(buselfs_state->energymon_monitor = NULL);
+
+    IFENERGYMON(blfs_energymon_init(buselfs_state));
+    IFENERGYMON(dzlog_info("Energymon interface initialized!"));
+    IFENERGYMON(IFDEBUG(dzlog_debug("Energymon output: %s", BLFS_ENERGYMON_OUTPUT_PATH)));
+
+    IFENERGYMON(IFDEBUG(dzlog_debug("beginning startup energy monitoring...")));
+
+    ENERGYMON_INIT_IFENERGYMON;
+    ENERGYMON_START_IFENERGYMON;
 
     uint8_t  cin_allow_insecure_start       = FALSE;
     uint8_t  cin_use_default_password       = FALSE;
@@ -1699,6 +1897,8 @@ buselfs_state_t * buselfs_main_actual(int argc, char * argv[], char * blockdevic
 
         Throw(EXCEPTION_MUST_HALT);
     }
+
+    blfs_set_stream_context(buselfs_state, sc_default);
 
     /* Process arguments */
     cin_device_name = argv[--argc];
@@ -1803,13 +2003,13 @@ buselfs_state_t * buselfs_main_actual(int argc, char * argv[], char * blockdevic
 
     errno = 0;
 
-    if(cin_backstore_size > UINT_MAX || cin_backstore_size <= 0)
+    if(!cin_backstore_size || cin_backstore_size > UINT_MAX)
         Throw(EXCEPTION_INVALID_BACKSTORESIZE);
 
-    if(cin_flake_size > UINT_MAX || cin_flake_size <= 0)
+    if(!cin_flake_size || cin_flake_size > UINT_MAX)
         Throw(EXCEPTION_INVALID_FLAKESIZE);
 
-    if(cin_flakes_per_nugget > UINT_MAX || cin_flakes_per_nugget <= 0)
+    if(!cin_flakes_per_nugget || cin_flakes_per_nugget > UINT_MAX)
         Throw(EXCEPTION_INVALID_FLAKES_PER_NUGGET);
 
     /* Prepare to setup the backstore file */
@@ -1912,6 +2112,10 @@ buselfs_state_t * buselfs_main_actual(int argc, char * argv[], char * blockdevic
 
     sprintf(blockdevice, BLFS_BACKSTORE_DEVICEPATH, cin_device_name);
     IFDEBUG(dzlog_debug("RETURN: blockdevice = %s", blockdevice));
+
+    ENERGYMON_END_IFENERGYMON;
+    ENERGYMON_OUTPUT_IFENERGYMON("blfs_startup");
+    IFENERGYMON(blfs_energymon_fini(buselfs_state));
     
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 

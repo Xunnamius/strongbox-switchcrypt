@@ -9,7 +9,25 @@
 #include "merkletree.h"
 #include "sodium.h"
 
+#if BLFS_DEBUG_MONITOR_POWER > 0
+
+#include "energymon/energymon-default.h"
+
+// Struct that holds duration/energy/power data
+typedef struct metrics_t {
+    uint64_t time_ns;
+    uint64_t energy_uj;
+} metrics_t;
+
+#endif /* BLFS_DEBUG_MONITOR_POWER > 0 */
+
 KHASH_MAP_INIT_STR(BLFS_KHASH_NUGGET_KEY_CACHE_NAME, uint8_t *)
+
+/**
+ * Struct that defines the common stream cipher interface for algorithm
+ * swapping. See swappable.h for details.
+ */
+typedef void (*stream_crypt_common)(uint8_t *, const uint8_t *, uint32_t, const uint8_t *, uint64_t, uint64_t);
 
 /**
  * This struct represents program state and is passed around to various
@@ -59,6 +77,18 @@ typedef struct buselfs_state_t
      * be disturbed. Useful for unit testing.
      */
     char * default_password;
+
+    /**
+     * If StrongBox was compiled with the energy monitoring flags, this
+     * will be used to store the monitor context.
+     */
+    IFENERGYMON(energymon * energymon_monitor;)
+
+    /**
+     * This stores the default stream cipher context. See swappable.h for
+     * details.
+     */
+    stream_crypt_common default_crypt_context;
 
     /**
      * If we're in crash recover mode (TRUE) or not (FALSE). If we are, then
@@ -204,4 +234,26 @@ buselfs_state_t * buselfs_main_actual(int argc, char * argv[], char * blockdevic
  */
 int buselfs_main(int argc, char * argv[]);
 
+#if BLFS_DEBUG_MONITOR_POWER > 0
+
+// TODO:
+void blfs_energymon_init(buselfs_state_t * buselfs_state);
+
+// TODO:
+void blfs_energymon_collect_metrics(metrics_t * metrics, buselfs_state_t * buselfs_state);
+
+// TODO:
+void blfs_energymon_writeout_metrics(char * tag,
+                                     metrics_t * read_metrics_start,
+                                     metrics_t * read_metrics_end,
+                                     metrics_t * write_metrics_start,
+                                     metrics_t * write_metrics_end);
+
+// TODO:
+void blfs_energymon_writeout_metrics_simple(char * tag, metrics_t * metrics_start, metrics_t * metrics_end);
+
+// TODO:
+void blfs_energymon_fini(buselfs_state_t * buselfs_state);
+
+#endif /* BLFS_DEBUG_MONITOR_POWER > 0 */
 #endif /* BLFS_BUSELFS_H_ */
