@@ -121,7 +121,7 @@ do {                                                                            
 // You entered the wrong password
 #define EXCEPTION_BAD_PASSWORD                          0x1DU
 
-// An integrity violation occurred while trying to initialize (likely GV related)
+// An integrity violation occurred while trying to initialize
 #define EXCEPTION_INTEGRITY_FAILURE                     0x1EU
 
 // A condition has occurred that has forced the software to exit immediately

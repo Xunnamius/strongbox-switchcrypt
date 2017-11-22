@@ -8,7 +8,10 @@
 #define BLFS_CURRENT_VERSION 285U
 #define BLFS_LEAST_COMPAT_VERSION 285U
 
+#ifndef BLFS_TPM_ID // XXX: ensure different than test value
 #define BLFS_TPM_ID 5U // XXX: In an actual application, this would be dynamic!
+#endif
+
 #define BLFS_RPMB_KEY "thirtycharactersecurecounterkey!" // XXX: ^
 #define BLFS_RPMB_DEVICE "/dev/mmcblk0rpmb"
 

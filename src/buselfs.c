@@ -1456,6 +1456,8 @@ void blfs_soft_open(buselfs_state_t * buselfs_state, uint8_t cin_allow_insecure_
     IFDEBUG(dzlog_debug("tpmv_header->data: %"PRIu64, tpmv_value));
 
     int global_correctness = blfs_globalversion_verify(BLFS_TPM_ID, tpmv_value);
+
+    IFDEBUG(dzlog_debug("global_correctness: %i", global_correctness));
     
     if(global_correctness == BLFS_GLOBAL_CORRECTNESS_POTENTIAL_CRASH)
     {
