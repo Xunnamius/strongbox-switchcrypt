@@ -162,7 +162,7 @@ __extension__ ({ \
 #define BLFS_CRYPTO_BYTES_HC128_KEY             16U // HC-128 uses 16 byte keys
 #define BLFS_CRYPTO_BYTES_HC128_IV              16U // HC-128 uses 16 byte IV
 #define BLFS_CRYPTO_BYTES_SOSEK_BLOCK           16U // Sosemanuk outputs 16-byte blocks
-#define BLFS_CRYPTO_BYTES_SOSEK_KEY             32U // Sosemanuk uses 32 byte keys
+#define BLFS_CRYPTO_BYTES_SOSEK_KEY             16U // Sosemanuk uses 16 byte keys
 #define BLFS_CRYPTO_BYTES_SOSEK_IV              16U // Sosemanuk uses 16 byte IV
 
 ////////////

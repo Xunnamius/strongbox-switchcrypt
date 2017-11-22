@@ -5,8 +5,14 @@
 #include "swappable.h"
 
 static stream_cipher_e test_these_ciphers[] = {
-    sc_salsa8,
+    sc_aes128_ctr,
     sc_aes256_ctr,
+    sc_salsa8,
+    sc_salsa12,
+    sc_salsa20,
+    sc_rabbit,
+    sc_hc128,
+    sc_sosemanuk,
 };
 
 #define TRY_FN_CATCH_EXCEPTION(fn_call)           \
@@ -48,8 +54,10 @@ void tearDown(void)
 
 void test_algos_crypt_properly(void)
 {
-    for(size_t i = 0, j = COUNT(test_these_ciphers); i < j; ++i)
+    for(size_t ri = 0, j = COUNT(test_these_ciphers) * 2; ri < j; ++ri)
     {
+        size_t i = ri / 2;
+
         dzlog_notice("Testing algorithm #%i", (int) test_these_ciphers[i]);
 
         stream_crypt_common algo = blfs_to_stream_context(test_these_ciphers[i]);
@@ -88,8 +96,10 @@ void test_algos_crypt_properly(void)
 
 void test_algos_BIGLY(void)
 {
-    for(size_t i = 0, j = COUNT(test_these_ciphers); i < j; ++i)
+    for(size_t ri = 0, j = COUNT(test_these_ciphers) * 2; ri < j; ++ri)
     {
+        size_t i = ri / 2;
+        
         dzlog_notice("Testing algorithm #%i", (int) test_these_ciphers[i]);
 
         stream_crypt_common algo = blfs_to_stream_context(test_these_ciphers[i]);
