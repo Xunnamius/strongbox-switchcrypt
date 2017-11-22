@@ -62,7 +62,7 @@ void test_rpmb_read_counter_works_as_expected(void)
         }
 
         TEST_ASSERT_EQUAL_INT_MESSAGE(0, rpmb_read_counter(dev_fd, &cnt),
-            "(rpmb_read_counter failed; 7 is probably a key-related problem)");
+            "(rpmb_read_counter failed; it is probably a key-related problem)");
 
         rpmb_read_counter(dev_fd, &cnt2);
 
