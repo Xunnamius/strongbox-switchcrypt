@@ -108,17 +108,35 @@ typedef enum stream_cipher_e {
 
 #define MIN(a,b) __extension__ ({ __typeof__ (a) _a = (a); __typeof__ (b) _b = (b); _a < _b ? _a : _b; })
 #define MAX(a,b) __extension__ ({ __typeof__ (a) _a = (a); __typeof__ (b) _b = (b); _a > _b ? _a : _b; })
-#define CEIL(dividend,divisor) __extension__ ({ \
-                                                __typeof__ (dividend) _dd = (dividend); \
-                                                __typeof__ (divisor) _dr = (divisor); \
-                                                _dd / _dr + (_dd % _dr > 0); \
-                                             })
 
-#define LAMBDA(return_type, function_body) \
-__extension__ ({ \
-                 return_type __fn__ function_body \
-                 __fn__; \
-               })
+#define CEIL(dividend,divisor) __extension__    \
+    ({                                          \
+        __typeof__ (dividend) _dd = (dividend); \
+        __typeof__ (divisor) _dr = (divisor);   \
+        _dd / _dr + (_dd % _dr > 0);            \
+    })
+
+#define LAMBDA(return_type, function_body) __extension__    \
+    ({                                                      \
+        return_type __fn__ function_body                    \
+        __fn__;                                             \
+    })
+
+#define DO_IO(func, fd, buf, nbyte)                 \
+    ({                                              \
+        ssize_t ret = 0, r;                         \
+        do {                                        \
+            r = func(fd, buf + ret, nbyte - ret);   \
+            if (r < 0 && errno != EINTR) {          \
+                ret = -1;                           \
+                break;                              \
+            }                                       \
+            else if (r > 0)                         \
+                ret += r;                           \
+        } while (r != 0 && (size_t) ret != nbyte);  \
+                                                    \
+        ret;                                        \
+    })
 
 // XXX: Only works for stack initialized arrays!
 #define COUNT(x) __extension__ ({ (sizeof(x) / sizeof((x)[0])); })
@@ -136,6 +154,9 @@ __extension__ ({ \
 #define BLFS_CRYPTO_BYTES_TJ_HASH_OUT           16U // crypto_onetimeauth_poly1305_BYTES
 #define BLFS_CRYPTO_BYTES_FLAKE_TAG_KEY         32U // crypto_onetimeauth_poly1305_KEYBYTES; <= BLFS_CRYPTO_BYTES_KDF_OUT
 #define BLFS_CRYPTO_BYTES_MTRH                  32U // HASH_LENGTH ; this x8 is also an upper bound on flakes per nugget
+#define BLFS_CRYPTO_RPMB_KEY                    32U // See spec
+#define BLFS_CRYPTO_RPMB_MAC_OUT                32U // See spec
+#define BLFS_CRYPTO_RPMB_BLOCK                  256U // See spec
 
 #define BLFS_CRYPTO_BYTES_AES128_BLOCK          16U // OpenSSL AES-128 outputs 16-byte blocks
 #define BLFS_CRYPTO_BYTES_AES128_KEY            16U // AES 128 key size
@@ -197,6 +218,14 @@ __extension__ ({ \
 #define BLFS_HEAD_IS_INITIALIZED_VALUE          0x3CU
 #define BLFS_HEAD_WAS_WIPED_VALUE               0x3DU
 
+#define BLFS_GLOBAL_CORRECTNESS_ALL_GOOD        0
+#define BLFS_GLOBAL_CORRECTNESS_POTENTIAL_CRASH 1 // potential crash occurred; c == d + 1
+#define BLFS_GLOBAL_CORRECTNESS_ILLEGAL_MANIP   2 // bad manipulation occurred; c < d or c > d + 1
+
+#ifndef BLFS_MANUAL_GV_FALLBACK
+#define BLFS_MANUAL_GV_FALLBACK -1
+#endif
+
 ///////////////
 // Backstore //
 ///////////////
@@ -220,11 +249,11 @@ __extension__ ({ \
 #endif
 
 #ifndef BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION
-#define BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION FALSE // Don't even think about it
+#define BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION FALSE
 #endif
 
 #ifndef BLFS_NO_READ_INTEGRITY
-#define BLFS_NO_READ_INTEGRITY FALSE // Reduce security guarantee to AES-XTS levels
+#define BLFS_NO_READ_INTEGRITY                  FALSE // Reduce security guarantee to AES-XTS levels if TRUE
 #endif
 
 #define BLFS_DEFAULT_BYTES_FLAKE                4096U
@@ -236,6 +265,26 @@ __extension__ ({ \
 #define BLFS_BACKSTORE_DEVNAME_MAXLEN           16
 #define BLFS_PASSWORD_BUF_SIZE                  1025
 #define BLFS_PASSWORD_MAX_SIZE                  "1024"
+
+/////////
+// MMC //
+/////////
+
+#define WP_BLKS_PER_QUERY                       32
+
+#define USER_WP_PERM_PSWD_DIS                   0x80
+#define USER_WP_CD_PERM_WP_DIS                  0x40
+#define USER_WP_US_PERM_WP_DIS                  0x10
+#define USER_WP_US_PWR_WP_DIS                   0x08
+#define USER_WP_US_PERM_WP_EN                   0x04
+#define USER_WP_US_PWR_WP_EN                    0x01
+#define USER_WP_CLEAR                           (USER_WP_US_PERM_WP_DIS | USER_WP_US_PWR_WP_DIS \
+                                                    | USER_WP_US_PERM_WP_EN | USER_WP_US_PWR_WP_EN)
+
+#define WPTYPE_NONE                             0
+#define WPTYPE_TEMP                             1
+#define WPTYPE_PWRON                            2
+#define WPTYPE_PERM                             3
 
 ///////////
 // Khash //

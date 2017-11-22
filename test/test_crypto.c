@@ -14,6 +14,8 @@ Try                                               \
 Catch(e_actual)                                   \
     TEST_ASSERT_EQUAL_HEX_MESSAGE(e_expected, e_actual, "Encountered an unsuspected error condition!");
 
+#define _TEST_BLFS_TPM_ID 1
+
 void setUp(void)
 {
     static int runonce = 0;

@@ -621,7 +621,7 @@ void test_blfs_run_mode_create_initializes_keycache_and_merkle_tree_properly(voi
     }
 }
 
-void test_blfs_run_mode_open_works_as_expected(void)
+/*void test_blfs_run_mode_open_works_as_expected(void)
 {
     free(buselfs_state->backstore);
 
@@ -651,9 +651,9 @@ void test_blfs_run_mode_open_works_as_expected(void)
 
         blfs_backstore_close(buselfs_state->backstore);
     }
-}
+}*/
 
-void test_blfs_run_mode_wipe_works_as_expected(void)
+/*void test_blfs_run_mode_wipe_works_as_expected(void)
 {
     free(buselfs_state->backstore);
 
@@ -709,9 +709,9 @@ void test_blfs_run_mode_wipe_works_as_expected(void)
     free(latter_head_zeroes);
 
     blfs_backstore_close(buselfs_state->backstore);
-}
+}*/
 
-void test_blfs_run_mode_open_properly_opens_wiped_backstores(void)
+/*void test_blfs_run_mode_open_properly_opens_wiped_backstores(void)
 {
     free(buselfs_state->backstore);
 
@@ -741,7 +741,7 @@ void test_blfs_run_mode_open_properly_opens_wiped_backstores(void)
     TEST_ASSERT_EQUAL_UINT8(BLFS_HEAD_IS_INITIALIZED_VALUE, init_header_data2[0]);
 
     blfs_backstore_close(buselfs_state->backstore);
-}
+}*/
 
 void test_buselfs_main_actual_throws_exception_if_wrong_argc(void)
 {

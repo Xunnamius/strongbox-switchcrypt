@@ -173,6 +173,18 @@ do {                                                                            
 // The requested stream cipher algorithm does not exist
 #define EXCEPTION_SC_ALGO_NOT_FOUND                     0x2FU
 
+// A failure occurred during an RPMB operation (in low level ioctl)
+#define EXCEPTION_RPMB_IOCTL_FAILURE            0x28U
+
+// A failure occurred during an RPMB operation (in high level RPMB frame)
+#define EXCEPTION_RPMB_OP_FAILURE               0x29U
+
+// Calculated mac doesn't match mac returned in RPMB frame during ioctl operation
+#define EXCEPTION_RPMB_MAC_MISMATCH             0x2AU
+
+// Calculated mac doesn't match mac returned in RPMB frame during ioctl operation
+#define EXCEPTION_GLOBAL_CORRECTNESS_FAILURE    0x2BU
+
 ///////////////////////
 // End Configuration //
 ///////////////////////

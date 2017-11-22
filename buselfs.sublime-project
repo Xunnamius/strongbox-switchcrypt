@@ -2,19 +2,6 @@
 	"folders":
 	[
 		{
-			"file_exclude_patterns":
-			[
-				"~AutoRecover.buselfs.vcxproj",
-				"buselfs.vcxproj.user",
-				"buselfs.vcxproj.filters",
-				"buselfs.vcxproj",
-				"buselfs.sln"
-			],
-			"folder_exclude_patterns":
-			[
-				".vs",
-				".settings"
-			],
 			"path": "."
 		}
 	]

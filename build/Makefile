@@ -24,8 +24,8 @@ ESTREAM_ROOT    := $(VENDR_ROOT)/libestream
 
 # Buselfs internal debug level
 # XXX: Set to 0 when not debugging or suffer the (perf-related) consequences!
-#                  := -DBLFS_DEBUG_LEVEL=0
-DEBUG_COMPILE_FLAG := -DBLFS_DEBUG_LEVEL=0 \
+# XXX: BLFS_MANUAL_GV_FALLBACK should be set to -1 instead of 0 or ^
+DEBUG_COMPILE_FLAG := -DBLFS_DEBUG_LEVEL=1 \
 					  -DBLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION=0 \
 					  -DBLFS_NO_READ_INTEGRITY=0 \
 					  -DBLFS_DEBUG_MONITOR_POWER=0
@@ -167,7 +167,7 @@ $(SCARECROWS): ;
 $(EXENAME): $(SRC_FILES) $(VENDR_FILES)
 	$(CC) $(CFLAGS) $(IFLAGS) $(DEBUG_COMPILE_FLAG) -o $(EXENAME) $(EXECSRC) \
 		$^ \
-		$(STATIC_LIBS) \
+		$(EXPLICIT_LIBS) \
 		$(LDFLAGS)
 
 $(SRC_FILES) $(VENDR_FILES): %.o: %.c %.h
