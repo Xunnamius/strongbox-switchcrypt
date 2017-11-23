@@ -142,7 +142,7 @@ int blfs_globalversion_verify(uint64_t id, uint64_t global_version)
     IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
 
     IFDEBUG(dzlog_debug("id = %"PRIu64, id));
-    IFDEBUG(dzlog_debug("global_version = %"PRIu64, global_version));
+    IFDEBUG(dzlog_debug("global_version (expected) = %"PRIu64, global_version));
 
     uint8_t data[BLFS_CRYPTO_RPMB_BLOCK];
     CEXCEPTION_T e_actual = EXCEPTION_NO_EXCEPTION;
@@ -173,7 +173,7 @@ int blfs_globalversion_verify(uint64_t id, uint64_t global_version)
     IFDEBUG(hdzlog_debug(first_8, 8));
 
     uint64_t actual_gversion = *(uint64_t *) first_8;
-    IFDEBUG(dzlog_debug("actual_gversion = %"PRIu64, actual_gversion));
+    IFDEBUG(dzlog_debug("actual_gversion (what RPMB reports) = %"PRIu64, actual_gversion));
 
     //Throw(EXCEPTION_TPM_VERSION_CHECK_FAILURE);
 
@@ -193,7 +193,7 @@ void blfs_globalversion_commit(uint64_t id, uint64_t global_version)
     IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
 
     IFDEBUG(dzlog_debug("id = %"PRIu64, id));
-    IFDEBUG(dzlog_debug("global_version = %"PRIu64, global_version));
+    IFDEBUG(dzlog_debug("global_version (to be written) = %"PRIu64, global_version));
 
     uint8_t data[BLFS_CRYPTO_RPMB_BLOCK] = { 0 };
     memcpy(data, (uint8_t *) &global_version, sizeof(global_version));

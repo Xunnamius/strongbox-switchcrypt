@@ -30,6 +30,7 @@ Try                                               \
 Catch(e_actual)                                   \
     TEST_ASSERT_EQUAL_HEX_MESSAGE(e_expected, e_actual, "Encountered an unsuspected error condition!");
 
+#define _TEST_BLFS_TPM_ID 1 // XXX: ensure different than prod value
 #define BACKSTORE_FILE_PATH "/tmp/test.io.bin"
 
 static int iofd;
@@ -128,6 +129,7 @@ static void make_fake_state()
     buselfs_state->cache_nugget_keys            = kh_init(BLFS_KHASH_NUGGET_KEY_CACHE_NAME);
     buselfs_state->merkle_tree                  = mt_create();
     buselfs_state->default_password             = BLFS_DEFAULT_PASS;
+    buselfs_state->rpmb_secure_index            = _TEST_BLFS_TPM_ID;
 
     blfs_set_stream_context(buselfs_state, sc_default);
 

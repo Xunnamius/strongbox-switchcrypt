@@ -10,12 +10,11 @@
 #include <sodium.h>
 #include <errno.h>
 
-#define BLFS_TPM_ID 1 // XXX: ensure different than prod value
-
 #include "unity.h"
 #include "buselfs.h"
 #include "../src/mmc.h"
 
+#define _TEST_BLFS_TPM_ID 1 // XXX: ensure different than prod value
 #define BACKSTORE_FILE_PATH "/tmp/test.io.bin"
 
 #define TRY_FN_CATCH_EXCEPTION(fn_call)           \
@@ -168,8 +167,8 @@ void test_rpmb_readwrite_block_works_as_expected_with_small_input(void)
         const uint8_t data_in[BLFS_CRYPTO_RPMB_BLOCK] = "small";
         uint8_t * data_out = calloc(BLFS_CRYPTO_RPMB_BLOCK, sizeof(*data_out));
 
-        rpmb_write_block(BLFS_TPM_ID, data_in);
-        rpmb_read_block(BLFS_TPM_ID, data_out);
+        rpmb_write_block(_TEST_BLFS_TPM_ID, data_in);
+        rpmb_read_block(_TEST_BLFS_TPM_ID, data_out);
 
         TEST_ASSERT_EQUAL_MEMORY(data_in, data_out, sizeof data_in);
     }
@@ -188,8 +187,8 @@ void test_rpmb_write_block_works_as_expected_with_big_input(void)
                                                         "ytesfunnyhowitallworksoutinthenendifyouletit!";
         uint8_t data_out[BLFS_CRYPTO_RPMB_BLOCK];
 
-        rpmb_write_block(BLFS_TPM_ID, data_in);
-        rpmb_read_block(BLFS_TPM_ID, data_out);
+        rpmb_write_block(_TEST_BLFS_TPM_ID, data_in);
+        rpmb_read_block(_TEST_BLFS_TPM_ID, data_out);
 
         TEST_ASSERT_EQUAL_MEMORY(data_in, data_out, sizeof data_in);
     }
@@ -205,8 +204,8 @@ void test_rpmb_write_block_works_as_expected_with_big_zero_input(void)
         const uint8_t data_in[BLFS_CRYPTO_RPMB_BLOCK] = { 0 };
         uint8_t data_out[BLFS_CRYPTO_RPMB_BLOCK];
 
-        rpmb_write_block(BLFS_TPM_ID, data_in);
-        rpmb_read_block(BLFS_TPM_ID, data_out);
+        rpmb_write_block(_TEST_BLFS_TPM_ID, data_in);
+        rpmb_read_block(_TEST_BLFS_TPM_ID, data_out);
 
         TEST_ASSERT_EQUAL_MEMORY(data_in, data_out, sizeof data_in);
     }
@@ -225,8 +224,8 @@ void test_rpmb_write_block_works_as_expected_with_too_big_input(void)
         memset(data_in + 2, 111, 253);
         memset(data_in + 255, 222, 257);
 
-        rpmb_write_block(BLFS_TPM_ID, data_in);
-        rpmb_read_block(BLFS_TPM_ID, data_out);
+        rpmb_write_block(_TEST_BLFS_TPM_ID, data_in);
+        rpmb_read_block(_TEST_BLFS_TPM_ID, data_out);
 
         TEST_ASSERT_EQUAL_MEMORY(data_in, data_out, sizeof data_out);
     }
@@ -250,6 +249,7 @@ void test_integration_with_buselfs_works_as_expected(void)
     buselfs_state->cache_nugget_keys            = kh_init(BLFS_KHASH_NUGGET_KEY_CACHE_NAME);
     buselfs_state->merkle_tree                  = mt_create();
     buselfs_state->default_password             = BLFS_DEFAULT_PASS;
+    buselfs_state->rpmb_secure_index            = _TEST_BLFS_TPM_ID;
 
     blfs_set_stream_context(buselfs_state, sc_default);
 
@@ -282,11 +282,13 @@ void test_integration_with_buselfs_works_as_expected(void)
 
     // Run tests
 
+    IFDEBUG(dzlog_debug("---<> start open"));
     blfs_run_mode_open(BACKSTORE_FILE_PATH, (uint8_t)(1), buselfs_state);
 
     uint8_t buffer1[20] = { 0x00 };
     uint64_t offset1 = 28;
 
+    IFDEBUG(dzlog_debug("---<> start readwrite"));
     IFENERGYMON(blfs_energymon_init(buselfs_state));
     buse_write(decrypted_body + offset1, sizeof buffer1, offset1, (void *) buselfs_state);
     buse_read(buffer1, sizeof buffer1, offset1, (void *) buselfs_state);
