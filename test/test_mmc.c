@@ -9,9 +9,11 @@
 #include <fcntl.h>
 #include <sodium.h>
 #include <errno.h>
+#include <assert.h>
 
 #include "unity.h"
 #include "buselfs.h"
+#include "swappable.h"
 #include "../src/mmc.h"
 
 #define _TEST_BLFS_TPM_ID 1 // XXX: ensure different than prod value
@@ -279,6 +281,15 @@ void test_integration_with_buselfs_works_as_expected(void)
     blfs_commit_tjournal_entry(backstore, entry2);
 
     blfs_backstore_close(backstore);
+
+    // Set proper rpmb value (0x908070609080706 == 650777868657755910)
+    uint8_t data_in[BLFS_CRYPTO_RPMB_BLOCK] = { 0x09, 0x08, 0x07, 0x06, 0x09, 0x08, 0x07, 0x06 };
+
+    assert(sizeof(data_in) - 8 > 0);
+
+    memset(data_in + 8, 0, sizeof(data_in) - 8);
+
+    rpmb_write_block(_TEST_BLFS_TPM_ID, data_in);
 
     // Run tests
 
