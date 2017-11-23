@@ -293,13 +293,11 @@ void test_integration_with_buselfs_works_as_expected(void)
 
     // Run tests
 
-    IFDEBUG(dzlog_debug("---<> start open"));
     blfs_run_mode_open(BACKSTORE_FILE_PATH, (uint8_t)(1), buselfs_state);
 
     uint8_t buffer1[20] = { 0x00 };
     uint64_t offset1 = 28;
 
-    IFDEBUG(dzlog_debug("---<> start readwrite"));
     IFENERGYMON(blfs_energymon_init(buselfs_state));
     buse_write(decrypted_body + offset1, sizeof buffer1, offset1, (void *) buselfs_state);
     buse_read(buffer1, sizeof buffer1, offset1, (void *) buselfs_state);
