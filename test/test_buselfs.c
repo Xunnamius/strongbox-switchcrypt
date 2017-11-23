@@ -1422,7 +1422,7 @@ void test_blfs_rekey_nugget_journaled_with_write_works_as_expected(void)
 
     TEST_ASSERT_TRUE(bitmask_is_bit_set(entry0->bitmask, 0));
     TEST_ASSERT_TRUE(bitmask_is_bit_set(entry0->bitmask, 1));
-    TEST_ASSERT_EQUAL_UINT(1, count0->keycount);
+    TEST_ASSERT_EQUAL_UINT(2, count0->keycount);
 
     blfs_rekey_nugget_journaled_with_write(buselfs_state, 0, decrypted_body + 1, 8, 1);
 
