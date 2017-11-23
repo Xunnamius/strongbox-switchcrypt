@@ -9,6 +9,9 @@
 // Static HEAD ordering //
 //////////////////////////
 
+// XXX: Be sure any updates result in changes to both header_types_ordered and
+// header_types_named!
+
 static const uint32_t header_types_ordered[BLFS_HEAD_NUM_HEADERS][2] = {
     { BLFS_HEAD_HEADER_TYPE_VERSION, BLFS_HEAD_HEADER_BYTES_VERSION },
     { BLFS_HEAD_HEADER_TYPE_SALT, BLFS_HEAD_HEADER_BYTES_SALT },
@@ -19,7 +22,20 @@ static const uint32_t header_types_ordered[BLFS_HEAD_NUM_HEADERS][2] = {
     { BLFS_HEAD_HEADER_TYPE_FLAKESPERNUGGET, BLFS_HEAD_HEADER_BYTES_FLAKESPERNUGGET },
     { BLFS_HEAD_HEADER_TYPE_FLAKESIZE_BYTES, BLFS_HEAD_HEADER_BYTES_FLAKESIZE_BYTES },
     { BLFS_HEAD_HEADER_TYPE_INITIALIZED, BLFS_HEAD_HEADER_BYTES_INITIALIZED },
-    { BLFS_HEAD_HEADER_TYPE_REKEYING, BLFS_HEAD_HEADER_BYTES_REKEYING }
+    { BLFS_HEAD_HEADER_TYPE_REKEYING, BLFS_HEAD_HEADER_BYTES_REKEYING },
+};
+
+static const char * const header_types_named[BLFS_HEAD_NUM_HEADERS] = {
+    "VERSION",
+    "SALT",
+    "MTRH",
+    "TPMGLOBALVER",
+    "VERIFICATION",
+    "NUMNUGGETS",
+    "FLAKESPERNUGGET",
+    "FLAKESIZE_BYTES",
+    "INITIALIZED",
+    "REKEYING",
 };
 
 //////////////////////
@@ -34,6 +50,7 @@ static const uint32_t header_types_ordered[BLFS_HEAD_NUM_HEADERS][2] = {
  * This struct represents a generic HEAD section header.
  *
  * @type            BLFS_HEAD_HEADER_TYPE_*
+ * @name            @type as a string with common prefix removed
  * @data_offset     data offset in the backstore
  * @data_length     total length of the header data in bytes
  * @data            header value data (in bytes, not synced)
@@ -41,6 +58,7 @@ static const uint32_t header_types_ordered[BLFS_HEAD_NUM_HEADERS][2] = {
 typedef struct blfs_header_t
 {
     uint32_t type;
+    const char * name;
 
     uint64_t data_offset;
     uint64_t data_length;

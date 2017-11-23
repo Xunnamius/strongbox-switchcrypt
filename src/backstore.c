@@ -26,11 +26,13 @@ static blfs_header_t * blfs_generate_header_actual(blfs_backstore_t * backstore,
 
     for(size_t i = 0; i < BLFS_HEAD_NUM_HEADERS; ++i)
     {
-        uint32_t const_header_type = header_types_ordered[i][0];
+        uint32_t const_header_type   = header_types_ordered[i][0];
         uint64_t const_header_length = header_types_ordered[i][1];
+        char *   const_header_name   = header_types_named[i];
 
         if(header_type == const_header_type)
         {
+            header->name = const_header_name;
             header->type = header_type;
             header->data_length = const_header_length;
             header->data_offset = offset;
@@ -43,6 +45,7 @@ static blfs_header_t * blfs_generate_header_actual(blfs_backstore_t * backstore,
             data_handle(backstore, header);
 
             IFDEBUG(dzlog_debug("generating blfs_header_t header object"));
+            IFDEBUG(dzlog_debug("header->name = %s", header->name));
             IFDEBUG(dzlog_debug("header->type = %"PRIu32, header->type));
             IFDEBUG(dzlog_debug("header->data_length = %"PRIu64, header->data_length));
             IFDEBUG(dzlog_debug("header->data_offset = %"PRIu64, header->data_offset));
@@ -51,7 +54,7 @@ static blfs_header_t * blfs_generate_header_actual(blfs_backstore_t * backstore,
 
             KHASH_CACHE_PUT(BLFS_KHASH_HEADERS_CACHE_NAME, backstore->cache_headers, header->type, header);
 
-            IFDEBUG(dzlog_debug("header type %i was added to the cache", header_type));
+            IFDEBUG(dzlog_debug("header type %i (%s) was added to the cache", header_type, const_header_name));
             IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
             return header;
         }
@@ -100,12 +103,13 @@ blfs_header_t * blfs_open_header(blfs_backstore_t * backstore, uint32_t header_t
 
     if((khash_itr_key = KHASH_CACHE_EXISTS(BLFS_KHASH_HEADERS_CACHE_NAME, backstore->cache_headers, header_type)))
     {
-        IFDEBUG(dzlog_debug("CACHE HIT: header type %i was found in the cache", header_type));
+        blfs_header_t * cached = KHASH_CACHE_GET_WITH_ITRP1(backstore->cache_headers, khash_itr_key);
+        IFDEBUG(dzlog_debug("CACHE HIT: header type %i (%s) was found in the cache", header_type, cached));
         IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
-        return KHASH_CACHE_GET_WITH_ITRP1(backstore->cache_headers, khash_itr_key);
+        return cached;
     }
 
-    IFDEBUG(dzlog_debug("header type %i was not found in the cache", header_type));
+    IFDEBUG(dzlog_debug("header type %i (human readable name found below) was not found in the cache", header_type));
 
     IFDEBUG(dzlog_debug("<opening blfs_header_t header object>"));
 
@@ -130,6 +134,7 @@ void blfs_commit_header(blfs_backstore_t * backstore, const blfs_header_t * head
     blfs_backstore_write(backstore, header->data, header->data_length, header->data_offset);
 
     IFDEBUG(dzlog_debug("committed header data to backstore:"));
+    IFDEBUG(dzlog_debug("header->name = %s", header->name));
     IFDEBUG(dzlog_debug("header->type = %"PRIu32, header->type));
     IFDEBUG(dzlog_debug("header->data_length = %"PRIu64, header->data_length));
     IFDEBUG(dzlog_debug("header->data_offset = %"PRIu64, header->data_offset));
@@ -147,11 +152,11 @@ void blfs_close_header(blfs_backstore_t * backstore, blfs_header_t * header)
 
     if((khash_itr_key = KHASH_CACHE_EXISTS(BLFS_KHASH_HEADERS_CACHE_NAME, backstore->cache_headers, header->type)))
     {
-        IFDEBUG(dzlog_debug("CACHE HIT: header type %i was deleted from the cache", header->type));
+        IFDEBUG(dzlog_debug("CACHE HIT: header type %i (%s) was deleted from the cache", header->type, header->name));
         KHASH_CACHE_DEL_WITH_ITRP1(BLFS_KHASH_HEADERS_CACHE_NAME, backstore->cache_headers, khash_itr_key);
     }
 
-    IFDEBUG(dzlog_debug("header type %i is about to be freed...", header->type));
+    IFDEBUG(dzlog_debug("header type %i (%s) is about to be freed...", header->type, header->name));
 
     free(header->data);
     free(header);
