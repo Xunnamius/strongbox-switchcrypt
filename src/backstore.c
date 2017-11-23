@@ -28,7 +28,7 @@ static blfs_header_t * blfs_generate_header_actual(blfs_backstore_t * backstore,
     {
         uint32_t const_header_type   = header_types_ordered[i][0];
         uint64_t const_header_length = header_types_ordered[i][1];
-        char *   const_header_name   = header_types_named[i];
+        const char * const_header_name   = header_types_named[i];
 
         if(header_type == const_header_type)
         {
