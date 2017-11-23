@@ -5,6 +5,7 @@
 #include "backstore.h"
 #include "io.h"
 #include "crypto.h"
+#include "mmc.h"
 #include "khash.h"
 #include "merkletree.h"
 #include "sodium.h"
