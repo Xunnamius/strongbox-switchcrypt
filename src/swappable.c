@@ -35,7 +35,7 @@ typedef struct sc_context_t {
                         uint64_t,
                         uint64_t,
                         uint64_t,
-                        uint8_t *,
+                        const uint8_t * const,
                         uint8_t *);
 } sc_context_t;
 
@@ -58,7 +58,7 @@ static void generic_sc_impl(sc_context_t * sc_context)
     IFDEBUG(dzlog_debug("data in: (first 64 bytes):"));
     IFDEBUG(hdzlog_debug(sc_context->data, MIN(64U, sc_context->data_length)));
 
-    uint8_t * kcs_keycount_ptr = (uint8_t *) &sc_context->kcs_keycount;
+    const uint8_t * const kcs_keycount_ptr = (const uint8_t *) &sc_context->kcs_keycount;
 
     IFDEBUG(dzlog_debug("%s", sc_context->output_name));
     IFDEBUG(dzlog_debug("keycount = %"PRIu64, sc_context->kcs_keycount));
@@ -145,7 +145,7 @@ static void generic_sc_aes_impl(const char * output_name,
              uint64_t num_blocks,
              uint64_t zero_str_length,
              uint64_t block_read_upper_bound,
-             uint8_t * kcs_keycount_ptr,
+             const uint8_t * const kcs_keycount_ptr,
              uint8_t * xor_str)
             {
                 (void) intrablock_offset;
@@ -222,7 +222,7 @@ static void generic_sc_salsa_impl(const char * output_name,
              uint64_t num_blocks,
              uint64_t zero_str_length,
              uint64_t block_read_upper_bound,
-             uint8_t * kcs_keycount_ptr,
+             const uint8_t * const kcs_keycount_ptr,
              uint8_t * xor_str)
             {
                 (void) intrablock_offset;
@@ -302,7 +302,7 @@ static void sc_impl_chacha20(uint8_t * crypted_data,
              uint64_t num_blocks,
              uint64_t zero_str_length,
              uint64_t block_read_upper_bound,
-             uint8_t * kcs_keycount_ptr,
+             const uint8_t * const kcs_keycount_ptr,
              uint8_t * xor_str)
             {
                 (void) intrablock_offset;
@@ -477,7 +477,7 @@ static void sc_impl_hc128(uint8_t * crypted_data,
              uint64_t num_blocks,
              uint64_t zero_str_length,
              uint64_t block_read_upper_bound,
-             uint8_t * kcs_keycount_ptr,
+             const uint8_t * const kcs_keycount_ptr,
              uint8_t * xor_str)
             {
                 (void) intrablock_offset;
@@ -539,7 +539,7 @@ static void sc_impl_rabbit(uint8_t * crypted_data,
              uint64_t num_blocks,
              uint64_t zero_str_length,
              uint64_t block_read_upper_bound,
-             uint8_t * kcs_keycount_ptr,
+             const uint8_t * const kcs_keycount_ptr,
              uint8_t * xor_str)
             {
                 (void) intrablock_offset;
@@ -602,7 +602,7 @@ static void sc_impl_sosemanuk(uint8_t * crypted_data,
              uint64_t num_blocks,
              uint64_t zero_str_length,
              uint64_t block_read_upper_bound,
-             uint8_t * kcs_keycount_ptr,
+             const uint8_t * const kcs_keycount_ptr,
              uint8_t * xor_str)
             {
                 (void) intrablock_offset;
