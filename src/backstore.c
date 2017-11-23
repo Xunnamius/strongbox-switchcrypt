@@ -104,7 +104,7 @@ blfs_header_t * blfs_open_header(blfs_backstore_t * backstore, uint32_t header_t
     if((khash_itr_key = KHASH_CACHE_EXISTS(BLFS_KHASH_HEADERS_CACHE_NAME, backstore->cache_headers, header_type)))
     {
         blfs_header_t * cached = KHASH_CACHE_GET_WITH_ITRP1(backstore->cache_headers, khash_itr_key);
-        IFDEBUG(dzlog_debug("CACHE HIT: header type %i (%s) was found in the cache", header_type, cached));
+        IFDEBUG(dzlog_debug("CACHE HIT: header type %i (%s) was found in the cache", header_type, cached->name));
         IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
         return cached;
     }
