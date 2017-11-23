@@ -283,7 +283,7 @@ void test_integration_with_buselfs_works_as_expected(void)
     blfs_backstore_close(backstore);
 
     // Set proper rpmb value (0x908070609080706 == 650777868657755910)
-    uint8_t data_in[BLFS_CRYPTO_RPMB_BLOCK] = { 0x09, 0x08, 0x07, 0x06, 0x09, 0x08, 0x07, 0x06 };
+    uint8_t data_in[BLFS_CRYPTO_RPMB_BLOCK] = { 0x06, 0x07, 0x08, 0x09, 0x06, 0x07, 0x08, 0x09 };
 
     assert(sizeof(data_in) - 8 > 0);
 
