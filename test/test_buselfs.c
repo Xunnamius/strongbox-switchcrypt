@@ -212,7 +212,8 @@ void tearDown(void)
     close(iofd);
     unlink(BACKSTORE_FILE_PATH);
 }
-
+// DELETME
+/*
 // XXX: Also need to test a delete function to fix the memory leak issue discussed in buselfs.h
 void test_adding_and_evicting_from_the_keycache_works_as_expected(void)
 {
@@ -626,7 +627,7 @@ void test_blfs_run_mode_create_initializes_keycache_and_merkle_tree_properly(voi
 
         blfs_backstore_close(buselfs_state->backstore);
     }
-}
+}*/
 
 /*void test_blfs_run_mode_open_works_as_expected(void)
 {
@@ -750,6 +751,8 @@ void test_blfs_run_mode_create_initializes_keycache_and_merkle_tree_properly(voi
     blfs_backstore_close(buselfs_state->backstore);
 }*/
 
+// DELETME
+/*
 void test_buselfs_main_actual_throws_exception_if_wrong_argc(void)
 {
    
@@ -884,9 +887,11 @@ void test_buselfs_main_actual_throws_exception_if_bad_numbers_given_as_args(void
     };
 
     TRY_FN_CATCH_EXCEPTION(buselfs_main_actual(5, argv8, blockdevice));
-}
+}*/
 
 /* Metrics Tests */
+// DELETME
+/*
 void test_blfs_energymon_init_works_as_expected(void)
 {
     if(!BLFS_DEBUG_MONITOR_POWER)
@@ -1392,7 +1397,7 @@ void test_buse_writeread_works_as_expected11(void)
     IFENERGYMON(blfs_energymon_fini(buselfs_state));
 
     TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset, buffer, sizeof buffer);
-}
+}*/
 
 void test_blfs_rekey_nugget_journaled_with_write_works_as_expected(void)
 {
@@ -1445,6 +1450,8 @@ void test_blfs_rekey_nugget_journaled_with_write_works_as_expected(void)
     IFENERGYMON(blfs_energymon_fini(buselfs_state));
 }
 
+// DELETME
+/*
 void test_buse_write_dirty_write_triggers_rekeying1(void)
 {
     if(BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
@@ -1627,7 +1634,7 @@ void test_buse_write_dirty_write_triggers_rekeying8(void)
     IFENERGYMON(blfs_energymon_fini(buselfs_state));
 
     TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset7, buffer7, sizeof buffer7);
-}
+}*/
 
 /*void test_blfs_rekey_nugget_journaled_zeroes_out_everything_as_expected(void)
 {
@@ -1642,7 +1649,6 @@ void test_blfs_incomplete_rekeying_triggers_blfs_rekey_nugget_journaled_on_start
     // rekeying on a specific nugget on startup has the intended effect (0s written)
     TEST_IGNORE();
 }*/
-
 
 static void readwrite_quicktests()
 {
@@ -1698,6 +1704,8 @@ static void readwrite_quicktests()
     IFENERGYMON(blfs_energymon_fini(buselfs_state));
 }
 
+// DELETME
+/*
 void test_buselfs_main_actual_creates(void)
 {
     zlog_fini();
@@ -1713,7 +1721,7 @@ void test_buselfs_main_actual_creates(void)
 
     buselfs_state = buselfs_main_actual(argc, argv_create1, blockdevice);
     readwrite_quicktests();
-}
+}*/
 
 /*void test_buselfs_main_actual_opens(void)
 {
