@@ -1423,12 +1423,14 @@ void test_blfs_rekey_nugget_journaled_with_write_works_as_expected(void)
 
     IFENERGYMON(blfs_energymon_init(buselfs_state));
 
+    dzlog_error("[BEFORE] count0->keycount: %i", count0->keycount);
     blfs_rekey_nugget_journaled_with_write(buselfs_state, 0, decrypted_body, 8, 0);
+    dzlog_error("[AFTER!] count0->keycount: %i", count0->keycount);
 
     TEST_ASSERT_TRUE(bitmask_is_bit_set(entry0->bitmask, 0));
     TEST_ASSERT_TRUE(bitmask_is_bit_set(entry0->bitmask, 1));
     TEST_ASSERT_EQUAL_UINT(1, count0->keycount);
-
+    dzlog_error("REACHED?!");
     blfs_rekey_nugget_journaled_with_write(buselfs_state, 0, decrypted_body + 1, 8, 1);
 
     TEST_ASSERT_TRUE(bitmask_is_bit_set(entry0->bitmask, 0));
