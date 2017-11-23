@@ -8,6 +8,7 @@
 #include "bitmask.h"
 #include "interact.h"
 #include "swappable.h"
+#include "mmc.h"
 #include "buse.h"
 #include "mt_err.h"
 
