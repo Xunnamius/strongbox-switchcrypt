@@ -1,6 +1,7 @@
 #include "unity.h"
 #include "buselfs.h"
 #include "swappable.h"
+#include "mmc.h"
 #include "merkletree.h"
 #include "mt_err.h"
 #include "khash.h"
@@ -141,6 +142,10 @@ static void make_fake_state()
     buselfs_state->backstore->file_size_actual  = (uint64_t)(sizeof buffer_init_backstore_state);
 
     blfs_backstore_write(buselfs_state->backstore, buffer_init_backstore_state, sizeof buffer_init_backstore_state, 0);
+
+    uint8_t data_in[BLFS_CRYPTO_RPMB_BLOCK] = { 0x06, 0x07, 0x08, 0x09, 0x06, 0x07, 0x08, 0x09 };
+    memset(data_in + 8, 0, sizeof(data_in) - 8);
+    rpmb_write_block(_TEST_BLFS_TPM_ID, data_in);
 }
 
 static void clear_tj()

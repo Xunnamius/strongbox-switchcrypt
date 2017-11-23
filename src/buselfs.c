@@ -1641,6 +1641,16 @@ void blfs_run_mode_create(const char * backstore_path,
     blfs_header_t * tpmv_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_TPMGLOBALVER);
     tpmv_header->data[0] = 0x01;
 
+    IFDEBUG(dzlog_debug("<< attempting to commit clean RPMB block >>"));
+    
+    uint8_t data_in[BLFS_CRYPTO_RPMB_BLOCK] = { 0x01 };
+
+    memset(data_in + 8, 0, sizeof(data_in) - 8);
+
+    rpmb_write_block(buselfs_state->rpmb_secure_index, data_in);
+
+    IFDEBUG(dzlog_debug("<< resuming create routine >>"));
+
     // Use chacha20 with master secret to get verification header, set header
     blfs_header_t * verf_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_VERIFICATION);
     blfs_chacha20_verif(verf_header->data, buselfs_state->backstore->master_secret);
@@ -2129,6 +2139,8 @@ int buselfs_main(int argc, char * argv[])
 {
     char blockdevice[BLFS_BACKSTORE_FILENAME_MAXLEN] = { 0x00 };
     buselfs_state_t * buselfs_state;
+
+    IFDEBUG(dzlog_debug("<< configuring global buselfs_state >>"));
 
     buselfs_state = buselfs_main_actual(argc, argv, blockdevice);
 
