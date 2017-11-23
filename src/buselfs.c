@@ -1543,8 +1543,6 @@ void blfs_soft_open(buselfs_state_t * buselfs_state, uint8_t cin_allow_insecure_
 
         IFDEBUG(dzlog_debug("MERKLE TREE: update TPM header"));
         update_in_merkle_tree(tpmv_header->data, BLFS_HEAD_HEADER_BYTES_TPMGLOBALVER, 0, buselfs_state);
-
-        commit_merkle_tree_root_hash(buselfs_state);
     }
 
     commit_merkle_tree_root_hash(buselfs_state);
