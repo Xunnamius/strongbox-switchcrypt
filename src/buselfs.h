@@ -5,6 +5,7 @@
 #include "backstore.h"
 #include "io.h"
 #include "crypto.h"
+#include "mmc.h"
 #include "khash.h"
 #include "merkletree.h"
 #include "sodium.h"
@@ -96,6 +97,11 @@ typedef struct buselfs_state_t
      * instead of +1 to avoid any unpleasantness.
      */
     int crash_recovery;
+
+    /**
+     * Index of the RPMB counter block in the RPMB space
+     */
+    uint64_t rpmb_secure_index;
 } buselfs_state_t;
 
 // These are all the external caching functions:

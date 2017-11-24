@@ -1,7 +1,7 @@
 /*
  * Backend virtual block device for any LFS using BUSE
  *
- * @author ANON
+ * @author Bernard Dickens
  */
 
 #include "buselfs.h"
@@ -931,7 +931,7 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
 
     memcpy(tpmv_header->data, (uint8_t *) &tpmv_value, BLFS_HEAD_HEADER_BYTES_TPMGLOBALVER);
 
-    blfs_globalversion_commit(BLFS_TPM_ID, tpmv_value); // TODO: needs to be guaranteed monotonic, not based on header
+    blfs_globalversion_commit(buselfs_state->rpmb_secure_index, tpmv_value); // TODO: needs to be guaranteed monotonic, not based on header
 
     while(length != 0)
     {
@@ -1455,7 +1455,9 @@ void blfs_soft_open(buselfs_state_t * buselfs_state, uint8_t cin_allow_insecure_
 
     IFDEBUG(dzlog_debug("tpmv_header->data: %"PRIu64, tpmv_value));
 
-    int global_correctness = blfs_globalversion_verify(BLFS_TPM_ID, tpmv_value);
+    int global_correctness = blfs_globalversion_verify(buselfs_state->rpmb_secure_index, tpmv_value);
+
+    IFDEBUG(dzlog_debug("global_correctness: %i", global_correctness));
     
     if(global_correctness == BLFS_GLOBAL_CORRECTNESS_POTENTIAL_CRASH)
     {
@@ -1541,8 +1543,6 @@ void blfs_soft_open(buselfs_state_t * buselfs_state, uint8_t cin_allow_insecure_
 
         IFDEBUG(dzlog_debug("MERKLE TREE: update TPM header"));
         update_in_merkle_tree(tpmv_header->data, BLFS_HEAD_HEADER_BYTES_TPMGLOBALVER, 0, buselfs_state);
-
-        commit_merkle_tree_root_hash(buselfs_state);
     }
 
     commit_merkle_tree_root_hash(buselfs_state);
@@ -1638,6 +1638,16 @@ void blfs_run_mode_create(const char * backstore_path,
     // Set global version header to 1
     blfs_header_t * tpmv_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_TPMGLOBALVER);
     tpmv_header->data[0] = 0x01;
+
+    IFDEBUG(dzlog_debug("<< attempting to commit clean RPMB block >>"));
+    
+    uint8_t data_in[BLFS_CRYPTO_RPMB_BLOCK] = { 0x01 };
+
+    memset(data_in + 8, 0, sizeof(data_in) - 8);
+
+    rpmb_write_block(buselfs_state->rpmb_secure_index, data_in);
+
+    IFDEBUG(dzlog_debug("<< resuming create routine >>"));
 
     // Use chacha20 with master secret to get verification header, set header
     blfs_header_t * verf_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_VERIFICATION);
@@ -1737,7 +1747,7 @@ void blfs_run_mode_create(const char * backstore_path,
 
     // Commit all headers
     blfs_commit_all_headers(buselfs_state->backstore);
-    blfs_globalversion_commit(BLFS_TPM_ID, *(uint64_t *) tpmv_header->data);
+    blfs_globalversion_commit(buselfs_state->rpmb_secure_index, *(uint64_t *) tpmv_header->data);
     commit_merkle_tree_root_hash(buselfs_state);
 
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
@@ -1813,7 +1823,7 @@ void blfs_run_mode_wipe(const char * backstore_path, uint8_t cin_allow_insecure_
     blfs_commit_header(buselfs_state->backstore, tpmgv_header);
     blfs_commit_header(buselfs_state->backstore, rekeying_header);
     blfs_commit_header(buselfs_state->backstore, init_header);
-    blfs_globalversion_commit(BLFS_TPM_ID, 0);
+    blfs_globalversion_commit(buselfs_state->rpmb_secure_index, 0);
 
     IFDEBUG(dzlog_debug("EXITING PROGRAM!"));
     Throw(EXCEPTION_MUST_HALT);*/
@@ -1899,6 +1909,7 @@ buselfs_state_t * buselfs_main_actual(int argc, char * argv[], char * blockdevic
     }
 
     blfs_set_stream_context(buselfs_state, sc_default);
+    buselfs_state->rpmb_secure_index = BLFS_TPM_ID;
 
     /* Process arguments */
     cin_device_name = argv[--argc];
@@ -2126,6 +2137,8 @@ int buselfs_main(int argc, char * argv[])
 {
     char blockdevice[BLFS_BACKSTORE_FILENAME_MAXLEN] = { 0x00 };
     buselfs_state_t * buselfs_state;
+
+    IFDEBUG(dzlog_debug("<< configuring global buselfs_state >>"));
 
     buselfs_state = buselfs_main_actual(argc, argv, blockdevice);
 

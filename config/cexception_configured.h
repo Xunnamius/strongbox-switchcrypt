@@ -121,7 +121,7 @@ do {                                                                            
 // You entered the wrong password
 #define EXCEPTION_BAD_PASSWORD                          0x1DU
 
-// An integrity violation occurred while trying to initialize (likely GV related)
+// An integrity violation occurred while trying to initialize
 #define EXCEPTION_INTEGRITY_FAILURE                     0x1EU
 
 // A condition has occurred that has forced the software to exit immediately
@@ -174,16 +174,16 @@ do {                                                                            
 #define EXCEPTION_SC_ALGO_NOT_FOUND                     0x2FU
 
 // A failure occurred during an RPMB operation (in low level ioctl)
-#define EXCEPTION_RPMB_IOCTL_FAILURE            0x28U
+#define EXCEPTION_RPMB_IOCTL_FAILURE                    0x30U
 
 // A failure occurred during an RPMB operation (in high level RPMB frame)
-#define EXCEPTION_RPMB_OP_FAILURE               0x29U
+#define EXCEPTION_RPMB_OP_FAILURE                       0x31U
 
 // Calculated mac doesn't match mac returned in RPMB frame during ioctl operation
-#define EXCEPTION_RPMB_MAC_MISMATCH             0x2AU
+#define EXCEPTION_RPMB_MAC_MISMATCH                     0x32U
 
 // Calculated mac doesn't match mac returned in RPMB frame during ioctl operation
-#define EXCEPTION_GLOBAL_CORRECTNESS_FAILURE    0x2BU
+#define EXCEPTION_GLOBAL_CORRECTNESS_FAILURE            0x33U
 
 ///////////////////////
 // End Configuration //

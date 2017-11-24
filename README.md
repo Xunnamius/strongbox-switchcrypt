@@ -1,8 +1,9 @@
-# BuseLFS
+# StrongBox (internally: BuseLFS)
 
-This is a complete rewrite of the old buselogfs code. This is a Buse + Chacha20 + Poly1305 + LFS encrypted filesystem. It uses Argon2 as its KDF.
+This is a complete rewrite of the old buselogfs code. This is a Buse + Chacha20 + Poly1305 + LFS encrypted filesystem. It uses Argon2 as its KDF. Featured in the StrongBox paper `StrongBox: Confidentiality, Integrity, and Performance using Stream Ciphers for Full Drive Encryption` by Bernard Dickens III (University of Chicago), Haryadi Gunawi (University of Chicago), Ariel J Feldman (University of Chicago), and Henry Hoffmann (University of Chicago).
 
-(todo: advantages, disadvantages, tradeoffs, etc)
+(todo: flesh this README out)
+(todo: advantages, disadvantages, tradeoffs, etc of this design; StrongBox is proof of concept)
 (Use `make tests` to run all the tests)
 (The ONLY test that works with BLFS_DEBUG_MONITOR_POWER=1 is test_buselfs!)
 
@@ -21,7 +22,8 @@ This is a complete rewrite of the old buselogfs code. This is a Buse + Chacha20 
 - [ruby]() (required iff you're going to be running the tests)
 - [OpenSSL]() (provides swappable algorithm base)
 - std=c11
-- /dev/mmcblk0rpmb (i.e. a device that offers a RPMB API)
+- /dev/mmcblk0rpmb (i.e. a device that offers or emulates an RPMB API)
+- *sudo access* is necessary due to RPMB integration. If you're using a usersapce emulation of some sort, sudo is not necessary.
 
 ## Usage
 
