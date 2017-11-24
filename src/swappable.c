@@ -1,7 +1,7 @@
 /*
  * <description>
  *
- * @author ANON
+ * @author Bernard Dickens
  */
 
 #include "swappable.h"

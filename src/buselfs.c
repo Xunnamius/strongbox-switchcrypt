@@ -1,7 +1,7 @@
 /*
  * Backend virtual block device for any LFS using BUSE
  *
- * @author ANON
+ * @author Bernard Dickens
  */
 
 #include "buselfs.h"

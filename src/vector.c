@@ -1,7 +1,7 @@
 /*
  * Dynamically allocated "boundless" array-type so-called vector implementation.
  *
- * @author ANON
+ * @author Bernard Dickens
  */
 
 #include "vector.h"

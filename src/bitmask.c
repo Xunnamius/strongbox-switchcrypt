@@ -1,7 +1,7 @@
 /*
  * Aligned bit mask manipulation and analysis tools
  *
- * @author ANON
+ * @author Bernard Dickens
  */
 
 #include "bitmask.h"

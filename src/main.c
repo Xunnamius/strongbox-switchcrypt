@@ -1,7 +1,7 @@
 /*
  * The runner function for BuseLFS
  *
- * @author ANON
+ * @author Bernard Dickens
  */
 
 #include "buselfs.h"
