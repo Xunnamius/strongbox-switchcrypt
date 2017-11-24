@@ -40,10 +40,10 @@ EXENAME	:= buselfs
 EXECSRC	:= $(SRC_ROOT)/main.c
 
 # These should typically be in VENDR_ROOT, though they don't have to be
-STATIC_LIBS := $(VENDR_ROOT)/merkle-tree/src/libMerkleTree.a \
-			   $(ESTREAM_ROOT)/libestream.a \
-			   $(ENERGYMON_ROOT)/src/energymon-time-util.c \
-			   $(ENERGYMON_ROOT)/src/ptime/ptime.c
+EXPLICIT_LIBS := $(VENDR_ROOT)/merkle-tree/src/libMerkleTree.a \
+			     $(ESTREAM_ROOT)/libestream.a \
+			     $(ENERGYMON_ROOT)/src/energymon-time-util.c \
+			     $(ENERGYMON_ROOT)/src/ptime/ptime.c
 
 C_TEST_LIBS := $(UNITY_ROOT)/src/unity.c \
 			   $(CMOCK_ROOT)/src/cmock.c
@@ -191,7 +191,7 @@ $(TEST_TRGTS): test_%: test_%_runner.o test_%.o %.o test_%.d $(SRC_FILES) $(VEND
 		$(R_REMAIN_FILES) \
 		$(R_MOCKED_FILES) \
 		$(C_TEST_LIBS) \
-		$(STATIC_LIBS) \
+		$(EXPLICIT_LIBS) \
 		$(LDFLAGS)
 
 $(RUNR_TRGTS): %_runner.c: %.c

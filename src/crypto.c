@@ -145,16 +145,16 @@ int blfs_globalversion_verify(uint64_t id, uint64_t global_version)
     IFDEBUG(dzlog_debug("global_version (expected) = %"PRIu64, global_version));
 
     uint8_t data[BLFS_CRYPTO_RPMB_BLOCK];
-    CEXCEPTION_T e_actual = EXCEPTION_NO_EXCEPTION;
+    volatile CEXCEPTION_T e = EXCEPTION_NO_EXCEPTION;
 
     Try
     {
         rpmb_read_block((uint16_t) id, data);
     }
 
-    Catch(e_actual)
+    Catch(e)
     {
-        if(e_actual == EXCEPTION_OPEN_FAILURE && BLFS_MANUAL_GV_FALLBACK != -1)
+        if(e == EXCEPTION_OPEN_FAILURE && BLFS_MANUAL_GV_FALLBACK != -1)
         {
             dzlog_warn("RPMB device is not able to be opened. Falling back to BLFS_MANUAL_GV_FALLBACK (%i)",
                        BLFS_MANUAL_GV_FALLBACK);
@@ -162,7 +162,7 @@ int blfs_globalversion_verify(uint64_t id, uint64_t global_version)
             return BLFS_MANUAL_GV_FALLBACK;
         }
 
-        Throw(e_actual);
+        Throw(e);
     }
 
     IFDEBUG(dzlog_debug("RPMB block read in:"));
@@ -203,19 +203,19 @@ void blfs_globalversion_commit(uint64_t id, uint64_t global_version)
     IFDEBUG(dzlog_debug("RPMB block to commit:"));
     IFDEBUG(hdzlog_debug(data, BLFS_CRYPTO_RPMB_BLOCK));
 
-    CEXCEPTION_T e_actual = EXCEPTION_NO_EXCEPTION;
+    volatile CEXCEPTION_T e = EXCEPTION_NO_EXCEPTION;
 
     Try
     {
         rpmb_write_block((uint16_t) id, data);
     }
 
-    Catch(e_actual)
+    Catch(e)
     {
-        if(e_actual == EXCEPTION_OPEN_FAILURE && BLFS_MANUAL_GV_FALLBACK != -1)
+        if(e == EXCEPTION_OPEN_FAILURE && BLFS_MANUAL_GV_FALLBACK != -1)
             dzlog_warn("RPMB device is not able to be opened. Commit attempt was silently ignored");
         else
-            Throw(e_actual);
+            Throw(e);
     }
 
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));

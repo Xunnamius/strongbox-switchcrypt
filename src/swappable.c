@@ -649,7 +649,7 @@ void blfs_set_stream_context(buselfs_state_t * buselfs_state, stream_cipher_e st
 
 stream_crypt_common blfs_to_stream_context(stream_cipher_e stream_cipher)
 {
-    stream_crypt_common fn;
+    stream_crypt_common fn = NULL;
 
     switch(stream_cipher)
     {
