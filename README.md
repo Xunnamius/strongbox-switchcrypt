@@ -21,6 +21,7 @@ This is a complete rewrite of the old buselogfs code. This is a Buse + Chacha20 
 - [gcc](https://gcc.gnu.org) (sorry, I'm using some GCC extensions to make life easier)
 - [ruby](https://www.ruby-lang.org/en/) (required iff you're going to be running the tests)
 - [OpenSSL](https://www.openssl.org) (provides swappable algorithm base)
+- [Energymon](https://github.com/energymon/energymon) (required iff you want energy metrics (has performance implications))
 - [std=c11](https://en.wikipedia.org/wiki/C11_(C_standard_revision))
 - A device that offers or emulates an [RPMB API](https://lwn.net/Articles/682276/) (see: BLFS_RPMB_KEY and BLFS_RPMB_DEVICE)
     - *sudo access* is necessary due to RPMB integration. If you're using a usersapce emulation of some sort, sudo is not necessary.
@@ -76,81 +77,48 @@ Note that the password for all tests is always **"t"** (no quotes, of course).
 
 (todo) (including DEBUG) (note that DEBUG mode breaks security, leaks potentially sensitive information)
 
+## Gathering Energy Metrics
+
+Use of this feature requires [Energymon](https://github.com/energymon/energymon) to be compiled with a non-dummy default implementation and fully installed.
+
+(todo)
+
 ## Configuration
 
 (todo) (can configure RPMB device path to be something other than /dev/mmcblk0rpmb)
 
+### Compile Flags
+
+All compile flags must be specified with a `-D` prefix in the actual Make file.
+
+(todo)
+
+##### `BLFS_DEBUG_MONITOR_POWER`
 
 ### Constants
 
 These values are configurable in `src/constants.h`:
 
-`BLFS_CURRENT_VERSION`
+##### `BLFS_CURRENT_VERSION`
 The current build version (arbitrary)
 
-`BLFS_LEAST_COMPAT_VERSION`
+##### `BLFS_LEAST_COMPAT_VERSION`
 The absolute minimum build version of the StrongBox software whose backing store this current revision of StrongBox considers valid, e.g. backwards compatibility
 
-`BLFS_TPM_ID`
-With this version of StrongBox, `BLFS_TPM_ID` is used by the RPMB API to determine the block index within the massive (4-16MB) RPMB EMMC drive space.
+##### `BLFS_TPM_ID`
+With this version of StrongBox, `BLFS_TPM_ID` is used by the RPMB API to determine the block index within the massive (4-16MB) RPMB eMMC drive space.
 
-`BLFS_RPMB_KEY`
+##### `BLFS_RPMB_KEY`
 The key used by RPMB.
 
-`BLFS_RPMB_DEVICE`
-Path to the RPMB device, e.g. "/dev/mmcblk0rpmb"
+##### `BLFS_RPMB_DEVICE`
+Valid Path string to the RPMB device, e.g. "/dev/mmcblk0rpmb"
 
-#define BLFS_CONFIG_ZLOG "../config/zlog_conf.conf"
+##### `BLFS_CONFIG_ZLOG`
+Path to your [zlog configuration file](https://github.com/HardySimpson/zlog/blob/master/doc/GettingStart-EN.txt).
 
-#define VECTOR_GROWTH_FACTOR    2
-#define VECTOR_INIT_SIZE        10
-
-/** START: energy/power metric collection */
-
-// XXX: Must be file path
-#define BLFS_ENERGYMON_OUTPUT_PATH "/home/odroid/bd3/repos/energy-AES-1/results/strongbox-metrics.results"
-
-/** END: energy/power metric collection */
-
-// 0 - no debugging, log writing, or any such output
-// 1U - light debugging to designated log file
-// 2U - ^ and some informative messages to stdout
-// 3U - ^ except now it's a clusterfuck of debug messages
-#ifndef BLFS_DEBUG_LEVEL
-#define BLFS_DEBUG_LEVEL 0
-#endif
-
-#ifndef BLFS_DEBUG_MONITOR_POWER
-#define BLFS_DEBUG_MONITOR_POWER 0
-#endif
-
-#ifndef _XOPEN_SOURCE
-#define _XOPEN_SOURCE 500
-#endif
-
-#ifndef _LARGEFILE64_SOURCE
-#define _LARGEFILE64_SOURCE
-#endif
-
-#ifndef _GNU_SOURCE
-#define _GNU_SOURCE
-#endif
-
-typedef enum stream_cipher_e {
-    sc_default,
-    sc_not_impl,
-    sc_chacha8,
-    sc_chacha12,
-    sc_chacha20,
-    sc_salsa8,
-    sc_salsa12,
-    sc_salsa20,
-    sc_aes128_ctr,
-    sc_aes256_ctr,
-    sc_hc128,
-    sc_rabbit,
-    sc_sosemanuk,
-} stream_cipher_e;
+##### `BLFS_ENERGYMON_OUTPUT_PATH`
+If you've enabled [energy metrics gathering](#BLFS_DEBUG_MONITOR_POWER), this must be a valid file path string (file need not exist yet).
 
 
 
