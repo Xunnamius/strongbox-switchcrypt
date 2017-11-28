@@ -21,7 +21,7 @@ This is a complete rewrite of the old buselogfs code. This is a Buse + Chacha20 
 - [gcc](https://gcc.gnu.org) (sorry, I'm using some GCC extensions to make life easier)
 - [ruby](https://www.ruby-lang.org/en/) (required iff you're going to be running the tests)
 - [OpenSSL](https://www.openssl.org) (provides swappable algorithm base)
-- [Energymon](https://github.com/energymon/energymon) (required iff you want energy metrics (has performance implications))
+- [energymon](https://github.com/energymon/energymon) (required iff you want energy metrics (has performance implications))
 - [std=c11](https://en.wikipedia.org/wiki/C11_(C_standard_revision))
 - A device that offers or emulates an [RPMB API](https://lwn.net/Articles/682276/) (see: BLFS_RPMB_KEY and BLFS_RPMB_DEVICE)
     - *sudo access* is necessary due to RPMB integration. If you're using a usersapce emulation of some sort, sudo is not necessary.
@@ -79,7 +79,7 @@ Note that the password for all tests is always **"t"** (no quotes, of course).
 
 ## Gathering Energy Metrics
 
-Use of this feature requires [Energymon](https://github.com/energymon/energymon) to be compiled with a non-dummy default implementation and fully installed.
+Use of this feature requires [energymon](https://github.com/energymon/energymon) to be compiled with a non-dummy default implementation and fully installed.
 
 (todo)
 
@@ -100,19 +100,19 @@ All compile flags must be specified with a `-D` prefix in the actual Make file.
 These values are configurable in `src/constants.h`:
 
 ##### `BLFS_CURRENT_VERSION`
-The current build version (arbitrary)
+The current build version (arbitrary number).
 
 ##### `BLFS_LEAST_COMPAT_VERSION`
-The absolute minimum build version of the StrongBox software whose backing store this current revision of StrongBox considers valid, e.g. backwards compatibility
+The absolute minimum build version of the StrongBox software whose backing store this current revision of StrongBox considers valid, e.g. backwards compatibility.
 
 ##### `BLFS_TPM_ID`
-With this version of StrongBox, `BLFS_TPM_ID` is used by the RPMB API to determine the block index within the massive (4-16MB) RPMB eMMC drive space.
+With this version of StrongBox, `BLFS_TPM_ID` is used by the RPMB API to determine the block index within the massive (4-16MB) RPMB eMMC drive space. In future versions of StrongBox, should they come to exist, this may not be the case (i.e. it's handled automatically/via TPM).
 
 ##### `BLFS_RPMB_KEY`
-The key used by RPMB.
+The key used by RPMB. In future versions of StrongBox, should they come to exist, this may not be the case (i.e. it's handled automatically/via TPM).
 
 ##### `BLFS_RPMB_DEVICE`
-Valid Path string to the RPMB device, e.g. "/dev/mmcblk0rpmb"
+Valid Path string to the RPMB device, e.g. "/dev/mmcblk0rpmb". In future versions of StrongBox, should they come to exist, this may not be the case (i.e. it's found automatically).
 
 ##### `BLFS_CONFIG_ZLOG`
 Path to your [zlog configuration file](https://github.com/HardySimpson/zlog/blob/master/doc/GettingStart-EN.txt).
