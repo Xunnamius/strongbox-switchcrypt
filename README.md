@@ -79,7 +79,7 @@ Note that the password for all tests is always **"t"** (no quotes, of course).
 
 ## Gathering Energy Metrics
 
-Use of this feature requires [energymon](https://github.com/energymon/energymon) to be compiled with a non-dummy default implementation and fully installed.
+Use of this feature requires [energymon](https://github.com/energymon/energymon) to be compiled—ideally with a non-dummy default implementation—and fully installed.
 
 (todo)
 
@@ -89,7 +89,7 @@ Use of this feature requires [energymon](https://github.com/energymon/energymon)
 
 ### Compile Flags
 
-All compile flags must be specified with a `-D` prefix in the actual Make file.
+All compile flags must be specified with a `-D` prefix in [the actual Makefile](build/Makefile).
 
 (todo)
 
@@ -106,7 +106,7 @@ The current build version (arbitrary number).
 The absolute minimum build version of the StrongBox software whose backing store this current revision of StrongBox considers valid, e.g. backwards compatibility.
 
 ##### `BLFS_TPM_ID`
-With this version of StrongBox, `BLFS_TPM_ID` is used by the RPMB API to determine the block index within the massive (4-16MB) RPMB eMMC drive space. In future versions of StrongBox, should they come to exist, this may not be the case (i.e. it's handled automatically/via TPM).
+With this version of StrongBox, `BLFS_TPM_ID` is used by the RPMB API to determine the block index within the massive 4-16MB RPMB eMMC drive space. In future versions of StrongBox, should they come to exist, this may not be the case (i.e. it's handled automatically/via TPM).
 
 ##### `BLFS_RPMB_KEY`
 The key used by RPMB. In future versions of StrongBox, should they come to exist, this may not be the case (i.e. it's handled automatically/via TPM).

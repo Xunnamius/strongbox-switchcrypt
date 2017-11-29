@@ -1,4 +1,4 @@
-# Make with painstaking love by ANON
+# Make with painstaking love by Bernard Dickens III (bd3@cs.uchicago.edu)
 #
 # A few rules/assumptions:
 # 1) You should read the README.md file to learn how this Makefile is structured
@@ -11,14 +11,14 @@
 # Configuration #
 #################
 
-SRC_ROOT	:= ../src
-VENDR_ROOT	:= ../vendor
-TEST_ROOT	:= ../test
-CONFIG_ROOT	:= ../config
+SRC_ROOT    := ../src
+VENDR_ROOT  := ../vendor
+TEST_ROOT   := ../test
+CONFIG_ROOT := ../config
 
-UNITY_ROOT		:= $(VENDR_ROOT)/unity
-CMOCK_ROOT		:= $(VENDR_ROOT)/cmock
-MT_ROOT     	:= $(VENDR_ROOT)/merkle-tree
+UNITY_ROOT      := $(VENDR_ROOT)/unity
+CMOCK_ROOT      := $(VENDR_ROOT)/cmock
+MT_ROOT         := $(VENDR_ROOT)/merkle-tree
 ENERGYMON_ROOT  := $(VENDR_ROOT)/energymon
 ESTREAM_ROOT    := $(VENDR_ROOT)/libestream
 
@@ -26,56 +26,55 @@ ESTREAM_ROOT    := $(VENDR_ROOT)/libestream
 # XXX: Set to 0 when not debugging or suffer the (perf-related) consequences!
 # XXX: BLFS_MANUAL_GV_FALLBACK should be set to -1 instead of 0 or ^
 DEBUG_COMPILE_FLAG := -DBLFS_DEBUG_LEVEL=0 \
-					  -DBLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION=0 \
-					  -DBLFS_NO_READ_INTEGRITY=0 \
-					  -DBLFS_DEBUG_MONITOR_POWER=0 \
-					  -DBLFS_MANUAL_GV_FALLBACK=-1
+                      -DBLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION=0 \
+                      -DBLFS_NO_READ_INTEGRITY=0 \
+                      -DBLFS_DEBUG_MONITOR_POWER=0 \
+                      -DBLFS_MANUAL_GV_FALLBACK=-1
 
 # This is the name of the resulant executable
-EXENAME	:= buselfs
+EXENAME := buselfs
 
 # This file houses the main() function for the executable (and nothing else)
 # This should be the only file with a main() function in SRC_ROOT; there should
 # be no tests for it, either
-EXECSRC	:= $(SRC_ROOT)/main.c
+EXECSRC := $(SRC_ROOT)/main.c
 
 # These should typically be in VENDR_ROOT, though they don't have to be
 EXPLICIT_LIBS := $(VENDR_ROOT)/merkle-tree/src/libMerkleTree.a \
-			     $(ESTREAM_ROOT)/libestream.a \
-			     $(ENERGYMON_ROOT)/src/energymon-time-util.c \
-			     $(ENERGYMON_ROOT)/src/ptime/ptime.c
+                 $(ESTREAM_ROOT)/libestream.a \
+                 $(ENERGYMON_ROOT)/src/energymon-time-util.c \
+                 $(ENERGYMON_ROOT)/src/ptime/ptime.c
 
 C_TEST_LIBS := $(UNITY_ROOT)/src/unity.c \
-			   $(CMOCK_ROOT)/src/cmock.c
+               $(CMOCK_ROOT)/src/cmock.c
 
 CC  := /usr/bin/gcc
 CCV := $(shell expr `gcc --version | grep ^gcc | awk '{print $$3}'` \>= 4.9)
 
-# May want to set this to empty when building for release/profiling
-#					          :=
-DEBUG_MAKE_FLAGS 			  := -g
-#							  :=
+# XXX: Set this to empty when building for release/profiling or -g for debugging
+#                             :=
+DEBUG_MAKE_FLAGS              := -g
 CONDITIONAL_DEBUG_MAKE_FLAGS  := -fsanitize=address,undefined,shift,integer-divide-by-zero,null,signed-integer-overflow \
-						 		 -fno-omit-frame-pointer
+                                 -fno-omit-frame-pointer
 
-CFLAGS		:= -pedantic -Wall -Wextra -std=c11
+CFLAGS      := -pedantic -Wall -Wextra -std=c11
 
-IFLAGS		:= -I/usr/local/include \
-			   -I. \
-			   -I$(VENDR_ROOT) \
-			   -I$(CONFIG_ROOT) \
-			   -I$(SRC_ROOT) \
-			   -I$(UNITY_ROOT)/src \
-			   -I$(CMOCK_ROOT)/src \
-			   -I$(MT_ROOT)/src \
-			   -I$(ENERGYMON_ROOT)/src \
-			   -I$(ESTREAM_ROOT)
+IFLAGS      := -I/usr/local/include \
+               -I. \
+               -I$(VENDR_ROOT) \
+               -I$(CONFIG_ROOT) \
+               -I$(SRC_ROOT) \
+               -I$(UNITY_ROOT)/src \
+               -I$(CMOCK_ROOT)/src \
+               -I$(MT_ROOT)/src \
+               -I$(ENERGYMON_ROOT)/src \
+               -I$(ESTREAM_ROOT)
 
-LDFLAGS		:= -L$(VENDR_ROOT) -L/usr/local/lib \
-			   -lsodium -lzlog -lpthread -lm -lcrypto -lenergymon-default
+LDFLAGS     := -L$(VENDR_ROOT) -L/usr/local/lib \
+               -lsodium -lzlog -lpthread -lm -lcrypto -lenergymon-default
 
 # Ruby configs for runner generation w/ Unity (automatic)
-GENRNR_CONF	:= $(CONFIG_ROOT)/unity_runner_config.yml
+GENRNR_CONF := $(CONFIG_ROOT)/unity_runner_config.yml
 
 # Ruby configs for mock generation. :mock_prefix should be set to mock_
 CMOCK_CONF := $(CONFIG_ROOT)/cmock_config.yml
@@ -96,16 +95,16 @@ SCARECROWS := aes.o
 vpath test_%.c $(TEST_ROOT)
 vpath % $(SRC_ROOT) $(VENDR_ROOT) $(CONFIG_ROOT)
 
-SRC_FILES	:= $(patsubst %.c,%.o,$(subst $(SRC_ROOT)/,,$(filter-out $(EXECSRC),$(wildcard $(SRC_ROOT)/*.c))))
-VENDR_FILES	:= $(patsubst %.c,%.o,$(subst $(VENDR_ROOT)/,,$(wildcard $(VENDR_ROOT)/*.c)))
-TEST_FILES	:= $(patsubst %.c,%.o,$(subst $(TEST_ROOT)/,,$(wildcard $(TEST_ROOT)/*.c)))
-RUNR_FILES	:= $(patsubst %.c,%_runner.o,$(subst $(TEST_ROOT)/,,$(wildcard $(TEST_ROOT)/*.c)))
+SRC_FILES   := $(patsubst %.c,%.o,$(subst $(SRC_ROOT)/,,$(filter-out $(EXECSRC),$(wildcard $(SRC_ROOT)/*.c))))
+VENDR_FILES := $(patsubst %.c,%.o,$(subst $(VENDR_ROOT)/,,$(wildcard $(VENDR_ROOT)/*.c)))
+TEST_FILES  := $(patsubst %.c,%.o,$(subst $(TEST_ROOT)/,,$(wildcard $(TEST_ROOT)/*.c)))
+RUNR_FILES  := $(patsubst %.c,%_runner.o,$(subst $(TEST_ROOT)/,,$(wildcard $(TEST_ROOT)/*.c)))
 
-TEST_TRGTS	:= $(patsubst %.c,%,$(subst $(TEST_ROOT)/,,$(wildcard $(TEST_ROOT)/*.c)))
-RUNR_TRGTS	:= $(patsubst %,%_runner.c,$(TEST_TRGTS))
-MOCK_TRGTS	:= $(patsubst %,mock_%.h,$(HDRS_TO_MOCK))
+TEST_TRGTS  := $(patsubst %.c,%,$(subst $(TEST_ROOT)/,,$(wildcard $(TEST_ROOT)/*.c)))
+RUNR_TRGTS  := $(patsubst %,%_runner.c,$(TEST_TRGTS))
+MOCK_TRGTS  := $(patsubst %,mock_%.h,$(HDRS_TO_MOCK))
 
-DEP_TEST_TRGTS	:= $(TEST_TRGTS:=.d)
+DEP_TEST_TRGTS := $(TEST_TRGTS:=.d)
 
 ifeq "$(CCV)" "1"
 	DEBUG_MAKE_FLAGS += $(CONDITIONAL_DEBUG_MAKE_FLAGS)
@@ -167,9 +166,9 @@ $(SCARECROWS): ;
 
 $(EXENAME): $(SRC_FILES) $(VENDR_FILES)
 	$(CC) $(CFLAGS) $(IFLAGS) $(DEBUG_COMPILE_FLAG) -o $(EXENAME) $(EXECSRC) \
-		$^ \
-		$(EXPLICIT_LIBS) \
-		$(LDFLAGS)
+        $^ \
+        $(EXPLICIT_LIBS) \
+        $(LDFLAGS)
 
 $(SRC_FILES) $(VENDR_FILES): %.o: %.c %.h
 ifneq "$(WE_PROD_NOW)" ""
@@ -188,11 +187,11 @@ $(TEST_TRGTS): test_%: test_%_runner.o test_%.o %.o test_%.d $(SRC_FILES) $(VEND
 	$(eval R_MOCKED_FILES := $(call distinct,$(patsubst %.h,%.c,$(call containing,mock_,$^))))
 	$(eval R_REMAIN_FILES := $(filter-out $(SCARECROWS) %.h %.c %.d $(if $(R_MOCKED_FILES),$(addprefix %,$(patsubst mock_%.c,%.o,$(R_MOCKED_FILES)))), $^))
 	$(CC) $(CFLAGS) $(DEBUG_MAKE_FLAGS) $(IFLAGS) $(DEBUG_COMPILE_FLAG) -o $@ \
-		$(R_REMAIN_FILES) \
-		$(R_MOCKED_FILES) \
-		$(C_TEST_LIBS) \
-		$(EXPLICIT_LIBS) \
-		$(LDFLAGS)
+        $(R_REMAIN_FILES) \
+        $(R_MOCKED_FILES) \
+        $(C_TEST_LIBS) \
+        $(EXPLICIT_LIBS) \
+        $(LDFLAGS)
 
 $(RUNR_TRGTS): %_runner.c: %.c
 	ruby $(UNITY_ROOT)/auto/generate_test_runner.rb $< $@ $(GENRNR_CONF)
