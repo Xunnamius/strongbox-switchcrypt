@@ -23,8 +23,9 @@ ENERGYMON_ROOT  := $(VENDR_ROOT)/energymon
 ESTREAM_ROOT    := $(VENDR_ROOT)/libestream
 
 # Buselfs internal debug level
-# XXX: Set to 0 when not debugging or suffer the (perf-related) consequences!
-# XXX: BLFS_MANUAL_GV_FALLBACK should be set to -1 instead of 0 or ^
+# XXX: BLFS_DEBUG_LEVEL=0 when not debugging or suffer the (perf-related) consequences!
+# XXX: BLFS_MANUAL_GV_FALLBACK should be set to -1
+# XXX: BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION=1 renders the --cipher flag meaningless
 DEBUG_COMPILE_FLAG := -DBLFS_DEBUG_LEVEL=0 \
                       -DBLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION=0 \
                       -DBLFS_NO_READ_INTEGRITY=0 \
@@ -211,6 +212,7 @@ O3:
 
 clean:
 	find . -not -name 'Makefile' -not -name '.gitignore' -type f -exec rm {} +
+	rm -f /tmp/test.io.bin
 
 check: tests
 	$(patsubst %,./% &&,$(TEST_TRGTS)) true

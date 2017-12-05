@@ -1856,6 +1856,7 @@ buselfs_state_t * buselfs_main_actual(int argc, char * argv[], char * blockdevic
 
     uint8_t  cin_allow_insecure_start       = FALSE;
     uint8_t  cin_use_default_password       = FALSE;
+    stream_cipher_e cin_cipher              = sc_default;
     uint8_t  cin_backstore_mode             = BLFS_BACKSTORE_CREATE_MODE_UNKNOWN;
     uint64_t cin_backstore_size             = BLFS_DEFAULT_BYTES_BACKSTORE * BYTES_IN_A_MB;
     uint32_t cin_flake_size                 = BLFS_DEFAULT_BYTES_FLAKE;
@@ -1867,7 +1868,7 @@ buselfs_state_t * buselfs_main_actual(int argc, char * argv[], char * blockdevic
     {
         printf(
         "\nUsage:\n"
-        "  %s [--default-password][--backstore-size %"PRIu64"][--flake-size %"PRIu32"][--flakes-per-nugget %"PRIu32"] create nbd_device_name\n\n"
+        "  %s [--default-password][--backstore-size %"PRIu64"][--flake-size %"PRIu32"][--flakes-per-nugget %"PRIu32"][--cipher sc_default][--tpm-id %"PRIu32"] create nbd_device_name\n\n"
         "  %s [--default-password][--allow-insecure-start] open nbd_device_name\n\n"
         "  %s [--default-password][--allow-insecure-start] wipe nbd_device_name\n\n"
 
@@ -1881,7 +1882,9 @@ buselfs_state_t * buselfs_main_actual(int argc, char * argv[], char * blockdevic
         "- default-password  instead of asking you for a password, the password '"BLFS_DEFAULT_PASS"' will be used.\n"
         "- backstore-size    size of the backstore; must be in MEGABYTES.\n"
         "- flake-size        size of each individual flake; must be in BYTES\n"
-        "- flakes-per-nugget number of flakes per nugget\n\n"
+        "- flakes-per-nugget number of flakes per nugget\n"
+        "- cipher            chosen stream cipher for crypt (see constants.h for choices here)\n"
+        "- tpm-id            internal index used by RPMB module\n\n"
         "Defaults are shown above. \n\n"
         
         "::open command::\n"
@@ -1902,14 +1905,13 @@ buselfs_state_t * buselfs_main_actual(int argc, char * argv[], char * blockdevic
 
         "To test for correctness, run `make pre && make check` from the /build directory. Check the README for more details.\n"
         "Don't forget to load nbd kernel module `modprobe nbd` and run as root!\n\n",
-        argv[0], BLFS_DEFAULT_BYTES_BACKSTORE, BLFS_DEFAULT_BYTES_FLAKE, BLFS_DEFAULT_FLAKES_PER_NUGGET,
+        argv[0], BLFS_DEFAULT_BYTES_BACKSTORE, BLFS_DEFAULT_BYTES_FLAKE, BLFS_DEFAULT_FLAKES_PER_NUGGET, BLFS_DEFAULT_TPM_ID,
         argv[0], argv[0], argv[0], argv[0], argv[0]);
 
         Throw(EXCEPTION_MUST_HALT);
     }
 
-    blfs_set_stream_context(buselfs_state, sc_default);
-    buselfs_state->rpmb_secure_index = BLFS_TPM_ID;
+    buselfs_state->rpmb_secure_index = BLFS_DEFAULT_TPM_ID;
 
     /* Process arguments */
     cin_device_name = argv[--argc];
@@ -1983,6 +1985,30 @@ buselfs_state_t * buselfs_main_actual(int argc, char * argv[], char * blockdevic
             IFDEBUG3(printf("<bare debug>: saw --default-password = %i\n", cin_use_default_password));
         }
 
+        else if(strcmp(argv[argc], "--cipher") == 0)
+        {
+            char * cin_cipher_str = argv[argc + 1];
+
+            IFDEBUG3(printf("<bare debug>: saw --cipher = %s\n", cin_cipher_str));
+
+            cin_cipher = stream_string_to_cipher(cin_cipher_str);
+
+            IFDEBUG3(printf("<bare debug>: saw --cipher, got enum value: %d\n", cin_cipher));
+        }
+
+        else if(strcmp(argv[argc], "--tpm-id") == 0)
+        {
+            IFDEBUG3(printf("<bare debug>: saw --tpm-id = %i\n", cin_use_default_password));
+
+            int64_t cin_tpm_id_int = strtoll(argv[argc + 1], NULL, 0);
+            buselfs_state->rpmb_secure_index = strtoll(argv[argc + 1], NULL, 0);
+
+            if(cin_tpm_id_int < 0)
+                Throw(EXCEPTION_INVALID_TPM_ID);
+
+            IFDEBUG3(printf("<bare debug>: saw --tpm-id, got value: %"PRIu64"\n", buselfs_state->rpmb_secure_index));
+        }
+
         IFDEBUG3(printf("<bare debug>: errno = %i\n", errno));
 
         if(errno == ERANGE)
@@ -1998,6 +2024,8 @@ buselfs_state_t * buselfs_main_actual(int argc, char * argv[], char * blockdevic
     IFDEBUG3(printf("<bare debug>: cin_flake_size = %"PRIu32"\n", cin_flake_size));
     IFDEBUG3(printf("<bare debug>: cin_flakes_per_nugget = %"PRIu32"\n", cin_flakes_per_nugget));
     IFDEBUG3(printf("<bare debug>: cin_backstore_mode = %i\n", cin_backstore_mode));
+    IFDEBUG3(printf("<bare debug>: rpmb_secure_index = %"PRIu64"\n", buselfs_state->rpmb_secure_index));
+    IFDEBUG3(printf("<bare debug>: cin_cipher = %d\n", cin_cipher));
 
     IFDEBUG3(printf("<bare debug>: defaults:\n"));
     IFDEBUG3(printf("<bare debug>: default allow_insecure_start = 0\n"));
@@ -2005,7 +2033,9 @@ buselfs_state_t * buselfs_main_actual(int argc, char * argv[], char * blockdevic
     IFDEBUG3(printf("<bare debug>: default backstore_size (MB) = %"PRIu64"\n", BLFS_DEFAULT_BYTES_BACKSTORE));
     IFDEBUG3(printf("<bare debug>: default flake_size = %"PRIu32"\n", BLFS_DEFAULT_BYTES_FLAKE));
     IFDEBUG3(printf("<bare debug>: default flakes_per_nugget = %"PRIu32"\n", BLFS_DEFAULT_FLAKES_PER_NUGGET));
-    IFDEBUG3(printf("<bare debug>: cin_backstore_mode = %i\n", BLFS_BACKSTORE_CREATE_MODE_UNKNOWN));
+    IFDEBUG3(printf("<bare debug>: default cin_backstore_mode = %i\n", BLFS_BACKSTORE_CREATE_MODE_UNKNOWN));
+    IFDEBUG3(printf("<bare debug>: default rpmb_secure_index = %i\n", BLFS_DEFAULT_TPM_ID));
+    IFDEBUG3(printf("<bare debug>: default cin_cipher = %d\n", sc_default));
 
     IFDEBUG3(printf("<bare debug>: BLFS_BACKSTORE_CREATE_MAX_MODE_NUM = %i\n", BLFS_BACKSTORE_CREATE_MAX_MODE_NUM));
 
@@ -2022,6 +2052,8 @@ buselfs_state_t * buselfs_main_actual(int argc, char * argv[], char * blockdevic
 
     if(!cin_flakes_per_nugget || cin_flakes_per_nugget > UINT_MAX)
         Throw(EXCEPTION_INVALID_FLAKES_PER_NUGGET);
+
+    blfs_set_stream_context(buselfs_state, cin_cipher);
 
     /* Prepare to setup the backstore file */
 

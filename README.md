@@ -23,7 +23,7 @@ This is a complete rewrite of the old buselogfs code. This is a Buse + Chacha20 
 - [OpenSSL](https://www.openssl.org) (provides swappable algorithm base)
 - [energymon](https://github.com/energymon/energymon) (required iff you want energy metrics (has performance implications))
 - [std=c11](https://en.wikipedia.org/wiki/C11_(C_standard_revision))
-- A device that offers or emulates an [RPMB API](https://lwn.net/Articles/682276/) (see: BLFS_RPMB_KEY and BLFS_RPMB_DEVICE)
+- A device that offers or emulates an [RPMB API](https://lwn.net/Articles/682276/) (see: [BLFS_RPMB_KEY](#BLFS_RPMB_KEY) and [BLFS_RPMB_DEVICE](#BLFS_RPMB_DEVICE))
     - *sudo access* is necessary due to RPMB integration. If you're using a usersapce emulation of some sort, sudo is not necessary.
 
 ## Usage
@@ -104,9 +104,6 @@ The current build version (arbitrary number).
 
 ##### `BLFS_LEAST_COMPAT_VERSION`
 The absolute minimum build version of the StrongBox software whose backing store this current revision of StrongBox considers valid, e.g. backwards compatibility.
-
-##### `BLFS_TPM_ID`
-With this version of StrongBox, `BLFS_TPM_ID` is used by the RPMB API to determine the block index within the massive 4-16MB RPMB eMMC drive space. In future versions of StrongBox, should they come to exist, this may not be the case (i.e. it's handled automatically/via TPM).
 
 ##### `BLFS_RPMB_KEY`
 The key used by RPMB. In future versions of StrongBox, should they come to exist, this may not be the case (i.e. it's handled automatically/via TPM).

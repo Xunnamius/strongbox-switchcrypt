@@ -77,7 +77,7 @@ static void generic_sc_impl(sc_context_t * sc_context)
 
     assert(zero_str_length >= sc_context->data_length);
 
-    uint8_t * xor_str  = calloc(zero_str_length, sizeof(*xor_str)); // XXX: be sure to exert complete control over this pointer and its memory
+    uint8_t * xor_str  = calloc(zero_str_length, sizeof(*xor_str)); // XXX: be sure to maintain complete control over this pointer and its memory
 
     if(xor_str == NULL)
         Throw(EXCEPTION_ALLOC_FAILURE);
@@ -724,4 +724,50 @@ stream_crypt_common blfs_to_stream_context(stream_cipher_e stream_cipher)
     }
 
     return fn;
+}
+
+stream_cipher_e stream_string_to_cipher(const char * stream_cipher_str)
+{
+    stream_cipher_e cipher = sc_not_impl;
+
+    if(strcmp(stream_cipher_str, "sc_default") == 0)
+        cipher = sc_default;
+
+    else if(strcmp(stream_cipher_str, "sc_aes128_ctr") == 0)
+        cipher = sc_aes128_ctr;
+    
+    else if(strcmp(stream_cipher_str, "sc_aes256_ctr") == 0)
+        cipher = sc_aes256_ctr;
+
+    else if(strcmp(stream_cipher_str, "sc_salsa8") == 0)
+        cipher = sc_salsa8;
+    
+    else if(strcmp(stream_cipher_str, "sc_salsa12") == 0)
+        cipher = sc_salsa12;
+
+    else if(strcmp(stream_cipher_str, "sc_salsa20") == 0)
+        cipher = sc_salsa20;
+
+    else if(strcmp(stream_cipher_str, "sc_hc128") == 0)
+        cipher = sc_hc128;
+
+    else if(strcmp(stream_cipher_str, "sc_rabbit") == 0)
+        cipher = sc_rabbit;
+    
+    else if(strcmp(stream_cipher_str, "sc_sosemanuk") == 0)
+        cipher = sc_sosemanuk;
+
+    else if(strcmp(stream_cipher_str, "sc_chacha8") == 0)
+        cipher = sc_chacha8;
+
+    else if(strcmp(stream_cipher_str, "sc_chacha12") == 0)
+        cipher = sc_chacha12;
+    
+    else if(strcmp(stream_cipher_str, "sc_chacha20") == 0)
+        cipher = sc_chacha20;
+
+    else
+        Throw(EXCEPTION_STRING_TO_CIPHER_FAILED);
+
+    return cipher;
 }

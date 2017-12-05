@@ -71,6 +71,7 @@ do {                                                                            
 #define EXCEPTION_TOO_MANY_FLAKES_PER_NUGGET            0x0CU
 
 // We failed to open something, probably a file descriptor
+// Also happens when your machine doesn't have an RPMB device @ the correct path
 #define EXCEPTION_OPEN_FAILURE                          0x0DU
 
 // Bad header type
@@ -184,6 +185,12 @@ do {                                                                            
 
 // Calculated mac doesn't match mac returned in RPMB frame during ioctl operation
 #define EXCEPTION_GLOBAL_CORRECTNESS_FAILURE            0x33U
+
+// The TPM ID supplied via --tpm-id angered the gods
+#define EXCEPTION_INVALID_TPM_ID                        0x34U
+
+// You tried to pass an invalid cipher string to --cipher
+#define EXCEPTION_STRING_TO_CIPHER_FAILED               0x35U
 
 ///////////////////////
 // End Configuration //

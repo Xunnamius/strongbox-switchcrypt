@@ -5,14 +5,10 @@
 // Configurable //
 //////////////////
 
-#define BLFS_CURRENT_VERSION 285U
-#define BLFS_LEAST_COMPAT_VERSION 285U
+#define BLFS_CURRENT_VERSION 300U
+#define BLFS_LEAST_COMPAT_VERSION 300U
 
-#ifndef BLFS_TPM_ID // XXX: ensure different than test value
-#define BLFS_TPM_ID 5U // XXX: In an actual application, this would be dynamic!
-#endif
-
-#define BLFS_RPMB_KEY "thirtycharactersecurecounterkey!" // XXX: ^
+#define BLFS_RPMB_KEY "thirtycharactersecurecounterkey!" // XXX: would be dynamic/TPM irl
 #define BLFS_RPMB_DEVICE "/dev/mmcblk0rpmb"
 
 #define BLFS_CONFIG_ZLOG "../config/zlog_conf.conf"
@@ -51,6 +47,11 @@
 #define _GNU_SOURCE
 #endif
 
+////////////////////
+// Cipher Choices //
+////////////////////
+
+// XXX: These are the valid values for the --cipher CLI flag
 typedef enum stream_cipher_e {
     sc_default,
     sc_not_impl,
@@ -129,22 +130,6 @@ typedef enum stream_cipher_e {
     ({                                                      \
         return_type __fn__ function_body                    \
         __fn__;                                             \
-    })
-
-#define DO_IO(func, fd, buf, nbyte)                 \
-    ({                                              \
-        ssize_t ret = 0, r;                         \
-        do {                                        \
-            r = func(fd, buf + ret, nbyte - ret);   \
-            if (r < 0 && errno != EINTR) {          \
-                ret = -1;                           \
-                break;                              \
-            }                                       \
-            else if (r > 0)                         \
-                ret += r;                           \
-        } while (r != 0 && (size_t) ret != nbyte);  \
-                                                    \
-        ret;                                        \
     })
 
 // XXX: Only works for stack initialized arrays!
@@ -254,7 +239,7 @@ typedef enum stream_cipher_e {
 //////////////
 
 #ifndef BLFS_DEFAULT_DISABLE_KEY_CACHING
-#define BLFS_DEFAULT_DISABLE_KEY_CACHING        TRUE // It might be faster just to recompute...
+#define BLFS_DEFAULT_DISABLE_KEY_CACHING        TRUE // It might be faster just to recompute?
 #endif
 
 #ifndef BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION
@@ -274,6 +259,8 @@ typedef enum stream_cipher_e {
 #define BLFS_BACKSTORE_DEVNAME_MAXLEN           16
 #define BLFS_PASSWORD_BUF_SIZE                  1025
 #define BLFS_PASSWORD_MAX_SIZE                  "1024"
+
+#define BLFS_DEFAULT_TPM_ID                     5U // Of course, one should consider changing this...
 
 /////////
 // MMC //
