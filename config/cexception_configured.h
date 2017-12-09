@@ -71,7 +71,6 @@ do {                                                                            
 #define EXCEPTION_TOO_MANY_FLAKES_PER_NUGGET            0x0CU
 
 // We failed to open something, probably a file descriptor
-// Also happens when your machine doesn't have an RPMB device @ the correct path
 #define EXCEPTION_OPEN_FAILURE                          0x0DU
 
 // Bad header type
@@ -144,7 +143,7 @@ do {                                                                            
 // OpenSSL AES-XTS requires minimum data size of 16 bytes (cipher core req)
 #define EXCEPTION_AESXTS_DATA_LENGTH_TOO_SMALL          0x25U
 
-// OpenSSL AES-CTR is not amused by your antics
+// OpenSSL AES-CTR is not amused by your antics and returned something unexpected
 #define EXCEPTION_AESCTR_BAD_RETVAL                     0x26U
 
 // Why you call aes-ctr function when aes-ctr disabled?!?!
@@ -162,7 +161,7 @@ do {                                                                            
 // Energymon subsystem failed during metric collection
 #define EXCEPTION_ENERGYMON_METRIC_COLLECTION_FAILURE   0x2BU
 
-// Someone attempted to re-init the Energymon subsystem (not allowed)
+// Someone! attempted to re-init the Energymon subsystem (not allowed)
 #define EXCEPTION_ENERGYMON_ALREADY_INITED              0x2CU
 
 // Energymon subsystem failed on ffinish
@@ -191,6 +190,10 @@ do {                                                                            
 
 // You tried to pass an invalid cipher string to --cipher
 #define EXCEPTION_STRING_TO_CIPHER_FAILED               0x35U
+
+// No RPMB device was detected. Did you enter the correct path string and recompile?
+// You can also pretend an RPMB device does exist via BLFS_MANUAL_GV_FALLBACK (see Makefile)
+#define EXCEPTION_RPMB_DOES_NOT_EXIST                   0x36U
 
 ///////////////////////
 // End Configuration //

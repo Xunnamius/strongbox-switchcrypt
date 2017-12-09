@@ -6,6 +6,7 @@ This is a complete rewrite of the old buselogfs code. This is a Buse + Chacha20 
 (todo: advantages, disadvantages, tradeoffs, etc of this design; StrongBox is proof of concept)
 (Use `make tests` to run all the tests)
 (The ONLY test that works with BLFS_DEBUG_MONITOR_POWER=1 is test_buselfs!)
+(tpm-id must be greater than 0 but <= LLONG_MAX)
 
 ## Things to Address
 
@@ -23,8 +24,8 @@ This is a complete rewrite of the old buselogfs code. This is a Buse + Chacha20 
 - [OpenSSL](https://www.openssl.org) (provides swappable algorithm base)
 - [energymon](https://github.com/energymon/energymon) (required iff you want energy metrics (has performance implications))
 - [std=c11](https://en.wikipedia.org/wiki/C11_(C_standard_revision))
-- A device that offers or emulates an [RPMB API](https://lwn.net/Articles/682276/) (see: [BLFS_RPMB_KEY](#BLFS_RPMB_KEY) and [BLFS_RPMB_DEVICE](#BLFS_RPMB_DEVICE))
-    - *sudo access* is necessary due to RPMB integration. If you're using a usersapce emulation of some sort, sudo is not necessary.
+- A device that offers or emulates an [RPMB API](https://lwn.net/Articles/682276/) is required iff you intend to test RPMB functionality. See: [BLFS_RPMB_KEY](#BLFS_RPMB_KEY), [BLFS_RPMB_DEVICE](#BLFS_RPMB_DEVICE), and [BLFS_MANUAL_GV_FALLBACK](#BLFS_MANUAL_GV_FALLBACK).
+    - *sudo access* is necessary when using RPMB functionality against an mmc device. If you're using a usersapce emulation of some sort, sudo is not necessary.
 
 ## Usage
 
@@ -116,6 +117,9 @@ Path to your [zlog configuration file](https://github.com/HardySimpson/zlog/blob
 
 ##### `BLFS_ENERGYMON_OUTPUT_PATH`
 If you've enabled [energy metrics gathering](#BLFS_DEBUG_MONITOR_POWER), this must be a valid file path string (file need not exist yet).
+
+##### `BLFS_MANUAL_GV_FALLBACK`
+(todo)
 
 
 

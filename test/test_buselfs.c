@@ -144,8 +144,26 @@ static void make_fake_state()
     blfs_backstore_write(buselfs_state->backstore, buffer_init_backstore_state, sizeof buffer_init_backstore_state, 0);
 
     uint8_t data_in[BLFS_CRYPTO_RPMB_BLOCK] = { 0x06, 0x07, 0x08, 0x09, 0x06, 0x07, 0x08, 0x09 };
+    volatile CEXCEPTION_T e = EXCEPTION_NO_EXCEPTION;
+
     memset(data_in + 8, 0, sizeof(data_in) - 8);
-    rpmb_write_block(_TEST_BLFS_TPM_ID, data_in);
+
+    Try
+    {
+        rpmb_write_block(_TEST_BLFS_TPM_ID, data_in);
+    }
+
+    Catch(e)
+    {
+        if(e == EXCEPTION_RPMB_DOES_NOT_EXIST && BLFS_MANUAL_GV_FALLBACK != -1)
+        {
+            dzlog_warn("RPMB device is not able to be opened but BLFS_MANUAL_GV_FALLBACK (%i) is in effect; ignoring...",
+                       BLFS_MANUAL_GV_FALLBACK);
+        }
+
+        else
+            Throw(e);
+    }
 }
 
 static void clear_tj()
@@ -214,6 +232,7 @@ void tearDown(void)
 }
 
 // XXX: Also need to test a delete function to fix the memory leak issue discussed in buselfs.h
+
 void test_adding_and_evicting_from_the_keycache_works_as_expected(void)
 {
     free(buselfs_state->backstore);
@@ -755,7 +774,6 @@ void test_blfs_run_mode_create_initializes_keycache_and_merkle_tree_properly(voi
     blfs_backstore_close(buselfs_state->backstore);
 }*/
 
-
 void test_buselfs_main_actual_throws_exception_if_wrong_argc(void)
 {
    
@@ -890,6 +908,76 @@ void test_buselfs_main_actual_throws_exception_if_bad_numbers_given_as_args(void
     };
 
     TRY_FN_CATCH_EXCEPTION(buselfs_main_actual(5, argv8, blockdevice));
+}
+
+void test_buselfs_main_actual_throws_exception_if_invalid_cipher(void)
+{
+    zlog_fini();
+
+    CEXCEPTION_T e_expected = EXCEPTION_STRING_TO_CIPHER_FAILED;
+    volatile CEXCEPTION_T e_actual = EXCEPTION_NO_EXCEPTION;
+
+    char * argv[] = {
+        "progname",
+        "--default-password",
+        "--cipher",
+        "fakecipher",
+        "create",
+        "device115"
+    };
+
+    TRY_FN_CATCH_EXCEPTION(buselfs_main_actual(6, argv, blockdevice));
+}
+
+void test_buselfs_main_actual_throws_exception_if_invalid_tpm_id(void)
+{
+    zlog_fini();
+
+    CEXCEPTION_T e_expected = EXCEPTION_INVALID_TPM_ID;
+    volatile CEXCEPTION_T e_actual = EXCEPTION_NO_EXCEPTION;
+
+    char * argv[] = {
+        "progname",
+        "--default-password",
+        "--tpm-id",
+        "fds",
+        "create",
+        "device115"
+    };
+
+    TRY_FN_CATCH_EXCEPTION(buselfs_main_actual(6, argv, blockdevice));
+
+    e_actual = EXCEPTION_NO_EXCEPTION;
+
+    char * argv2[] = {
+        "progname",
+        "--default-password",
+        "--tpm-id",
+        "0",
+        "create",
+        "device115"
+    };
+
+    TRY_FN_CATCH_EXCEPTION(buselfs_main_actual(6, argv2, blockdevice));
+}
+
+void test_buselfs_main_actual_throws_exception_if_nonimpl_cipher(void)
+{
+    zlog_fini();
+
+    CEXCEPTION_T e_expected = EXCEPTION_SC_ALGO_NO_IMPL;
+    volatile CEXCEPTION_T e_actual = EXCEPTION_NO_EXCEPTION;
+
+    char * argv[] = {
+        "progname",
+        "--default-password",
+        "--cipher",
+        "sc_chacha8",
+        "create",
+        "device115"
+    };
+
+    TRY_FN_CATCH_EXCEPTION(buselfs_main_actual(6, argv, blockdevice));
 }
 
 /* Metrics Tests */
@@ -1457,7 +1545,6 @@ void test_buse_writeread_works_as_expected11(void)
     IFENERGYMON(blfs_energymon_fini(buselfs_state));
 }*/
 
-
 void test_buse_write_dirty_write_triggers_rekeying1(void)
 {
     if(BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
@@ -1642,6 +1729,7 @@ void test_buse_write_dirty_write_triggers_rekeying8(void)
     TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset7, buffer7, sizeof buffer7);
 }
 
+
 /*void test_blfs_rekey_nugget_journaled_zeroes_out_everything_as_expected(void)
 {
     // FIXME:
@@ -1658,6 +1746,8 @@ void test_blfs_incomplete_rekeying_triggers_blfs_rekey_nugget_journaled_on_start
 
 static void readwrite_quicktests()
 {
+    printf("Running read/write quicktests (stage 1)...\n");
+
     uint8_t expected_buffer1[4096];
     memset(&expected_buffer1, 0xCE, 4096);
     expected_buffer1[4095] = 0xAB;
@@ -1679,6 +1769,8 @@ static void readwrite_quicktests()
         TEST_ASSERT_EQUAL_MEMORY_MESSAGE(expected_buffer1, buffer, sizeof buffer, strbuf);
     }
 
+    printf("Running read/write quicktests (stage 2)...\n");
+
     uint8_t expected_buffer2[5000] = { 0x00 };
     memset(&expected_buffer2, 0xFA, 5000);
 
@@ -1695,6 +1787,8 @@ static void readwrite_quicktests()
         TEST_ASSERT_EQUAL_MEMORY_MESSAGE(expected_buffer2, buffer, sizeof buffer, strbuf);
     }
 
+    printf("Running read/write quicktests (stage 3)...\n");
+
     // Test end writes
     uint8_t buffer[sizeof expected_buffer1];
     offset = buselfs_state->backstore->writeable_size_actual - sizeof(expected_buffer1);
@@ -1710,7 +1804,6 @@ static void readwrite_quicktests()
     IFENERGYMON(blfs_energymon_fini(buselfs_state));
 }
 
-
 void test_buselfs_main_actual_creates(void)
 {
     zlog_fini();
@@ -1722,6 +1815,60 @@ void test_buselfs_main_actual_creates(void)
         "--default-password",
         "create",
         "device_actual1"
+    };
+
+    buselfs_state = buselfs_main_actual(argc, argv_create1, blockdevice);
+    readwrite_quicktests();
+}
+
+
+void test_buselfs_main_actual_does_not_throw_exception_if_valid_cipher(void)
+{
+    zlog_fini();
+
+    char * argv[] = {
+        "progname",
+        "--default-password",
+        "--cipher",
+        "sc_sosemanuk",
+        "create",
+        "device115"
+    };
+
+    buselfs_main_actual(6, argv, blockdevice);
+}
+
+void test_buselfs_main_actual_does_not_throw_exception_if_valid_tpm_id(void)
+{
+    zlog_fini();
+
+    char * argv[] = {
+        "progname",
+        "--default-password",
+        "--tpm-id",
+        "115",
+        "create",
+        "device-115"
+    };
+
+    buselfs_main_actual(6, argv, blockdevice);
+}
+
+void test_buselfs_main_actual_creates_with_alternate_cipher_and_tpm(void)
+{
+    zlog_fini();
+
+    int argc = 8;
+
+    char * argv_create1[] = {
+        "progname",
+        "--default-password",
+        "--tpm-id",
+        "115",
+        "--cipher",
+        "sc_salsa8",
+        "create",
+        "device_actual115"
     };
 
     buselfs_state = buselfs_main_actual(argc, argv_create1, blockdevice);

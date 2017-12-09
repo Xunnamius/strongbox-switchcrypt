@@ -1642,10 +1642,26 @@ void blfs_run_mode_create(const char * backstore_path,
     IFDEBUG(dzlog_debug("<< attempting to commit clean RPMB block >>"));
     
     uint8_t data_in[BLFS_CRYPTO_RPMB_BLOCK] = { 0x01 };
+    e = EXCEPTION_NO_EXCEPTION;
 
     memset(data_in + 8, 0, sizeof(data_in) - 8);
 
-    rpmb_write_block(buselfs_state->rpmb_secure_index, data_in);
+    Try
+    {
+        rpmb_write_block(buselfs_state->rpmb_secure_index, data_in);
+    }
+
+    Catch(e)
+    {
+        if(e == EXCEPTION_RPMB_DOES_NOT_EXIST && BLFS_MANUAL_GV_FALLBACK != -1)
+        {
+            dzlog_warn("RPMB device is not able to be opened but BLFS_MANUAL_GV_FALLBACK (%i) is in effect; ignoring...",
+                       BLFS_MANUAL_GV_FALLBACK);
+        }
+
+        else
+            Throw(e);
+    }
 
     IFDEBUG(dzlog_debug("<< resuming create routine >>"));
 
@@ -2003,7 +2019,7 @@ buselfs_state_t * buselfs_main_actual(int argc, char * argv[], char * blockdevic
             int64_t cin_tpm_id_int = strtoll(argv[argc + 1], NULL, 0);
             buselfs_state->rpmb_secure_index = strtoll(argv[argc + 1], NULL, 0);
 
-            if(cin_tpm_id_int < 0)
+            if(cin_tpm_id_int <= 0)
                 Throw(EXCEPTION_INVALID_TPM_ID);
 
             IFDEBUG3(printf("<bare debug>: saw --tpm-id, got value: %"PRIu64"\n", buselfs_state->rpmb_secure_index));
