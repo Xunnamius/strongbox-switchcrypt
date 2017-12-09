@@ -235,9 +235,9 @@ void test_rpmb_write_block_works_as_expected_with_too_big_input(void)
 
 void test_integration_with_buselfs_works_as_expected(void)
 {
-    if(BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
+    if(BLFS_MANUAL_GV_FALLBACK >= 0)
     {
-        TEST_IGNORE_MESSAGE("BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION is in effect. All non- AES-XTS emulation tests will be ignored!");
+        TEST_IGNORE_MESSAGE("BLFS_MANUAL_GV_FALLBACK != -1; test skipped when GV fallback is in effect!");
         return;
     }
 

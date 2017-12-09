@@ -21,7 +21,7 @@ do {                                                                            
     if(id == EXCEPTION_ZLOG_INIT_FAILURE)                                                   \
         printf("Fatal error: zlog init failure\n");                                         \
     else if(id == EXCEPTION_MUST_HALT)                                                      \
-        dzlog_warn("WARN: execution was suddenly halted\n");                                \
+        dzlog_fatal("FATAL: execution was suddenly halted\n");                                \
     else                                                                                    \
         dzlog_fatal("Fatal error: program terminated with uncaught exception [0x%x]", id);  \
     exit(id);                                                                               \
