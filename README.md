@@ -24,7 +24,7 @@ This is a complete rewrite of the old buselogfs code. This is a Buse + Chacha20 
 - [OpenSSL](https://www.openssl.org) (provides swappable algorithm base)
 - [energymon](https://github.com/energymon/energymon) (required iff you want energy metrics (has performance implications))
 - [std=c11](https://en.wikipedia.org/wiki/C11_(C_standard_revision))
-- A device that offers or emulates an [RPMB API](https://lwn.net/Articles/682276/) is required iff you intend to test RPMB functionality. See: [BLFS_RPMB_KEY](#BLFS_RPMB_KEY), [BLFS_RPMB_DEVICE](#BLFS_RPMB_DEVICE), and [BLFS_MANUAL_GV_FALLBACK](#BLFS_MANUAL_GV_FALLBACK).
+- A device that offers or emulates an [RPMB API](https://lwn.net/Articles/682276/) is required iff you intend to test RPMB functionality. See: [BLFS_RPMB_KEY](#blfs_rpmb_key), [BLFS_RPMB_DEVICE](#blfs_rpmb_device), and [BLFS_MANUAL_GV_FALLBACK](#blfs_manual_gv_fallback).
     - *sudo access* is necessary when using RPMB functionality against an mmc device. If you're using a usersapce emulation of some sort, sudo is not necessary.
 
 ## Usage
@@ -116,7 +116,7 @@ Valid Path string to the RPMB device, e.g. "/dev/mmcblk0rpmb". In future version
 Path to your [zlog configuration file](https://github.com/HardySimpson/zlog/blob/master/doc/GettingStart-EN.txt).
 
 ##### `BLFS_ENERGYMON_OUTPUT_PATH`
-If you've enabled [energy metrics gathering](#BLFS_DEBUG_MONITOR_POWER), this must be a valid file path string (file need not exist yet).
+If you've enabled [energy metrics gathering](#blfs_debug_monitor_power), this must be a valid file path string (file need not exist yet).
 
 ##### `BLFS_MANUAL_GV_FALLBACK`
 (todo)
