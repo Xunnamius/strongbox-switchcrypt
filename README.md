@@ -2,7 +2,7 @@
 
 This is a complete rewrite of the old buselogfs code. This is a Buse + Chacha20 + Poly1305 + LFS encrypted filesystem. It uses Argon2 as its KDF. Featured in the paper `StrongBox: Confidentiality, Integrity, and Performance using Stream Ciphers for Full Drive Encryption` by Bernard Dickens III (University of Chicago), Haryadi Gunawi (University of Chicago), Ariel J Feldman (University of Chicago), and Henry Hoffmann (University of Chicago).
 
-*Note that this is a prototype implementation of the StrongBox idea. This is not production-ready code. Do not expect to be able to use this in real life, it's only a proof-of-concept for odroids. As this is not production code, do not place it anywhere near files you consider important! You've been warned!*
+*Note that this is a prototype implementation of the StrongBox idea. This is not production-ready code. Do not expect to be able to use this in real life, it's only a proof-of-concept for little-endian odroid XU3s. As this is not production code, do not place it anywhere near files you consider important! You've been warned!*
 
 (todo: flesh this README out)
 (todo: advantages, disadvantages, tradeoffs, etc of this design; StrongBox is proof of concept)

@@ -19,16 +19,16 @@ static blfs_header_t * blfs_generate_header_actual(blfs_backstore_t * backstore,
 
     blfs_header_t * header = malloc(sizeof(blfs_header_t));
 
-    if(header == NULL)
-        Throw(EXCEPTION_ALLOC_FAILURE);
+	if (header == NULL)
+		Throw(EXCEPTION_ALLOC_FAILURE);
 
     uint64_t offset = 0;
 
     for(size_t i = 0; i < BLFS_HEAD_NUM_HEADERS; ++i)
     {
-        uint32_t const_header_type   = header_types_ordered[i][0];
-        uint64_t const_header_length = header_types_ordered[i][1];
-        const char * const_header_name   = header_types_named[i];
+        uint32_t const_header_type		= header_types_ordered[i][0];
+        uint64_t const_header_length	= header_types_ordered[i][1];
+        const char * const_header_name	= header_types_named[i];
 
         if(header_type == const_header_type)
         {
