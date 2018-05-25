@@ -1,0 +1,36 @@
+{
+    "configurations": [
+        {
+            "name": "Win32",
+            "browse": {
+                "path": [
+                    "Z:/gitr/research/buselfs"
+                ],
+                "limitSymbolsToIncludedHeaders": true
+            },
+            "includePath": [
+                "Z:/gitr/research/buselfs/build",
+                "Z:/gitr/research/buselfs/src",
+                "Z:/gitr/research/buselfs/config",
+                "Z:/gitr/research/buselfs/vendor/unity/src",
+                "Z:/gitr/research/buselfs/vendor/merkle-tree/src",
+                "Z:/gitr/research/buselfs/vendor/libestream",
+                "Z:/gitr/research/buselfs/vendor/energymon/src",
+                "Z:/gitr/research/buselfs/vendor/cmock/src",
+                "Z:/gitr/research/buselfs/vendor",
+                "F:/SkyDrive/linux/usr/local/include",
+                "F:/SkyDrive/linux/usr/include/arm-linux-gnueabihf",
+                "F:/SkyDrive/linux/usr/lib/gcc/arm-linux-gnueabihf/5/include-fixed",
+                "F:/SkyDrive/linux/usr/lib/gcc/arm-linux-gnueabihf/5/include",
+                "F:/SkyDrive/linux/usr/include"
+            ],
+            "defines": [
+                "__ARM_PCS_VFP"
+            ],
+            "cStandard": "c11",
+            "cppStandard": "c++17",
+            "intelliSenseMode": "clang-x64"
+        }
+    ],
+    "version": 4
+}

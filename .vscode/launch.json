@@ -1,0 +1,27 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "gdb",
+            "request": "launch",
+            "name": "@morty",
+            "target": "./test_buselfs",
+            "cwd": "${workspaceRoot}",
+            "ssh": {
+                "forwardX11": true,
+                "host": "192.168.115.5",
+                "cwd": "/home/xunnamius/repos/research/buselfs/build",
+                "keyfile": "F:/SkyDrive/.ssh/xunnmorty_rsa_ul",
+                "port": 1111,
+                "user": "xunnamius",
+                "x11host": "localhost",
+                "x11port": 6000,
+                // Optional, content will be executed on the SSH host before the debugger call.
+                //"bootstrap": "source /home/remoteUser/some-env"
+            }
+        }
+    ]
+}

@@ -81,16 +81,14 @@ blfs_header_t * blfs_create_header(blfs_backstore_t * backstore, uint32_t header
     }
 
     IFDEBUG(dzlog_debug("<creating new blfs_header_t header object>"));
-
-    blfs_header_t * header = blfs_generate_header_actual(
-        backstore,
-        header_type,
-        // cppcheck-suppress uninitvar
-        LAMBDA(void, (blfs_backstore_t * backstore, blfs_header_t * header)
-               { (void) backstore; memcpy(header->data, data, header->data_length); }
-        )
-    );
-
+    blfs_header_t * header;
+#ifndef __INTELLISENSE__
+        header = blfs_generate_header_actual(
+            backstore,
+            header_type,
+            // cppcheck-suppress uninitvar
+            LAMBDA(void, (blfs_backstore_t * backstore, blfs_header_t * header) { (void) backstore; memcpy(header->data, data, header->data_length); }));
+#endif
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
     return header;
 }
@@ -113,16 +111,16 @@ blfs_header_t * blfs_open_header(blfs_backstore_t * backstore, uint32_t header_t
 
     IFDEBUG(dzlog_debug("<opening blfs_header_t header object>"));
 
-    blfs_header_t * header = blfs_generate_header_actual(
+    blfs_header_t * header;
+    #ifndef __INTELLISENSE__ 
+    header = blfs_generate_header_actual(
         backstore,
         header_type,
-        // cppcheck-suppress uninitvar
-        // cppcheck-suppress uninitStructMember
         LAMBDA(void, (blfs_backstore_t * backstore, blfs_header_t * header)
             { blfs_backstore_read(backstore, header->data, header->data_length, header->data_offset); }
         )
     );
-
+    #endif
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
     return header;
 }

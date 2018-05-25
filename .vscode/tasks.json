@@ -1,0 +1,131 @@
+{
+    // See https://go.microsoft.com/fwlink/?LinkId=733558
+    // for the documentation about the tasks.json format
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "build: buselfs",
+            "type": "shell",
+            "options": {
+                "shell": {
+                    "executable": "C:/Windows/System32/wsl.exe"
+                }
+            },
+            "command": "source $HOME/.keychain/$(hostname)-sh && ssh morty 'cd $HOME/repos/research/buselfs/build && make clean && make'",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+        {
+            "label": "build: pre-test environment",
+            "type": "shell",
+            "options": {
+                "shell": {
+                    "executable": "C:/Windows/System32/wsl.exe"
+                }
+            },
+            "command": "source $HOME/.keychain/$(hostname)-sh && ssh morty 'cd $HOME/repos/research/buselfs/build && make clean && make pre'",
+        },
+        {
+            "label": "build: all test_*s",
+            "type": "shell",
+            "options": {
+                "shell": {
+                    "executable": "C:/Windows/System32/wsl.exe"
+                }
+            },
+            "command": "source $HOME/.keychain/$(hostname)-sh && ssh morty 'cd $HOME/repos/research/buselfs/build && make tests'",
+        },
+        {
+            "label": "build: test_aes",
+            "type": "shell",
+            "options": {
+                "shell": {
+                    "executable": "C:/Windows/System32/wsl.exe"
+                }
+            },
+            "command": "source $HOME/.keychain/$(hostname)-sh && ssh morty 'cd $HOME/repos/research/buselfs/build && make test_aes'",
+        },
+        {
+            "label": "build: test_backstore",
+            "type": "shell",
+            "options": {
+                "shell": {
+                    "executable": "C:/Windows/System32/wsl.exe"
+                }
+            },
+            "command": "source $HOME/.keychain/$(hostname)-sh && ssh morty 'cd $HOME/repos/research/buselfs/build && make test_backstore'",
+        },
+        {
+            "label": "build: test_bitmask",
+            "type": "shell",
+            "options": {
+                "shell": {
+                    "executable": "C:/Windows/System32/wsl.exe"
+                }
+            },
+            "command": "source $HOME/.keychain/$(hostname)-sh && ssh morty 'cd $HOME/repos/research/buselfs/build && make test_bitmask'",
+        },
+        {
+            "label": "build: test_buselfs",
+            "type": "shell",
+            "options": {
+                "shell": {
+                    "executable": "C:/Windows/System32/wsl.exe"
+                }
+            },
+            "command": "source $HOME/.keychain/$(hostname)-sh && ssh morty 'cd $HOME/repos/research/buselfs/build && make test_buselfs'",
+        },
+        {
+            "label": "build: test_crypto",
+            "type": "shell",
+            "options": {
+                "shell": {
+                    "executable": "C:/Windows/System32/wsl.exe"
+                }
+            },
+            "command": "source $HOME/.keychain/$(hostname)-sh && ssh morty 'cd $HOME/repos/research/buselfs/build && make test_crypto'",
+        },
+        {
+            "label": "build: test_io",
+            "type": "shell",
+            "options": {
+                "shell": {
+                    "executable": "C:/Windows/System32/wsl.exe"
+                }
+            },
+            "command": "source $HOME/.keychain/$(hostname)-sh && ssh morty 'cd $HOME/repos/research/buselfs/build && make test_io'",
+        },
+        {
+            "label": "build: test_mmc",
+            "type": "shell",
+            "options": {
+                "shell": {
+                    "executable": "C:/Windows/System32/wsl.exe"
+                }
+            },
+            "command": "source $HOME/.keychain/$(hostname)-sh && ssh morty 'cd $HOME/repos/research/buselfs/build && make test_mmc'",
+        },
+        {
+            "label": "build: test_swappable",
+            "type": "shell",
+            "options": {
+                "shell": {
+                    "executable": "C:/Windows/System32/wsl.exe"
+                }
+            },
+            "command": "source $HOME/.keychain/$(hostname)-sh && ssh morty 'cd $HOME/repos/research/buselfs/build && make test_swappable'",
+        },
+        {
+            "label": "build: test_vector",
+            "type": "shell",
+            "options": {
+                "shell": {
+                    "executable": "C:/Windows/System32/wsl.exe"
+                }
+            },
+            "command": "source $HOME/.keychain/$(hostname)-sh && ssh morty 'cd $HOME/repos/research/buselfs/build && make test_vector'",
+        }
+    ]
+}
