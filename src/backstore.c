@@ -82,13 +82,15 @@ blfs_header_t * blfs_create_header(blfs_backstore_t * backstore, uint32_t header
 
     IFDEBUG(dzlog_debug("<creating new blfs_header_t header object>"));
     blfs_header_t * header;
-#ifndef __INTELLISENSE__
-        header = blfs_generate_header_actual(
-            backstore,
-            header_type,
-            // cppcheck-suppress uninitvar
-            LAMBDA(void, (blfs_backstore_t * backstore, blfs_header_t * header) { (void) backstore; memcpy(header->data, data, header->data_length); }));
-#endif
+    #ifndef __INTELLISENSE__
+    header = blfs_generate_header_actual(
+        backstore,
+        header_type,
+        LAMBDA(void, (blfs_backstore_t * backstore, blfs_header_t * header)
+            { (void) backstore; memcpy(header->data, data, header->data_length); }
+        )
+    );
+    #endif
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
     return header;
 }
