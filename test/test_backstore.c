@@ -2,7 +2,10 @@
 #include <string.h>
 
 #include "unity.h"
+
+#ifndef __INTELLISENSE__
 #include "mock_io.h"
+#endif
 #include "backstore.h"
 #include "bitmask.h"
 

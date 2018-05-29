@@ -138,6 +138,7 @@ static void generic_sc_aes_impl(const char * output_name,
         .nugget_key = nugget_key,
         .kcs_keycount = kcs_keycount,
         .nugget_internal_offset = nugget_internal_offset,
+        #ifndef __INTELLISENSE__
         .data_handle = LAMBDA(void,
             (void * context,
              uint64_t interblock_offset,
@@ -179,6 +180,7 @@ static void generic_sc_aes_impl(const char * output_name,
                 }
             }
         ),
+        #endif
     };
 
     generic_sc_impl(&sc_context);
@@ -215,6 +217,7 @@ static void generic_sc_salsa_impl(const char * output_name,
         .nugget_key = nugget_key,
         .kcs_keycount = kcs_keycount,
         .nugget_internal_offset = nugget_internal_offset,
+        #ifndef __INTELLISENSE__
         .data_handle = LAMBDA(void,
             (void * context,
              uint64_t interblock_offset,
@@ -247,6 +250,7 @@ static void generic_sc_salsa_impl(const char * output_name,
                     salsa20_extract(&output_state, xor_str + (i * sc_context->output_size_bytes));
             }
         ),
+        #endif
     };
 
     generic_sc_impl(&sc_context);
@@ -295,6 +299,7 @@ static void sc_impl_chacha20(uint8_t * crypted_data,
         .nugget_key = nugget_key,
         .kcs_keycount = kcs_keycount,
         .nugget_internal_offset = nugget_internal_offset,
+        #ifndef __INTELLISENSE__
         .data_handle = LAMBDA(void,
             (void * context,
              uint64_t interblock_offset,
@@ -330,6 +335,7 @@ static void sc_impl_chacha20(uint8_t * crypted_data,
                 free(zero_str);
             }
         ),
+        #endif
     };
 
     generic_sc_impl(&sc_context);
@@ -470,6 +476,7 @@ static void sc_impl_hc128(uint8_t * crypted_data,
         .nugget_key = nugget_key,
         .kcs_keycount = kcs_keycount,
         .nugget_internal_offset = nugget_internal_offset,
+        #ifndef __INTELLISENSE__
         .data_handle = LAMBDA(void,
             (void * context,
              uint64_t interblock_offset,
@@ -507,6 +514,7 @@ static void sc_impl_hc128(uint8_t * crypted_data,
                 }
             }
         ),
+        #endif
     };
 
     generic_sc_impl(&sc_context);
@@ -532,6 +540,7 @@ static void sc_impl_rabbit(uint8_t * crypted_data,
         .nugget_key = nugget_key,
         .kcs_keycount = kcs_keycount,
         .nugget_internal_offset = nugget_internal_offset,
+        #ifndef __INTELLISENSE__
         .data_handle = LAMBDA(void,
             (void * context,
              uint64_t interblock_offset,
@@ -570,6 +579,7 @@ static void sc_impl_rabbit(uint8_t * crypted_data,
                 }
             }
         ),
+        #endif
     };
 
     generic_sc_impl(&sc_context);
@@ -595,6 +605,7 @@ static void sc_impl_sosemanuk(uint8_t * crypted_data,
         .nugget_key = nugget_key,
         .kcs_keycount = kcs_keycount,
         .nugget_internal_offset = nugget_internal_offset,
+        #ifndef __INTELLISENSE__
         .data_handle = LAMBDA(void,
             (void * context,
              uint64_t interblock_offset,
@@ -635,6 +646,7 @@ static void sc_impl_sosemanuk(uint8_t * crypted_data,
                 }
             }
         ),
+        #endif
     };
 
     generic_sc_impl(&sc_context);

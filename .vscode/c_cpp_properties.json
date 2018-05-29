@@ -9,7 +9,7 @@
                 "limitSymbolsToIncludedHeaders": true
             },
             "includePath": [
-                "Z:/gitr/research/buselfs/build",
+                "Z:/gitr/research/build",
                 "Z:/gitr/research/buselfs/src",
                 "Z:/gitr/research/buselfs/config",
                 "Z:/gitr/research/buselfs/vendor/unity/src",
@@ -18,11 +18,16 @@
                 "Z:/gitr/research/buselfs/vendor/energymon/src",
                 "Z:/gitr/research/buselfs/vendor/cmock/src",
                 "Z:/gitr/research/buselfs/vendor",
-                "F:/SkyDrive/linux/usr/local/include",
-                "F:/SkyDrive/linux/usr/include/arm-linux-gnueabihf",
-                "F:/SkyDrive/linux/usr/lib/gcc/arm-linux-gnueabihf/5/include-fixed",
-                "F:/SkyDrive/linux/usr/lib/gcc/arm-linux-gnueabihf/5/include",
-                "F:/SkyDrive/linux/usr/include"
+                "F:/OneDrive/linux/usr/local/include",
+                "F:/OneDrive/linux/usr/include/arm-linux-gnueabihf",
+                "F:/OneDrive/linux/usr/lib/gcc/arm-linux-gnueabihf/5/include-fixed",
+                "F:/OneDrive/linux/usr/lib/gcc/arm-linux-gnueabihf/5/include",
+                "F:/OneDrive/linux/usr/include",
+                "C:/Users/tre/OneDrive/linux/usr/local/include",
+                "C:/Users/tre/OneDrive/linux/usr/include/arm-linux-gnueabihf",
+                "C:/Users/tre/OneDrive/linux/usr/lib/gcc/arm-linux-gnueabihf/5/include-fixed",
+                "C:/Users/tre/OneDrive/linux/usr/lib/gcc/arm-linux-gnueabihf/5/include",
+                "C:/Users/tre/OneDrive/linux/usr/include"
             ],
             "defines": [
                 "__ARM_PCS_VFP"

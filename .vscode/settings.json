@@ -1,6 +1,50 @@
 {
     "files.associations": {
         "io.h": "c",
-        "sosemanuk.h": "c"
-    }
+        "sosemanuk.h": "c",
+        "constants.h": "c",
+        "cexception_configured.h": "c"
+    },
+    "cSpell.words": [
+        "ADTC",
+        "CEXCEPTION",
+        "COMPAT",
+        "FFINISH",
+        "IFENERGYMON",
+        "IFNDEBUG",
+        "INCOMPAT",
+        "LLONG",
+        "MANIP",
+        "MTRH",
+        "NUMNUGGETS",
+        "PSWD",
+        "PWRON",
+        "RPMB",
+        "SOSEK",
+        "STRINGIZE",
+        "TPMGLOBALVER",
+        "TPMGV",
+        "WPTYPE",
+        "ZLOG",
+        "bkstr",
+        "blksz",
+        "buseops",
+        "ffinish",
+        "free'd",
+        "fsource",
+        "gversion",
+        "htobe",
+        "initized",
+        "memcpy'd",
+        "nexpected",
+        "nmlen",
+        "nugsize",
+        "numnugget",
+        "passck",
+        "pouint",
+        "pwhash",
+        "reencrypt",
+        "ters",
+        "tpmv"
+    ]
 }

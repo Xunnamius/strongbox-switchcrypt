@@ -4,10 +4,10 @@ This is a complete rewrite of the old buselogfs code. This is a Buse + Chacha20 
 
 *Note that this is a prototype implementation of the StrongBox idea. This is not production-ready code. Do not expect to be able to use this in real life, it's only a proof-of-concept for little-endian odroid XU3s. As this is not production code, do not place it anywhere near files you consider important! You've been warned!*
 
-(todo: flesh this README out)
-(todo: advantages, disadvantages, tradeoffs, etc of this design; StrongBox is proof of concept)
-(Use `make tests` to run all the tests)
-(The ONLY test that works with BLFS_DEBUG_MONITOR_POWER=1 is test_buselfs!)
+(todo: flesh this README out)  
+(todo: advantages, disadvantages, tradeoffs, etc of this design; StrongBox is proof of concept)  
+(Use `make tests` to run all the tests)  
+(The ONLY test that works with BLFS_DEBUG_MONITOR_POWER=1 is test_buselfs!)  
 (tpm-id must be greater than 0 but <= LLONG_MAX)
 
 ## Things to Address
