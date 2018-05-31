@@ -19,8 +19,9 @@
                 "user": "xunnamius",
                 "x11host": "localhost",
                 "x11port": 6000,
-                // Optional, content will be executed on the SSH host before the debugger call.
-                //"bootstrap": "source /home/remoteUser/some-env"
+                // Allow gdb to path back to the appropriate test source
+                // while also working around a stupid windows symlink bug...
+                "bootstrap": "ln -s ../test ."
             }
         }
     ]
