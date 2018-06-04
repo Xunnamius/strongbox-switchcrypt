@@ -5,8 +5,8 @@
 // Configurable //
 //////////////////
 
-#define BLFS_CURRENT_VERSION 310U
-#define BLFS_LEAST_COMPAT_VERSION 310U
+#define BLFS_CURRENT_VERSION 420U
+#define BLFS_LEAST_COMPAT_VERSION 420U
 
 // XXX: these would likely be non-static irl
 #define BLFS_RPMB_KEY "thirtycharactersecurecounterkey!"

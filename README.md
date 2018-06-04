@@ -35,7 +35,7 @@ For more information and some friendly? examples:
 
 ## Building StrongBox
 
-You may wish to run the included unit tests first before actually utilizing StrongBox. See the [Testing](#testing) section below.
+You may wish to run the included unit tests first before actually utilizing StrongBox. See the [Testing](#testing-strongbox) section below.
 
 `sudo` and/or root privileges are required at certain points due to ioctl calls made to privileged devices (like the RPMB).
 
@@ -108,21 +108,21 @@ These tests are compiled without optimization. To compile these tests with optim
 ### Available Tests
 
 - `test_aes`
-    - This test is only relevant when the [BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION](#BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION) flag is in effect.
+    - This test is only relevant when the [BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION](#blfs_badbadnotgood_use_aesxts_emulation) flag is in effect.
 - `test_backstore`
 - `test_bitmask`
 - `test_strongbox`
-    - *Many* tests in this collection are disabled when the [BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION](#BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION) flag is in effect.
+    - *Many* tests in this collection are disabled when the [BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION](#blfs_badbadnotgood_use_aesxts_emulation) flag is in effect.
 - `test_crypto`
-    - Several tests in this collection are disabled when the [BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION](#BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION) flag is in effect.
+    - Several tests in this collection are disabled when the [BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION](#blfs_badbadnotgood_use_aesxts_emulation) flag is in effect.
 - `test_io`
 - `test_mmc`
-    - [BLFS_MANUAL_GV_FALLBACK](#BLFS_MANUAL_GV_FALLBACK) should be set to >= 0 to use built-in RPMB emulation. Otherwise, this and other tests that touch the RPMB (i.e. most tests) will fail if you don't have an RPMB-aware and configured device. Check [the flag's documentation](#BLFS_MANUAL_GV_FALLBACK) for more information.
+    - [BLFS_MANUAL_GV_FALLBACK](#blfs_manual_gv_fallback) should be set to >= 0 to use built-in RPMB emulation. Otherwise, this and other tests that touch the RPMB (i.e. most tests) will fail if you don't have an RPMB-aware and configured device. Check [the flag's documentation](#blfs_manual_gv_fallback) for more information.
 - `test_swappable`
-    - Several tests in this collection are disabled when the [BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION](#BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION) flag is in effect.
+    - Several tests in this collection are disabled when the [BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION](#blfs_badbadnotgood_use_aesxts_emulation) flag is in effect.
 - `test_vector`
 
-> Note: the **ONLY** test that works with [BLFS_DEBUG_MONITOR_POWER](#BLFS_DEBUG_MONITOR_POWER) is in effect is `test_strongbox`!
+> Note: the **ONLY** test that works with [BLFS_DEBUG_MONITOR_POWER](#blfs_debug_monitor_power) is in effect is `test_strongbox`!
 
 ## File Structure and Internal Construction
 
@@ -153,7 +153,7 @@ Considerations:
 
 ## Gathering Energy Metrics
 
-StrongBox is designed to capture energy usage data (energy, power, duration) while operating, though it is disabled by default. You can enable this behavior with the [BLFS_DEBUG_MONITOR_POWER](#BLFS_DEBUG_MONITOR_POWER) flag. Use of this feature requires [energymon](https://github.com/energymon/energymon) to be compiled—ideally with a non-dummy default implementation—and fully installed.
+StrongBox is designed to capture energy usage data (energy, power, duration) while operating, though it is disabled by default. You can enable this behavior with the [BLFS_DEBUG_MONITOR_POWER](#blfs_debug_monitor_power) flag. Use of this feature requires [energymon](https://github.com/energymon/energymon) to be compiled—ideally with a non-dummy default implementation—and fully installed.
 
 > Note that collection of data about StrongBox's energy use likely has some performance implications.
 
@@ -170,7 +170,7 @@ This setting determines the verbosity of StrongBox's debug output. By default, i
 `BLFS_DEBUG_LEVEL=2` => `BLFS_DEBUG_LEVEL=1` and some informative messages to stdout  
 `BLFS_DEBUG_LEVEL=3` => `BLFS_DEBUG_LEVEL=2` with the addition that every single function call is now logged
 
-> **Note that BLFS_DEBUG_LEVEL >= 0 breaks security and leaks potentially sensitive information!**
+> **Note that BLFS_DEBUG_LEVEL > 0 breaks security and leaks potentially sensitive information!**
 
 #### **BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION**
 
@@ -188,7 +188,7 @@ This setting determines the verbosity of StrongBox's debug output. By default, i
 
 #### **BLFS_MANUAL_GV_FALLBACK**
 
-`BLFS_MANUAL_GV_FALLBACK` >= 0 enables this debug flag while `=-1` disables it (default). When `=-1`, StrongBox will assume it can find a suitable RPMB device at the [configured location](#BLFS_RPMB_DEVICE) and will query it. When `!=-1`, StrongBox will skip any and all I/O accesses to any RPMB device and will instead short circuit and return the value of `BLFS_MANUAL_GV_FALLBACK`.
+`BLFS_MANUAL_GV_FALLBACK` >= 0 enables this debug flag while `=-1` disables it (default). When `=-1`, StrongBox will assume it can find a suitable RPMB device at the [configured location](#blfs_rpmb_device) and will query it. When `!=-1`, StrongBox will skip any and all I/O accesses to any RPMB device and will instead short circuit and return the value of `BLFS_MANUAL_GV_FALLBACK`.
 
 Valid return values (and thus valid values for `BLFS_MANUAL_GV_FALLBACK`) are:
 - `BLFS_GLOBAL_CORRECTNESS_ALL_GOOD` (0), which indicates success
@@ -206,10 +206,10 @@ The current build version (arbitrary number).
 The absolute minimum build version of the StrongBox software whose backing store this current revision of StrongBox considers valid, e.g. backwards compatibility.
 
 #### **BLFS_RPMB_KEY**
-The key used by RPMB. In future versions of StrongBox, should they come to exist, this may not be the case (i.e. it's handled automatically/via TPM).
+The key used by RPMB. In future versions of StrongBox, should they come to exist, this may not be the case (i.e. it's handled automatically/via TPM). **Must be exactly thirty characters!**
 
 #### **BLFS_RPMB_DEVICE**
-Valid Path string to the RPMB device, e.g. "/dev/mmcblk0rpmb". In future versions of StrongBox, should they come to exist, this may be deprecated in favor of automatically discovery.
+Valid Path string to the RPMB device, e.g. "/dev/mmcblk0rpmb" (default). In future versions of StrongBox, should they come to exist, this may be deprecated in favor of automatically discovery.
 
 #### **BLFS_CONFIG_ZLOG**
 Path to your [zlog configuration file](https://github.com/HardySimpson/zlog/blob/master/doc/GettingStart-EN.txt).
@@ -217,31 +217,27 @@ Path to your [zlog configuration file](https://github.com/HardySimpson/zlog/blob
 #### **BLFS_ENERGYMON_OUTPUT_PATH**
 If you've enabled [energy metrics gathering](#blfs_debug_monitor_power), this must be a valid file path string (file need not exist yet).
 
-#### **BLFS_MANUAL_GV_FALLBACK**
-(todo)
-
-#### **MAX_NUM_ARGC**
-(todo)
-
 #### **VECTOR_GROWTH_FACTOR**
-(todo)
+
+Controls the growth factor of internal bit vectors. Defaults to 2.
 
 #### **VECTOR_INIT_SIZE**
-(todo)
 
-#### **BLFS_ENERGYMON_OUTPUT_PATH**
-(todo)
+Controls the initial size of internal bit vectors. Defaults to 10.
 
-#### **VECTOR_INIT_SIZE**
-(todo)
+#### **BLFS_CONFIG_ZLOG**
+
+This must be a valid file path string (file need not exist yet) to your zlog configuration file. Defaults to `../config/zlog_conf.conf`.
 
 #### **BLFS_BACKSTORE_FILENAME**
-(todo)
+
+Path to the backing store file that will be generated on run. Defaults to `./blfs-%s.bkstr`. Exactly one `%s` is necessary.
 
 #### **BLFS_BACKSTORE_DEVICEPATH**
-(todo)
 
-## Limitations of the Prototype
+Path to the NBD pseudo-device that will be generated on run. Defaults to `/dev/%s`. Exactly one `%s` is necessary.
+
+## Prototypical Limitations
 
 - Byte order is assumed to be **little endian**. Might have to an implement endian conversion layer touching `io.c` and `crypto.c`, perhaps using the standard functions, if this becomes an issue.
 - Merkle Tree implementation has a hard upper limit (2<sup>TREE_DEPTH</sup> or 1,048,576 elements, soft limited to 524288) to the number of leaves and tree node levels 
