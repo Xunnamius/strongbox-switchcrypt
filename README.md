@@ -2,7 +2,7 @@
 
 This is a complete rewrite of the old buselogfs code. This is a Buse + Chacha20 + Poly1305 + LFS encrypted filesystem. It uses Argon2 as its KDF. Featured in the paper [StrongBox: Confidentiality, Integrity, and Performance using Stream Ciphers for Full Drive Encryption](https://dl.acm.org/citation.cfm?id=3173183) by Bernard Dickens III (University of Chicago), Haryadi Gunawi (University of Chicago), Ariel J Feldman (University of Chicago), and Henry Hoffmann (University of Chicago).
 
-*Note that this is a prototype implementation of the StrongBox idea. This is not production-ready code. Do not expect to be able to use this in real life, it's only a proof-of-concept for little-endian odroid XU3s. As this is not production code, do not place it anywhere near files you consider important! You've been warned!*
+> *Note that this is a prototype implementation of the StrongBox idea. This is not production-ready code. Do not expect to be able to use this in real life, it's only a proof-of-concept for little-endian odroid XU3s. As this is not production code, do not place it anywhere near files you consider important! You've been warned!*
 
 ## Dependencies
 
@@ -112,66 +112,133 @@ These tests are compiled without optimization. To compile these tests with optim
 - `test_backstore`
 - `test_bitmask`
 - `test_strongbox`
-    - Several tests in this collection are disabled when [BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION](#BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION) flag is in effect.
+    - *Many* tests in this collection are disabled when the [BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION](#BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION) flag is in effect.
 - `test_crypto`
+    - Several tests in this collection are disabled when the [BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION](#BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION) flag is in effect.
 - `test_io`
 - `test_mmc`
-    - [BLFS_MANUAL_GV_FALLBACK](#BLFS_MANUAL_GV_FALLBACK) should be set to >= 0 to use built-in RPMB emulation. Otherwise, this and other tests that touch the RPMB will fail. Check [the flag's documentation](#BLFS_MANUAL_GV_FALLBACK) for more information.
+    - [BLFS_MANUAL_GV_FALLBACK](#BLFS_MANUAL_GV_FALLBACK) should be set to >= 0 to use built-in RPMB emulation. Otherwise, this and other tests that touch the RPMB (i.e. most tests) will fail if you don't have an RPMB-aware and configured device. Check [the flag's documentation](#BLFS_MANUAL_GV_FALLBACK) for more information.
 - `test_swappable`
-    - Several tests in this collection are disabled when [BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION](#BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION) flag is in effect.
+    - Several tests in this collection are disabled when the [BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION](#BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION) flag is in effect.
 - `test_vector`
 
-Note: the **ONLY** test that works with [BLFS_DEBUG_MONITOR_POWER](#BLFS_DEBUG_MONITOR_POWER) is in effect is `test_strongbox`!
+> Note: the **ONLY** test that works with [BLFS_DEBUG_MONITOR_POWER](#BLFS_DEBUG_MONITOR_POWER) is in effect is `test_strongbox`!
 
 ## File Structure and Internal Construction
 
-(todo) (Don't give files that aren't direct children of test/ names like `test_XXX.c` ; Don't give files that are not auto-generated unity mocks the `mock_` prefix)
+```
+.
+├── build
+│   └── test -> ../test
+├── config
+├── src
+├── test
+└── vendor
+    ├── cmock
+    ├── energymon
+    ├── libestream
+    ├── merkle-tree
+    └── unity
+```
 
-## Makefile Breakdown
+- `build/` is where all the transient results of the Makefile process will go. `make clean` will clear out this folder (excluding the `build/test/` symlink and `build/Makefile`).
+- `config/` is where the Ruby mock, zlog, cexception, and unity_runner configs are placed, among others.
+- `src/` is where the StrongBox source lives.
+- `test/` is where the corresponding StrongBox unit tests live.
+- `vendor/` is where all unmanaged third party code is placed.
 
-(todo) (including DEBUG) (note that DEBUG mode breaks security, leaks potentially sensitive information)
+Considerations:
+- Don't give files that aren't direct children of `test/` names like `test_XXX.c`
+- Don't give files that are not auto-generated unity mocks the `mock_` prefix
 
 ## Gathering Energy Metrics
 
-Use of this feature requires [energymon](https://github.com/energymon/energymon) to be compiled—ideally with a non-dummy default implementation—and fully installed.
+StrongBox is designed to capture energy usage data (energy, power, duration) while operating, though it is disabled by default. You can enable this behavior with the [BLFS_DEBUG_MONITOR_POWER](#BLFS_DEBUG_MONITOR_POWER) flag. Use of this feature requires [energymon](https://github.com/energymon/energymon) to be compiled—ideally with a non-dummy default implementation—and fully installed.
 
-(todo)
+> Note that collection of data about StrongBox's energy use likely has some performance implications.
 
-## Configuration Options
+## Important Compile Flags
 
-(todo) (can configure RPMB device path to be something other than /dev/mmcblk0rpmb)
+These are the most interesting flags available when compiling StrongBox. All compile flags must be specified with a `-D` prefix in [the actual Makefile](build/Makefile).
 
-### Compile Flags
+#### **BLFS_DEBUG_LEVEL**
 
-Note that all compile flags must be specified with a `-D` prefix in [the actual Makefile](build/Makefile).
+This setting determines the verbosity of StrongBox's debug output. By default, it is off (0). The highest recognized debug level is 3U.
 
-(todo)
+`BLFS_DEBUG_LEVEL=0` => debug is off  
+`BLFS_DEBUG_LEVEL=1` => light debugging to designated log file  
+`BLFS_DEBUG_LEVEL=2` => `BLFS_DEBUG_LEVEL=1` and some informative messages to stdout  
+`BLFS_DEBUG_LEVEL=3` => `BLFS_DEBUG_LEVEL=2` with the addition that every single function call is now logged
 
-##### `BLFS_DEBUG_MONITOR_POWER`
+> **Note that BLFS_DEBUG_LEVEL >= 0 breaks security and leaks potentially sensitive information!**
 
-### Constants
+#### **BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION**
 
-These values are configurable in `src/constants.h`:
+`BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION=1` enables this debug flag while `=0` disables it (default). When enabled, StrongBox will emulate AES-XTS in lieu of using a stream cipher for encryption. Necessarily, this flag renders the `--cipher` command line parameter meaningless.
 
-##### `BLFS_CURRENT_VERSION`
+> Note: the `BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION` and `BLFS_NO_READ_INTEGRITY` compile flags CANNOT be used together!
+
+#### **BLFS_NO_READ_INTEGRITY**
+
+`BLFS_NO_READ_INTEGRITY=1` enables this debug flag while `=0` disables it (default). When enabled, StrongBox will skip the extra integrity check when performing crypted writes (but not reads) using your chosen stream cipher. This brings StrongBox's behavior in line with the threat model AES-XTS addresses (instead of doing extra). This necessarily improves the performance of StrongBox.
+
+#### **BLFS_DEBUG_MONITOR_POWER**
+
+`BLFS_DEBUG_MONITOR_POWER=1` enables this debug flag while `=0` disables it (default). When enabled, StrongBox will begin logging energy/power/duration data to the log. Enabling this has some performance implications.
+
+#### **BLFS_MANUAL_GV_FALLBACK**
+
+`BLFS_MANUAL_GV_FALLBACK` >= 0 enables this debug flag while `=-1` disables it (default). When `=-1`, StrongBox will assume it can find a suitable RPMB device at the [configured location](#BLFS_RPMB_DEVICE) and will query it. When `!=-1`, StrongBox will skip any and all I/O accesses to any RPMB device and will instead short circuit and return the value of `BLFS_MANUAL_GV_FALLBACK`.
+
+Valid return values (and thus valid values for `BLFS_MANUAL_GV_FALLBACK`) are:
+- `BLFS_GLOBAL_CORRECTNESS_ALL_GOOD` (0), which indicates success
+- `BLFS_GLOBAL_CORRECTNESS_POTENTIAL_CRASH` (1), which indicates a potential crash
+- `BLFS_GLOBAL_CORRECTNESS_ILLEGAL_MANIP` (2), which indicates a patently illegal integrity violation
+
+## Important Configuration Constants
+
+While not exhaustive, these are the most important configuration constants available when compiling and executing StrongBox. Most of these values are configurable in [src/constants.h](src/constants.h):
+
+#### **BLFS_CURRENT_VERSION**
 The current build version (arbitrary number).
 
-##### `BLFS_LEAST_COMPAT_VERSION`
+#### **BLFS_LEAST_COMPAT_VERSION**
 The absolute minimum build version of the StrongBox software whose backing store this current revision of StrongBox considers valid, e.g. backwards compatibility.
 
-##### `BLFS_RPMB_KEY`
+#### **BLFS_RPMB_KEY**
 The key used by RPMB. In future versions of StrongBox, should they come to exist, this may not be the case (i.e. it's handled automatically/via TPM).
 
-##### `BLFS_RPMB_DEVICE`
-Valid Path string to the RPMB device, e.g. "/dev/mmcblk0rpmb". In future versions of StrongBox, should they come to exist, this may not be the case (i.e. it's found automatically).
+#### **BLFS_RPMB_DEVICE**
+Valid Path string to the RPMB device, e.g. "/dev/mmcblk0rpmb". In future versions of StrongBox, should they come to exist, this may be deprecated in favor of automatically discovery.
 
-##### `BLFS_CONFIG_ZLOG`
+#### **BLFS_CONFIG_ZLOG**
 Path to your [zlog configuration file](https://github.com/HardySimpson/zlog/blob/master/doc/GettingStart-EN.txt).
 
-##### `BLFS_ENERGYMON_OUTPUT_PATH`
+#### **BLFS_ENERGYMON_OUTPUT_PATH**
 If you've enabled [energy metrics gathering](#blfs_debug_monitor_power), this must be a valid file path string (file need not exist yet).
 
-##### `BLFS_MANUAL_GV_FALLBACK`
+#### **BLFS_MANUAL_GV_FALLBACK**
+(todo)
+
+#### **MAX_NUM_ARGC**
+(todo)
+
+#### **VECTOR_GROWTH_FACTOR**
+(todo)
+
+#### **VECTOR_INIT_SIZE**
+(todo)
+
+#### **BLFS_ENERGYMON_OUTPUT_PATH**
+(todo)
+
+#### **VECTOR_INIT_SIZE**
+(todo)
+
+#### **BLFS_BACKSTORE_FILENAME**
+(todo)
+
+#### **BLFS_BACKSTORE_DEVICEPATH**
 (todo)
 
 ## Limitations of the Prototype

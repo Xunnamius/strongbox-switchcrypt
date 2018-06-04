@@ -30,7 +30,7 @@
 // 0 - no debugging, log writing, or any such output
 // 1U - light debugging to designated log file
 // 2U - ^ and some informative messages to stdout
-// 3U - ^ except now it's a clusterfuck of debug messages
+// 3U - ^ with the addition that every single function call is now logged
 #ifndef BLFS_DEBUG_LEVEL
 #define BLFS_DEBUG_LEVEL 0
 #endif

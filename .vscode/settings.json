@@ -11,6 +11,7 @@
         "BADBADNOTGOOD",
         "CEXCEPTION",
         "COMPAT",
+        "DEVICEPATH",
         "FFINISH",
         "IFENERGYMON",
         "IFNDEBUG",
