@@ -30,7 +30,10 @@
                 "C:/Users/tre/OneDrive/linux/usr/include"
             ],
             "defines": [
-                "__ARM_PCS_VFP"
+                "__ARM_PCS_VFP",
+                "_XOPEN_SOURCE",
+                "_LARGEFILE64_SOURCE",
+                "_GNU_SOURCE"
             ],
             "cStandard": "c11",
             "cppStandard": "c++17",
