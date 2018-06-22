@@ -63,14 +63,14 @@ You can see these options defined in [constants.h](src/constants.h).
 
 Explicit support for the following experimental use cases (uc) is available:
 
-- uc_default (this is synonymous with `uc_disabled`)
-- uc_secure_regions
-- uc_secure_nuggets
-- uc_perf_agreement
-- uc_fixed_energy
-- uc_opportunistic_crypt
-- uc_disabled
-- uc_no_impl
+- `uc_default` (this is synonymous with `uc_disabled`)
+- `uc_secure_regions`
+- `uc_secure_nuggets`
+- `uc_perf_agreement`
+- `uc_fixed_energy`
+- `uc_opportunistic_crypt`
+- `uc_disabled`
+- `uc_no_impl`
 
 You can see these options defined in [constants.h](src/constants.h). Note that these options are meaningless if the swap strategy is set to `swap_disabled`.
 
