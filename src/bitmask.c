@@ -1,4 +1,4 @@
-/*
+/**
  * Aligned bit mask manipulation and analysis tools
  *
  * @author Bernard Dickens

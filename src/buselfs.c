@@ -1,4 +1,4 @@
-/*
+/**
  * Backend virtual block device for any LFS using BUSE
  *
  * @author Bernard Dickens
