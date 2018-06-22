@@ -8,7 +8,7 @@
             "type": "gdb",
             "request": "launch",
             "name": "@morty",
-            "target": "./test_buselfs",
+            "target": "./test_strongbox",
             "cwd": "${workspaceRoot}",
             "ssh": {
                 "forwardX11": true,

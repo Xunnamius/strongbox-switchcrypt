@@ -19,13 +19,62 @@ This is a complete rewrite of the old buselogfs code. This is a Buse + Chacha20 
 
 ## Usage
 
+> Note that, as of this version, the `open` and `wipe` commands have not yet been fully implemented, so don't try to use them.
+
 ```
-# sb [--default-password][--backstore-size 1024][--flake-size 4096][--flakes-per-nugget 64] create nbd_device_name
+# sb [--default-password][--backstore-size 1024][--flake-size 4096][--flakes-per-nugget 64][--cipher sc_default][--swap-cipher sc_default][--swap-strategy swap_default][--support-uc uc_default][--tpm-id 5] create nbd_device_name
+
 # sb [--default-password][--allow-insecure-start] open nbd_device_name
 # sb [--default-password][--allow-insecure-start] wipe nbd_device_name
 ```
 
 Observe that `nbd_device_name` must always appear last and the desired command (`open`, `wipe`, or `create`) second to last.
+
+Ciphers available for the `--cipher` and `--swap-cipher` are:
+
+- `sc_default` (this is synonymous with `sc_chacha20`)
+- `sc_chacha8`
+- `sc_chacha12`
+- `sc_chacha20`
+- `sc_salsa8`
+- `sc_salsa12`
+- `sc_salsa20`
+- `sc_aes128_ctr`
+- `sc_aes256_ctr`
+- `sc_hc128`
+- `sc_rabbit`
+- `sc_sosemanuk`
+- `sc_not_impl`
+
+You can see these options defined in [constants.h](src/constants.h).
+
+Swap strategies available for `--swap-strategy` are:
+
+- `swap_default` (this is synonymous with `swap_disabled`)
+- `swap_forward`
+- `swap_rolling`
+- `swap_aggressive`
+- `swap_immediate`
+- `swap_opportunistic`
+- `swap_disabled`
+- `swap_not_impl`
+
+You can see these options defined in [constants.h](src/constants.h).
+
+Explicit support for the following experimental use cases (uc) is available:
+
+- uc_default (this is synonymous with `uc_disabled`)
+- uc_secure_regions
+- uc_secure_nuggets
+- uc_perf_agreement
+- uc_fixed_energy
+- uc_opportunistic_crypt
+- uc_disabled
+- uc_no_impl
+
+You can see these options defined in [constants.h](src/constants.h). Note that these options are meaningless if the swap strategy is set to `swap_disabled`.
+
+> (TODO: flesh this section out with explanations of use cases, swap strategies, explaining SIGHUP <=> switching, etc)
 
 For more information and some friendly? examples:
 
@@ -122,6 +171,8 @@ These tests are compiled without optimization. To compile these tests with optim
     - Several tests in this collection are disabled when the [BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION](#blfs_badbadnotgood_use_aesxts_emulation) flag is in effect.
 - `test_vector`
 
+> (TODO: add new tests for added functionality)
+
 > Note: the **ONLY** test that works with [BLFS_DEBUG_MONITOR_POWER](#blfs_debug_monitor_power) is in effect is `test_strongbox`!
 
 ## File Structure and Internal Construction
@@ -148,7 +199,7 @@ These tests are compiled without optimization. To compile these tests with optim
 - `vendor/` is where all unmanaged third party code is placed.
 
 Considerations:
-- Don't give files that aren't direct children of `test/` names like `test_XXX.c`
+- Don't give files that aren't direct children of `test/` names like `test_X.c`
 - Don't give files that are not auto-generated unity mocks the `mock_` prefix
 
 ## Gathering Energy Metrics

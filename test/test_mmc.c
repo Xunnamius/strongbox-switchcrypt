@@ -12,11 +12,11 @@
 #include <assert.h>
 
 #include "unity.h"
-#include "buselfs.h"
+#include "strongbox.h"
 #include "swappable.h"
 #include "../src/mmc.h"
 
-#define _TEST_BLFS_TPM_ID 1 // XXX: ensure different than prod value
+#define _TEST_BLFS_TPM_ID 1 // ! ensure different than prod value
 #define BACKSTORE_FILE_PATH "/tmp/test.io.bin"
 
 #define TRY_FN_CATCH_EXCEPTION(fn_call)           \

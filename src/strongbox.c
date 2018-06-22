@@ -4,7 +4,7 @@
  * @author Bernard Dickens
  */
 
-#include "buselfs.h"
+#include "strongbox.h"
 #include "bitmask.h"
 #include "interact.h"
 #include "swappable.h"
@@ -227,7 +227,7 @@ static struct buse_operations buseops = {
 /**
  * Updates the global merkle tree root hash.
  *
- * XXX: this function MUST be called before buselfs_state->merkle_tree_root_hash
+ * ! this function MUST be called before buselfs_state->merkle_tree_root_hash
  * is referenced!
  *
  * @param buselfs_state
@@ -649,7 +649,7 @@ int buse_read(void * output_buffer, uint32_t length, uint64_t absolute_offset, v
 
     uint_fast32_t mt_offset = 2 * num_nuggets + 8;
 
-    // XXX: For a bigger system, this cast could be a problem
+    // ! For a bigger system, this cast could be a problem
     uint_fast32_t nugget_offset          = (uint_fast32_t) (absolute_offset / nugget_size); // nugget_index
     uint_fast32_t nugget_internal_offset = (uint_fast32_t) (absolute_offset % nugget_size); // internal point at which to start within nug
 
@@ -907,7 +907,7 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
 
     uint_fast32_t mt_offset = 2 * num_nuggets + 8;
 
-    // XXX: For a bigger system, this cast could be a problem
+    // ! For a bigger system, this cast could be a problem
     uint_fast32_t nugget_offset          = (uint_fast32_t) (absolute_offset / nugget_size); // nugget_index
     uint_fast32_t nugget_internal_offset = (uint_fast32_t) (absolute_offset % nugget_size); // internal point at which to start within nug
 
@@ -976,7 +976,7 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
         {
             uint8_t nugget_key[BLFS_CRYPTO_BYTES_KDF_OUT];
 
-            // XXX: Maybe update and commit the MTRH here first and again later?
+            // ! Maybe update and commit the MTRH here first and again later?
 
             if(BLFS_DEFAULT_DISABLE_KEY_CACHING)
             {
@@ -1004,7 +1004,7 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
             IFDEBUG(dzlog_debug("flake_size: %"PRIuFAST32, flake_size));
             IFDEBUG(dzlog_debug("flake_internal_offset: %"PRIuFAST32, flake_internal_offset));
 
-            // XXX: Packing it like this might actually be a security
+            // ! Packing it like this might actually be a security
             // vulnerability. Need to just read in and verify the entire flake
             // instead? Can't trust data from disk.
             uint_fast32_t flake_index = first_affected_flake;
@@ -1024,7 +1024,7 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
                 uint8_t flake_data[flake_size];
                 IFDEBUG(memset(flake_data, 0, flake_size));
 
-                // XXX: Data to write isn't aligned and/or is smaller than
+                // ! Data to write isn't aligned and/or is smaller than
                 // flake_size, so we need to verify its integrity
                 if(flake_internal_offset != 0 || flake_internal_offset + flake_write_length < flake_size)
                 {
@@ -1222,7 +1222,7 @@ void blfs_rekey_nugget_journaled_with_write(buselfs_state_t * buselfs_state,
 {
     IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
 
-    // XXX: Might want to switch up the ordering of these operations
+    // ! Might want to switch up the ordering of these operations
 
     // Set REKEYING header to rekeying_nugget_index in order to recover using
     // journal later if necessary
@@ -1230,7 +1230,7 @@ void blfs_rekey_nugget_journaled_with_write(buselfs_state_t * buselfs_state,
     memcpy(rekeying_header->data, &rekeying_nugget_index, BLFS_HEAD_HEADER_BYTES_REKEYING);
     blfs_commit_header(buselfs_state->backstore, rekeying_header);
 
-    // XXX: hardcoded index
+    // ! hardcoded index
     update_in_merkle_tree(rekeying_header->data, BLFS_HEAD_HEADER_BYTES_REKEYING, 7, buselfs_state);
     IFDEBUG(verify_in_merkle_tree(rekeying_header->data, BLFS_HEAD_HEADER_BYTES_REKEYING, 7, buselfs_state));
 
@@ -1282,7 +1282,7 @@ void blfs_rekey_nugget_journaled_with_write(buselfs_state_t * buselfs_state,
 
     memcpy(rekeying_nugget_data + nugget_internal_offset, buffer, length);
 
-    // XXX: if we're in crash recovery mode, the very next keycount might be
+    // ! if we're in crash recovery mode, the very next keycount might be
     // burned, so we must take that possibility into account when rekeying.
     jcount->keycount = jcount->keycount + (buselfs_state->crash_recovery ? 2 : 1);
     
@@ -1358,7 +1358,7 @@ void blfs_rekey_nugget_journaled_with_write(buselfs_state_t * buselfs_state,
     bitmask_set_bits(jentry->bitmask, first_affected_flake, num_affected_flakes);
     blfs_commit_tjournal_entry(buselfs_state->backstore, jentry);
 
-    // XXX: hardcoded index!
+    // ! hardcoded index!
     update_in_merkle_tree(rekeying_header->data, BLFS_HEAD_HEADER_BYTES_REKEYING, 7, buselfs_state);
     IFDEBUG(verify_in_merkle_tree(rekeying_header->data, BLFS_HEAD_HEADER_BYTES_REKEYING, 7, buselfs_state));
 
@@ -1377,7 +1377,7 @@ void blfs_rekey_nugget_journaled(buselfs_state_t * buselfs_state, uint32_t rekey
 
     // Set REKEYING header to rekeying_nugget_index
 
-    Throw(EXCEPTION_MUST_HALT); // XXX: Not implemented!
+    Throw(EXCEPTION_MUST_HALT); // ! Not implemented!
 
     // FIXME: crash recovery during rekeying. Implement me sometime!
     
@@ -1475,7 +1475,7 @@ void blfs_soft_open(buselfs_state_t * buselfs_state, uint8_t cin_allow_insecure_
         Throw(EXCEPTION_GLOBAL_CORRECTNESS_FAILURE);
     }
 
-    // XXX: retire this logic entirely in the future
+    // ! retire this logic entirely in the future
     /*// Do we need to rekey?
     blfs_header_t * rekeying_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_REKEYING);
     uint8_t zero_rekeying[BLFS_HEAD_HEADER_BYTES_REKEYING];
@@ -1575,7 +1575,7 @@ void blfs_run_mode_create(const char * backstore_path,
     {
         backstore_v = blfs_backstore_create(backstore_path, cin_backstore_size);
 
-        // XXX: refs to memory allocated during blfs_backstore_create
+        // ! refs to memory allocated during blfs_backstore_create
         // will be lost during an exception. It's technically a memory
         // leak, but it's not so pressing an issue at the moment.
     }
@@ -1675,7 +1675,7 @@ void blfs_run_mode_create(const char * backstore_path,
     IFDEBUG(dzlog_debug("verf_header->data:"));
     IFDEBUG(hdzlog_debug(verf_header->data, BLFS_HEAD_HEADER_BYTES_VERIFICATION));
 
-    // Set the flakesize and fpn headers (XXX: this is DEFINITELY endian-sensitive!!!)
+    // Set the flakesize and fpn headers (! this is DEFINITELY endian-sensitive!!!)
     blfs_header_t * flakesize_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_FLAKESIZE_BYTES);
     blfs_header_t * fpn_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_FLAKESPERNUGGET);
 
@@ -1725,7 +1725,7 @@ void blfs_run_mode_create(const char * backstore_path,
     if(num_nuggets_calculated_64 <= 0)
         Throw(EXCEPTION_BACKSTORE_SIZE_TOO_SMALL);
 
-    // XXX: this is DEFINITELY endian-sensitive!!!
+    // ! this is DEFINITELY endian-sensitive!!!
     uint32_t num_nuggets_calculated_32 = (uint32_t) num_nuggets_calculated_64;
     uint8_t * data_numnuggets = (uint8_t *) &num_nuggets_calculated_32;
 
@@ -1793,7 +1793,7 @@ void blfs_run_mode_wipe(const char * backstore_path, uint8_t cin_allow_insecure_
     /*IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
     IFDEBUG(dzlog_debug("running in WIPE mode!"));
 
-    // XXX: In real life, some sort of "wipe" functionality for something like
+    // ! In real life, some sort of "wipe" functionality for something like
     // this would not exist (it breaks security by allowing a bypassing of the
     // initial MTRH check by malicious header modification).
     //
@@ -1848,14 +1848,14 @@ void blfs_run_mode_wipe(const char * backstore_path, uint8_t cin_allow_insecure_
     Throw(EXCEPTION_MUST_HALT);*/
 }
 
-buselfs_state_t * buselfs_main_actual(int argc, char * argv[], char * blockdevice)
+buselfs_state_t * strongbox_main_actual(int argc, char * argv[], char * blockdevice)
 {
     IFDEBUG3(printf("<bare debug>: >>>> entering %s\n", __func__));
 
     char * cin_device_name;
     char backstore_path[BLFS_BACKSTORE_FILENAME_MAXLEN] = { 0x00 };
 
-    // XXX: Not free()'d!
+    // ! Not free()'d!
     buselfs_state_t * buselfs_state = malloc(sizeof(*buselfs_state));
 
     if(buselfs_state == NULL)
@@ -1885,7 +1885,7 @@ buselfs_state_t * buselfs_main_actual(int argc, char * argv[], char * blockdevic
 
     if(argc <= 1 || argc > MAX_NUM_ARGC)
     {
-        printf(
+        printf( // TODO: update this (and also update the README.md version) with all the new stuff once we're done!
         "\nUsage:\n"
         "  %s [--default-password][--backstore-size %"PRIu64"][--flake-size %"PRIu32"][--flakes-per-nugget %"PRIu32"][--cipher sc_default][--tpm-id %"PRIu32"] create nbd_device_name\n\n"
         "  %s [--default-password][--allow-insecure-start] open nbd_device_name\n\n"
@@ -1894,7 +1894,7 @@ buselfs_state_t * buselfs_main_actual(int argc, char * argv[], char * blockdevic
         "Note: nbd_device must always appear last and the desired command (open, wipe, etc) second to last.\n\n"
 
         "::create command::\n"
-        "This command will create and load a brand new buselfs backstore. Note that this command will force overwrite a\n"
+        "This command will create and load a brand new StrongBox backstore. Note that this command will force overwrite a\n"
         " previous backstore made with the same nbd device name if it already exists.\n\n"
         "Example: %s --backstore-size 4096 create nbd4\n\n"
         ":options:\n"
@@ -1907,20 +1907,20 @@ buselfs_state_t * buselfs_main_actual(int argc, char * argv[], char * blockdevic
         "Defaults are shown above. \n\n"
         
         "::open command::\n"
-        "This command will open and load a preexisting buselfs backstore or fail if it does not exist.\n\n"
+        "This command will open and load a preexisting StrongBox backstore or fail if it does not exist.\n\n"
         "Example: %s --allow-insecure-start open nbd4\n\n"
         ":options:\n"
         "- default-password  instead of asking you for a password, the password '"BLFS_DEFAULT_PASS"' will be used.\n"
-        "- allow-insecure-start ignores a MTRH failure (integrity issue) and loads the buselfs backstore anyway\n\n"
+        "- allow-insecure-start ignores a MTRH failure (integrity issue) and loads the StrongBox backstore anyway\n\n"
 
         "::wipe command::\n"
-        "Will reset an already existing buselfs backstore to its initial state, as if it were newly created. It will not\n"
+        "Will reset an already existing StrongBox backstore to its initial state, as if it were newly created. It will not\n"
         " be automatically loaded and must be subsequently opened via the open command. Note that this command only works\n"
-        " if the backstore in question is indeed a valid buselfs backstore.\n\n"
+        " if the backstore in question is indeed a valid StrongBox backstore.\n\n"
         "Example: %s wipe nbd4\n\n"
         ":options:\n"
         "- default-password  instead of asking you for a password, the password '"BLFS_DEFAULT_PASS"' will be used.\n"
-        "- allow-insecure-start ignores a MTRH failure (integrity issue) and loads the buselfs backstore anyway\n\n"
+        "- allow-insecure-start ignores a MTRH failure (integrity issue) and loads the StrongBox backstore anyway\n\n"
 
         "To test for correctness, run `make pre && make check` from the /build directory. Check the README for more details.\n"
         "Don't forget to load nbd kernel module `modprobe nbd` and run as root!\n\n",
@@ -2169,7 +2169,7 @@ buselfs_state_t * buselfs_main_actual(int argc, char * argv[], char * blockdevic
 
     /* Let the show begin! */
 
-    IFDEBUG(dzlog_info(">> buselfs backend was setup successfully! <<"));
+    IFDEBUG(dzlog_info(">> StrongBox backend was setup successfully! <<"));
 
     sprintf(blockdevice, BLFS_BACKSTORE_DEVICEPATH, cin_device_name);
     IFDEBUG(dzlog_debug("RETURN: blockdevice = %s", blockdevice));
@@ -2183,14 +2183,14 @@ buselfs_state_t * buselfs_main_actual(int argc, char * argv[], char * blockdevic
     return buselfs_state;
 }
 
-int buselfs_main(int argc, char * argv[])
+int strongbox_main(int argc, char * argv[])
 {
     char blockdevice[BLFS_BACKSTORE_FILENAME_MAXLEN] = { 0x00 };
     buselfs_state_t * buselfs_state;
 
     IFDEBUG(dzlog_debug("<< configuring global buselfs_state >>"));
 
-    buselfs_state = buselfs_main_actual(argc, argv, blockdevice);
+    buselfs_state = strongbox_main_actual(argc, argv, blockdevice);
 
     IFDEBUG(dzlog_debug("<<<< handing control over to buse_main >>>>"));
 

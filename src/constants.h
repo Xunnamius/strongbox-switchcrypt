@@ -8,13 +8,13 @@
 #define BLFS_CURRENT_VERSION 420U
 #define BLFS_LEAST_COMPAT_VERSION 420U
 
-// XXX: these would likely be non-static irl
+// ! these would likely be non-static irl
 #define BLFS_RPMB_KEY "thirtycharactersecurecounterkey!"
 #define BLFS_RPMB_DEVICE "/dev/mmcblk0rpmb"
 
 #define BLFS_CONFIG_ZLOG "../config/zlog_conf.conf"
 
-// XXX: when adding new command line flags, don't forget to update this!
+// ! when adding new command line flags, don't forget to update this!
 #define MAX_NUM_ARGC 14
 
 #define VECTOR_GROWTH_FACTOR    2
@@ -22,7 +22,7 @@
 
 /** START: energy/power metric collection */
 
-// XXX: Must be file path
+// ! Must be file path
 #define BLFS_ENERGYMON_OUTPUT_PATH "/home/odroid/bd3/repos/energy-AES-1/results/strongbox-metrics.results"
 
 /** END: energy/power metric collection */
@@ -55,7 +55,7 @@
 // Cipher Choices //
 ////////////////////
 
-// XXX: These are the valid values for the --cipher CLI flag
+// ? These are the valid values for the --cipher CLI flag
 typedef enum stream_cipher_e {
     sc_default,
     sc_not_impl,
@@ -136,7 +136,7 @@ typedef enum stream_cipher_e {
         __fn__;                                             \
     })
 
-// XXX: Only works for stack initialized arrays!
+// ! Only works for stack initialized arrays!
 #define COUNT(x) __extension__ ({ (sizeof(x) / sizeof((x)[0])); })
 
 ////////////
@@ -145,7 +145,7 @@ typedef enum stream_cipher_e {
 
 #define BLFS_CRYPTO_BYTES_AESXTS_KEY            64U // OpenSSL AES-XTS 256-bit requires 64-bit keys (2 32-bit AES keys) 
 #define BLFS_CRYPTO_BYTES_AESXTS_TWEAK          16U // OpenSSL AES-XTS 256-bit requires 16-bit IV
-#define BLFS_CRYPTO_BYTES_AESXTS_DATA_MIN       16U // XXX: OpenSSL AES-XTS 256-bit will CHOKE AND DIE!!! if passed less
+#define BLFS_CRYPTO_BYTES_AESXTS_DATA_MIN       16U // ! OpenSSL AES-XTS 256-bit will CHOKE AND DIE!!! if passed less
 #define BLFS_CRYPTO_BYTES_KDF_OUT               32U // crypto_box_SEEDBYTES
 #define BLFS_CRYPTO_BYTES_KDF_SALT              16U // crypto_pwhash_SALTBYTES
 #define BLFS_CRYPTO_BYTES_FLAKE_TAG_OUT         16U // crypto_onetimeauth_poly1305_BYTES
@@ -188,7 +188,7 @@ typedef enum stream_cipher_e {
 // Header //
 ////////////
 
-// XXX: See the top of backstore.c to see the defined head section header order!
+// ? See the top of backstore.c to see the defined head section header order!
 #define BLFS_HEAD_HEADER_TYPE_VERSION           0xF01U
 #define BLFS_HEAD_HEADER_TYPE_SALT              0xF02U
 #define BLFS_HEAD_HEADER_TYPE_MTRH              0xF04U

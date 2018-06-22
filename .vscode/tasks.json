@@ -4,7 +4,7 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "build: buselfs",
+            "label": "build: strongbox",
             "type": "shell",
             "options": {
                 "shell": {
@@ -68,14 +68,14 @@
             "command": "source $HOME/.keychain/$(hostname)-sh && ssh morty 'cd $HOME/repos/research/buselfs/build && make test_bitmask'",
         },
         {
-            "label": "build: test_buselfs",
+            "label": "build: test_strongbox",
             "type": "shell",
             "options": {
                 "shell": {
                     "executable": "C:/Windows/System32/wsl.exe"
                 }
             },
-            "command": "source $HOME/.keychain/$(hostname)-sh && ssh morty 'cd $HOME/repos/research/buselfs/build && make test_buselfs'",
+            "command": "source $HOME/.keychain/$(hostname)-sh && ssh morty 'cd $HOME/repos/research/buselfs/build && make test_strongbox'",
         },
         {
             "label": "build: test_crypto",

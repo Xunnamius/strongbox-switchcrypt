@@ -20,7 +20,7 @@ typedef struct vector_t
 /**
  * Create a new vector yielded to the vector pointer parameter.
  *
- * XXX: It is advisable that you do NOT mix different types in the same vector!
+ * ! It is advisable that you do NOT mix different types in the same vector!
  * 
  * This function is O(1).
  *

@@ -55,7 +55,7 @@ void blfs_chacha20_tj_hash(uint8_t * tj_hash, const uint8_t * tj_data, uint64_t 
  * BLFS_CRYPTO_BYTES_KDF_OUT bytes taken as a whole are yielded
  * as nugget_key.
  *
- * XXX: Might run into endianness trouble here; might fix later.
+ * ! Might run into endianness trouble here; might fix later.
  *
  * This function is used to deterministically generate raw unique keys to be
  * cached and used with blfs_chacha20_crypt() along with respective kcs counts.
@@ -76,7 +76,7 @@ void blfs_nugget_key_from_data(uint8_t * nugget_key, const uint8_t * secret, uin
  * resulting BLFS_CRYPTO_BYTES_FLAKE_TAG_KEY bytes taken as a whole are yielded
  * as new_key.
  *
- * XXX: Might run into endianness trouble here; might fix later.
+ * ! Might run into endianness trouble here; might fix later.
  *
  * This function is used to deterministically generate unique keys for
  * blfs_poly1305_generate_tag().

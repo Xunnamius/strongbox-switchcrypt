@@ -3,7 +3,9 @@
         "io.h": "c",
         "sosemanuk.h": "c",
         "constants.h": "c",
-        "cexception_configured.h": "c"
+        "cexception_configured.h": "c",
+        "strongbox.h": "c",
+        "unistd.h": "c"
     },
     "cSpell.words": [
         "ADTC",

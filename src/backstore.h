@@ -9,8 +9,8 @@
 // Static HEAD ordering //
 //////////////////////////
 
-// XXX: Be sure any updates result in changes to both header_types_ordered and
-// header_types_named!
+// ! Be sure any updates result in changes to both header_types_ordered and
+// ! header_types_named!
 
 static const uint32_t header_types_ordered[BLFS_HEAD_NUM_HEADERS][2] = {
     { BLFS_HEAD_HEADER_TYPE_VERSION, BLFS_HEAD_HEADER_BYTES_VERSION },
@@ -45,7 +45,7 @@ static const char * const header_types_named[BLFS_HEAD_NUM_HEADERS] = {
 /**
  * The HEAD region (as opposed to the BODY region) of the backstore consists of
  * several headers containing pertinent and often times constant data that is
- * of interest at various points during buselfs's execution.
+ * of interest at various points during StrongBox's execution.
  *
  * This struct represents a generic HEAD section header.
  *
@@ -120,8 +120,8 @@ KHASH_MAP_INIT_INT64(BLFS_KHASH_TJ_CACHE_NAME, blfs_tjournal_entry_t*)
 
 /**
  * This struct and its related functions (in io.h) abstract away a lot of the
- * underlying interactions and I/O between buselfs and the underlying filesystem
- * housing the backstore file container.
+ * underlying interactions and I/O between StrongBox and the underlying
+ * filesystem housing the backstore file container.
  *
  * Note that there is reserved space for a single journaled nugget, keycount,
  * and transaction journal. When rekeying happens in journaled mode, this is
@@ -132,14 +132,18 @@ KHASH_MAP_INIT_INT64(BLFS_KHASH_TJ_CACHE_NAME, blfs_tjournal_entry_t*)
  * @read_fd                 read-only descriptor pointing to backstore file
  * @write_fd                read-write descriptor pointing to backstore file
  * @kcs_real_offset         integer offset to where the keycount store begins
- * @tj_real_offset          integer offset to where the transaction journal begins
- * @body_real_offset        integer offset to where the data BODY (nuggets) begins
+ * @tj_real_offset          integer offset to where the transaction journal
+ * begins
+ * @body_real_offset        integer offset to where the data BODY (nuggets)
+ * begins
  * @kcs_journaled_offset    integer offset to where the journaled keycount goes
  * @tj_journaled_offset     integer offset to where the journaled TJ goes
- * @nugget_journaled_offset integer offset to where the single journaled nugget goes
+ * @nugget_journaled_offset integer offset to where the single journaled nugget
+ * goes
  * @nugget_size_bytes       how big of a region a nugget represents
  * @writeable_size_actual   the actual number of writable bytes (real BODY size)
- * @master_secret           cached secret from KDF, size BLFS_CRYPTO_BYTES_KDF_OUT
+ * @master_secret           cached secret from KDF, size
+ * BLFS_CRYPTO_BYTES_KDF_OUT
  * @cache_headers           cached headers
  * @cache_kcs_counts        cached keycounts
  * @blfs_tjournal_entry_t   cached journal entries
@@ -320,7 +324,7 @@ void blfs_close_tjournal_entry(blfs_backstore_t * backstore, blfs_tjournal_entry
  * The data is not cached. DO NOT call the various *_close_* functions on the
  * keycounts and tj entries returned by this function!
  *
- * XXX: maybe in the future the data should be cached?
+ * TODO: Maybe in the future the data should be cached?
  *
  * @param backstore
  * @param rekeying_nugget_index

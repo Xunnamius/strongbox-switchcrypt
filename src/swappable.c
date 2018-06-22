@@ -29,7 +29,7 @@ typedef struct sc_context_t {
     const uint64_t kcs_keycount;
     const uint64_t nugget_internal_offset;
 
-    void (*data_handle)(void *, // XXX: really sc_context_t *
+    void (*data_handle)(void *, // ? really sc_context_t *
                         uint64_t,
                         uint64_t,
                         uint64_t,
@@ -77,7 +77,7 @@ static void generic_sc_impl(sc_context_t * sc_context)
 
     assert(zero_str_length >= sc_context->data_length);
 
-    uint8_t * xor_str  = calloc(zero_str_length, sizeof(*xor_str)); // XXX: be sure to maintain complete control over this pointer and its memory
+    uint8_t * xor_str = calloc(zero_str_length, sizeof(*xor_str)); // ! be sure to maintain complete control over this pointer and its memory
 
     if(xor_str == NULL)
         Throw(EXCEPTION_ALLOC_FAILURE);
@@ -169,7 +169,7 @@ static void generic_sc_aes_impl(const char * output_name,
 
                 memset(stream_nonce, 0, sizeof(stream_nonce));
                 memcpy(stream_nonce, kcs_keycount_ptr, sizeof(sc_context->kcs_keycount));
-                memcpy(raw_key, sc_context->nugget_key, sizeof(raw_key)); // XXX: cutting off the key, bad bad not good! Need key schedule!
+                memcpy(raw_key, sc_context->nugget_key, sizeof(raw_key)); // ! cutting off the key, bad bad not good! Need key schedule!
 
                 for(uint64_t i = 0; i < num_blocks; i++, counter++)
                 {
@@ -238,9 +238,9 @@ static void generic_sc_salsa_impl(const char * output_name,
                 salsa20_state output_state;
 
                 uint8_t key[key_size_bytes];
-                // uint8_t iv[BLFS_CRYPTO_BYTES_SALSA8_IV]; // XXX: represented by the 8 byte keycount
+                // uint8_t iv[BLFS_CRYPTO_BYTES_SALSA8_IV]; // ? represented by the 8 byte keycount
 
-                memcpy(key, sc_context->nugget_key, sizeof key); // XXX: cutting off the key, bad bad not good! Need key schedule!
+                memcpy(key, sc_context->nugget_key, sizeof key); // TODO: cutting off the key, bad bad not good! Need key schedule!
 
                 salsa20_init_key(&key_state, salsa_rounds, key, SALSA20_256_BITS);
                 salsa20_init_iv(&output_state, &key_state, kcs_keycount_ptr);
@@ -503,7 +503,7 @@ static void sc_impl_hc128(uint8_t * crypted_data,
                 
                 memset(stream_nonce, 0, sizeof(stream_nonce));
                 memcpy(stream_nonce, kcs_keycount_ptr, sizeof(sc_context->kcs_keycount));
-                memcpy(raw_key, sc_context->nugget_key, sizeof(raw_key)); // XXX: cutting off the key, bad bad not good! Need key schedule!
+                memcpy(raw_key, sc_context->nugget_key, sizeof(raw_key)); // ! cutting off the key, bad bad not good! Need key schedule!
 
                 for(uint64_t i = 0; i < num_blocks; i++, counter++)
                 {
@@ -562,16 +562,16 @@ static void sc_impl_rabbit(uint8_t * crypted_data,
 
                 uint64_t counter = interblock_offset;
                 uint8_t raw_key[BLFS_CRYPTO_BYTES_RABBIT_KEY];
-                // uint8_t iv[BLFS_CRYPTO_BYTES_RABBIT_IV]; // XXX: handled by the 8 byte keycount
+                // uint8_t iv[BLFS_CRYPTO_BYTES_RABBIT_IV]; // ! handled by the 8 byte keycount
 
-                memcpy(raw_key, sc_context->nugget_key, sizeof(raw_key)); // XXX: cutting off the key, bad bad not good! Need key schedule!
+                memcpy(raw_key, sc_context->nugget_key, sizeof(raw_key)); // ! cutting off the key, bad bad not good! Need key schedule!
 
                 rabbit_init_key(&key_state, raw_key);
 
                 for(uint64_t i = 0; i < num_blocks; i++, counter++)
                 {
-                    // XXX: NOTE THAT THIS IMPLEMENTATION IS CERTAINLY NOT SECURE (we discard keycount here for expedience)
-                    // Possible remedy: hash the keycount and the counter and use that output as IV
+                    // ! NOTE THAT THIS IMPLEMENTATION IS CERTAINLY NOT SECURE (we discard keycount here for expedience)
+                    // ! Possible remedy: hash the keycount and the counter and use that output as IV
                     (void) kcs_keycount_ptr;
                     
                     rabbit_init_iv(&iv_state, &key_state, (uint8_t *) &counter);
@@ -633,7 +633,7 @@ static void sc_impl_sosemanuk(uint8_t * crypted_data,
                 
                 memset(stream_nonce, 0, sizeof(stream_nonce));
                 memcpy(stream_nonce, kcs_keycount_ptr, sizeof(sc_context->kcs_keycount));
-                memcpy(raw_key, sc_context->nugget_key, sizeof(raw_key)); // XXX: cutting off the key, bad bad not good! Need key schedule!
+                memcpy(raw_key, sc_context->nugget_key, sizeof(raw_key)); // ! cutting off the key, bad bad not good! Need key schedule!
 
                 sosemanuk_init_key(&key_state, raw_key, BLFS_CRYPTO_BYTES_SOSEK_KEY * BITS_IN_A_BYTE);
 

@@ -32,14 +32,14 @@ typedef void (*stream_crypt_common)(uint8_t *, const uint8_t *, uint32_t, const 
 
 /**
  * This struct represents program state and is passed around to various
- * buselfs functions.
+ * StrongBox functions.
  *
  * The main use of this state object is to assist in proper unit testing.
  */
 typedef struct buselfs_state_t
 {
     /**
-     * The backstore used by the buselfs software.
+     * The backstore used by the StrongBox software.
      */
     blfs_backstore_t * backstore;
 
@@ -51,11 +51,11 @@ typedef struct buselfs_state_t
      * nugget keys: nugget_index => master_secret||nugget_index
      * flake keys: nugget_index||flake_id||associated_keycount => master_secret||nugget_index||flake_id||associated_keycount
      *
-     * XXX: This uses quite a bit of memory, perhaps unnecessarily from a perf
-     * perspective. Then again, it may not be all that much. Profile if ballooning.
+     * ! This uses quite a bit of memory, perhaps unnecessarily from a perf
+     * ! perspective. Then again, it may not be all that much. Profile if ballooning.
      *
-     * XXX: strdup is used to persist keys; could be a memory leak location if not
-     * careful. Watch out!
+     * ! strdup is used to persist keys; could be a memory leak location if not
+     * ! careful. Watch out!
      */
     khash_t(BLFS_KHASH_NUGGET_KEY_CACHE_NAME) * cache_nugget_keys;
 
@@ -105,8 +105,8 @@ typedef struct buselfs_state_t
 } buselfs_state_t;
 
 // These are all the external caching functions:
-// XXX: These caches grow, but they never shrink, even though they DEFINITELY should during rekeying. This is a
-// memory leak. To be fixed later.
+// ! These caches grow, but they never shrink, even though they DEFINITELY should during rekeying. This is a
+// ! memory leak. To be fixed later.
 void add_index_to_key_cache(buselfs_state_t * buselfs_state, uint32_t nugget_index, uint8_t * nugget_key);
 
 void add_keychain_to_key_cache(buselfs_state_t * buselfs_state,
@@ -151,7 +151,7 @@ int buse_read(void * buffer, uint32_t len, uint64_t offset, void * userdata);
 int buse_write(const void * buffer, uint32_t len, uint64_t offset, void * userdata);
 
 /**
- * Implementation of the buselfs rekeying procedure for journaled data.
+ * Implementation of the StrongBox rekeying procedure for journaled data.
  * Re-encrypts a nugget with an entirely different key and updates the cache
  * accordingly. This is called when rekeying was interrupted and the system was
  * remounted.
@@ -162,7 +162,7 @@ int buse_write(const void * buffer, uint32_t len, uint64_t offset, void * userda
 void blfs_rekey_nugget_journaled(buselfs_state_t * buselfs_state, uint32_t rekeying_nugget_id);
 
 /**
- * Implementation of the buselfs rekeying procedure for on-write overwrite
+ * Implementation of the StrongBox rekeying procedure for on-write overwrite
  * attempts. Re-encrypts a nugget with an entirely different key, performing an
  * in-memory overwrite before writeback, and updates the cache accordingly. This
  * is called when an overwrite occurs during buse_write().
@@ -223,22 +223,22 @@ void blfs_run_mode_wipe(const char * backstore_path, uint8_t cin_allow_insecure_
 
 /**
  * The function that is actually responsible for assembling the disperate
- * pieces that come together to form the functioning buselfs instance. This
- * function should not be called directly. Call buselfs_main() instead.
+ * pieces that come together to form the functioning StrongBox instance. This
+ * function should not be called directly. Call strongbox_main() instead.
  * 
  * @param argc
  * @param argv
  * @param blockdevice
  */
-buselfs_state_t * buselfs_main_actual(int argc, char * argv[], char * blockdevice);
+buselfs_state_t * strongbox_main_actual(int argc, char * argv[], char * blockdevice);
 
 /**
- * The entry point for the buselfs software. Call this from main().
+ * The entry point for the StrongBox software. Call this from main().
  * 
  * @param  argc
  * @param  argv
  */
-int buselfs_main(int argc, char * argv[]);
+int strongbox_main(int argc, char * argv[]);
 
 #if BLFS_DEBUG_MONITOR_POWER > 0
 

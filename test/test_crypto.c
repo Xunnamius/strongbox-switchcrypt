@@ -105,7 +105,7 @@ void test_blfs_chacha20_tj_hash_returns_expected_data(void)
     TEST_ASSERT_EQUAL_MEMORY(expected_hash, actual_hash, BLFS_CRYPTO_BYTES_TJ_HASH_OUT);
 }
 
-// XXX: upgrade this test if we ever get around to making this work for big endian systems
+// TODO: upgrade this test if we ever get around to making this work for big endian systems
 void test_blfs_nugget_key_from_data_fails_bad_endianness(void)
 {
     uint8_t actual_nugget_key[BLFS_CRYPTO_BYTES_KDF_OUT] = { 0x00 };
@@ -120,7 +120,7 @@ void test_blfs_nugget_key_from_data_fails_bad_endianness(void)
 
     blfs_nugget_key_from_data(actual_nugget_key, secret, nugget_index);
 
-    // XXX: This test will fail on big endian machines!
+    // ! This test will fail on big endian machines!
     uint8_t expected_nugget_key[BLFS_CRYPTO_BYTES_KDF_OUT] = {
         0xd9, 0x76, 0xff, 0x4c, 0xd9, 0xaa, 0x1, 0xea, 0xa5, 0xad, 0xdc, 0x68,
         0xcf, 0xe1, 0x8f, 0xc1, 0xa7, 0xa5, 0x10, 0x4b, 0x63, 0x1b, 0x46, 0x2d,
@@ -131,7 +131,7 @@ void test_blfs_nugget_key_from_data_fails_bad_endianness(void)
     
 }
 
-// XXX: upgrade this test if we ever get around to making this work for big endian systems
+// TODO: upgrade this test if we ever get around to making this work for big endian systems
 void test_blfs_poly1305_key_from_data_fails_bad_endianness(void)
 {
     uint8_t new_key[BLFS_CRYPTO_BYTES_KDF_OUT] = { 0x00 };
@@ -147,7 +147,7 @@ void test_blfs_poly1305_key_from_data_fails_bad_endianness(void)
 
     blfs_poly1305_key_from_data(new_key, nugget_key, flake_index, kcs_keycount);
 
-    // XXX: This test will fail on big endian machines!
+    // ! This test will fail on big endian machines!
     uint8_t expected_key[BLFS_CRYPTO_BYTES_FLAKE_TAG_KEY] = {
         0xdc, 0x2e, 0x63, 0x4c, 0xd9, 0xaa, 0x1, 0xea, 0xa5, 0xad, 0xdc, 0x68,
         0xcf, 0xe1, 0x8f, 0xc1, 0xa7, 0xa5, 0x10, 0x4b, 0x63, 0x1b, 0x46, 0x2d,

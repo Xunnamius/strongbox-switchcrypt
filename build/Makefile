@@ -1,11 +1,11 @@
 # Make with painstaking love by Bernard Dickens III (bd3@cs.uchicago.edu)
 #
-# A few rules/assumptions:
-# 1) You should read the README.md file to learn how this Makefile is structured
-# 2) Don't give files that aren't direct children of test/ names like `test_XXX.c`
-# 3) Don't give files that are not auto-generated unity mocks the `mock_` prefix
-# 4) Use `make check` to make and run all the tests (after running `make pre` and `make clean` necessarily)
-# 5) The ONLY test that works with BLFS_DEBUG_MONITOR_POWER=1 is test_buselfs!
+# ? A few rules/assumptions:
+# ? 1) You should read the README.md file to learn how this Makefile is structured
+# ? 2) Don't give files that aren't direct children of test/ names like `test_X.c`
+# ? 3) Don't give files that are not auto-generated unity mocks the `mock_` prefix
+# ? 4) Use `make check` to make and run all the tests (after running `make pre` and `make clean` necessarily)
+# ? 5) The ONLY test that works with BLFS_DEBUG_MONITOR_POWER=1 is test_strongbox!
 
 #################
 # Configuration #
@@ -22,18 +22,18 @@ MT_ROOT         := $(VENDR_ROOT)/merkle-tree
 ENERGYMON_ROOT  := $(VENDR_ROOT)/energymon
 ESTREAM_ROOT    := $(VENDR_ROOT)/libestream
 
-# Buselfs internal debug level
-# XXX: BLFS_DEBUG_LEVEL=0 when not debugging or suffer the (perf-related) consequences!
-# XXX: BLFS_MANUAL_GV_FALLBACK should be set to -1 unless no RPMB device, then >= 0
-# XXX: BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION=1 renders the --cipher flag meaningless
+# * StrongBox's internal debug level and other interesting compile-time flags
+# ! BLFS_DEBUG_LEVEL=0 when not debugging or suffer the (perf-related) consequences!
+# ! BLFS_MANUAL_GV_FALLBACK should be set to -1 unless no RPMB device, then >= 0
+# ! BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION=1 renders the --cipher flag meaningless
 DEBUG_COMPILE_FLAG := -DBLFS_DEBUG_LEVEL=0 \
                       -DBLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION=0 \
                       -DBLFS_NO_READ_INTEGRITY=0 \
                       -DBLFS_DEBUG_MONITOR_POWER=0 \
                       -DBLFS_MANUAL_GV_FALLBACK=0
 
-# This is the name of the resulant executable
-EXENAME := buselfs
+# * This is the name of the resulant executable
+EXENAME := strongbox
 
 # This file houses the main() function for the executable (and nothing else)
 # This should be the only file with a main() function in SRC_ROOT; there should
@@ -52,7 +52,7 @@ C_TEST_LIBS := $(UNITY_ROOT)/src/unity.c \
 CC  := /usr/bin/gcc
 CCV := $(shell expr `gcc --version | grep ^gcc | awk '{print $$3}'` \>= 4.9)
 
-# XXX: Set this to empty when building for release/profiling or -g for debugging
+# ! Set this to empty when building for release/profiling or -g for debugging
 #                             :=
 DEBUG_MAKE_FLAGS              := -g
 CONDITIONAL_DEBUG_MAKE_FLAGS  := -fsanitize=address,undefined,shift,integer-divide-by-zero,null,signed-integer-overflow \
@@ -77,15 +77,16 @@ LDFLAGS     := -L$(VENDR_ROOT) -L/usr/local/lib \
 # Ruby configs for runner generation w/ Unity (automatic)
 GENRNR_CONF := $(CONFIG_ROOT)/unity_runner_config.yml
 
-# Ruby configs for mock generation. :mock_prefix should be set to mock_
+# Ruby configs for mock generation.
+# ! :mock_prefix should be set to mock_
 CMOCK_CONF := $(CONFIG_ROOT)/cmock_config.yml
 
-# List of header file names (no .h or any other extensions) in SRC_ROOT to mock with cmock
-# e.g. HDRS_TO_MOCK := interactions my_lib
-# You can then include the mocked header in your source e.g. #include "mock_my_lib.h"
+# * List of header file names (no .h or any other extensions) in SRC_ROOT to
+# * mock with cmock e.g. HDRS_TO_MOCK := interactions my_lib You can then
+# * include the mocked header in your source e.g. #include "mock_my_lib.h"
 HDRS_TO_MOCK := io
 
-# Scarecrows (empty targets)
+# * Scarecrows (empty targets)
 # aes.o metrics.o: ;
 SCARECROWS := aes.o
 
@@ -170,6 +171,7 @@ $(EXENAME): $(SRC_FILES) $(VENDR_FILES)
         $^ \
         $(EXPLICIT_LIBS) \
         $(LDFLAGS)
+	ln -s strongbox sb
 
 $(SRC_FILES) $(VENDR_FILES): %.o: %.c %.h
 ifneq "$(WE_PROD_NOW)" ""
@@ -181,9 +183,9 @@ endif
 $(RUNR_FILES) $(TEST_FILES): %.o: %.c
 	$(CC) $(CFLAGS) $(IFLAGS) $(DEBUG_MAKE_FLAGS) $(DEBUG_COMPILE_FLAG) -o $@ -c $<
 
-# XXX: dynamically scans prereqs (filled with #include'd headers from source)
-# for mocks, includes them, and then removes the unmocked version from the
-# compilation tree to prevent definition collisions!
+# ! dynamically scans prereqs (filled with #include'd headers from source)
+# ! for mocks, includes them, and then removes the unmocked version from the
+# ! compilation tree to prevent definition collisions!
 $(TEST_TRGTS): test_%: test_%_runner.o test_%.o %.o test_%.d $(SRC_FILES) $(VENDR_FILES)
 	$(eval R_MOCKED_FILES := $(call distinct,$(patsubst %.h,%.c,$(call containing,mock_,$^))))
 	$(eval R_REMAIN_FILES := $(filter-out $(SCARECROWS) %.h %.c %.d $(if $(R_MOCKED_FILES),$(addprefix %,$(patsubst mock_%.c,%.o,$(R_MOCKED_FILES)))), $^))

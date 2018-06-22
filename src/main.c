@@ -1,10 +1,10 @@
 /**
- * The runner function for BuseLFS
+ * The runner function for StrongBox
  *
  * @author Bernard Dickens
  */
 
-#include "buselfs.h"
+#include "strongbox.h"
 
 int main(int argc, char * argv[])
 {
@@ -13,7 +13,7 @@ int main(int argc, char * argv[])
 
     Try
     {
-        ret = buselfs_main(argc, argv);
+        ret = strongbox_main(argc, argv);
     }
 
     Catch(e)

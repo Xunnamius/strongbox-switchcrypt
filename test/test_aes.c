@@ -1,5 +1,5 @@
 #include "unity.h"
-#include "buselfs.h"
+#include "strongbox.h"
 #include "merkletree.h"
 #include "mt_err.h"
 #include "khash.h"
@@ -13,11 +13,11 @@
 #include <inttypes.h>
 #include <assert.h>
 
-// XXX: The passwords used for this test are always "t" (without the quotes, of
-// course)
+// ? The passwords used for this test are always "t" (without the quotes, of
+// ? course)
 // 
-// XXX: Note that these tests are leaky! Cache reduction logic was not included
-// (it's not necessary outside tests)
+// ! Note that these tests are leaky! Cache reduction logic was not included
+// ! (it's not necessary outside tests)
 
 #define TRY_FN_CATCH_EXCEPTION(fn_call)           \
 e_actual = EXCEPTION_NO_EXCEPTION;                \

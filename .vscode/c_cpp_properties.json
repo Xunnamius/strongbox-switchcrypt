@@ -22,12 +22,7 @@
                 "F:/OneDrive/linux/usr/include/arm-linux-gnueabihf",
                 "F:/OneDrive/linux/usr/lib/gcc/arm-linux-gnueabihf/5/include-fixed",
                 "F:/OneDrive/linux/usr/lib/gcc/arm-linux-gnueabihf/5/include",
-                "F:/OneDrive/linux/usr/include",
-                "C:/Users/tre/OneDrive/linux/usr/local/include",
-                "C:/Users/tre/OneDrive/linux/usr/include/arm-linux-gnueabihf",
-                "C:/Users/tre/OneDrive/linux/usr/lib/gcc/arm-linux-gnueabihf/5/include-fixed",
-                "C:/Users/tre/OneDrive/linux/usr/lib/gcc/arm-linux-gnueabihf/5/include",
-                "C:/Users/tre/OneDrive/linux/usr/include"
+                "F:/OneDrive/linux/usr/include"
             ],
             "defines": [
                 "__ARM_PCS_VFP",

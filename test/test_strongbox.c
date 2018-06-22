@@ -1,5 +1,5 @@
 #include "unity.h"
-#include "buselfs.h"
+#include "strongbox.h"
 #include "swappable.h"
 #include "mmc.h"
 #include "merkletree.h"
@@ -15,11 +15,11 @@
 #include <inttypes.h>
 #include <assert.h>
 
-// XXX: The passwords used for this test are always "t" (without the quotes, of
-// course)
-// 
-// XXX: Note that these tests are leaky! Cache reduction logic was not included
-// (it's not necessary outside tests)
+// ! The passwords used for this test are always "t" (without the quotes, of
+// ! course)
+// !
+// ! Note that these tests are leaky! Cache reduction logic was not included
+// ! (it's not necessary outside tests)
 
 #define TRY_FN_CATCH_EXCEPTION(fn_call)           \
 e_actual = EXCEPTION_NO_EXCEPTION;                \
@@ -31,7 +31,7 @@ Try                                               \
 Catch(e_actual)                                   \
     TEST_ASSERT_EQUAL_HEX_MESSAGE(e_expected, e_actual, "Encountered an unsuspected error condition!");
 
-#define _TEST_BLFS_TPM_ID 1 // XXX: ensure different than prod value
+#define _TEST_BLFS_TPM_ID 1 // ! ensure different than prod value
 #define BACKSTORE_FILE_PATH "/tmp/test.io.bin"
 
 static int iofd;
@@ -231,7 +231,8 @@ void tearDown(void)
     unlink(BACKSTORE_FILE_PATH);
 }
 
-// XXX: Also need to test a delete function to fix the memory leak issue discussed in buselfs.h
+// ! Also need to test a delete function to fix the memory leak issue as
+// ! discussed in strongbox.h
 
 void test_adding_and_evicting_from_the_keycache_works_as_expected(void)
 {
@@ -288,8 +289,8 @@ void test_adding_and_evicting_from_the_keycache_works_as_expected(void)
     }
 }
 
-// XXX: The password used was "t" but almost no matter what you input the test will win
-// XXX: Don't forget to also test using the correct password!
+// ! The password used was "t" but almost no matter what you input the test will win
+// ! Don't forget to also test using the correct password!
 void test_blfs_soft_open_throws_exception_on_invalid_password(void)
 {
     free(buselfs_state->backstore);
@@ -647,7 +648,7 @@ void test_blfs_run_mode_create_initializes_keycache_and_merkle_tree_properly(voi
     }
 }
 
-void test_buselfs_main_actual_throws_exception_if_wrong_argc(void)
+void test_strongbox_main_actual_throws_exception_if_wrong_argc(void)
 {
    
     CEXCEPTION_T e_expected = EXCEPTION_MUST_HALT;
@@ -655,10 +656,10 @@ void test_buselfs_main_actual_throws_exception_if_wrong_argc(void)
 
     char * argv[] = { "progname" };
 
-    TRY_FN_CATCH_EXCEPTION(buselfs_main_actual(0, argv, blockdevice));
+    TRY_FN_CATCH_EXCEPTION(strongbox_main_actual(0, argv, blockdevice));
 }
 
-void test_buselfs_main_actual_throws_exception_if_bad_cmd(void)
+void test_strongbox_main_actual_throws_exception_if_bad_cmd(void)
 {
     CEXCEPTION_T e_expected = EXCEPTION_UNKNOWN_MODE;
     volatile CEXCEPTION_T e_actual = EXCEPTION_NO_EXCEPTION;
@@ -668,10 +669,10 @@ void test_buselfs_main_actual_throws_exception_if_bad_cmd(void)
         "cmd",
         "device1"
     };
-    TRY_FN_CATCH_EXCEPTION(buselfs_main_actual(3, argv, blockdevice));
+    TRY_FN_CATCH_EXCEPTION(strongbox_main_actual(3, argv, blockdevice));
 }
 
-void test_buselfs_main_actual_throws_exception_if_too_many_fpn(void)
+void test_strongbox_main_actual_throws_exception_if_too_many_fpn(void)
 {
     zlog_fini();
 
@@ -686,10 +687,10 @@ void test_buselfs_main_actual_throws_exception_if_too_many_fpn(void)
         "device2"
     };
 
-    TRY_FN_CATCH_EXCEPTION(buselfs_main_actual(5, argv, blockdevice));
+    TRY_FN_CATCH_EXCEPTION(strongbox_main_actual(5, argv, blockdevice));
 }
 
-void test_buselfs_main_actual_throws_exception_if_bad_numbers_given_as_args(void)
+void test_strongbox_main_actual_throws_exception_if_bad_numbers_given_as_args(void)
 {
     CEXCEPTION_T e_expected = EXCEPTION_INVALID_FLAKES_PER_NUGGET;
     volatile CEXCEPTION_T e_actual = EXCEPTION_NO_EXCEPTION;
@@ -702,7 +703,7 @@ void test_buselfs_main_actual_throws_exception_if_bad_numbers_given_as_args(void
         "device3"
     };
 
-    TRY_FN_CATCH_EXCEPTION(buselfs_main_actual(5, argv, blockdevice));
+    TRY_FN_CATCH_EXCEPTION(strongbox_main_actual(5, argv, blockdevice));
 
     e_expected = EXCEPTION_INVALID_BACKSTORESIZE;
     e_actual = EXCEPTION_NO_EXCEPTION;
@@ -715,7 +716,7 @@ void test_buselfs_main_actual_throws_exception_if_bad_numbers_given_as_args(void
         "device4"
     };
 
-    TRY_FN_CATCH_EXCEPTION(buselfs_main_actual(5, argv2, blockdevice));
+    TRY_FN_CATCH_EXCEPTION(strongbox_main_actual(5, argv2, blockdevice));
 
     e_expected = EXCEPTION_INVALID_BACKSTORESIZE;
     e_actual = EXCEPTION_NO_EXCEPTION;
@@ -728,7 +729,7 @@ void test_buselfs_main_actual_throws_exception_if_bad_numbers_given_as_args(void
         "device5"
     };
 
-    TRY_FN_CATCH_EXCEPTION(buselfs_main_actual(5, argv3, blockdevice));
+    TRY_FN_CATCH_EXCEPTION(strongbox_main_actual(5, argv3, blockdevice));
 
     e_expected = EXCEPTION_INVALID_FLAKES_PER_NUGGET;
     e_actual = EXCEPTION_NO_EXCEPTION;
@@ -741,7 +742,7 @@ void test_buselfs_main_actual_throws_exception_if_bad_numbers_given_as_args(void
         "device6"
     };
 
-    TRY_FN_CATCH_EXCEPTION(buselfs_main_actual(5, argv4, blockdevice));
+    TRY_FN_CATCH_EXCEPTION(strongbox_main_actual(5, argv4, blockdevice));
 
     e_expected = EXCEPTION_INVALID_FLAKES_PER_NUGGET;
     e_actual = EXCEPTION_NO_EXCEPTION;
@@ -754,7 +755,7 @@ void test_buselfs_main_actual_throws_exception_if_bad_numbers_given_as_args(void
         "device7"
     };
 
-    TRY_FN_CATCH_EXCEPTION(buselfs_main_actual(5, argv5, blockdevice));
+    TRY_FN_CATCH_EXCEPTION(strongbox_main_actual(5, argv5, blockdevice));
 
     e_expected = EXCEPTION_INVALID_FLAKESIZE;
     e_actual = EXCEPTION_NO_EXCEPTION;
@@ -767,7 +768,7 @@ void test_buselfs_main_actual_throws_exception_if_bad_numbers_given_as_args(void
         "device8"
     };
 
-    TRY_FN_CATCH_EXCEPTION(buselfs_main_actual(5, argv7, blockdevice));
+    TRY_FN_CATCH_EXCEPTION(strongbox_main_actual(5, argv7, blockdevice));
 
     e_expected = EXCEPTION_INVALID_FLAKESIZE;
     e_actual = EXCEPTION_NO_EXCEPTION;
@@ -780,10 +781,10 @@ void test_buselfs_main_actual_throws_exception_if_bad_numbers_given_as_args(void
         "device9"
     };
 
-    TRY_FN_CATCH_EXCEPTION(buselfs_main_actual(5, argv8, blockdevice));
+    TRY_FN_CATCH_EXCEPTION(strongbox_main_actual(5, argv8, blockdevice));
 }
 
-void test_buselfs_main_actual_throws_exception_if_invalid_cipher(void)
+void test_strongbox_main_actual_throws_exception_if_invalid_cipher(void)
 {
     zlog_fini();
 
@@ -799,10 +800,10 @@ void test_buselfs_main_actual_throws_exception_if_invalid_cipher(void)
         "device115"
     };
 
-    TRY_FN_CATCH_EXCEPTION(buselfs_main_actual(6, argv, blockdevice));
+    TRY_FN_CATCH_EXCEPTION(strongbox_main_actual(6, argv, blockdevice));
 }
 
-void test_buselfs_main_actual_throws_exception_if_invalid_tpm_id(void)
+void test_strongbox_main_actual_throws_exception_if_invalid_tpm_id(void)
 {
     zlog_fini();
 
@@ -818,7 +819,7 @@ void test_buselfs_main_actual_throws_exception_if_invalid_tpm_id(void)
         "device115"
     };
 
-    TRY_FN_CATCH_EXCEPTION(buselfs_main_actual(6, argv, blockdevice));
+    TRY_FN_CATCH_EXCEPTION(strongbox_main_actual(6, argv, blockdevice));
 
     e_actual = EXCEPTION_NO_EXCEPTION;
 
@@ -831,10 +832,10 @@ void test_buselfs_main_actual_throws_exception_if_invalid_tpm_id(void)
         "device115"
     };
 
-    TRY_FN_CATCH_EXCEPTION(buselfs_main_actual(6, argv2, blockdevice));
+    TRY_FN_CATCH_EXCEPTION(strongbox_main_actual(6, argv2, blockdevice));
 }
 
-void test_buselfs_main_actual_throws_exception_if_nonimpl_cipher(void)
+void test_strongbox_main_actual_throws_exception_if_nonimpl_cipher(void)
 {
     zlog_fini();
 
@@ -850,7 +851,7 @@ void test_buselfs_main_actual_throws_exception_if_nonimpl_cipher(void)
         "device115"
     };
 
-    TRY_FN_CATCH_EXCEPTION(buselfs_main_actual(6, argv, blockdevice));
+    TRY_FN_CATCH_EXCEPTION(strongbox_main_actual(6, argv, blockdevice));
 }
 
 // Metrics Tests
@@ -1002,7 +1003,7 @@ void test_blfs_energymon_writeout_metrics_works_as_expected(void)
     #endif
 }
 
-// XXX: All read and write tests should go below this line!
+// * All read and write tests should go below this line! *
 
 void test_buse_read_works_as_expected(void)
 {
@@ -1183,7 +1184,7 @@ void test_buse_writeread_works_as_expected4(void)
     TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset4, buffer4, sizeof buffer4);
 }
 
-// XXX: interflake
+// ? interflake
 void test_buse_writeread_works_as_expected5(void)
 {
     if(BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
@@ -1284,7 +1285,7 @@ void test_buse_writeread_works_as_expected8(void)
     TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset, buffer, sizeof buffer);
 }
 
-// XXX: interflake
+// ? interflake
 void test_buse_writeread_works_as_expected9(void)
 {
     if(BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
@@ -1310,7 +1311,7 @@ void test_buse_writeread_works_as_expected9(void)
     TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset, buffer, sizeof buffer);
 }
 
-// XXX: interflake internugget
+// ? interflake internugget
 void test_buse_writeread_works_as_expected10(void)
 {
     if(BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
@@ -1336,7 +1337,7 @@ void test_buse_writeread_works_as_expected10(void)
     TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset, buffer, sizeof buffer);
 }
 
-// XXX: interflake internugget
+// ? interflake internugget
 void test_buse_writeread_works_as_expected11(void)
 {
     if(BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
@@ -1606,7 +1607,7 @@ static void readwrite_quicktests()
     IFENERGYMON(blfs_energymon_fini(buselfs_state));
 }
 
-void test_buselfs_main_actual_creates(void)
+void test_strongbox_main_actual_creates(void)
 {
     zlog_fini();
 
@@ -1619,12 +1620,12 @@ void test_buselfs_main_actual_creates(void)
         "device_actual1"
     };
 
-    buselfs_state = buselfs_main_actual(argc, argv_create1, blockdevice);
+    buselfs_state = strongbox_main_actual(argc, argv_create1, blockdevice);
     readwrite_quicktests();
 }
 
 
-void test_buselfs_main_actual_does_not_throw_exception_if_valid_cipher(void)
+void test_strongbox_main_actual_does_not_throw_exception_if_valid_cipher(void)
 {
     zlog_fini();
 
@@ -1637,10 +1638,10 @@ void test_buselfs_main_actual_does_not_throw_exception_if_valid_cipher(void)
         "device115"
     };
 
-    buselfs_main_actual(6, argv, blockdevice);
+    strongbox_main_actual(6, argv, blockdevice);
 }
 
-void test_buselfs_main_actual_does_not_throw_exception_if_valid_tpm_id(void)
+void test_strongbox_main_actual_does_not_throw_exception_if_valid_tpm_id(void)
 {
     zlog_fini();
 
@@ -1653,10 +1654,10 @@ void test_buselfs_main_actual_does_not_throw_exception_if_valid_tpm_id(void)
         "device-115"
     };
 
-    buselfs_main_actual(6, argv, blockdevice);
+    strongbox_main_actual(6, argv, blockdevice);
 }
 
-void test_buselfs_main_actual_creates_with_alternate_cipher_and_tpm(void)
+void test_strongbox_main_actual_creates_with_alternate_cipher_and_tpm(void)
 {
     zlog_fini();
 
@@ -1673,11 +1674,11 @@ void test_buselfs_main_actual_creates_with_alternate_cipher_and_tpm(void)
         "device_actual115"
     };
 
-    buselfs_state = buselfs_main_actual(argc, argv_create1, blockdevice);
+    buselfs_state = strongbox_main_actual(argc, argv_create1, blockdevice);
     readwrite_quicktests();
 }
 
-/*void test_buselfs_main_actual_creates_expected_buselfs_state(void)
+/*void test_strongbox_main_actual_creates_expected_buselfs_state(void)
 {
     // FIXME: something is wrong with having all of these changes at once...
     zlog_fini();
@@ -1701,18 +1702,18 @@ void test_buselfs_main_actual_creates_with_alternate_cipher_and_tpm(void)
         "device_actual-115"
     };
 
-    buselfs_state = buselfs_main_actual(argc, argv_create1, blockdevice);
+    buselfs_state = strongbox_main_actual(argc, argv_create1, blockdevice);
     
     TEST_ASSERT_EQUAL_UINT(sc_salsa8, buselfs_state->default_crypt_context);
     TEST_ASSERT_EQUAL_UINT(115, buselfs_state->rpmb_secure_index);
     TEST_ASSERT_EQUAL_UINT(65536, buselfs_state->backstore->nugget_size_bytes);
     TEST_ASSERT_EQUAL_UINT(2048, buselfs_state->backstore->flake_size_bytes);
     TEST_ASSERT_EQUAL_UINT(2147483648, buselfs_state->backstore->file_size_actual);
-    TEST_ASSERT_EQUAL_UINT(32760, buselfs_state->backstore->num_nuggets); // XXX: space for headers!
+    TEST_ASSERT_EQUAL_UINT(32760, buselfs_state->backstore->num_nuggets); // ? space for headers!
     TEST_ASSERT_EQUAL_UINT(32, buselfs_state->backstore->flakes_per_nugget);
 }*/
 
-/*void test_buselfs_main_actual_opens(void)
+/*void test_strongbox_main_actual_opens(void)
 {
     // FIXME
 
@@ -1727,11 +1728,11 @@ void test_buselfs_main_actual_creates_with_alternate_cipher_and_tpm(void)
         "device_actual2"
     };
 
-    buselfs_state = buselfs_main_actual(argc, argv_open1, blockdevice);
+    buselfs_state = strongbox_main_actual(argc, argv_open1, blockdevice);
     blfs_backstore_close(buselfs_state->backstore);
 }*/
 
-/*void test_buselfs_main_actual_opens_after_create()
+/*void test_strongbox_main_actual_opens_after_create()
 {
     // FIXME
 
@@ -1746,7 +1747,7 @@ void test_buselfs_main_actual_creates_with_alternate_cipher_and_tpm(void)
         "device_actual3"
     };
 
-    buselfs_state = buselfs_main_actual(argc, argv_create1, blockdevice);
+    buselfs_state = strongbox_main_actual(argc, argv_create1, blockdevice);
 
     char * argv_wipe1[] = {
         "progname",
@@ -1755,7 +1756,7 @@ void test_buselfs_main_actual_creates_with_alternate_cipher_and_tpm(void)
         "device_actual4"
     };
 
-    buselfs_state = buselfs_main_actual(argc, argv_wipe1, blockdevice);
+    buselfs_state = strongbox_main_actual(argc, argv_wipe1, blockdevice);
 
     uint8_t buffer5[8] = { 0x00 };
     uint64_t offset5 = 1;
@@ -1815,7 +1816,7 @@ void test_blfs_incomplete_rekeying_triggers_blfs_rekey_nugget_journaled_on_start
 
     TEST_ASSERT_TRUE(bitmask_is_bit_set(entry0->bitmask, 0));
     TEST_ASSERT_TRUE(bitmask_is_bit_set(entry0->bitmask, 1));
-    TEST_ASSERT_EQUAL_UINT(1, count0->keycount); // XXX: these are getting +2'ed!
+    TEST_ASSERT_EQUAL_UINT(1, count0->keycount); // ? these are getting +2'ed!
 
     blfs_rekey_nugget_journaled_with_write(buselfs_state, 0, decrypted_body + 1, 8, 1);
 

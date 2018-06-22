@@ -105,8 +105,8 @@ void blfs_backstore_setup_actual_post(blfs_backstore_t * backstore)
 {
     IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
 
-    // XXX: get the last item in the header (before the start of the kcs) and
-    // use its offset + length to determine the true length of the HEAD header
+    // ! get the last item in the header (before the start of the kcs) and
+    // ! use its offset + length to determine the true length of the HEAD header
     blfs_header_t * header_last = blfs_open_header(backstore, header_types_ordered[BLFS_HEAD_NUM_HEADERS - 1][0]);
 
     // We need to know the number of nuggets to calculate the other offsets
@@ -128,7 +128,7 @@ void blfs_backstore_setup_actual_post(blfs_backstore_t * backstore)
     IFDEBUG(dzlog_debug("backstore->flake_size_bytes = %"PRIu32, backstore->flake_size_bytes));
     IFDEBUG(dzlog_debug("header_last->data_length = %"PRIu64, header_last->data_length));
 
-    // XXX: Maybe I should add some overflow protection here and elsewhere... maybe later
+    // ! Maybe I should add some overflow protection here and elsewhere... maybe later
 
     backstore->kcs_real_offset = header_last->data_offset + header_last->data_length;
     backstore->tj_real_offset  = backstore->kcs_real_offset + backstore->num_nuggets * BLFS_HEAD_BYTES_KEYCOUNT;

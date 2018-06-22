@@ -2,7 +2,7 @@
 #define BLFS_SWAP_H_
 
 #include "constants.h"
-#include "buselfs.h"
+#include "strongbox.h"
 
 #include <openssl/conf.h>
 #include <openssl/evp.h>

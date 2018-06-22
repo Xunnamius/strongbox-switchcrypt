@@ -1,12 +1,12 @@
-.PHONY: buselfs clean check
+.PHONY: strongbox clean check
 
-buselfs:
+strongbox:
 	$(MAKE) all -C build
 
 clean:
 	$(MAKE) clean -C build
 
 check:
+	echo "WARNING: Be sure to run 'make clean' if you try to build StrongBox after this!"
 	$(MAKE) pre -C build
-	$(MAKE) check -C build
-	echo "Be sure to run 'make clean' if you try to build buselfs after this!"
+	$(MAKE) check -C build -B

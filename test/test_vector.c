@@ -136,5 +136,5 @@ void test_vector_add_grows_array_size_as_expected(void)
     }
 
     TEST_ASSERT_EQUAL_INT(150, vector->count);
-    TEST_ASSERT_EQUAL_INT(160, vector->size); // XXX: Assuming 2x growth factor
+    TEST_ASSERT_EQUAL_INT(160, vector->size); // ? Assuming 2x growth factor
 }
