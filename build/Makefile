@@ -171,7 +171,7 @@ $(EXENAME): $(SRC_FILES) $(VENDR_FILES)
         $^ \
         $(EXPLICIT_LIBS) \
         $(LDFLAGS)
-	ln -s strongbox sb
+	ln -sf strongbox sb
 
 $(SRC_FILES) $(VENDR_FILES): %.o: %.c %.h
 ifneq "$(WE_PROD_NOW)" ""
