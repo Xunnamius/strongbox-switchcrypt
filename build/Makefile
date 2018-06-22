@@ -30,7 +30,7 @@ DEBUG_COMPILE_FLAG := -DBLFS_DEBUG_LEVEL=0 \
                       -DBLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION=0 \
                       -DBLFS_NO_READ_INTEGRITY=0 \
                       -DBLFS_DEBUG_MONITOR_POWER=0 \
-                      -DBLFS_MANUAL_GV_FALLBACK=0
+                      -DBLFS_MANUAL_GV_FALLBACK=-1
 
 # * This is the name of the resulant executable
 EXENAME := strongbox
