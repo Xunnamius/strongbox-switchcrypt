@@ -215,6 +215,7 @@ O3:
 clean:
 	find . -not -name 'Makefile' -not -name '.gitignore' -type f -exec rm {} +
 	rm -f /tmp/test.io.bin
+	rm -f sb
 
 check: tests
 	$(patsubst %,./% &&,$(TEST_TRGTS)) true
