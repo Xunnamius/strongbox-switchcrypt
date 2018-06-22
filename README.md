@@ -45,7 +45,7 @@ First, of course, change directory into the StrongBox directory and `make` it:
 # make
 ```
 
-If you were running tests or compiling StrongBox from source for testing purposes or what have you—especially when using different O/DEBUG levels—you need to clean the build folder between compilation attempts, like so:
+If you were running tests or compiling StrongBox from source for testing purposes or what have you—especially when using different O/DEBUG levels—you need to clean the `build/` directory between compilation attempts, like so:
 
 ```
 # make clean
@@ -73,7 +73,7 @@ StrongBox is by default compiled with `-O3` optimization. To compile with a diff
 
 This prototype has only been tested on two systems: ARM Odroid XU4 and ARM Odroid XU3; Debian and Ubuntu operating systems. It's only guaranteed to work in these environments, if even that. 
 
-Run these tests to be pretty sure (note: **these tests require ruby!**):
+Run these tests (with `build/` as cwd) to be pretty sure. Note: **these tests require ruby!**:
 
 ```
 # make clean
@@ -141,7 +141,7 @@ These tests are compiled without optimization. To compile these tests with optim
     └── unity
 ```
 
-- `build/` is where all the transient results of the Makefile process will go. `make clean` will clear out this folder (excluding the `build/test/` symlink and `build/Makefile`).
+- `build/` is where all the transient results of the Makefile process will go. `make clean` will clear out this directory (excluding the `build/test/` symlink and `build/Makefile`).
 - `config/` is where the Ruby mock, zlog, cexception, and unity_runner configs are placed, among others.
 - `src/` is where the StrongBox source lives.
 - `test/` is where the corresponding StrongBox unit tests live.
