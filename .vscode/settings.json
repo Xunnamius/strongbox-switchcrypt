@@ -5,7 +5,8 @@
         "constants.h": "c",
         "cexception_configured.h": "c",
         "strongbox.h": "c",
-        "unistd.h": "c"
+        "unistd.h": "c",
+        "swappable.h": "c"
     },
     "cSpell.words": [
         "ADTC",
