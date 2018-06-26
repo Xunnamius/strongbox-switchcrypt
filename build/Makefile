@@ -26,7 +26,7 @@ ESTREAM_ROOT    := $(VENDR_ROOT)/libestream
 # ! BLFS_DEBUG_LEVEL=0 when not debugging or suffer the (perf-related) consequences!
 # ! BLFS_MANUAL_GV_FALLBACK should be set to -1 unless no RPMB device, then >= 0
 # ! BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION=1 renders the --cipher flag meaningless
-DEBUG_COMPILE_FLAG := -DBLFS_DEBUG_LEVEL=3 \
+DEBUG_COMPILE_FLAG := -DBLFS_DEBUG_LEVEL=1 \
                       -DBLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION=0 \
                       -DBLFS_NO_READ_INTEGRITY=0 \
                       -DBLFS_DEBUG_MONITOR_POWER=0 \
