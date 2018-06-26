@@ -214,7 +214,7 @@ These are the most interesting flags available when compiling StrongBox. All com
 
 #### **BLFS_DEBUG_LEVEL**
 
-This setting determines the verbosity of StrongBox's debug output. By default, it is off (0). The highest recognized debug level is 3U.
+This setting determines the verbosity of StrongBox's debug output. By default, it is off (0). The highest recognized debug level is 3U. Debug files will be output to `/tmp/blfs_level_$BLFS_DEBUG_LEVEL_$DEVICE_FRAG` where `$DEVICE_FRAG` (*not a shell/env var*) is equal to some reference to [`nbd_device_name`](#usage).
 
 `BLFS_DEBUG_LEVEL=0` => debug is off  
 `BLFS_DEBUG_LEVEL=1` => light debugging to designated log file  

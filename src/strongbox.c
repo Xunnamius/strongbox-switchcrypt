@@ -1675,7 +1675,8 @@ void blfs_run_mode_create(const char * backstore_path,
     IFDEBUG(dzlog_debug("verf_header->data:"));
     IFDEBUG(hdzlog_debug(verf_header->data, BLFS_HEAD_HEADER_BYTES_VERIFICATION));
 
-    // Set the flakesize and fpn headers (! this is DEFINITELY endian-sensitive!!!)
+    // Set the flakesize and fpn headers
+    // ! this is DEFINITELY endian-sensitive!!!
     blfs_header_t * flakesize_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_FLAKESIZE_BYTES);
     blfs_header_t * fpn_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_FLAKESPERNUGGET);
 
