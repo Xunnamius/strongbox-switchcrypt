@@ -651,14 +651,15 @@ int buse_read(void * output_buffer, uint32_t length, uint64_t absolute_offset, v
 
     uint_fast32_t nugget_size       = buselfs_state->backstore->nugget_size_bytes;
     uint_fast32_t flake_size        = buselfs_state->backstore->flake_size_bytes;
-    uint_fast32_t num_nuggets       = buselfs_state->backstore->num_nuggets;
     uint_fast32_t flakes_per_nugget = buselfs_state->backstore->flakes_per_nugget;
+    uint_fast32_t num_nuggets = buselfs_state->backstore->num_nuggets;
+    uint_fast32_t mt_offset = mt_calculate_expected_size(0, buselfs_state);
 
-    uint_fast32_t mt_offset = 2 * num_nuggets + 8;
+    (void) num_nuggets; // ? Even when not debugging, no warnings from compiler!
 
     // ! For a bigger system, this cast could be a problem
-    uint_fast32_t nugget_offset          = (uint_fast32_t) (absolute_offset / nugget_size); // nugget_index
-    uint_fast32_t nugget_internal_offset = (uint_fast32_t) (absolute_offset % nugget_size); // internal point at which to start within nug
+    uint_fast32_t nugget_offset          = (uint_fast32_t)(absolute_offset / nugget_size); // nugget_index
+    uint_fast32_t nugget_internal_offset = (uint_fast32_t)(absolute_offset % nugget_size); // internal point at which to start within nug
 
     IFDEBUG(dzlog_debug("nugget_size: %"PRIuFAST32, nugget_size));
     IFDEBUG(dzlog_debug("flake_size: %"PRIuFAST32, flake_size));
@@ -774,9 +775,6 @@ int buse_read(void * output_buffer, uint32_t length, uint64_t absolute_offset, v
 
                 IFDEBUG(dzlog_debug("verify_in_merkle_tree calculated offset: %"PRIuFAST32,
                                     mt_offset + nugget_offset * flakes_per_nugget + flake_index));
-
-                assert(mt_offset + nugget_offset * flakes_per_nugget + flake_index <=
-                       2 * buselfs_state->backstore->num_nuggets + 7 + buselfs_state->backstore->num_nuggets * buselfs_state->backstore->flakes_per_nugget);
 
                 verify_in_merkle_tree(tag, sizeof tag, mt_offset + nugget_offset * flakes_per_nugget + flake_index, buselfs_state);
 
@@ -912,11 +910,11 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
     uint_fast32_t num_nuggets       = buselfs_state->backstore->num_nuggets;
     uint_fast32_t flakes_per_nugget = buselfs_state->backstore->flakes_per_nugget;
 
-    uint_fast32_t mt_offset = 2 * num_nuggets + 8;
+    uint_fast32_t mt_offset = mt_calculate_expected_size(0, buselfs_state);
 
     // ! For a bigger system, this cast could be a problem
-    uint_fast32_t nugget_offset          = (uint_fast32_t) (absolute_offset / nugget_size); // nugget_index
-    uint_fast32_t nugget_internal_offset = (uint_fast32_t) (absolute_offset % nugget_size); // internal point at which to start within nug
+    uint_fast32_t nugget_offset          = (uint_fast32_t)(absolute_offset / nugget_size); // nugget_index
+    uint_fast32_t nugget_internal_offset = (uint_fast32_t)(absolute_offset % nugget_size); // internal point at which to start within nug
 
     IFDEBUG(dzlog_debug("nugget_size: %"PRIuFAST32, nugget_size));
     IFDEBUG(dzlog_debug("flake_size: %"PRIuFAST32, flake_size));
@@ -1277,7 +1275,7 @@ void blfs_rekey_nugget_then_write(buselfs_state_t * buselfs_state,
         uint8_t flake_key[BLFS_CRYPTO_BYTES_FLAKE_TAG_KEY] = { 0x00 };
         uint8_t * tag = malloc(sizeof(*tag) * BLFS_CRYPTO_BYTES_FLAKE_TAG_OUT);
         uint8_t flake_data[flake_size];
-        uint32_t mt_offset = mt_calculate_new_offset(rekeying_nugget_index, flake_index, buselfs_state);
+        uint32_t mt_offset = mt_calculate_flake_offset(rekeying_nugget_index, flake_index, buselfs_state);
 
         if(tag == NULL)
             Throw(EXCEPTION_ALLOC_FAILURE);
@@ -1325,9 +1323,12 @@ void blfs_rekey_nugget_then_write(buselfs_state_t * buselfs_state,
 // TODO: don't try the open command until this is fixed.
 void blfs_soft_open(buselfs_state_t * buselfs_state, uint8_t cin_allow_insecure_start)
 {
+    (void) buselfs_state;
+    (void) cin_allow_insecure_start;
+
     IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
 
-    /*char passwd[BLFS_PASSWORD_BUF_SIZE] = { 0x00 };
+    char passwd[BLFS_PASSWORD_BUF_SIZE] = { 0x00 };
 
     if(buselfs_state->default_password != NULL)
     {
@@ -1421,11 +1422,16 @@ void blfs_soft_open(buselfs_state_t * buselfs_state, uint8_t cin_allow_insecure_
         dzlog_fatal("!!!!!!! ERROR: FATAL BLOCK DEVICE BACKSTORE MT INTEGRITY CHECK FAILURE !!!!!!!");
 
         if(cin_allow_insecure_start)
-            dzlog_warn("The allow-insecure-start flag detected. Forcing start anyway...");
+            dzlog_warn("`allow-insecure-start` flag detected. Forcing start anyway...");
 
         else
         {
             dzlog_warn("Use the allow-insecure-start flag to ignore integrity violation (at your own peril).");
+            IFDEBUG(dzlog_info("Header MTRH (first) vs calculated MTRH (second):"));
+            IFDEBUG(hdzlog_info(mtrh_header->data, BLFS_HEAD_HEADER_BYTES_MTRH));
+            IFDEBUG(hdzlog_info(buselfs_state->merkle_tree_root_hash, BLFS_HEAD_HEADER_BYTES_MTRH));
+            
+            IFDEBUG(hdzlog_debug(buselfs_state->merkle_tree_root_hash, BLFS_HEAD_HEADER_BYTES_MTRH));
             Throw(EXCEPTION_INTEGRITY_FAILURE);
         }
     }
@@ -1446,9 +1452,7 @@ void blfs_soft_open(buselfs_state_t * buselfs_state, uint8_t cin_allow_insecure_
         update_in_merkle_tree(tpmv_header->data, BLFS_HEAD_HEADER_BYTES_TPMGLOBALVER, 0, buselfs_state);
     }
 
-    commit_merkle_tree_root_hash(buselfs_state);*/
-
-    Throw(EXCEPTION_UNKNOWN_MODE);
+    commit_merkle_tree_root_hash(buselfs_state);
 
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 }
@@ -1604,11 +1608,11 @@ void blfs_run_mode_create(const char * backstore_path,
     int64_t space_remaining = cin_backstore_size - headersize;
     int64_t num_nuggets_calculated_64 = 0;
 
-    uint64_t total_space_req_for_one_nug = calculate_total_space_required_for_1nug(nuggetsize, buselfs_state);
+    uint64_t total_space_req_for_one_nug = calculate_total_space_required_for_1nug(nuggetsize, cin_flakes_per_nugget);
 
     IFDEBUG(dzlog_debug("headersize = %"PRIu64, headersize));
     IFDEBUG(dzlog_debug("nuggetsize = %"PRIu64, nuggetsize));
-    IFDEBUG(dzlog_debug("total_space_req_for_one_nug = %"PRIu64, buselfs_state->total_space_req_for_one_nug));
+    IFDEBUG(dzlog_debug("total_space_req_for_one_nug = %"PRIu64, total_space_req_for_one_nug));
     IFDEBUG(dzlog_debug("space_remaining = %"PRId64, space_remaining));
 
     while(space_remaining > 0 && (unsigned) space_remaining > total_space_req_for_one_nug)
@@ -1637,8 +1641,6 @@ void blfs_run_mode_create(const char * backstore_path,
 
     // Do some intermediate number crunching
     blfs_backstore_setup_actual_post(buselfs_state->backstore);
-
-    IFDEBUG(dzlog_debug("buselfs_state->merkle_tree_expected_size = %"PRIu64, buselfs_state->merkle_tree_expected_size));
 
     dzlog_notice("Prefetching data caches...");
 
@@ -1939,9 +1941,10 @@ buselfs_state_t * strongbox_main_actual(int argc, char * argv[], char * blockdev
     {
         dzlog_warn("WARNING: AES-XTS emulation is ON! It is NOT secure!");
 
-        ERR_load_crypto_strings();
-        OpenSSL_add_all_algorithms();
-        OPENSSL_config(NULL);
+        // ? Unnecessary as of OpenSSL 1.1.0
+        // ERR_load_crypto_strings();
+        // OpenSSL_add_all_algorithms();
+        // OPENSSL_config(NULL);
     }
 
     /* Initialize nugget key cache */
@@ -1971,8 +1974,8 @@ buselfs_state_t * strongbox_main_actual(int argc, char * argv[], char * blockdev
 
     /* Sanity/safety asserts */
 
-    assert(crypto_stream_chacha20_KEYBYTES == BLFS_CRYPTO_BYTES_CHACHA_KEY);
-    assert(crypto_stream_chacha20_NONCEBYTES == BLFS_CRYPTO_BYTES_CHACHA_NONCE);
+    assert(crypto_stream_chacha20_KEYBYTES == BLFS_CRYPTO_BYTES_CHACHA20_KEY);
+    assert(crypto_stream_chacha20_NONCEBYTES == BLFS_CRYPTO_BYTES_CHACHA20_NONCE);
     assert(crypto_box_SEEDBYTES == BLFS_CRYPTO_BYTES_KDF_OUT);
     assert(crypto_pwhash_SALTBYTES == BLFS_CRYPTO_BYTES_KDF_SALT);
     assert(crypto_onetimeauth_poly1305_BYTES == BLFS_CRYPTO_BYTES_FLAKE_TAG_OUT);

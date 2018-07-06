@@ -14,14 +14,14 @@
                 "forwardX11": true,
                 "host": "192.168.115.5",
                 "cwd": "/home/xunnamius/repos/research/buselfs/build",
-                "keyfile": "F:/SkyDrive/.ssh/xunnmorty_rsa_ul",
+                "keyfile": "F:/OneDrive/.ssh/xunnmorty_rsa_ul",
                 "port": 1111,
                 "user": "xunnamius",
                 "x11host": "localhost",
                 "x11port": 6000,
                 // Allow gdb to path back to the appropriate test source
                 // while also working around a stupid windows symlink bug...
-                "bootstrap": "ln -s ../test ."
+                "bootstrap": "ln -fs ../test . && ln -fs ../src ."
             }
         }
     ]

@@ -38,7 +38,7 @@ void blfs_chacha20_verif(uint8_t * xored_value, const uint8_t * secret);
 
 /**
  * Generates a BLFS_CRYPTO_BYTES_TJ_HASH_OUT length xored_tj using the given
- * secret of `length` and a BLFS_CRYPTO_BYTES_CHACHA_NONCE nonce. The Chacha20
+ * secret of `length` and a BLFS_CRYPTO_BYTES_CHACHA20_NONCE nonce. The Chacha20
  * based BLAKE2 function is used.
  * 
  * @param xored_value
@@ -141,7 +141,7 @@ void blfs_KDF_generate_salt(uint8_t * generated_salt);
 
 /**
  * Accepts plaintext_data of length data_length, a flake_key of length
- * BLFS_CRYPTO_BYTES_CHACHA_KEY, and a sector_tweak and yields ciphertext of
+ * BLFS_CRYPTO_BYTES_CHACHA20_KEY, and a sector_tweak and yields ciphertext of
  * length data_length into encrypted_data. StrongBox wasn't made for AES-XTS, so
  * this is NOT a secure use of the mode!
  *
@@ -159,7 +159,7 @@ void blfs_aesxts_encrypt(uint8_t * encrypted_data,
 
 /**
  * Accepts encrypted_data of length data_length, a flake_key of length
- * BLFS_CRYPTO_BYTES_CHACHA_KEY, and a sector_tweak and yields plaintext of
+ * BLFS_CRYPTO_BYTES_CHACHA20_KEY, and a sector_tweak and yields plaintext of
  * length data_length into plaintext_data. StrongBox wasn't made for AES-XTS, so
  * this is NOT a secure use of the mode!
  *

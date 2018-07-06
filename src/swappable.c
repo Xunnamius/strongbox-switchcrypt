@@ -17,6 +17,41 @@
 #include "sosemanuk.h"
 
 /**
+ * ?? Example stream_crypt_common implementation:
+ *
+ * * Accepts a byte array of data of length data_length and yields crypted_data of
+ * * the same length via the result of XOR-ing the output of some stream cipher
+ * * run with the provided secret (nugget_key), likely using kcs_keycount as a
+ * * nonce, and initial block count (also could be the nonce; calculated from
+ * * nugget_internal_offset).
+ * *
+ * * This function should be called within a per-nugget (conceptual) context.
+ * *
+ * * If you crypt something, and then pass crypted_data back in as data with the
+ * * same keys and offsets, then you will get the original message back.
+ * *
+ * * @example
+ * * void some_stream_cipher_impl(uint8_t * crypted_data,
+ * *                              const uint8_t * data,
+ * *                              uint32_t data_length,
+ * *                              const uint8_t * nugget_key,
+ * *                              uint64_t kcs_keycount,
+ * *                              uint64_t nugget_internal_offset);
+ */
+
+typedef enum {
+  CHACHA8_NEON = 8,
+  CHACHA12_NEON = 12,
+  CHACHA20_NEON = 20
+} chacha_neon_variant;
+
+typedef enum {
+  FREESTYLE_FAST = 0,
+  FREESTYLE_BALANCED = 1,
+  FREESTYLE_SECURE = 2
+} freestyle_variant;
+
+/**
  * This struct represents the execution context of a generic stream cipher (sc).
  */
 typedef struct sc_context_t {
@@ -63,8 +98,8 @@ static void generic_sc_impl(sc_context_t * sc_context)
     IFDEBUG(dzlog_debug("%s", sc_context->output_name));
     IFDEBUG(dzlog_debug("keycount = %"PRIu64, sc_context->kcs_keycount));
     IFDEBUG(dzlog_debug("keycount hex x2 (should match):"));
-    IFDEBUG(hdzlog_debug(&(sc_context->kcs_keycount), BLFS_CRYPTO_BYTES_CHACHA_NONCE));
-    IFDEBUG(hdzlog_debug(kcs_keycount_ptr, BLFS_CRYPTO_BYTES_CHACHA_NONCE));
+    IFDEBUG(hdzlog_debug(&(sc_context->kcs_keycount), BLFS_CRYPTO_BYTES_CHACHA20_NONCE));
+    IFDEBUG(hdzlog_debug(kcs_keycount_ptr, BLFS_CRYPTO_BYTES_CHACHA20_NONCE));
     IFDEBUG(dzlog_debug("data_length = %"PRIu32, sc_context->data_length));
     IFDEBUG(dzlog_debug("nugget_internal_offset = %"PRIu64, sc_context->nugget_internal_offset));
     IFDEBUG(dzlog_debug("interblock_offset = %"PRIu64, interblock_offset));
@@ -194,7 +229,6 @@ static void generic_sc_aes_impl(const char * output_name,
  *
  * @param sc_context
  */
-
 static void generic_sc_salsa_impl(const char * output_name,
                                 uint64_t output_size_bytes,
                                 uint64_t key_size_bytes,
@@ -258,28 +292,72 @@ static void generic_sc_salsa_impl(const char * output_name,
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 }
 
-/**
- * Example stream_crypt_common implementation:
- * 
- * Accepts a byte array of data of length data_length and yields crypted_data of
- * the same length via the result of XOR-ing the output of some stream cipher
- * run with the provided secret (nugget_key), likely using kcs_keycount as a
- * nonce, and initial block count (also could be the nonce; calculated from
- * nugget_internal_offset).
- *
- * This function should be called within a per-nugget (conceptual) context.
- *
- * If you crypt something, and then pass crypted_data back in as data with the
- * same keys and offsets, then you will get the original message back.
- *
- * @example
- * void some_stream_cipher_impl(uint8_t * crypted_data,
- *                              const uint8_t * data,
- *                              uint32_t data_length,
- *                              const uint8_t * nugget_key,
- *                              uint64_t kcs_keycount,
- *                              uint64_t nugget_internal_offset);
- */
+static void generic_sc_chacha_neon_impl(const char * output_name,
+                                uint64_t output_size_bytes,
+                                uint64_t key_size_bytes,
+                                chacha_neon_variant chacha_rounds,
+                                uint8_t * crypted_data,
+                                const uint8_t * data,
+                                uint32_t data_length,
+                                const uint8_t * nugget_key,
+                                uint64_t kcs_keycount,
+                                uint64_t nugget_internal_offset)
+{
+    IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
+
+    sc_context_t sc_context = {
+        .output_name = output_name,
+        .output_size_bytes = output_size_bytes,
+        .crypted_data = crypted_data,
+        .data = data,
+        .data_length = data_length,
+        .nugget_key = nugget_key,
+        .kcs_keycount = kcs_keycount,
+        .nugget_internal_offset = nugget_internal_offset,
+        #ifndef __INTELLISENSE__
+        .data_handle = LAMBDA(void,
+            // TODO: !!
+            (void * context,
+             uint64_t interblock_offset,
+             uint64_t intrablock_offset,
+             uint64_t num_blocks,
+             uint64_t zero_str_length,
+             uint64_t block_read_upper_bound,
+             const uint8_t * const kcs_keycount_ptr,
+             uint8_t * xor_str)
+            {
+                (void) intrablock_offset;
+                (void) num_blocks;
+                (void) block_read_upper_bound;
+
+                uint8_t * zero_str = calloc(zero_str_length, sizeof(*zero_str));
+
+                if(zero_str == NULL)
+                    Throw(EXCEPTION_ALLOC_FAILURE);
+
+                sc_context_t * sc_context = (sc_context_t *) context;
+
+                if(crypto_stream_chacha20_xor_ic(
+                        xor_str,
+                        zero_str,
+                        zero_str_length,
+                        kcs_keycount_ptr,
+                        interblock_offset,
+                        sc_context->nugget_key) != 0)
+                {
+                    Throw(EXCEPTION_CHACHA20_BAD_RETVAL);
+                }
+
+                free(zero_str);
+            }
+        ),
+        #endif
+    };
+
+    generic_sc_impl(&sc_context);
+
+    IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
+}
 
 static void sc_impl_chacha20(uint8_t * crypted_data,
                              const uint8_t * data,
@@ -292,7 +370,7 @@ static void sc_impl_chacha20(uint8_t * crypted_data,
 
     sc_context_t sc_context = {
         .output_name = "sc_chacha20",
-        .output_size_bytes = BLFS_CRYPTO_BYTES_CHACHA_BLOCK,
+        .output_size_bytes = BLFS_CRYPTO_BYTES_CHACHA20_BLOCK,
         .crypted_data = crypted_data,
         .data = data,
         .data_length = data_length,
@@ -389,6 +467,29 @@ static void sc_impl_aes256_ctr(uint8_t * crypted_data,
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 }
 
+static void sc_impl_aes512_ctr(uint8_t * crypted_data,
+                             const uint8_t * data,
+                             uint32_t data_length,
+                             const uint8_t * nugget_key,
+                             uint64_t kcs_keycount,
+                             uint64_t nugget_internal_offset)
+{
+    IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
+
+    generic_sc_aes_impl("sc_aes512_ctr",
+                        BLFS_CRYPTO_BYTES_AES512_BLOCK,
+                        BLFS_CRYPTO_BYTES_AES512_KEY,
+                        BLFS_CRYPTO_BYTES_AES512_IV,
+                        crypted_data,
+                        data,
+                        data_length,
+                        nugget_key,
+                        kcs_keycount,
+                        nugget_internal_offset);
+
+    IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
+}
+
 static void sc_impl_salsa8(uint8_t * crypted_data,
                            const uint8_t * data,
                            uint32_t data_length,
@@ -448,6 +549,75 @@ static void sc_impl_salsa20(uint8_t * crypted_data,
                           BLFS_CRYPTO_BYTES_SALSA20_BLOCK,
                           BLFS_CRYPTO_BYTES_SALSA20_KEY,
                           SALSA20_20,
+                          crypted_data,
+                          data,
+                          data_length,
+                          nugget_key,
+                          kcs_keycount,
+                          nugget_internal_offset);
+
+    IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
+}
+
+static void sc_impl_chacha8_neon(uint8_t * crypted_data,
+                           const uint8_t * data,
+                           uint32_t data_length,
+                           const uint8_t * nugget_key,
+                           uint64_t kcs_keycount,
+                           uint64_t nugget_internal_offset)
+{
+    IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
+
+    generic_sc_salsa_impl("sc_chacha8_neon",
+                          BLFS_CRYPTO_BYTES_CHACHA8N_BLOCK,
+                          BLFS_CRYPTO_BYTES_CHACHA8N_KEY,
+                          CHACHA8_NEON,
+                          crypted_data,
+                          data,
+                          data_length,
+                          nugget_key,
+                          kcs_keycount,
+                          nugget_internal_offset);
+
+    IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
+}
+
+static void sc_impl_chacha12_neon(uint8_t * crypted_data,
+                           const uint8_t * data,
+                           uint32_t data_length,
+                           const uint8_t * nugget_key,
+                           uint64_t kcs_keycount,
+                           uint64_t nugget_internal_offset)
+{
+    IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
+
+    generic_sc_salsa_impl("sc_chacha12_neon",
+                          BLFS_CRYPTO_BYTES_CHACHA12N_BLOCK,
+                          BLFS_CRYPTO_BYTES_CHACHA12N_KEY,
+                          CHACHA12_NEON,
+                          crypted_data,
+                          data,
+                          data_length,
+                          nugget_key,
+                          kcs_keycount,
+                          nugget_internal_offset);
+
+    IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
+}
+
+static void sc_impl_chacha20_neon(uint8_t * crypted_data,
+                           const uint8_t * data,
+                           uint32_t data_length,
+                           const uint8_t * nugget_key,
+                           uint64_t kcs_keycount,
+                           uint64_t nugget_internal_offset)
+{
+    IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
+
+    generic_sc_salsa_impl("sc_chacha20_neon",
+                          BLFS_CRYPTO_BYTES_CHACHA20N_BLOCK,
+                          BLFS_CRYPTO_BYTES_CHACHA20N_KEY,
+                          CHACHA20_NEON,
                           crypted_data,
                           data,
                           data_length,

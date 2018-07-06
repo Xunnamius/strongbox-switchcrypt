@@ -56,21 +56,23 @@
 ////////////////////
 
 // ? These are the valid values for the --cipher CLI flag
-// ! Note: we are limited to 255 stream cipher implementations (see: header size)
-// ! Note: DO NOT change the order of ciphers, just add new ones to the bottom
+// ! Note: we are limited to 255 + 1 stream cipher implementations (see: header
+// ! size) Note: DO NOT change the order of ciphers, just add new ones to the
+// ! bottom. This is because nugget metadata tracks ciphers by enum value!
 typedef enum stream_cipher_e {
     sc_default,
     sc_not_impl,
-    sc_chacha8,
-    sc_chacha12,
+    sc_chacha8_neon,
+    sc_chacha12_neon,
+    sc_chacha20_neon,
     sc_chacha20,
-    sc_chacha20_alt,
     sc_salsa8,
     sc_salsa12,
     sc_salsa20,
     sc_aes128_ctr,
     sc_aes256_ctr,
-    sc_hc128, // TODO: why have we limited HC128's output to 4 bytes? That's likely why it's so slow!
+    sc_aes512_ctr,
+    sc_hc128, // ?? Slow because estream impl is low (4b) throughput?
     sc_rabbit,
     sc_sosemanuk,
     sc_freestyle,
@@ -166,9 +168,21 @@ typedef enum stream_cipher_e {
 #define BLFS_CRYPTO_BYTES_AES256_BLOCK          16U // OpenSSL AES-256 outputs 16-byte blocks
 #define BLFS_CRYPTO_BYTES_AES256_KEY            32U // AES 256 key size
 #define BLFS_CRYPTO_BYTES_AES256_IV             32U // We use AES-256 in ECB mode with 32 byte "IV"
-#define BLFS_CRYPTO_BYTES_CHACHA_BLOCK          64U // Chacha20/20 outputs randomly accessible 512-bit (64-byte) blocks
-#define BLFS_CRYPTO_BYTES_CHACHA_KEY            32U // crypto_stream_chacha20_KEYBYTES
-#define BLFS_CRYPTO_BYTES_CHACHA_NONCE          8U  // crypto_stream_chacha20_NONCEBYTES
+#define BLFS_CRYPTO_BYTES_AES512_BLOCK          16U // OpenSSL AES-512 outputs 16-byte blocks
+#define BLFS_CRYPTO_BYTES_AES512_KEY            64U // AES 512 key size
+#define BLFS_CRYPTO_BYTES_AES512_IV             64U // We use AES-512 in ECB mode with 32 byte "IV"
+#define BLFS_CRYPTO_BYTES_CHACHA20_BLOCK        64U // Chacha20/20 outputs randomly accessible 512-bit (64-byte) blocks
+#define BLFS_CRYPTO_BYTES_CHACHA20_KEY          32U // crypto_stream_chacha20_KEYBYTES
+#define BLFS_CRYPTO_BYTES_CHACHA20_NONCE        8U  // crypto_stream_chacha20_NONCEBYTES
+#define BLFS_CRYPTO_BYTES_CHACHA20N_BLOCK       64U // Chacha20/20 outputs randomly accessible 512-bit (64-byte) blocks
+#define BLFS_CRYPTO_BYTES_CHACHA20N_KEY         32U // crypto_stream_chacha20_KEYBYTES
+#define BLFS_CRYPTO_BYTES_CHACHA20N_NONCE       8U  // crypto_stream_chacha20_NONCEBYTES
+#define BLFS_CRYPTO_BYTES_CHACHA12N_BLOCK       64U // Chacha20/12 outputs randomly accessible 512-bit (64-byte) blocks
+#define BLFS_CRYPTO_BYTES_CHACHA12N_KEY         32U // (cipher defined)
+#define BLFS_CRYPTO_BYTES_CHACHA12N_NONCE       8U  // (cipher defined)
+#define BLFS_CRYPTO_BYTES_CHACHA8N_BLOCK        64U // Chacha20/8 outputs randomly accessible 512-bit (64-byte) blocks
+#define BLFS_CRYPTO_BYTES_CHACHA8N_KEY          32U // (cipher defined)
+#define BLFS_CRYPTO_BYTES_CHACHA8N_NONCE        8U  // (cipher defined)
 #define BLFS_CRYPTO_BYTES_SALSA20_BLOCK         64U // Salsa20/20 outputs 64-byte blocks
 #define BLFS_CRYPTO_BYTES_SALSA20_KEY           32U // Salsa20/20 uses 32 byte keys
 #define BLFS_CRYPTO_BYTES_SALSA20_IV            8U  // Salsa20/20 uses 8 byte IV

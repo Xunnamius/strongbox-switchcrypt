@@ -448,7 +448,7 @@ blfs_nugget_metadata_t * blfs_create_nugget_metadata(blfs_backstore_t * backstor
     meta->data_offset = backstore->md_real_offset + nugget_index * meta->data_length;
 
     meta->cipher_ident = sc_not_impl;
-    meta->data = malloc((meta->data_length - 1) * sizeof(uint8_t));
+    meta->data = calloc(meta->data_length - 1, sizeof(uint8_t));
 
     IFDEBUG(dzlog_debug("created new blfs_nugget_metadata_t object"));
     IFDEBUG(dzlog_debug("backstore->md_real_offset = %"PRIu64, backstore->md_real_offset));
@@ -490,7 +490,7 @@ blfs_nugget_metadata_t * blfs_open_nugget_metadata(blfs_backstore_t * backstore,
         IFDEBUG(dzlog_debug("backstore->flakes_per_nugget = %"PRIu32, backstore->flakes_per_nugget));
 
         meta->nugget_index = nugget_index;
-        meta->data_length = CEIL(backstore->flakes_per_nugget, BITS_IN_A_BYTE);
+        meta->data_length = BLFS_HEAD_BYTES_NUGGET_METADATA;
         meta->data_offset = backstore->md_real_offset + nugget_index * meta->data_length;
         meta->data = malloc((meta->data_length - 1) * sizeof(uint8_t));
 
@@ -522,18 +522,24 @@ void blfs_commit_nugget_metadata(blfs_backstore_t * backstore, const blfs_nugget
 {
     IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
 
-    blfs_backstore_write(backstore, (uint8_t *) &(meta->cipher_ident), 1, meta->data_offset);
-    blfs_backstore_write(backstore, meta->data, meta->data_length - 1, meta->data_offset + 1);
+    uint8_t commit_data[meta->data_length];
+
+    memcpy(commit_data, (uint8_t *) &(meta->cipher_ident), 1);
+    memcpy(commit_data + 1, meta->data, meta->data_length - 1);
+
+    blfs_backstore_write(backstore, commit_data, meta->data_length, meta->data_offset);
 
     IFDEBUG(dzlog_debug("committing nugget metadata to backstore:"));
     IFDEBUG(dzlog_debug("meta->nugget_index = %"PRIu32, meta->nugget_index));
     IFDEBUG(dzlog_debug("meta->data_length = %"PRIu64, meta->data_length));
     IFDEBUG(dzlog_debug("meta->data_offset = %"PRIu64, meta->data_offset));
-    IFDEBUG(dzlog_debug("meta->cipher_ident = %"PRIu64, meta->cipher_ident));
+    IFDEBUG(dzlog_debug("meta->cipher_ident = %"PRIu32, meta->cipher_ident));
     IFDEBUG(dzlog_debug("meta->cipher_ident (as data):"));
     IFDEBUG(hdzlog_debug(&(meta->cipher_ident), 1));
     IFDEBUG(dzlog_debug("meta->data:"));
     IFDEBUG(hdzlog_debug(&(meta->data), meta->data_length - 1));
+    IFDEBUG(dzlog_debug("commit_data (should be the above two combined):"));
+    IFDEBUG(hdzlog_debug(commit_data, meta->data_length));
 
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 }

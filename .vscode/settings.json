@@ -54,6 +54,7 @@
         "block",
         "buseops",
         "bytes",
+        "cpuinfo",
         "crypto",
         "estream",
         "ffinish",

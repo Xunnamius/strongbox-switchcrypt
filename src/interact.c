@@ -26,6 +26,7 @@ void interact_prompt_user(const char * prompt, char * response, size_t length)
 
     #pragma GCC diagnostic push
     #pragma GCC diagnostic ignored "-Wunused-result"
+    #pragma GCC diagnostic ignored "-Wformat"
 
     printf("%s", prompt);
     scanf("%ms", &r);

@@ -7,10 +7,10 @@
 static stream_cipher_e test_these_ciphers[] = {
     // sc_default,
     // sc_not_impl,
-    sc_chacha8,
-    sc_chacha12,
+    //sc_chacha8_neon,
+    //sc_chacha12_neon,
     sc_chacha20,
-    sc_chacha20_alt,
+    //sc_chacha20_neon,
     sc_salsa8,
     sc_salsa12,
     sc_salsa20,
@@ -19,7 +19,7 @@ static stream_cipher_e test_these_ciphers[] = {
     sc_hc128,
     sc_rabbit,
     sc_sosemanuk,
-    sc_freestyle,
+    //sc_freestyle,
 };
 
 #define TRY_FN_CATCH_EXCEPTION(fn_call)           \
@@ -38,9 +38,9 @@ void setUp(void)
 
     if(!runonce && BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
     {
-        ERR_load_crypto_strings();
-        OpenSSL_add_all_algorithms();
-        OPENSSL_config(NULL);
+        // ERR_load_crypto_strings();
+        // OpenSSL_add_all_algorithms();
+        // OPENSSL_config(NULL);
         runonce = 1;
     }
 

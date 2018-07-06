@@ -39,16 +39,17 @@ blfs_backstore_t * fake_initialize_backstore(blfs_backstore_t * backstore)
     backstore->cache_headers = kh_init(BLFS_KHASH_HEADERS_CACHE_NAME);
     backstore->cache_kcs_counts = kh_init(BLFS_KHASH_KCS_CACHE_NAME);
     backstore->cache_tj_entries = kh_init(BLFS_KHASH_TJ_CACHE_NAME);
+    backstore->cache_nugget_md = kh_init(BLFS_KHASH_MD_CACHE_NAME);
 
-    backstore->kcs_real_offset = 12345;
-    backstore->tj_real_offset = 10;
-    backstore->md_real_offset = 10;
+    backstore->kcs_real_offset = 105;
+    backstore->tj_real_offset = 129;
+    backstore->md_real_offset = 132;
 
-    backstore->nugget_size_bytes = 5;
-    backstore->flake_size_bytes = 5;
+    backstore->nugget_size_bytes = 16;
+    backstore->flake_size_bytes = 8;
 
-    backstore->num_nuggets = 2;
-    backstore->flakes_per_nugget = 3;
+    backstore->num_nuggets = 3;
+    backstore->flakes_per_nugget = 2;
 
     return backstore;
 }
@@ -66,23 +67,26 @@ void test_blfs_open_header_works_as_expected(void)
 
     blfs_header_t * actual_header = blfs_open_header(backstore, BLFS_HEAD_HEADER_TYPE_VERSION);
 
-    uint8_t expected_rekeying[BLFS_HEAD_HEADER_BYTES_REKEYING] = { 0x01, 0x00, 0x00, 0x00 };
+    uint8_t expected_salt[BLFS_HEAD_HEADER_BYTES_SALT] = {
+        0x01, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00,
+        0x01, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00
+    };
 
-    blfs_backstore_read_Expect(backstore, NULL, BLFS_HEAD_HEADER_BYTES_REKEYING, 0x69);
+    blfs_backstore_read_Expect(backstore, NULL, BLFS_HEAD_HEADER_BYTES_SALT, 0x04);
     blfs_backstore_read_IgnoreArg_buffer();
-    blfs_backstore_read_ReturnArrayThruPtr_buffer(expected_rekeying, BLFS_HEAD_HEADER_BYTES_REKEYING);
+    blfs_backstore_read_ReturnArrayThruPtr_buffer(expected_salt, BLFS_HEAD_HEADER_BYTES_SALT);
 
-    blfs_header_t * actual_header2 = blfs_open_header(backstore, BLFS_HEAD_HEADER_TYPE_REKEYING);
+    blfs_header_t * actual_header2 = blfs_open_header(backstore, BLFS_HEAD_HEADER_TYPE_SALT);
 
     TEST_ASSERT_EQUAL_UINT(BLFS_HEAD_HEADER_TYPE_VERSION, actual_header->type);
     TEST_ASSERT_EQUAL_UINT(0x00, actual_header->data_offset);
     TEST_ASSERT_EQUAL_UINT(BLFS_HEAD_HEADER_BYTES_VERSION, actual_header->data_length);
     TEST_ASSERT_EQUAL_MEMORY(expected_version, actual_header->data, actual_header->data_length);
 
-    TEST_ASSERT_EQUAL_UINT(BLFS_HEAD_HEADER_TYPE_REKEYING, actual_header2->type);
-    TEST_ASSERT_EQUAL_UINT(0x69, actual_header2->data_offset);
-    TEST_ASSERT_EQUAL_UINT(BLFS_HEAD_HEADER_BYTES_REKEYING, actual_header2->data_length);
-    TEST_ASSERT_EQUAL_MEMORY(expected_rekeying, actual_header2->data, actual_header2->data_length);
+    TEST_ASSERT_EQUAL_UINT(BLFS_HEAD_HEADER_TYPE_SALT, actual_header2->type);
+    TEST_ASSERT_EQUAL_UINT(0x04, actual_header2->data_offset);
+    TEST_ASSERT_EQUAL_UINT(BLFS_HEAD_HEADER_BYTES_SALT, actual_header2->data_length);
+    TEST_ASSERT_EQUAL_MEMORY(expected_salt, actual_header2->data, actual_header2->data_length);
 }
 
 void test_blfs_open_and_close_header_functions_cache_properly(void)
@@ -378,43 +382,118 @@ void test_blfs_commit_tjournal_entry_works_as_expected(void)
     blfs_commit_tjournal_entry(backstore, entry);
 }
 
-// TODO: get rid of this with the other stuff
-// void test_blfs_fetch_journaled_data_works_as_expected(void)
-// {
-//     blfs_backstore_t bs;
-//     blfs_backstore_t * backstore = fake_initialize_backstore(&bs);
+void test_blfs_open_nugget_md_works_as_expected(void)
+{
+    int nugget_index = 555;
+    blfs_backstore_t bs;
+    blfs_backstore_t * backstore = fake_initialize_backstore(&bs);
 
-//     blfs_keycount_t rekeying_count;
-//     blfs_tjournal_entry_t rekeying_entry;
-//     uint8_t rekeying_nugget_data[5] = { 0x00 };
+    uint8_t expected_output[BLFS_HEAD_BYTES_NUGGET_METADATA] = { 0x02, 0x10, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
+    uint8_t expected_ones[BLFS_HEAD_BYTES_NUGGET_METADATA] = { 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01 };
+    uint64_t real_offset = backstore->md_real_offset + nugget_index * BLFS_HEAD_BYTES_NUGGET_METADATA;
 
-//     uint8_t expected_jcount_data[BLFS_HEAD_BYTES_KEYCOUNT] = { 0xFF };
-//     uint8_t expected_jentry_data[2] = { 0xFF };
-//     uint8_t expected_rekeying_nugget_data[5] = { 0xFF };
+    blfs_backstore_read_Expect(backstore, NULL, BLFS_HEAD_BYTES_NUGGET_METADATA, real_offset);
+    blfs_backstore_read_IgnoreArg_buffer();
+    blfs_backstore_read_ReturnArrayThruPtr_buffer(expected_output, BLFS_HEAD_BYTES_NUGGET_METADATA);
 
-//     blfs_backstore_read_Expect(backstore, NULL, BLFS_HEAD_BYTES_KEYCOUNT, backstore->kcs_journaled_offset);
-//     blfs_backstore_read_IgnoreArg_buffer();
-//     blfs_backstore_read_ReturnArrayThruPtr_buffer(expected_jcount_data, BLFS_HEAD_BYTES_KEYCOUNT);
+    blfs_nugget_metadata_t * actual_nugget_metadata = blfs_open_nugget_metadata(backstore, nugget_index);
 
-//     blfs_backstore_read_Expect(backstore, NULL, 2, backstore->tj_journaled_offset);
-//     blfs_backstore_read_IgnoreArg_buffer();
-//     blfs_backstore_read_ReturnArrayThruPtr_buffer(expected_jentry_data, 2);
+    TEST_ASSERT_EQUAL_UINT(nugget_index, actual_nugget_metadata->nugget_index);
+    TEST_ASSERT_EQUAL_UINT(BLFS_HEAD_BYTES_NUGGET_METADATA, actual_nugget_metadata->data_length);
+    TEST_ASSERT_EQUAL_UINT(real_offset, actual_nugget_metadata->data_offset);
+    TEST_ASSERT_EQUAL_UINT(expected_output[0], actual_nugget_metadata->cipher_ident);
+    TEST_ASSERT_EQUAL_MEMORY(expected_output + 1, actual_nugget_metadata->data, actual_nugget_metadata->data_length - 1);
 
-//     blfs_backstore_read_Expect(backstore, NULL, backstore->nugget_size_bytes, backstore->nugget_journaled_offset);
-//     blfs_backstore_read_IgnoreArg_buffer();
-//     blfs_backstore_read_ReturnArrayThruPtr_buffer(expected_rekeying_nugget_data, backstore->nugget_size_bytes);
+    blfs_backstore_read_Expect(backstore, NULL, BLFS_HEAD_BYTES_NUGGET_METADATA, backstore->md_real_offset);
+    blfs_backstore_read_IgnoreArg_buffer();
+    blfs_backstore_read_ReturnArrayThruPtr_buffer(expected_ones, BLFS_HEAD_BYTES_NUGGET_METADATA);
 
-//     blfs_fetch_journaled_data(backstore, 54, &rekeying_count, &rekeying_entry, rekeying_nugget_data);
+    blfs_nugget_metadata_t * actual_nugget_metadata2 = blfs_open_nugget_metadata(backstore, 0);
 
-//     TEST_ASSERT_EQUAL_UINT(54, rekeying_entry.nugget_index);
-//     TEST_ASSERT_EQUAL_UINT(backstore->tj_journaled_offset, rekeying_entry.data_offset);
-//     TEST_ASSERT_EQUAL_UINT(2, rekeying_entry.data_length);
-//     TEST_ASSERT_EQUAL_MEMORY(expected_jentry_data, rekeying_entry.bitmask->mask, rekeying_entry.data_length);
+    TEST_ASSERT_EQUAL_UINT(0, actual_nugget_metadata2->nugget_index);
+    TEST_ASSERT_EQUAL_UINT(BLFS_HEAD_BYTES_NUGGET_METADATA, actual_nugget_metadata2->data_length);
+    TEST_ASSERT_EQUAL_UINT(backstore->md_real_offset, actual_nugget_metadata2->data_offset);
+    TEST_ASSERT_EQUAL_UINT(expected_ones[0], actual_nugget_metadata2->cipher_ident);
+    TEST_ASSERT_EQUAL_MEMORY(expected_ones + 1, actual_nugget_metadata2->data, actual_nugget_metadata2->data_length - 1);
+}
 
-//     TEST_ASSERT_EQUAL_UINT(54, rekeying_count.nugget_index);
-//     TEST_ASSERT_EQUAL_UINT(backstore->kcs_journaled_offset, rekeying_count.data_offset);
-//     TEST_ASSERT_EQUAL_UINT(BLFS_HEAD_BYTES_KEYCOUNT, rekeying_count.data_length);
-//     TEST_ASSERT_EQUAL_UINT(0xFF, rekeying_count.keycount);
+void test_blfs_open_and_close_nugget_md_functions_cache_properly(void)
+{
+    int nugget_index = 50;
+    blfs_backstore_t bs;
+    blfs_backstore_t * backstore = fake_initialize_backstore(&bs);
 
-//     TEST_ASSERT_EQUAL_MEMORY(expected_rekeying_nugget_data, rekeying_nugget_data, backstore->nugget_size_bytes);
-// }
+    uint8_t expected_output[BLFS_HEAD_BYTES_NUGGET_METADATA] = { 0x02, 0x10, 0x00, 0x0A, 0xBB, 0xC0, 0x00, 0x00 };
+    uint8_t expected_ones[BLFS_HEAD_BYTES_NUGGET_METADATA] = { 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01 };
+    uint64_t real_offset = backstore->md_real_offset + nugget_index * BLFS_HEAD_BYTES_NUGGET_METADATA;
+
+    blfs_backstore_read_Expect(backstore, NULL, BLFS_HEAD_BYTES_NUGGET_METADATA, real_offset);
+    blfs_backstore_read_IgnoreArg_buffer();
+    blfs_backstore_read_ReturnArrayThruPtr_buffer(expected_output, BLFS_HEAD_BYTES_NUGGET_METADATA);
+
+    blfs_nugget_metadata_t * actual_nugget_metadata = blfs_open_nugget_metadata(backstore, nugget_index);
+    blfs_nugget_metadata_t * actual_nugget_metadata2 = blfs_open_nugget_metadata(backstore, nugget_index);
+
+    blfs_backstore_read_Expect(backstore, NULL, BLFS_HEAD_BYTES_NUGGET_METADATA, backstore->md_real_offset);
+    blfs_backstore_read_IgnoreArg_buffer();
+    blfs_backstore_read_ReturnArrayThruPtr_buffer(expected_ones, BLFS_HEAD_BYTES_NUGGET_METADATA);
+
+    blfs_nugget_metadata_t * actual_nugget_metadata3 = blfs_open_nugget_metadata(backstore, 0);
+
+    TEST_ASSERT_EQUAL_PTR(actual_nugget_metadata, actual_nugget_metadata2);
+    TEST_ASSERT_TRUE(actual_nugget_metadata2 != actual_nugget_metadata3);
+
+    blfs_close_nugget_metadata(backstore, actual_nugget_metadata2);
+
+    TEST_ASSERT_FALSE(KHASH_CACHE_EXISTS(BLFS_KHASH_MD_CACHE_NAME, backstore->cache_nugget_md, nugget_index));
+}
+
+void test_blfs_create_nugget_md_works_as_expected(void)
+{
+    int nugget_index = 60;
+    blfs_backstore_t bs;
+    blfs_backstore_t * backstore = fake_initialize_backstore(&bs);
+
+    uint8_t expected_zeroes[BLFS_HEAD_BYTES_NUGGET_METADATA] = { 0x00 };
+
+    blfs_nugget_metadata_t * actual_nugget_metadata = blfs_create_nugget_metadata(backstore, nugget_index);
+
+    TEST_ASSERT_EQUAL_UINT(nugget_index, actual_nugget_metadata->nugget_index);
+    TEST_ASSERT_EQUAL_UINT(backstore->md_real_offset + nugget_index * BLFS_HEAD_BYTES_NUGGET_METADATA, actual_nugget_metadata->data_offset);
+    TEST_ASSERT_EQUAL_UINT(BLFS_HEAD_BYTES_NUGGET_METADATA, actual_nugget_metadata->data_length);
+    TEST_ASSERT_EQUAL_MEMORY(expected_zeroes + 1, actual_nugget_metadata->data, actual_nugget_metadata->data_length - 1);
+}
+
+void test_blfs_create_nugget_md_throws_exception_if_nugget_in_cache(void)
+{
+    int nugget_index = 50;
+    blfs_backstore_t bs;
+    blfs_backstore_t * backstore = fake_initialize_backstore(&bs);
+
+    (void) blfs_create_nugget_metadata(backstore, nugget_index);
+
+    CEXCEPTION_T e_expected = EXCEPTION_INVALID_OPERATION;
+    volatile CEXCEPTION_T e_actual = EXCEPTION_NO_EXCEPTION;
+
+    TRY_FN_CATCH_EXCEPTION((void) blfs_create_nugget_metadata(backstore, nugget_index));
+}
+
+void test_blfs_commit_nugget_md_works_as_expected(void)
+{
+    blfs_backstore_t bs;
+    blfs_backstore_t * backstore = fake_initialize_backstore(&bs);
+
+    blfs_nugget_metadata_t * nugget_metadata = malloc(sizeof(blfs_nugget_metadata_t));
+
+    uint8_t data[BLFS_HEAD_BYTES_NUGGET_METADATA] = { 0x05, 0x10, 0x0F, 0x0A, 0xBB, 0xC0, 0xDE, 0xF0 };
+
+    nugget_metadata->cipher_ident = data[0];
+    nugget_metadata->nugget_index = 25;
+    nugget_metadata->data_offset = 0xF8;
+    nugget_metadata->data_length = BLFS_HEAD_BYTES_NUGGET_METADATA;
+    nugget_metadata->data = data + 1;
+
+    blfs_backstore_write_Expect(backstore, data, BLFS_HEAD_BYTES_NUGGET_METADATA, 0xF8);
+
+    blfs_commit_nugget_metadata(backstore, nugget_metadata);
+}

@@ -31,7 +31,7 @@ DEBUG_COMPILE_FLAG := -DBLFS_DEBUG_LEVEL=0 \
                       -DBLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION=0 \
                       -DBLFS_NO_READ_INTEGRITY=0 \
                       -DBLFS_DEBUG_MONITOR_POWER=0 \
-                      -DBLFS_MANUAL_GV_FALLBACK=-1
+                      -DBLFS_MANUAL_GV_FALLBACK=0
 
 # * This is the name of the resulant executable
 EXENAME := strongbox
@@ -64,6 +64,7 @@ CFLAGS      := -pedantic -Wall -Wextra -std=c11
 
 IFLAGS      := -I/usr/local/include \
                -I. \
+			   -I$(TEST_ROOT) \
                -I$(VENDR_ROOT) \
                -I$(CONFIG_ROOT) \
                -I$(SRC_ROOT) \
@@ -75,7 +76,7 @@ IFLAGS      := -I/usr/local/include \
 			   -I$(CHACHAX_ROOT)/bin
 
 LDFLAGS     := -L$(VENDR_ROOT) -L/usr/local/lib \
-               -lsodium -lzlog -lpthread -lm -lcrypto -lenergymon-default
+               -lsodium -lzlog -lpthread -lm -lcrypto -lenergymon-default -lbsd
 
 # Ruby configs for runner generation w/ Unity (automatic)
 GENRNR_CONF := $(CONFIG_ROOT)/unity_runner_config.yml

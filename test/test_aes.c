@@ -81,9 +81,9 @@ void setUp(void)
 
     if(!runonce && BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
     {
-        ERR_load_crypto_strings();
-        OpenSSL_add_all_algorithms();
-        OPENSSL_config(NULL);
+        // ERR_load_crypto_strings();
+        // OpenSSL_add_all_algorithms();
+        // OPENSSL_config(NULL);
         runonce = 1;
     }
 

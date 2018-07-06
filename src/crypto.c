@@ -46,7 +46,7 @@ void blfs_chacha20_verif(uint8_t * xored_value, const uint8_t * secret)
     IFDEBUG(hdzlog_debug(secret, BLFS_CRYPTO_BYTES_KDF_OUT));
 
     uint8_t xored[BLFS_HEAD_HEADER_BYTES_VERIFICATION] = { 0x00 };
-    uint8_t nonce[BLFS_CRYPTO_BYTES_CHACHA_NONCE] = { 0x00 };
+    uint8_t nonce[BLFS_CRYPTO_BYTES_CHACHA20_NONCE] = { 0x00 };
 
     crypto_stream_chacha20(xored, sizeof xored, nonce, secret);
 
@@ -252,8 +252,8 @@ void blfs_aesxts_encrypt(uint8_t * encrypted_data,
     uint8_t doublekey[BLFS_CRYPTO_BYTES_AESXTS_KEY];
     uint8_t iv_tweak[BLFS_CRYPTO_BYTES_AESXTS_TWEAK] = { 0x00 };
 
-    memcpy(doublekey, flake_key, BLFS_CRYPTO_BYTES_CHACHA_KEY);
-    memcpy(doublekey + BLFS_CRYPTO_BYTES_CHACHA_KEY, flake_key, BLFS_CRYPTO_BYTES_CHACHA_KEY);
+    memcpy(doublekey, flake_key, BLFS_CRYPTO_BYTES_CHACHA20_KEY);
+    memcpy(doublekey + BLFS_CRYPTO_BYTES_CHACHA20_KEY, flake_key, BLFS_CRYPTO_BYTES_CHACHA20_KEY);
     memcpy(iv_tweak, (uint8_t *) &sector_tweak, sizeof sector_tweak);
 
     IFDEBUG(dzlog_debug("sector_tweak: %"PRIu32, sector_tweak));
@@ -320,8 +320,8 @@ void blfs_aesxts_decrypt(uint8_t * plaintext_data,
     uint8_t doublekey[BLFS_CRYPTO_BYTES_AESXTS_KEY];
     uint8_t iv_tweak[BLFS_CRYPTO_BYTES_AESXTS_TWEAK] = { 0x00 };
 
-    memcpy(doublekey, flake_key, BLFS_CRYPTO_BYTES_CHACHA_KEY);
-    memcpy(doublekey + BLFS_CRYPTO_BYTES_CHACHA_KEY, flake_key, BLFS_CRYPTO_BYTES_CHACHA_KEY);
+    memcpy(doublekey, flake_key, BLFS_CRYPTO_BYTES_CHACHA20_KEY);
+    memcpy(doublekey + BLFS_CRYPTO_BYTES_CHACHA20_KEY, flake_key, BLFS_CRYPTO_BYTES_CHACHA20_KEY);
 
     assert(sizeof sector_tweak <= BLFS_CRYPTO_BYTES_AESXTS_TWEAK);
 

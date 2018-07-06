@@ -174,9 +174,7 @@ void test_blfs_backstore_create_work_as_expected(void)
     TEST_ASSERT_EQUAL_STRING("test.io.bin", backstore->file_name);
     TEST_ASSERT_EQUAL_UINT(0, backstore->kcs_real_offset);
     TEST_ASSERT_EQUAL_UINT(0, backstore->tj_real_offset);
-    TEST_ASSERT_EQUAL_UINT(0, backstore->kcs_journaled_offset);
-    TEST_ASSERT_EQUAL_UINT(0, backstore->tj_journaled_offset);
-    TEST_ASSERT_EQUAL_UINT(0, backstore->nugget_journaled_offset);
+    TEST_ASSERT_EQUAL_UINT(0, backstore->md_real_offset);
     TEST_ASSERT_EQUAL_UINT(0, backstore->body_real_offset);
     TEST_ASSERT_EQUAL_UINT(0, backstore->writeable_size_actual);
     TEST_ASSERT_EQUAL_UINT(0, backstore->nugget_size_bytes);
@@ -203,18 +201,16 @@ void test_blfs_backstore_open_work_as_expected(void)
     // backstore size should be 209 bytes
     TEST_ASSERT_EQUAL_STRING(BACKSTORE_FILE_PATH, backstore->file_path);
     TEST_ASSERT_EQUAL_STRING("test.io.bin", backstore->file_name);
-    TEST_ASSERT_EQUAL_UINT(109, backstore->kcs_real_offset);
-    TEST_ASSERT_EQUAL_UINT(133, backstore->tj_real_offset);
-    TEST_ASSERT_EQUAL_UINT(136, backstore->kcs_journaled_offset);
-    TEST_ASSERT_EQUAL_UINT(144, backstore->tj_journaled_offset);
-    TEST_ASSERT_EQUAL_UINT(145, backstore->nugget_journaled_offset);
-    TEST_ASSERT_EQUAL_UINT(161, backstore->body_real_offset);
+    TEST_ASSERT_EQUAL_UINT(105, backstore->kcs_real_offset);
+    TEST_ASSERT_EQUAL_UINT(129, backstore->tj_real_offset);
+    TEST_ASSERT_EQUAL_UINT(132, backstore->md_real_offset);
+    TEST_ASSERT_EQUAL_UINT(156, backstore->body_real_offset);
     TEST_ASSERT_EQUAL_UINT(48, backstore->writeable_size_actual);
     TEST_ASSERT_EQUAL_UINT(16, backstore->nugget_size_bytes);
     TEST_ASSERT_EQUAL_UINT(8, backstore->flake_size_bytes);
     TEST_ASSERT_EQUAL_UINT(3, backstore->num_nuggets);
     TEST_ASSERT_EQUAL_UINT(2, backstore->flakes_per_nugget);
-    TEST_ASSERT_EQUAL_UINT(209, backstore->file_size_actual);
+    TEST_ASSERT_EQUAL_UINT(204, backstore->file_size_actual);
 }
 
 void test_blfs_backstore_close_work_as_expected(void)

@@ -85,7 +85,7 @@ static blfs_backstore_t * backstore_setup_actual_pre(const char * path)
     if(backstore->io_fd < 0)
         Throw(EXCEPTION_OPEN_FAILURE);
 
-    off_t backstore_size_actual_int = lseek64(backstore->io_fd, 0, SEEK_END);
+    off64_t backstore_size_actual_int = lseek64(backstore->io_fd, 0, SEEK_END);
 
     if(backstore_size_actual_int < 0)
     {
@@ -133,13 +133,13 @@ void blfs_backstore_setup_actual_post(blfs_backstore_t * backstore)
 
     backstore->kcs_real_offset = header_last->data_offset + header_last->data_length;
     backstore->tj_real_offset  = backstore->kcs_real_offset + backstore->num_nuggets * BLFS_HEAD_BYTES_KEYCOUNT;
-    backstore->md_real_offset  = backstore->tj_real_offset + backstore->num_nuggets * CEIL(backstore->flakes_per_nugget, BITS_IN_A_BYTE)
+    backstore->md_real_offset  = backstore->tj_real_offset + backstore->num_nuggets * CEIL(backstore->flakes_per_nugget, BITS_IN_A_BYTE);
 
     IFDEBUG(dzlog_debug("backstore->kcs_real_offset = %"PRIu64, backstore->kcs_real_offset));
     IFDEBUG(dzlog_debug("backstore->tj_real_offset = %"PRIu64, backstore->tj_real_offset));
     IFDEBUG(dzlog_debug("backstore->md_real_offset = %"PRIu64, backstore->tj_real_offset));
     
-    backstore->body_real_offset = backstore->md_real_offset + backstore->nugget_size_bytes;
+    backstore->body_real_offset = backstore->md_real_offset + backstore->num_nuggets * BLFS_HEAD_BYTES_NUGGET_METADATA;
     IFDEBUG(dzlog_debug("backstore->body_real_offset = %"PRIu64, backstore->body_real_offset));
 
     backstore->nugget_size_bytes = backstore->flakes_per_nugget * backstore->flake_size_bytes;
@@ -219,7 +219,6 @@ blfs_backstore_t * blfs_backstore_create(const char * path, uint64_t file_size_b
     backstore->nugget_size_bytes = 0;
     backstore->flake_size_bytes = 0;
     backstore->writeable_size_actual = 0;
-    backstore->file_size_actual = 0;
     backstore->num_nuggets = 0;
     backstore->flakes_per_nugget = 0;
 

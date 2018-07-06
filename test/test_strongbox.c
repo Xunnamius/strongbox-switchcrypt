@@ -285,18 +285,16 @@ void test_blfs_soft_open_works_as_expected(void)
 
         TEST_ASSERT_EQUAL_STRING(BACKSTORE_FILE_PATH, buselfs_state->backstore->file_path);
         TEST_ASSERT_EQUAL_STRING("test.io.bin", buselfs_state->backstore->file_name);
-        TEST_ASSERT_EQUAL_UINT(109, buselfs_state->backstore->kcs_real_offset);
-        TEST_ASSERT_EQUAL_UINT(133, buselfs_state->backstore->tj_real_offset);
-        TEST_ASSERT_EQUAL_UINT(136, buselfs_state->backstore->kcs_journaled_offset);
-        TEST_ASSERT_EQUAL_UINT(144, buselfs_state->backstore->tj_journaled_offset);
-        TEST_ASSERT_EQUAL_UINT(145, buselfs_state->backstore->nugget_journaled_offset);
-        TEST_ASSERT_EQUAL_UINT(161, buselfs_state->backstore->body_real_offset);
+        TEST_ASSERT_EQUAL_UINT(105, buselfs_state->backstore->kcs_real_offset);
+        TEST_ASSERT_EQUAL_UINT(129, buselfs_state->backstore->tj_real_offset);
+        TEST_ASSERT_EQUAL_UINT(132, buselfs_state->backstore->md_real_offset);
+        TEST_ASSERT_EQUAL_UINT(156, buselfs_state->backstore->body_real_offset);
         TEST_ASSERT_EQUAL_UINT(48, buselfs_state->backstore->writeable_size_actual);
         TEST_ASSERT_EQUAL_UINT(16, buselfs_state->backstore->nugget_size_bytes);
         TEST_ASSERT_EQUAL_UINT(8, buselfs_state->backstore->flake_size_bytes);
         TEST_ASSERT_EQUAL_UINT(3, buselfs_state->backstore->num_nuggets);
         TEST_ASSERT_EQUAL_UINT(2, buselfs_state->backstore->flakes_per_nugget);
-        TEST_ASSERT_EQUAL_UINT(209, buselfs_state->backstore->file_size_actual);
+        TEST_ASSERT_EQUAL_UINT(204, buselfs_state->backstore->file_size_actual);
 
 
         blfs_header_t * header_version = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_VERSION);
@@ -308,7 +306,6 @@ void test_blfs_soft_open_works_as_expected(void)
         blfs_header_t * header_flakespernugget = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_FLAKESPERNUGGET);
         blfs_header_t * header_flakesize_bytes = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_FLAKESIZE_BYTES);
         blfs_header_t * header_initialized = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_INITIALIZED);
-        blfs_header_t * header_rekeying = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_REKEYING);
 
         uint8_t expected_ver[BLFS_HEAD_HEADER_BYTES_VERSION] = { 0xFF, 0xFF, 0xFF, 0xFF };
         uint8_t expected_salt[BLFS_HEAD_HEADER_BYTES_SALT] = {
@@ -323,11 +320,8 @@ void test_blfs_soft_open_works_as_expected(void)
             0x24, 0x18, 0x31, 0x7f, 0xfb, 0x84, 0x79, 0x1d
         };
 
-        uint8_t expected_rekeying[BLFS_HEAD_HEADER_BYTES_REKEYING];
         uint8_t nexpected_master_secret[BLFS_CRYPTO_BYTES_KDF_OUT] = { 0x00 };
         uint8_t set_initialized[BLFS_HEAD_HEADER_BYTES_INITIALIZED] = { BLFS_HEAD_IS_INITIALIZED_VALUE };
-
-        memset(expected_rekeying, 0xFF, BLFS_HEAD_HEADER_BYTES_REKEYING);
 
         TEST_ASSERT_EQUAL_UINT(*(uint32_t *) expected_ver, *(uint32_t *) header_version->data);
         TEST_ASSERT_EQUAL_MEMORY(expected_salt, header_salt->data, BLFS_HEAD_HEADER_BYTES_SALT);
@@ -338,7 +332,6 @@ void test_blfs_soft_open_works_as_expected(void)
         TEST_ASSERT_EQUAL_UINT32(2, *(uint32_t *) header_flakespernugget->data);
         TEST_ASSERT_EQUAL_UINT32(8, *(uint32_t *) header_flakesize_bytes->data);
         TEST_ASSERT_EQUAL_MEMORY(set_initialized, header_initialized->data, BLFS_HEAD_HEADER_BYTES_INITIALIZED);
-        TEST_ASSERT_EQUAL_MEMORY(expected_rekeying, header_rekeying->data, BLFS_HEAD_HEADER_BYTES_REKEYING);
 
         // Ensure remaining state is accurate
         TEST_ASSERT_TRUE(memcmp(buselfs_state->backstore->master_secret, nexpected_master_secret, BLFS_CRYPTO_BYTES_KDF_OUT) != 0);
@@ -379,7 +372,6 @@ void test_blfs_soft_open_initializes_keycache_and_merkle_tree_properly(void)
         blfs_header_t * numnuggets_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_NUMNUGGETS);
         blfs_header_t * flakespernugget_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_FLAKESPERNUGGET);
         blfs_header_t * flakesize_bytes_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_FLAKESIZE_BYTES);
-        blfs_header_t * rekeying_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_REKEYING);
 
         TEST_ASSERT(mt_verify(buselfs_state->merkle_tree, tpmgv_header->data, BLFS_HEAD_HEADER_BYTES_TPMGLOBALVER, 0) == MT_SUCCESS);
 
@@ -389,7 +381,6 @@ void test_blfs_soft_open_initializes_keycache_and_merkle_tree_properly(void)
         TEST_ASSERT(mt_verify(buselfs_state->merkle_tree, numnuggets_header->data, BLFS_HEAD_HEADER_BYTES_NUMNUGGETS, 4) == MT_SUCCESS);
         TEST_ASSERT(mt_verify(buselfs_state->merkle_tree, flakespernugget_header->data, BLFS_HEAD_HEADER_BYTES_FLAKESPERNUGGET, 5) == MT_SUCCESS);
         TEST_ASSERT(mt_verify(buselfs_state->merkle_tree, flakesize_bytes_header->data, BLFS_HEAD_HEADER_BYTES_FLAKESIZE_BYTES, 6) == MT_SUCCESS);
-        TEST_ASSERT(mt_verify(buselfs_state->merkle_tree, rekeying_header->data, BLFS_HEAD_HEADER_BYTES_REKEYING, 7) == MT_SUCCESS);
 
         TEST_ASSERT(mt_exists(buselfs_state->merkle_tree, 8));
         TEST_ASSERT(mt_exists(buselfs_state->merkle_tree, 10));
@@ -419,18 +410,16 @@ void test_blfs_run_mode_create_works_when_backstore_exists_already(void)
 
         TEST_ASSERT_EQUAL_STRING(BACKSTORE_FILE_PATH, backstore->file_path);
         TEST_ASSERT_EQUAL_STRING("test.io.bin", backstore->file_name);
-        TEST_ASSERT_EQUAL_UINT(109, backstore->kcs_real_offset);
-        TEST_ASSERT_EQUAL_UINT(1037, backstore->tj_real_offset);
-        TEST_ASSERT_EQUAL_UINT(1269, backstore->kcs_journaled_offset);
-        TEST_ASSERT_EQUAL_UINT(1277, backstore->tj_journaled_offset);
-        TEST_ASSERT_EQUAL_UINT(1279, backstore->nugget_journaled_offset);
-        TEST_ASSERT_EQUAL_UINT(1303, backstore->body_real_offset);
-        TEST_ASSERT_EQUAL_UINT(2784, backstore->writeable_size_actual);
+        TEST_ASSERT_EQUAL_UINT(105, backstore->kcs_real_offset);
+        TEST_ASSERT_EQUAL_UINT(865, backstore->tj_real_offset);
+        TEST_ASSERT_EQUAL_UINT(1055, backstore->md_real_offset);
+        TEST_ASSERT_EQUAL_UINT(1815, backstore->body_real_offset);
+        TEST_ASSERT_EQUAL_UINT(2280, backstore->writeable_size_actual);
         TEST_ASSERT_EQUAL_UINT(24, backstore->nugget_size_bytes);
         TEST_ASSERT_EQUAL_UINT(2, backstore->flake_size_bytes);
         TEST_ASSERT_EQUAL_UINT(12, backstore->flakes_per_nugget);
-        TEST_ASSERT_EQUAL_UINT(116, backstore->num_nuggets);
-        TEST_ASSERT_EQUAL_UINT(4096, buselfs_state->backstore->file_size_actual);
+        TEST_ASSERT_EQUAL_UINT(95, backstore->num_nuggets);
+        TEST_ASSERT_EQUAL_UINT(4096, backstore->file_size_actual);
 
         // Ensure headers are accurate
 
@@ -443,32 +432,27 @@ void test_blfs_run_mode_create_works_when_backstore_exists_already(void)
         blfs_header_t * header_flakespernugget = blfs_open_header(backstore, BLFS_HEAD_HEADER_TYPE_FLAKESPERNUGGET);
         blfs_header_t * header_flakesize_bytes = blfs_open_header(backstore, BLFS_HEAD_HEADER_TYPE_FLAKESIZE_BYTES);
         blfs_header_t * header_initialized = blfs_open_header(backstore, BLFS_HEAD_HEADER_TYPE_INITIALIZED);
-        blfs_header_t * header_rekeying = blfs_open_header(backstore, BLFS_HEAD_HEADER_TYPE_REKEYING);
 
         uint8_t zero_salt[BLFS_HEAD_HEADER_BYTES_SALT] = { 0x00 };
         uint8_t zero_tpmglobalver[BLFS_HEAD_HEADER_BYTES_TPMGLOBALVER] = { 0x00 };
         uint8_t zero_verification[BLFS_HEAD_HEADER_BYTES_VERIFICATION] = { 0x00 };
-        uint8_t zero_rekeying[BLFS_HEAD_HEADER_BYTES_REKEYING];
         uint8_t zero_master_secret[BLFS_CRYPTO_BYTES_KDF_OUT] = { 0x00 };
         uint8_t set_initialized[BLFS_HEAD_HEADER_BYTES_INITIALIZED] = { BLFS_HEAD_IS_INITIALIZED_VALUE };
-
-        memset(zero_rekeying, 0xFF, BLFS_HEAD_HEADER_BYTES_REKEYING);
 
         TEST_ASSERT_EQUAL_UINT32(BLFS_CURRENT_VERSION, *(uint32_t *) header_version->data);
         TEST_ASSERT_TRUE(memcmp(header_salt->data, zero_salt, BLFS_HEAD_HEADER_BYTES_SALT) != 0);
         TEST_ASSERT_TRUE(memcmp(header_mtrh->data, buffer_init_backstore_state + 20, BLFS_HEAD_HEADER_BYTES_MTRH) != 0);
         TEST_ASSERT_TRUE(memcmp(header_tpmglobalver->data, zero_tpmglobalver, BLFS_HEAD_HEADER_BYTES_TPMGLOBALVER) != 0);
         TEST_ASSERT_TRUE(memcmp(header_verification->data, zero_verification, BLFS_HEAD_HEADER_BYTES_VERIFICATION) != 0);
-        TEST_ASSERT_EQUAL_UINT32(116, *(uint32_t *) header_numnuggets->data);
+        TEST_ASSERT_EQUAL_UINT32(95, *(uint32_t *) header_numnuggets->data);
         TEST_ASSERT_EQUAL_UINT32(12, *(uint32_t *) header_flakespernugget->data);
         TEST_ASSERT_EQUAL_UINT32(2, *(uint32_t *) header_flakesize_bytes->data);
         TEST_ASSERT_EQUAL_MEMORY(set_initialized, header_initialized->data, BLFS_HEAD_HEADER_BYTES_INITIALIZED);
-        TEST_ASSERT_EQUAL_MEMORY(zero_rekeying, header_rekeying->data, BLFS_HEAD_HEADER_BYTES_REKEYING);
 
         // Ensure remaining state is accurate
         TEST_ASSERT_TRUE(memcmp(backstore->master_secret, zero_master_secret, BLFS_CRYPTO_BYTES_KDF_OUT) != 0);
 
-        blfs_backstore_close(buselfs_state->backstore);
+        blfs_backstore_close(backstore);
     }
 }
 
@@ -488,20 +472,18 @@ void test_blfs_run_mode_create_works_when_backstore_DNE(void)
 
         TEST_ASSERT_EQUAL_STRING(BACKSTORE_FILE_PATH, backstore->file_path);
         TEST_ASSERT_EQUAL_STRING("test.io.bin", backstore->file_name);
-        TEST_ASSERT_EQUAL_UINT(109, backstore->kcs_real_offset);
-        TEST_ASSERT_EQUAL_UINT(1037, backstore->tj_real_offset);
-        TEST_ASSERT_EQUAL_UINT(1269, backstore->kcs_journaled_offset);
-        TEST_ASSERT_EQUAL_UINT(1277, backstore->tj_journaled_offset);
-        TEST_ASSERT_EQUAL_UINT(1279, backstore->nugget_journaled_offset);
-        TEST_ASSERT_EQUAL_UINT(1303, backstore->body_real_offset);
-        TEST_ASSERT_EQUAL_UINT(2784, backstore->writeable_size_actual);
+        TEST_ASSERT_EQUAL_UINT(105, backstore->kcs_real_offset);
+        TEST_ASSERT_EQUAL_UINT(865, backstore->tj_real_offset);
+        TEST_ASSERT_EQUAL_UINT(1055, backstore->md_real_offset);
+        TEST_ASSERT_EQUAL_UINT(1815, backstore->body_real_offset);
+        TEST_ASSERT_EQUAL_UINT(2280, backstore->writeable_size_actual);
         TEST_ASSERT_EQUAL_UINT(24, backstore->nugget_size_bytes);
         TEST_ASSERT_EQUAL_UINT(2, backstore->flake_size_bytes);
         TEST_ASSERT_EQUAL_UINT(12, backstore->flakes_per_nugget);
-        TEST_ASSERT_EQUAL_UINT(116, backstore->num_nuggets);
-        TEST_ASSERT_EQUAL_UINT(4096, buselfs_state->backstore->file_size_actual);
+        TEST_ASSERT_EQUAL_UINT(95, backstore->num_nuggets);
+        TEST_ASSERT_EQUAL_UINT(4096, backstore->file_size_actual);
 
-        blfs_backstore_close(buselfs_state->backstore);
+        blfs_backstore_close(backstore);
     }
 }
 
@@ -539,7 +521,6 @@ void test_blfs_run_mode_create_initializes_keycache_and_merkle_tree_properly(voi
         blfs_header_t * numnuggets_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_NUMNUGGETS);
         blfs_header_t * flakespernugget_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_FLAKESPERNUGGET);
         blfs_header_t * flakesize_bytes_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_FLAKESIZE_BYTES);
-        blfs_header_t * rekeying_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_REKEYING);
 
         TEST_ASSERT(mt_verify(buselfs_state->merkle_tree, tpmgv_header->data, BLFS_HEAD_HEADER_BYTES_TPMGLOBALVER, 0) == MT_SUCCESS);
 
@@ -549,18 +530,12 @@ void test_blfs_run_mode_create_initializes_keycache_and_merkle_tree_properly(voi
         TEST_ASSERT(mt_verify(buselfs_state->merkle_tree, numnuggets_header->data, BLFS_HEAD_HEADER_BYTES_NUMNUGGETS, 4) == MT_SUCCESS);
         TEST_ASSERT(mt_verify(buselfs_state->merkle_tree, flakespernugget_header->data, BLFS_HEAD_HEADER_BYTES_FLAKESPERNUGGET, 5) == MT_SUCCESS);
         TEST_ASSERT(mt_verify(buselfs_state->merkle_tree, flakesize_bytes_header->data, BLFS_HEAD_HEADER_BYTES_FLAKESIZE_BYTES, 6) == MT_SUCCESS);
-        TEST_ASSERT(mt_verify(buselfs_state->merkle_tree, rekeying_header->data, BLFS_HEAD_HEADER_BYTES_REKEYING, 7) == MT_SUCCESS);
 
-        TEST_ASSERT(mt_exists(buselfs_state->merkle_tree, 8));
-        TEST_ASSERT(mt_exists(buselfs_state->merkle_tree, 130));
+        TEST_ASSERT(mt_exists(buselfs_state->merkle_tree, 0));
+        TEST_ASSERT(mt_exists(buselfs_state->merkle_tree, 1 + (BLFS_HEAD_NUM_HEADERS - 3)));
+        TEST_ASSERT(mt_exists(buselfs_state->merkle_tree, 1431));
 
-        TEST_ASSERT(mt_exists(buselfs_state->merkle_tree, 124));
-        TEST_ASSERT(mt_exists(buselfs_state->merkle_tree, 239));
-
-        TEST_ASSERT(mt_exists(buselfs_state->merkle_tree, 240));
-        TEST_ASSERT(mt_exists(buselfs_state->merkle_tree, 1631));
-
-        TEST_ASSERT_FALSE(mt_exists(buselfs_state->merkle_tree, 1632));
+        TEST_ASSERT_FALSE(mt_exists(buselfs_state->merkle_tree, 1432));
 
         blfs_backstore_close(buselfs_state->backstore);
     }
@@ -1596,9 +1571,9 @@ void test_strongbox_main_actual_creates_with_alternate_cipher_and_tpm(void)
     readwrite_quicktests();
 }
 
+// TODO: something is wrong here (we probably need a bigger backsize/realistic offset/size calculations)
 /*void test_strongbox_main_actual_creates_expected_buselfs_state(void)
 {
-    // TODO: something is wrong with having all of these changes at once...
     zlog_fini();
 
     int argc = 14;
@@ -1627,14 +1602,13 @@ void test_strongbox_main_actual_creates_with_alternate_cipher_and_tpm(void)
     TEST_ASSERT_EQUAL_UINT(65536, buselfs_state->backstore->nugget_size_bytes);
     TEST_ASSERT_EQUAL_UINT(2048, buselfs_state->backstore->flake_size_bytes);
     TEST_ASSERT_EQUAL_UINT(2147483648, buselfs_state->backstore->file_size_actual);
-    TEST_ASSERT_EQUAL_UINT(32760, buselfs_state->backstore->num_nuggets); // ? space for headers!
+    TEST_ASSERT_EQUAL_UINT(32760, buselfs_state->backstore->num_nuggets);
     TEST_ASSERT_EQUAL_UINT(32, buselfs_state->backstore->flakes_per_nugget);
 }*/
 
+// TODO
 /*void test_strongbox_main_actual_opens(void)
 {
-    // TODO
-
     zlog_fini();
 
     int argc = 4;
@@ -1650,10 +1624,9 @@ void test_strongbox_main_actual_creates_with_alternate_cipher_and_tpm(void)
     blfs_backstore_close(buselfs_state->backstore);
 }*/
 
+// TODO
 /*void test_strongbox_main_actual_opens_after_create()
 {
-    // TODO
-
     zlog_fini();
 
     int argc = 4;
@@ -1687,10 +1660,9 @@ void test_strongbox_main_actual_creates_with_alternate_cipher_and_tpm(void)
     setUp();
 }*/
 
+// TODO: fix run mode open completely first (this test uses outdated values)
 /*void test_blfs_run_mode_open_works_as_expected(void)
 {
-    // TODO: fix run mode open completely first (this test uses outdated values)
-    free(buselfs_state->backstore);
 
     if(BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
         TEST_IGNORE_MESSAGE("BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION is in effect. All non- AES-XTS emulation tests will be ignored!");
@@ -1720,10 +1692,9 @@ void test_strongbox_main_actual_creates_with_alternate_cipher_and_tpm(void)
     }
 }*/
 
+// TODO: fix run mode wipe
 /*void test_blfs_run_mode_wipe_works_as_expected(void)
 {
-    // TODO: fix run mode wipe
-
     free(buselfs_state->backstore);
 
     buselfs_state->backstore = blfs_backstore_open(BACKSTORE_FILE_PATH);
@@ -1780,10 +1751,9 @@ void test_strongbox_main_actual_creates_with_alternate_cipher_and_tpm(void)
     blfs_backstore_close(buselfs_state->backstore);
 }*/
 
+// TODO: see above
 /*void test_blfs_run_mode_open_properly_opens_wiped_backstores(void)
 {
-    // TODO: see above
-
     free(buselfs_state->backstore);
 
     if(BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)

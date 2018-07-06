@@ -24,13 +24,13 @@
 #ifndef FREESTYLE_H
 #define FREESTYLE_H
 
+#include <sys/types.h>
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
 #include <stdint.h>
-
-#include <sys/types.h>
 
 #define NUM_INIT_HASHES (28)
 
@@ -39,6 +39,7 @@
 #include <assert.h>
 
 #ifdef __linux__
+	typedef unsigned char u_char;
 	#include <bsd/stdlib.h>
 #endif
 
