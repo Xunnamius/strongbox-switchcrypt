@@ -6,14 +6,18 @@ This is a complete rewrite of the old buselogfs code. This is a Buse + Chacha20 
 
 ## Dependencies
 
+- Some sort of [ARM](https://www.arm.com/) device, preferably an [Odroid](https://www.hardkernel.com/main/main.php)
+- [ARM NEON](https://developer.arm.com/technologies/neon) CPU feature (`cat /proc/cpuinfo | grep -i neon`)
 - [zlog](https://github.com/HardySimpson/zlog)
 - [libsodium](https://github.com/jedisct1/libsodium)
 - [make](http://man7.org/linux/man-pages/man1/make.1.html)
+- libbsd-dev (provides `arc4random()` and `arc4random_uniform()`; required by [`sc_freestyle`](#usage))
 - [gcc](https://gcc.gnu.org) (sorry, I'm using some GCC extensions to make life easier)
 - [ruby](https://www.ruby-lang.org/en/) (required iff you're going to be running the tests)
 - [OpenSSL](https://www.openssl.org) (provides swappable algorithm base)
 - [energymon](https://github.com/energymon/energymon) (required iff you want energy metrics [has performance implications])
 - [std=c11](https://en.wikipedia.org/wiki/C11_(C_standard_revision))
+- Assumes 32-bit `int`, 64-bit `long long` (due to [`sc_chacha20_alt`](#usage))
 - A device that offers or emulates an [RPMB API](https://lwn.net/Articles/682276/) is required iff you intend to test RPMB functionality. See: [BLFS_RPMB_KEY](#blfs_rpmb_key), [BLFS_RPMB_DEVICE](#blfs_rpmb_device), and [BLFS_MANUAL_GV_FALLBACK](#blfs_manual_gv_fallback).
     - *sudo access* is necessary when using RPMB functionality against an mmc device. If you're doing usersapce emulation of some sort, *sudo* is not necessary.
 
@@ -36,6 +40,7 @@ Ciphers available for the `--cipher` and `--swap-cipher` are:
 - `sc_chacha8`
 - `sc_chacha12`
 - `sc_chacha20`
+- `sc_chacha20_alt`
 - `sc_salsa8`
 - `sc_salsa12`
 - `sc_salsa20`
@@ -44,9 +49,15 @@ Ciphers available for the `--cipher` and `--swap-cipher` are:
 - `sc_hc128`
 - `sc_rabbit`
 - `sc_sosemanuk`
+- `sc_freestyle`
 - `sc_not_impl`
 
-You can see these options defined in [constants.h](src/constants.h).
+You can see these options defined in [constants.h](src/constants.h). Note that
+`sc_chacha20_alt` is an alternative implementation of ChaCha20 by
+[Krovetz](https://github.com/floodyberry/supercop/blob/master/crypto_stream/chacha20/krovetz)
+(of Chromium fame), whereas `sc_chacha20` is implemented in libsodium and is the
+experimental benchmark. `sc_chacha8` and `sc_chacha12` were also implemented by
+Krovetz and do not appear in libsodium.
 
 Swap strategies available for `--swap-strategy` are:
 
@@ -288,9 +299,11 @@ Path to the backing store file that will be generated on run. Defaults to `./blf
 
 Path to the NBD pseudo-device that will be generated on run. Defaults to `/dev/%s`. Exactly one `%s` is necessary.
 
-## Prototypical Limitations
+## Prototypical Limitations and Potential Pitfalls
 
 - Byte order is assumed to be **little endian**. Might have to an implement endian conversion layer touching `io.c` and `crypto.c`, perhaps using the standard functions, if this becomes an issue.
 - Merkle Tree implementation has a hard upper limit (2<sup>TREE_DEPTH</sup> or 1,048,576 elements, soft limited to 524288) to the number of leaves and tree node levels 
 - The `open` and `wipe` commands do not currently work, since their proper functioning wasn't necessary for gathering results. If they become germane to the research at some future point, they will be fixed.
 - This prototype has only been tested on the Odroid XU3 platform with Ubuntu Trusty kernel as well as the Odroid XU4 platform with Ubuntu Xenial and no energymon support. No functionality is guaranteed whatsoever on those systems, and it's hit or miss if StrongBox will even compile, let alone function properly, on non-Odroid systems.
+- **Krovetz's ChaCha implementation (vendor code) assumes 32-bit int, 64-bit long long.**
+- While the OpenSSL linkage and the other specialized cipher versions are specifically optimized for ARM NEON/ARMv6-32 CPU features, neither libsodium nor the estream profile ciphers nor freestyle are specially optimized. StrongBox is also a single-threaded application. On the other hand, dm-crypt has the benefit of ARM NEON/ARMv6-32 hardware optimizations as well as parallelization across CPUs.

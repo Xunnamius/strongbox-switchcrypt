@@ -22,6 +22,40 @@
 #include <unistd.h>
 #include <sys/types.h>
 
+// ! This must be changed/updated if we're adding new storage layers (e.g.
+// ! the new "nugget metadata" layer)
+uint32_t calculate_total_space_required_for_1nug(uint32_t nuggetsize, uint32_t flakes_per_nugget)
+{
+    return nuggetsize // ? Space for 1 nugget
+        + BLFS_HEAD_BYTES_KEYCOUNT // ? Space for 1 kcs
+        + CEIL(flakes_per_nugget, BITS_IN_A_BYTE) // ? Space for 1 TJ entry
+        + BLFS_HEAD_BYTES_NUGGET_METADATA; // ? Space for 1 nugget md
+}
+
+// ! This must be changed/updated if we're adding new storage layers (e.g.
+// ! the new "nugget metadata" layer)
+uint32_t mt_calculate_expected_size(uint32_t nugget_index, buselfs_state_t * buselfs_state)
+{
+    // ? 3*n+(BLFS_HEAD_NUM_HEADERS-3)+(n*fpn)+1
+    // See the `merkle_tree` declaration in the `buselfs_state_t` definition in
+    // `strongbox.h` for more details on this calculation.
+    return 1
+        + (BLFS_HEAD_NUM_HEADERS - 3)
+        + buselfs_state->backstore->num_nuggets * 3
+        + nugget_index * buselfs_state->backstore->flakes_per_nugget;
+    
+}
+
+// ! This must be changed/updated if we're adding new storage layers (e.g.
+// ! the new "nugget metadata" layer)
+uint32_t mt_calculate_flake_offset(uint32_t jump_to_nugget_index, uint32_t flake_index, buselfs_state_t * buselfs_state)
+{
+    // ? Jump over indicies that aren't associated w/ this nug and land on the
+    // ? flake that we're looking for (at an index contained in this nug)
+    return mt_calculate_expected_size(jump_to_nugget_index, buselfs_state) + flake_index;
+    
+}
+
 #if BLFS_DEBUG_MONITOR_POWER > 0
 
 #include "energymon-time-util.h"
@@ -82,7 +116,7 @@ void blfs_energymon_collect_metrics(metrics_t * metrics, buselfs_state_t * busel
     metrics->time_ns = energymon_gettime_ns();
 }
 
-// TODO: document/comment these!
+// TODO: Document/comment these!
 void blfs_energymon_writeout_metrics(char * tag,
                                      metrics_t * read_metrics_start,
                                      metrics_t * read_metrics_end,
@@ -227,8 +261,8 @@ static struct buse_operations buseops = {
 /**
  * Updates the global merkle tree root hash.
  *
- * ! this function MUST be called before buselfs_state->merkle_tree_root_hash
- * is referenced!
+ * ! This function MUST be called before buselfs_state->merkle_tree_root_hash
+ * ! is referenced!
  *
  * @param buselfs_state
  */
@@ -336,18 +370,8 @@ static void verify_in_merkle_tree(uint8_t * data, size_t length, uint32_t index,
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 }
 
-// TODO: retire journaled rekeying logic; to that end, rekeying should always be set to 0
-static void populate_key_cache(buselfs_state_t * buselfs_state, int rekeying, uint32_t rekeying_nugget_index)
+static void populate_key_cache(buselfs_state_t * buselfs_state)
 {
-    assert(rekeying == 0);
-    assert(rekeying_nugget_index == 0);
-
-    //blfs_keycount_t rekeying_count;
-    //blfs_tjournal_entry_t rekeying_entry;
-    //uint8_t rekeying_nugget_data[buselfs_state->backstore->nugget_size_bytes];
-    
-    //blfs_fetch_journaled_data(buselfs_state->backstore, rekeying_nugget_index, &rekeying_count, &rekeying_entry, rekeying_nugget_data);
-
     if(BLFS_DEFAULT_DISABLE_KEY_CACHING)
         dzlog_info("KEY CACHING DISABLED!");
 
@@ -360,14 +384,7 @@ static void populate_key_cache(buselfs_state_t * buselfs_state, int rekeying, ui
             uint8_t * nugget_key = malloc(sizeof(*nugget_key) * BLFS_CRYPTO_BYTES_KDF_OUT);
             blfs_keycount_t * count;
             
-            /*if(rekeying && rekeying_nugget_index == nugget_index)
-            {
-                IFDEBUG(dzlog_debug("rekeying detected! Using rekeying_nugget_index to grab count..."));
-                count = &rekeying_count;
-            }
-
-            else*/
-                count = blfs_open_keycount(buselfs_state->backstore, nugget_index);
+            count = blfs_open_keycount(buselfs_state->backstore, nugget_index);
 
             if(nugget_key == NULL)
                 Throw(EXCEPTION_ALLOC_FAILURE);
@@ -391,25 +408,13 @@ static void populate_key_cache(buselfs_state_t * buselfs_state, int rekeying, ui
     }
 }
 
-// TODO: retire journaled rekeying logic; to that end, rekeying should always be set to 0
-static void populate_mt(buselfs_state_t * buselfs_state, int rekeying, uint32_t rekeying_nugget_index)
+static void populate_mt(buselfs_state_t * buselfs_state)
 {
-    assert(rekeying == 0);
-    assert(rekeying_nugget_index == 0);
-
-    // blfs_keycount_t rekeying_count;
-    // blfs_tjournal_entry_t rekeying_entry;
-    // uint8_t rekeying_nugget_data[buselfs_state->backstore->nugget_size_bytes];
-
     uint32_t flakesize = buselfs_state->backstore->flake_size_bytes;
     uint32_t nugsize   = buselfs_state->backstore->nugget_size_bytes;
 
     uint32_t operations_completed = 0;
-    IFNDEBUG(uint32_t operations_total = 1 + (BLFS_HEAD_NUM_HEADERS - 3)
-             + buselfs_state->backstore->num_nuggets * 2
-             + buselfs_state->backstore->num_nuggets * buselfs_state->backstore->flakes_per_nugget);
-    
-    //blfs_fetch_journaled_data(buselfs_state->backstore, rekeying_nugget_index, &rekeying_count, &rekeying_entry, rekeying_nugget_data);
+    IFNDEBUG(uint32_t operations_total = mt_calculate_expected_size(buselfs_state->backstore->num_nuggets, buselfs_state));
 
     IFDEBUG(dzlog_debug("MERKLE TREE: adding TPMGV counter..."));
     IFDEBUG(dzlog_debug("MERKLE TREE: starting index %"PRIu32, operations_completed));
@@ -419,6 +424,7 @@ static void populate_mt(buselfs_state_t * buselfs_state, int rekeying, uint32_t 
 
     // First element in the merkle tree should be the TPM version counter
     blfs_header_t * tpmv_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_TPMGLOBALVER);
+
     add_to_merkle_tree(tpmv_header->data, tpmv_header->data_length, buselfs_state);
     IFDEBUG(verify_in_merkle_tree(tpmv_header->data, tpmv_header->data_length, 0, buselfs_state));
     operations_completed++;
@@ -454,19 +460,10 @@ static void populate_mt(buselfs_state_t * buselfs_state, int rekeying, uint32_t 
 
     for(uint32_t nugget_index = 0; nugget_index < buselfs_state->backstore->num_nuggets; nugget_index++, operations_completed++)
     {
-        blfs_keycount_t * count;
+        blfs_keycount_t * count = blfs_open_keycount(buselfs_state->backstore, nugget_index);
 
-        /*if(rekeying && rekeying_nugget_index == nugget_index)
-        {
-            IFDEBUG(dzlog_debug("rekeying detected! Using rekeying_nugget_index to grab count..."));
-            count = &rekeying_count;
-        }
-
-        else*/
-            count = blfs_open_keycount(buselfs_state->backstore, nugget_index);
-
-        add_to_merkle_tree((uint8_t *) &count->keycount, BLFS_HEAD_BYTES_KEYCOUNT, buselfs_state);
-        IFDEBUG(verify_in_merkle_tree((uint8_t *) &count->keycount, BLFS_HEAD_BYTES_KEYCOUNT, operations_completed, buselfs_state));
+        add_to_merkle_tree((uint8_t *) &(count->keycount), BLFS_HEAD_BYTES_KEYCOUNT, buselfs_state);
+        IFDEBUG(verify_in_merkle_tree((uint8_t *) &(count->keycount), BLFS_HEAD_BYTES_KEYCOUNT, operations_completed, buselfs_state));
         IFNDEBUG(interact_print_percent_done((operations_completed + 1) * 100 / operations_total));
     }
     
@@ -476,21 +473,33 @@ static void populate_mt(buselfs_state_t * buselfs_state, int rekeying, uint32_t 
 
     for(uint32_t nugget_index = 0; nugget_index < buselfs_state->backstore->num_nuggets; nugget_index++, operations_completed++)
     {
-        blfs_tjournal_entry_t * entry;
+        blfs_tjournal_entry_t * entry = blfs_open_tjournal_entry(buselfs_state->backstore, nugget_index);
 
-        /*if(rekeying && rekeying_nugget_index == nugget_index)
-        {
-            IFDEBUG(dzlog_debug("rekeying detected! Using rekeying_nugget_index to grab entry..."));
-            entry = &rekeying_entry;
-        }
+        uint8_t hash[BLFS_CRYPTO_BYTES_STRUCT_HASH_OUT];
 
-        else*/
-            entry = blfs_open_tjournal_entry(buselfs_state->backstore, nugget_index);
+        blfs_chacha20_struct_hash(hash, entry->bitmask->mask, entry->bitmask->byte_length, buselfs_state->backstore->master_secret);
+        add_to_merkle_tree(hash, BLFS_CRYPTO_BYTES_STRUCT_HASH_OUT, buselfs_state);
+        IFDEBUG(verify_in_merkle_tree(hash, BLFS_CRYPTO_BYTES_STRUCT_HASH_OUT, operations_completed, buselfs_state));
+        IFNDEBUG(interact_print_percent_done((operations_completed + 1) * 100 / operations_total));
+    }
+    
+    // Next, the nugget metadata
+    IFDEBUG(dzlog_debug("MERKLE TREE: adding nugget metadata..."));
+    IFDEBUG(dzlog_debug("MERKLE TREE: starting index %"PRIu32, operations_completed));
 
-        uint8_t hash[BLFS_CRYPTO_BYTES_TJ_HASH_OUT];
-        blfs_chacha20_tj_hash(hash, entry->bitmask->mask, entry->bitmask->byte_length, buselfs_state->backstore->master_secret);
-        add_to_merkle_tree(hash, BLFS_CRYPTO_BYTES_TJ_HASH_OUT, buselfs_state);
-        IFDEBUG(verify_in_merkle_tree(hash, BLFS_CRYPTO_BYTES_TJ_HASH_OUT, operations_completed, buselfs_state));
+    for(uint32_t nugget_index = 0; nugget_index < buselfs_state->backstore->num_nuggets; nugget_index++, operations_completed++)
+    {
+        blfs_nugget_metadata_t * meta = blfs_open_nugget_metadata(buselfs_state->backstore, nugget_index);
+
+        uint8_t data[meta->data_length];
+        uint8_t hash[BLFS_CRYPTO_BYTES_STRUCT_HASH_OUT];
+
+        memcpy(data, &(meta->cipher_ident), 1);
+        memcpy(data + 1, meta->data, meta->data_length - 1);
+
+        blfs_chacha20_struct_hash(hash, data, meta->data_length, buselfs_state->backstore->master_secret);
+        add_to_merkle_tree(hash, BLFS_CRYPTO_BYTES_STRUCT_HASH_OUT, buselfs_state);
+        IFDEBUG(verify_in_merkle_tree(hash, BLFS_CRYPTO_BYTES_STRUCT_HASH_OUT, operations_completed, buselfs_state));
         IFNDEBUG(interact_print_percent_done((operations_completed + 1) * 100 / operations_total));
     }
     
@@ -503,20 +512,10 @@ static void populate_mt(buselfs_state_t * buselfs_state, int rekeying, uint32_t 
         uint8_t nugget_key[BLFS_CRYPTO_BYTES_KDF_OUT] = { 0x00 };
         blfs_keycount_t * count;
 
-        /*if(rekeying && rekeying_nugget_index == nugget_index)
-        {
-            IFDEBUG(dzlog_debug("rekeying detected! Using rekeying_nugget_index to work with count and nugget data..."));
-            count = &rekeying_count;
+        count = blfs_open_keycount(buselfs_state->backstore, nugget_index);
+
+        if(BLFS_DEFAULT_DISABLE_KEY_CACHING)
             blfs_nugget_key_from_data(nugget_key, buselfs_state->backstore->master_secret, nugget_index);
-        }
-
-        else
-        {*/
-            count = blfs_open_keycount(buselfs_state->backstore, nugget_index);
-
-            if(BLFS_DEFAULT_DISABLE_KEY_CACHING)
-                blfs_nugget_key_from_data(nugget_key, buselfs_state->backstore->master_secret, nugget_index);
-        /*}*/
 
         for(uint32_t flake_index = 0; flake_index < buselfs_state->backstore->flakes_per_nugget; flake_index++, operations_completed++)
         {
@@ -527,21 +526,13 @@ static void populate_mt(buselfs_state_t * buselfs_state, int rekeying, uint32_t 
             if(tag == NULL)
                 Throw(EXCEPTION_ALLOC_FAILURE);
 
-            /*if(rekeying && rekeying_nugget_index == nugget_index)
-            {
+            if(BLFS_DEFAULT_DISABLE_KEY_CACHING)
                 blfs_poly1305_key_from_data(flake_key, nugget_key, flake_index, count->keycount);
-                memcpy(flake_data, rekeying_nugget_data + flake_index * flakesize, flakesize);
-            }
 
             else
-            {*/
-                if(BLFS_DEFAULT_DISABLE_KEY_CACHING)
-                    blfs_poly1305_key_from_data(flake_key, nugget_key, flake_index, count->keycount);
-                else
-                    get_flake_key_using_keychain(flake_key, buselfs_state, nugget_index, flake_index, count->keycount);
+                get_flake_key_using_keychain(flake_key, buselfs_state, nugget_index, flake_index, count->keycount);
 
-                blfs_backstore_read_body(buselfs_state->backstore, flake_data, flakesize, nugget_index * nugsize + flake_index * flakesize);
-            /*}*/
+            blfs_backstore_read_body(buselfs_state->backstore, flake_data, flakesize, nugget_index * nugsize + flake_index * flakesize);
             
             blfs_poly1305_generate_tag(tag, flake_data, flakesize, flake_key);
             add_to_merkle_tree(tag, BLFS_CRYPTO_BYTES_FLAKE_TAG_OUT, buselfs_state);
@@ -582,6 +573,22 @@ void add_keychain_to_key_cache(buselfs_state_t * buselfs_state,
     IFDEBUG(dzlog_debug("CACHE: adding KHASH flake keychain key %s to cache...", kh_flake_key));
 
     KHASH_CACHE_PUT_HEAP(BLFS_KHASH_NUGGET_KEY_CACHE_NAME, buselfs_state->cache_nugget_keys, kh_flake_key, flake_key);
+}
+
+void remove_keychain_from_key_cache(buselfs_state_t * buselfs_state,
+                                      uint32_t nugget_index,
+                                      uint32_t flake_index,
+                                      uint64_t keycount)
+{
+    if(BLFS_DEFAULT_DISABLE_KEY_CACHING)
+        Throw(EXCEPTION_BAD_CACHE);
+
+    char kh_flake_key[BLFS_KHASH_NUGGET_KEY_SIZE_BYTES] = { 0x00 };
+
+    sprintf(kh_flake_key, "%"PRIu32"||%"PRIu32"||%"PRIu64, nugget_index, flake_index, keycount);
+    IFDEBUG(dzlog_debug("CACHE: *removing* KHASH flake keychain key %s from cache...", kh_flake_key));
+
+    KHASH_CACHE_DEL_WITH_KEY(BLFS_KHASH_NUGGET_KEY_CACHE_NAME, buselfs_state->cache_nugget_keys, kh_flake_key);
 }
 
 void get_nugget_key_using_index(uint8_t * nugget_key, buselfs_state_t * buselfs_state, uint32_t nugget_index)
@@ -934,7 +941,8 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
 
     memcpy(tpmv_header->data, (uint8_t *) &tpmv_value, BLFS_HEAD_HEADER_BYTES_TPMGLOBALVER);
 
-    blfs_globalversion_commit(buselfs_state->rpmb_secure_index, tpmv_value); // TODO: needs to be guaranteed monotonic, not based on header
+    // ! Needs to be guaranteed monotonic in a real implementation, not based on header
+    blfs_globalversion_commit(buselfs_state->rpmb_secure_index, tpmv_value);
 
     while(length != 0)
     {
@@ -964,7 +972,7 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
             IFENERGYMON(blfs_energymon_collect_metrics(&metrics_rekey_start, buselfs_state));
 
             IFDEBUG(dzlog_notice("OVERWRITE DETECTED! PERFORMING IN-PLACE JOURNALED REKEYING + WRITE (l=%"PRIuFAST32")", buffer_write_length));
-            blfs_rekey_nugget_journaled_with_write(buselfs_state, nugget_offset, buffer, buffer_write_length, nugget_internal_offset);
+            blfs_rekey_nugget_then_write(buselfs_state, nugget_offset, buffer, buffer_write_length, nugget_internal_offset);
 
             IFENERGYMON(blfs_energymon_collect_metrics(&metrics_rekey_end, buselfs_state));
             IFENERGYMON(blfs_energymon_writeout_metrics_simple("buse_write.outer_write_loop.rekey", &metrics_rekey_start, &metrics_rekey_end));
@@ -1004,9 +1012,6 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
             IFDEBUG(dzlog_debug("flake_size: %"PRIuFAST32, flake_size));
             IFDEBUG(dzlog_debug("flake_internal_offset: %"PRIuFAST32, flake_internal_offset));
 
-            // ! Packing it like this might actually be a security
-            // vulnerability. Need to just read in and verify the entire flake
-            // instead? Can't trust data from disk.
             uint_fast32_t flake_index = first_affected_flake;
             uint_fast32_t flake_end = first_affected_flake + num_affected_flakes;
 
@@ -1025,7 +1030,7 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
                 IFDEBUG(memset(flake_data, 0, flake_size));
 
                 // ! Data to write isn't aligned and/or is smaller than
-                // flake_size, so we need to verify its integrity
+                // ! flake_size, so we need to verify its integrity
                 if(flake_internal_offset != 0 || flake_internal_offset + flake_write_length < flake_size)
                 {
                     IFDEBUG(dzlog_debug("UNALIGNED! Write flake requires verification"));
@@ -1214,7 +1219,7 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
     return 0;
 }
 
-void blfs_rekey_nugget_journaled_with_write(buselfs_state_t * buselfs_state,
+void blfs_rekey_nugget_then_write(buselfs_state_t * buselfs_state,
                                   uint32_t rekeying_nugget_index,
                                   const void * buffer,
                                   uint32_t length,
@@ -1223,18 +1228,6 @@ void blfs_rekey_nugget_journaled_with_write(buselfs_state_t * buselfs_state,
     IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
 
     // ! Might want to switch up the ordering of these operations
-
-    // Set REKEYING header to rekeying_nugget_index in order to recover using
-    // journal later if necessary
-    blfs_header_t * rekeying_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_REKEYING);
-    memcpy(rekeying_header->data, &rekeying_nugget_index, BLFS_HEAD_HEADER_BYTES_REKEYING);
-    blfs_commit_header(buselfs_state->backstore, rekeying_header);
-
-    // ! hardcoded index
-    update_in_merkle_tree(rekeying_header->data, BLFS_HEAD_HEADER_BYTES_REKEYING, 7, buselfs_state);
-    IFDEBUG(verify_in_merkle_tree(rekeying_header->data, BLFS_HEAD_HEADER_BYTES_REKEYING, 7, buselfs_state));
-
-    commit_merkle_tree_root_hash(buselfs_state);
 
     blfs_keycount_t * jcount = blfs_open_keycount(buselfs_state->backstore, rekeying_nugget_index);
     blfs_tjournal_entry_t * jentry = blfs_open_tjournal_entry(buselfs_state->backstore, rekeying_nugget_index);
@@ -1255,35 +1248,10 @@ void blfs_rekey_nugget_journaled_with_write(buselfs_state_t * buselfs_state,
               rekeying_nugget_index * buselfs_state->backstore->nugget_size_bytes,
               (void *) buselfs_state);
 
-    // Now we'll commit everything to the journal before proceeding
-    
-    uint8_t journaled_data_ciphertext[buselfs_state->backstore->nugget_size_bytes];
-    blfs_backstore_read_body(buselfs_state->backstore,
-                             journaled_data_ciphertext,
-                             buselfs_state->backstore->nugget_size_bytes,
-                             rekeying_nugget_index * buselfs_state->backstore->nugget_size_bytes);
-
-    // TODO: retire rekeying journaling in favor of buselfs_state->crash_recovery
-    // Write nugget ciphertext and metadata to journal
-    blfs_backstore_write(buselfs_state->backstore,
-                         journaled_data_ciphertext,
-                         buselfs_state->backstore->nugget_size_bytes,
-                         buselfs_state->backstore->nugget_journaled_offset);
-
-    blfs_backstore_write(buselfs_state->backstore,
-                         (uint8_t *) &jcount->keycount,
-                         jcount->data_length,
-                         buselfs_state->backstore->kcs_journaled_offset);
-
-    blfs_backstore_write(buselfs_state->backstore,
-                         jentry->bitmask->mask,
-                         jentry->data_length,
-                         buselfs_state->backstore->tj_journaled_offset);
-
     memcpy(rekeying_nugget_data + nugget_internal_offset, buffer, length);
 
-    // ! if we're in crash recovery mode, the very next keycount might be
-    // burned, so we must take that possibility into account when rekeying.
+    // ! If we're in crash recovery mode, the very next keycount might be
+    // ! burned, so we must take that possibility into account when rekeying.
     jcount->keycount = jcount->keycount + (buselfs_state->crash_recovery ? 2 : 1);
     
     if(!BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
@@ -1309,10 +1277,7 @@ void blfs_rekey_nugget_journaled_with_write(buselfs_state_t * buselfs_state,
         uint8_t flake_key[BLFS_CRYPTO_BYTES_FLAKE_TAG_KEY] = { 0x00 };
         uint8_t * tag = malloc(sizeof(*tag) * BLFS_CRYPTO_BYTES_FLAKE_TAG_OUT);
         uint8_t flake_data[flake_size];
-        uint32_t mt_offset = 2 * buselfs_state->backstore->num_nuggets
-                             + 8
-                             + rekeying_nugget_index * buselfs_state->backstore->flakes_per_nugget
-                             + flake_index;
+        uint32_t mt_offset = mt_calculate_new_offset(rekeying_nugget_index, flake_index, buselfs_state);
 
         if(tag == NULL)
             Throw(EXCEPTION_ALLOC_FAILURE);
@@ -1337,17 +1302,12 @@ void blfs_rekey_nugget_journaled_with_write(buselfs_state_t * buselfs_state,
             memcpy(flake_data, new_nugget_data + flake_index * flake_size, flake_size);
 
         if(!BLFS_DEFAULT_DISABLE_KEY_CACHING)
-        {
-            // FIXME: update the key cache: clear out old keychain, insert new one
-        }
+            remove_keychain_from_key_cache(buselfs_state, rekeying_nugget_index, flake_index, jcount->keycount);
         
         blfs_poly1305_generate_tag(tag, flake_data, flake_size, flake_key);
         update_in_merkle_tree(tag, BLFS_CRYPTO_BYTES_FLAKE_TAG_OUT, mt_offset, buselfs_state);
         IFDEBUG(verify_in_merkle_tree(tag, BLFS_CRYPTO_BYTES_FLAKE_TAG_OUT, mt_offset, buselfs_state));
     }
-
-    // Set REKEYING header back to 0xFF
-    memset(rekeying_header->data, 0xFF, BLFS_HEAD_HEADER_BYTES_REKEYING);
 
     blfs_commit_keycount(buselfs_state->backstore, jcount);
     update_in_merkle_tree((uint8_t *) &jcount->keycount, BLFS_HEAD_BYTES_KEYCOUNT, 8 + rekeying_nugget_index, buselfs_state);
@@ -1358,60 +1318,16 @@ void blfs_rekey_nugget_journaled_with_write(buselfs_state_t * buselfs_state,
     bitmask_set_bits(jentry->bitmask, first_affected_flake, num_affected_flakes);
     blfs_commit_tjournal_entry(buselfs_state->backstore, jentry);
 
-    // ! hardcoded index!
-    update_in_merkle_tree(rekeying_header->data, BLFS_HEAD_HEADER_BYTES_REKEYING, 7, buselfs_state);
-    IFDEBUG(verify_in_merkle_tree(rekeying_header->data, BLFS_HEAD_HEADER_BYTES_REKEYING, 7, buselfs_state));
-
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 }
 
-// TODO: retire this outdated recovery logic in favor of buselfs_state->crash_recovery
-void blfs_rekey_nugget_journaled(buselfs_state_t * buselfs_state, uint32_t rekeying_nugget_index)
-{
-    IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
-
-    IFDEBUG(dzlog_debug("beginning rekeying process..."));
-
-    (void) buselfs_state;
-    (void) rekeying_nugget_index;
-
-    // Set REKEYING header to rekeying_nugget_index
-
-    Throw(EXCEPTION_MUST_HALT); // ! Not implemented!
-
-    // FIXME: crash recovery during rekeying. Implement me sometime!
-    
-    // Re-encrypts a nugget with an entirely different key and updates the cache accordingly.
-    // Do updates in the merkle tree. Deletes in the cache MUST take into account the strduping!
-    
-    // Set REKEYING header to 0
-
-    // Copy the nugget, the kcs, and the keycount at rekeying_nugget_index
-
-    // Update the REKEYING header with the nugget_index
-
-    // Delete (AND FREE) and reinsert the nugget key and ALL THE keychains for
-    // rekeying_nugget_index
-
-    // Update the merkle tree entries
-
-    // Decrypt, increment keycount (and commit), wipe tj (and commit), increment
-    // GV (and commit), reencrypt and store nugget data
-    
-    // Wipe journal space and set rekeying header to 0xFF
-    /*update_in_merkle_tree(rekeying_header->data, BLFS_HEAD_HEADER_BYTES_REKEYING, 7, buselfs_state);
-    IFDEBUG(verify_in_merkle_tree(rekeying_header->data, BLFS_HEAD_HEADER_BYTES_REKEYING, 7, buselfs_state));*/
-
-    IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
-}
-
-// FIXME: mismatch between create and open; needs a fix! Though the recovery code is working, don't try the open command
-// just yet...
+// TODO: mismatch between create and open; needs a fix! Though the recovery code was working for experimental purposes,
+// TODO: don't try the open command until this is fixed.
 void blfs_soft_open(buselfs_state_t * buselfs_state, uint8_t cin_allow_insecure_start)
 {
     IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
 
-    char passwd[BLFS_PASSWORD_BUF_SIZE] = { 0x00 };
+    /*char passwd[BLFS_PASSWORD_BUF_SIZE] = { 0x00 };
 
     if(buselfs_state->default_password != NULL)
     {
@@ -1464,42 +1380,24 @@ void blfs_soft_open(buselfs_state_t * buselfs_state, uint8_t cin_allow_insecure_
     
     if(global_correctness == BLFS_GLOBAL_CORRECTNESS_POTENTIAL_CRASH)
     {
-        /* potential crash occurred; c == d + 1 */
+        // ? potential crash occurred; c == d + 1
         dzlog_error("Error: global version integrity failure occurred. Assessing...");
     }
 
     else if(global_correctness != BLFS_GLOBAL_CORRECTNESS_ALL_GOOD)
     {
-        /* bad manipulation occurred; c < d or c > d + 1 */
+        // ? bad manipulation occurred; c < d or c > d + 1
         dzlog_fatal("!!!!!!! ERROR: FATAL BLOCK DEVICE BACKSTORE GLOBAL VERSION CHECK FAILURE !!!!!!!");
         Throw(EXCEPTION_GLOBAL_CORRECTNESS_FAILURE);
     }
 
-    // ! retire this logic entirely in the future
-    /*// Do we need to rekey?
-    blfs_header_t * rekeying_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_REKEYING);
-    uint8_t zero_rekeying[BLFS_HEAD_HEADER_BYTES_REKEYING];
-    uint32_t rekeying_nugget_index = 0;
-
-    memset(zero_rekeying, 0xFF, BLFS_HEAD_HEADER_BYTES_REKEYING);
-
-    if(memcmp(rekeying_header->data, zero_rekeying, BLFS_HEAD_HEADER_BYTES_REKEYING) != 0)
-    {
-        IFDEBUG(dzlog_debug("rekeying header nugget id detected!"));
-
-        rekeying = TRUE;
-        rekeying_nugget_index = *(uint32_t *) rekeying_header->data;
-
-        IFDEBUG(dzlog_debug("rekeying_nugget_index = %"PRIu32, rekeying_nugget_index));
-    }*/
-
     dzlog_notice("Populating key cache...");
 
-    populate_key_cache(buselfs_state, 0, 0);
+    populate_key_cache(buselfs_state);
 
     dzlog_notice("Populating merkle tree...");
 
-    populate_mt(buselfs_state, 0, 0);
+    populate_mt(buselfs_state);
 
     dzlog_notice("Almost done...");
 
@@ -1548,15 +1446,16 @@ void blfs_soft_open(buselfs_state_t * buselfs_state, uint8_t cin_allow_insecure_
         update_in_merkle_tree(tpmv_header->data, BLFS_HEAD_HEADER_BYTES_TPMGLOBALVER, 0, buselfs_state);
     }
 
-    commit_merkle_tree_root_hash(buselfs_state);
+    commit_merkle_tree_root_hash(buselfs_state);*/
 
-    // Retire this old logic in favor of the new logic
-    //if(rekeying)
-    //    blfs_rekey_nugget_journaled(buselfs_state, *(uint32_t *) rekeying_header->data);
+    Throw(EXCEPTION_UNKNOWN_MODE);
 
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 }
 
+// TODO: DRY this function and the *soft_open and *wipe versions of this
+// TODO: function waaaay out! This includes the cache population steps that are
+// TODO: duped...
 void blfs_run_mode_create(const char * backstore_path,
                           uint64_t cin_backstore_size,
                           uint32_t cin_flake_size,
@@ -1576,8 +1475,8 @@ void blfs_run_mode_create(const char * backstore_path,
         backstore_v = blfs_backstore_create(backstore_path, cin_backstore_size);
 
         // ! refs to memory allocated during blfs_backstore_create
-        // will be lost during an exception. It's technically a memory
-        // leak, but it's not so pressing an issue at the moment.
+        // ! will be lost during an exception. It's technically a memory
+        // ! leak, but it's not so pressing an issue at the moment.
     }
     
     Catch(e)
@@ -1695,29 +1594,29 @@ void blfs_run_mode_create(const char * backstore_path,
     memcpy(flakesize_header->data, data_flakesize, BLFS_HEAD_HEADER_BYTES_FLAKESIZE_BYTES);
     memcpy(fpn_header->data, data_fpn, BLFS_HEAD_HEADER_BYTES_FLAKESPERNUGGET);
 
-    // Calculate numnugget headers (head and body are packed together, bytes at the end are ignored)
+    // Calculate numnugget headers (head and body are packed together; bytes at the end are ignored)
     blfs_header_t * numnuggets_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_NUMNUGGETS);
     blfs_header_t * last_header = blfs_open_header(buselfs_state->backstore,
                                                    header_types_ordered[BLFS_HEAD_NUM_HEADERS - 1][0]);
 
     uint64_t headersize = last_header->data_offset + last_header->data_length;
-    uint64_t nuggetsize = cin_flake_size * cin_flakes_per_nugget;
-    uint64_t space_for_nug_kc_tje = nuggetsize + BLFS_HEAD_BYTES_KEYCOUNT + CEIL(cin_flakes_per_nugget, BITS_IN_A_BYTE);
-    uint64_t journaled_region_size = space_for_nug_kc_tje;
-    int64_t space_remaining = cin_backstore_size - headersize - journaled_region_size;
+    int64_t nuggetsize = cin_flake_size * cin_flakes_per_nugget;
+    int64_t space_remaining = cin_backstore_size - headersize;
     int64_t num_nuggets_calculated_64 = 0;
+
+    uint64_t total_space_req_for_one_nug = calculate_total_space_required_for_1nug(nuggetsize, buselfs_state);
 
     IFDEBUG(dzlog_debug("headersize = %"PRIu64, headersize));
     IFDEBUG(dzlog_debug("nuggetsize = %"PRIu64, nuggetsize));
-    IFDEBUG(dzlog_debug("space_for_nug_kc_tje = %"PRIu64, space_for_nug_kc_tje));
+    IFDEBUG(dzlog_debug("total_space_req_for_one_nug = %"PRIu64, buselfs_state->total_space_req_for_one_nug));
     IFDEBUG(dzlog_debug("space_remaining = %"PRId64, space_remaining));
 
-    while(space_remaining > 0 && (unsigned) space_remaining > space_for_nug_kc_tje)
+    while(space_remaining > 0 && (unsigned) space_remaining > total_space_req_for_one_nug)
     {
         num_nuggets_calculated_64 += 1;
 
-        // Subtract the space required for a nugget, a keycount, and a TJ entry
-        space_remaining -= space_for_nug_kc_tje;
+        // Subtract the space required for a nugget, a keycount, a TJ entry, and a metadata struct
+        space_remaining -= total_space_req_for_one_nug;
     }
 
     IFDEBUG(dzlog_debug("num_nuggets_calculated_64 = %"PRId64, num_nuggets_calculated_64));
@@ -1739,21 +1638,26 @@ void blfs_run_mode_create(const char * backstore_path,
     // Do some intermediate number crunching
     blfs_backstore_setup_actual_post(buselfs_state->backstore);
 
-    // Make sure keycounts and tj entries are in the internal cache
+    IFDEBUG(dzlog_debug("buselfs_state->merkle_tree_expected_size = %"PRIu64, buselfs_state->merkle_tree_expected_size));
+
+    dzlog_notice("Prefetching data caches...");
+
+    // Make sure keycounts, tj entries, and nugget metadata are cached (prefetched)
     for(uint32_t nugget_index = 0; nugget_index < num_nuggets_calculated_32; nugget_index++)
     {
         (void) blfs_create_keycount(buselfs_state->backstore, nugget_index);
         (void) blfs_create_tjournal_entry(buselfs_state->backstore, nugget_index);
+        (void) blfs_create_nugget_metadata(buselfs_state->backstore, nugget_index);
     }
 
     dzlog_notice("Populating key cache...");
 
-    populate_key_cache(buselfs_state, 0, 0);
+    populate_key_cache(buselfs_state);
 
     // Populate merkle tree with leaves, set header
     dzlog_notice("Populating merkle tree...");
     
-    populate_mt(buselfs_state, 0, 0);
+    populate_mt(buselfs_state);
 
     // Update the global MTRH
     dzlog_notice("Almost done...");
@@ -1784,69 +1688,13 @@ void blfs_run_mode_open(const char * backstore_path, uint8_t cin_allow_insecure_
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 }
 
-// TODO: retire and remove this start mode?
 void blfs_run_mode_wipe(const char * backstore_path, uint8_t cin_allow_insecure_start, buselfs_state_t * buselfs_state)
 {
     (void) backstore_path;
     (void) cin_allow_insecure_start;
     (void) buselfs_state;
 
-    /*IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
-    IFDEBUG(dzlog_debug("running in WIPE mode!"));
-
-    // ! In real life, some sort of "wipe" functionality for something like
-    // this would not exist (it breaks security by allowing a bypassing of the
-    // initial MTRH check by malicious header modification).
-    //
-    // It does here, however, because it makes this construction easier to test.
-    // Maybe later, I'll include some compile flags to phase this "feature" out
-    // in a production-type setting.
-
-    buselfs_state->backstore = blfs_backstore_open(backstore_path);
-    blfs_soft_open(buselfs_state, cin_allow_insecure_start);
-
-    // Overwrite keycounts and transaction journal to 0
-    uint64_t state_length = buselfs_state->backstore->body_real_offset - buselfs_state->backstore->kcs_real_offset;
-    uint8_t * zeroed_state = calloc(state_length, sizeof(*zeroed_state));
-
-    blfs_backstore_write(buselfs_state->backstore, zeroed_state, state_length, buselfs_state->backstore->kcs_real_offset);
-
-    // Overwrite data to 0
-    free(zeroed_state);
-
-    uint64_t nugget_size_bytes = buselfs_state->backstore->nugget_size_bytes;
-    uint32_t numnuggets = buselfs_state->backstore->num_nuggets;
-    zeroed_state = calloc(nugget_size_bytes, sizeof(*zeroed_state));
-
-    for(uint32_t nugget_index = 0; nugget_index < numnuggets; nugget_index++)
-    {
-        blfs_backstore_write_body(buselfs_state->backstore,
-                                  zeroed_state,
-                                  nugget_size_bytes,
-                                  nugget_index * nugget_size_bytes);
-    }
-    
-    // Reset necessary headers
-    // BLFS_HEAD_HEADER_TYPE_MTRH, BLFS_HEAD_HEADER_TYPE_TPMGLOBALVER, BLFS_HEAD_HEADER_TYPE_REKEYING, BLFS_HEAD_HEADER_BYTES_INITIALIZED
-
-    blfs_header_t * mtrh_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_MTRH);
-    blfs_header_t * tpmgv_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_TPMGLOBALVER);
-    blfs_header_t * rekeying_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_REKEYING);
-    blfs_header_t * init_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_INITIALIZED);
-    
-    memset(mtrh_header->data, 0, BLFS_HEAD_HEADER_BYTES_MTRH);
-    memset(tpmgv_header->data, 0, BLFS_HEAD_HEADER_BYTES_TPMGLOBALVER);
-    memset(rekeying_header->data, 0xFF, BLFS_HEAD_HEADER_BYTES_REKEYING);
-    init_header->data[0] = BLFS_HEAD_WAS_WIPED_VALUE;
-    
-    blfs_commit_header(buselfs_state->backstore, mtrh_header);
-    blfs_commit_header(buselfs_state->backstore, tpmgv_header);
-    blfs_commit_header(buselfs_state->backstore, rekeying_header);
-    blfs_commit_header(buselfs_state->backstore, init_header);
-    blfs_globalversion_commit(buselfs_state->rpmb_secure_index, 0);
-
-    IFDEBUG(dzlog_debug("EXITING PROGRAM!"));
-    Throw(EXCEPTION_MUST_HALT);*/
+    // TODO: implement this start mode
 }
 
 buselfs_state_t * strongbox_main_actual(int argc, char * argv[], char * blockdevice)

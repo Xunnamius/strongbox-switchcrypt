@@ -47,28 +47,41 @@ typedef struct buselfs_state_t
      * A cache that holds each of the keys for every nugget and flake in the
      * filesystem.
      *
-     * Keys look like:
-     * nugget keys: nugget_index => master_secret||nugget_index
-     * flake keys: nugget_index||flake_id||associated_keycount => master_secret||nugget_index||flake_id||associated_keycount
+     * ?? Keys look like:
+     * * nugget keys: nugget_index
+     * *  => master_secret+nugget_index
+     * * flake keys: nugget_index||flake_id||associated_keycount
+     * *  => master_secret+nugget_index+flake_id+associated_keycount
      *
-     * ! This uses quite a bit of memory, perhaps unnecessarily from a perf
-     * ! perspective. Then again, it may not be all that much. Profile if ballooning.
+     * ! This uses quite a bit of memory
      *
-     * ! strdup is used to persist keys; could be a memory leak location if not
-     * ! careful. Watch out!
+     * ! strdup() is used to persist keys; could be a memory leak location if
+     * ! not careful. Watch out!
      */
     khash_t(BLFS_KHASH_NUGGET_KEY_CACHE_NAME) * cache_nugget_keys;
 
     /**
      * The Merkle Tree that ensures integrity protection. Leaves are legion.
      *
-     * General structure:
+     * ?? General structure (n=nugget count, fpn=flakes/nugget):
      *
-     * index 0: TPM global version
-     * index [1, 7]: headers (excluding TPMGV, INITIALIZED and MTRH)
-     * index [8, n+7]: keycounts
-     * index [n+8, 2n+7]: transaction journal entries
-     * index [2n+8, 2n+7+(n*fpn)]: flake poly1305 tags
+     * ? TPM global version:
+     * *    index 0
+     * ? Headers (excluding TPMGV, INITIALIZED and MTRH):
+     * *    index [1, BLFS_HEAD_NUM_HEADERS-3]
+     * ? Keycounts:
+     * *    index [BLFS_HEAD_NUM_HEADERS-2, n+(BLFS_HEAD_NUM_HEADERS-3)]
+     * ? Transaction journal entries:
+     * *    index [n+(BLFS_HEAD_NUM_HEADERS-2), 2*n+(BLFS_HEAD_NUM_HEADERS-3)]
+     * ? Nugget metadata structs:
+     * *    index [2*n+(BLFS_HEAD_NUM_HEADERS-2), 3*n+(BLFS_HEAD_NUM_HEADERS-3)]
+     * ? Flake poly1305 tags:
+     * *    index [3*n+(BLFS_HEAD_NUM_HEADERS-2), 3*n+(BLFS_HEAD_NUM_HEADERS-3)+(n*fpn)]
+     * 
+     * ?? As of version 500, with (n=10, fpn=5), this structure yields:
+     * * 0 [1, 6] [7, 16] [17, 26] [27, 36] [37, 86]
+     * 
+     * See mt_calculate_expected_size() for exact calculation
      */
     mt_t * merkle_tree;
     mt_hash_t merkle_tree_root_hash;
@@ -123,10 +136,47 @@ void get_flake_key_using_keychain(uint8_t * flake_key,
                                         uint32_t flake_index,
                                         uint64_t keycount);
 
-// Note: you may be wondering why the main file has been broken up like this.
-// 
-// The answer is simple: unit testing. One cannot unit test a big fat main
-// function in any pleasing way. Comes with free organizational boons, too!
+/**
+ * Calculates the total space required to store one nugget and its associated
+ * metadata and header data. This has been abstracted out to make it easier to
+ * add deep changes to the StrongBox internals (e.g. extra n-dependent storage
+ * layers).
+ *
+ * @nuggetsize
+ * @flakes_per_nugget
+ */
+uint32_t calculate_total_space_required_for_1nug(uint32_t nuggetsize, uint32_t flakes_per_nugget);
+
+/**
+ * Calculates the expected size of the merkle tree after it's been initially
+ * populated. This has been abstracted out to make it easier to add deep changes
+ * to the StrongBox internals (e.g. extra n-dependent storage layers).
+ *
+ * ? For example:
+ * * mt_calculate_expected_size(total_number_of_nuggets, buselfs_state)
+ * ? would return the total size of the entire merkle tree after initial
+ * ? population!
+ *
+ * @nugget_index This function will count nuggets up to BUT EXCLUDING this index
+ * @buselfs_state
+ */
+uint32_t mt_calculate_expected_size(uint32_t nugget_index, buselfs_state_t * buselfs_state);
+
+/**
+ * Calculates the offset of a flake in the merkle tree. This has been abstracted
+ * out to make it easier to add deep changes to the StrongBox internals (e.g.
+ * extra n-dependent storage layers).
+ *
+ * @jump_to_nugget_index
+ * @flake_index
+ * @buselfs_state
+ */
+uint32_t mt_calculate_flake_offset(uint32_t jump_to_nugget_index, uint32_t flake_index, buselfs_state_t * buselfs_state);
+
+// ? Note: you may be wondering why the main file has been broken up like this.
+// ? 
+// ? The answer is simple: unit testing. One cannot unit test a big fat main
+// ? function in any pleasing way. Comes with free organizational boons, too!
 
 /**
  * BUSE read operation handler. Passed directly to the buse core. See buse
@@ -151,17 +201,6 @@ int buse_read(void * buffer, uint32_t len, uint64_t offset, void * userdata);
 int buse_write(const void * buffer, uint32_t len, uint64_t offset, void * userdata);
 
 /**
- * Implementation of the StrongBox rekeying procedure for journaled data.
- * Re-encrypts a nugget with an entirely different key and updates the cache
- * accordingly. This is called when rekeying was interrupted and the system was
- * remounted.
- * 
- * @param buselfs_state
- * @param rekeying_nugget_id
- */
-void blfs_rekey_nugget_journaled(buselfs_state_t * buselfs_state, uint32_t rekeying_nugget_id);
-
-/**
  * Implementation of the StrongBox rekeying procedure for on-write overwrite
  * attempts. Re-encrypts a nugget with an entirely different key, performing an
  * in-memory overwrite before writeback, and updates the cache accordingly. This
@@ -173,7 +212,7 @@ void blfs_rekey_nugget_journaled(buselfs_state_t * buselfs_state, uint32_t rekey
  * @param length
  * @param nugget_internal_offset
  */
-void blfs_rekey_nugget_journaled_with_write(buselfs_state_t * buselfs_state,
+void blfs_rekey_nugget_then_write(buselfs_state_t * buselfs_state,
                                             uint32_t rekeying_nugget_id,
                                             const void * buffer,
                                             uint32_t length,
@@ -242,23 +281,55 @@ int strongbox_main(int argc, char * argv[]);
 
 #if BLFS_DEBUG_MONITOR_POWER > 0
 
-// TODO:
+/**
+ * Initialize the internal energy monitor. Must be called before any other
+ * blfs_energymon_* functions or StrongBox's behavior is undefined.
+ * 
+ * @param buselfs_state
+ */
 void blfs_energymon_init(buselfs_state_t * buselfs_state);
 
-// TODO:
+/**
+ * The metrics argument will be populated with the appropriate metrics given
+ * the current moment in time. See metrics_t for more information.
+ * 
+ * @metrics
+ * @buselfs_state
+ */
 void blfs_energymon_collect_metrics(metrics_t * metrics, buselfs_state_t * buselfs_state);
 
-// TODO:
+/**
+ * A complex experimental result will be written out to the filesystem. See
+ * BLFS_ENERGYMON_OUTPUT_PATH to find out where things are written out to.
+ * 
+ * Output is divided between read metrics and write metrics.
+ * 
+ * @tag
+ * @read_metrics_start
+ * @read_metrics_end
+ * @write_metrics_start
+ * @write_metrics_end
+ */
 void blfs_energymon_writeout_metrics(char * tag,
                                      metrics_t * read_metrics_start,
                                      metrics_t * read_metrics_end,
                                      metrics_t * write_metrics_start,
                                      metrics_t * write_metrics_end);
 
-// TODO:
+/**
+ * A simple experimental result will be written out to the filesystem. See
+ * BLFS_ENERGYMON_OUTPUT_PATH to find out where things are written out to.
+ * 
+ * Output is not divided up in any special way.
+ */
 void blfs_energymon_writeout_metrics_simple(char * tag, metrics_t * metrics_start, metrics_t * metrics_end);
 
-// TODO:
+/**
+ * Clean up an initialized internal energy monitor. Should be called when
+ * StrongBox is being unmounted/cleaned up, but not before!
+ * 
+ * @buselfs_state
+ */
 void blfs_energymon_fini(buselfs_state_t * buselfs_state);
 
 #endif /* BLFS_DEBUG_MONITOR_POWER > 0 */

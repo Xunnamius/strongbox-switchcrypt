@@ -5,14 +5,21 @@
 #include "swappable.h"
 
 static stream_cipher_e test_these_ciphers[] = {
-    sc_aes128_ctr,
-    sc_aes256_ctr,
+    // sc_default,
+    // sc_not_impl,
+    sc_chacha8,
+    sc_chacha12,
+    sc_chacha20,
+    sc_chacha20_alt,
     sc_salsa8,
     sc_salsa12,
     sc_salsa20,
-    sc_rabbit,
+    sc_aes128_ctr,
+    sc_aes256_ctr,
     sc_hc128,
+    sc_rabbit,
     sc_sosemanuk,
+    sc_freestyle,
 };
 
 #define TRY_FN_CATCH_EXCEPTION(fn_call)           \

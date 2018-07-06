@@ -58,17 +58,17 @@ void blfs_chacha20_verif(uint8_t * xored_value, const uint8_t * secret)
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 }
 
-void blfs_chacha20_tj_hash(uint8_t * tj_hash, const uint8_t * tj_data, uint64_t tj_data_length, const uint8_t * master_secret)
+void blfs_chacha20_struct_hash(uint8_t * struct_hash, const uint8_t * struct_data, uint64_t struct_data_length, const uint8_t * master_secret)
 {
     IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
 
-    IFDEBUG(dzlog_debug("tj_data:"));
-    IFDEBUG(hdzlog_debug(tj_data, tj_data_length));
+    IFDEBUG(dzlog_debug("struct_data:"));
+    IFDEBUG(hdzlog_debug(struct_data, struct_data_length));
 
-    crypto_generichash(tj_hash, BLFS_CRYPTO_BYTES_TJ_HASH_OUT, tj_data, tj_data_length, master_secret, BLFS_CRYPTO_BYTES_KDF_OUT);
+    crypto_generichash(struct_hash, BLFS_CRYPTO_BYTES_STRUCT_HASH_OUT, struct_data, struct_data_length, master_secret, BLFS_CRYPTO_BYTES_KDF_OUT);
 
-    IFDEBUG(dzlog_debug("tj_hash:"));
-    IFDEBUG(hdzlog_debug(tj_hash, BLFS_CRYPTO_BYTES_TJ_HASH_OUT));
+    IFDEBUG(dzlog_debug("struct_hash:"));
+    IFDEBUG(hdzlog_debug(struct_hash, BLFS_CRYPTO_BYTES_STRUCT_HASH_OUT));
 
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 }
@@ -112,8 +112,10 @@ void blfs_poly1305_key_from_data(uint8_t * new_key,
     IFDEBUG(dzlog_debug("new_key (phase 1, set to):"));
     IFDEBUG(hdzlog_debug(new_key, BLFS_CRYPTO_BYTES_FLAKE_TAG_KEY));
 
+    // ! should probably do stronger mixing here, perhaps very lightweight hashing
     uint64_t * nk8bytes = (uint64_t *) new_key;
-    nk8bytes[0] += ((uint64_t) flake_index) + kcs_keycount;
+    nk8bytes[1] += ((uint64_t) flake_index);
+    nk8bytes[2] += kcs_keycount;
 
     IFDEBUG(dzlog_debug("new_key (final, set to):"));
     IFDEBUG(hdzlog_debug(new_key, BLFS_CRYPTO_BYTES_FLAKE_TAG_KEY));

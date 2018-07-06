@@ -5,8 +5,8 @@
 // Configurable //
 //////////////////
 
-#define BLFS_CURRENT_VERSION 420U
-#define BLFS_LEAST_COMPAT_VERSION 420U
+#define BLFS_CURRENT_VERSION 500U
+#define BLFS_LEAST_COMPAT_VERSION 500U
 
 // ! these would likely be non-static irl
 #define BLFS_RPMB_KEY "thirtycharactersecurecounterkey!"
@@ -22,8 +22,8 @@
 
 /** START: energy/power metric collection */
 
-// ! Must be file path
-#define BLFS_ENERGYMON_OUTPUT_PATH "/home/odroid/bd3/repos/energy-AES-1/results/strongbox-metrics.results"
+// ! Must be file path (hardcoded because the data ain't so useful atm)
+#define BLFS_ENERGYMON_OUTPUT_PATH "/tmp/strongbox-energymon-metrics.results"
 
 /** END: energy/power metric collection */
 
@@ -56,20 +56,24 @@
 ////////////////////
 
 // ? These are the valid values for the --cipher CLI flag
+// ! Note: we are limited to 255 stream cipher implementations (see: header size)
+// ! Note: DO NOT change the order of ciphers, just add new ones to the bottom
 typedef enum stream_cipher_e {
     sc_default,
     sc_not_impl,
     sc_chacha8,
     sc_chacha12,
     sc_chacha20,
+    sc_chacha20_alt,
     sc_salsa8,
     sc_salsa12,
     sc_salsa20,
     sc_aes128_ctr,
     sc_aes256_ctr,
-    sc_hc128,
+    sc_hc128, // TODO: why have we limited HC128's output to 4 bytes? That's likely why it's so slow!
     sc_rabbit,
     sc_sosemanuk,
+    sc_freestyle,
 } stream_cipher_e;
 
 #include <string.h> /* strdup() */
@@ -149,7 +153,7 @@ typedef enum stream_cipher_e {
 #define BLFS_CRYPTO_BYTES_KDF_OUT               32U // crypto_box_SEEDBYTES
 #define BLFS_CRYPTO_BYTES_KDF_SALT              16U // crypto_pwhash_SALTBYTES
 #define BLFS_CRYPTO_BYTES_FLAKE_TAG_OUT         16U // crypto_onetimeauth_poly1305_BYTES
-#define BLFS_CRYPTO_BYTES_TJ_HASH_OUT           16U // crypto_onetimeauth_poly1305_BYTES
+#define BLFS_CRYPTO_BYTES_STRUCT_HASH_OUT       16U // crypto_onetimeauth_poly1305_BYTES
 #define BLFS_CRYPTO_BYTES_FLAKE_TAG_KEY         32U // crypto_onetimeauth_poly1305_KEYBYTES; <= BLFS_CRYPTO_BYTES_KDF_OUT
 #define BLFS_CRYPTO_BYTES_MTRH                  32U // HASH_LENGTH ; this x8 is also an upper bound on flakes per nugget
 #define BLFS_CRYPTO_RPMB_KEY                    32U // See spec
@@ -183,6 +187,9 @@ typedef enum stream_cipher_e {
 #define BLFS_CRYPTO_BYTES_SOSEK_BLOCK           16U // Sosemanuk outputs 16-byte blocks
 #define BLFS_CRYPTO_BYTES_SOSEK_KEY             16U // Sosemanuk uses 16 byte keys
 #define BLFS_CRYPTO_BYTES_SOSEK_IV              16U // Sosemanuk uses 16 byte IV
+#define BLFS_CRYPTO_BYTES_FSTYLE_BLOCK          64U // Freestyle outputs 64-byte blocks
+#define BLFS_CRYPTO_BYTES_FSTYLE_KEY            32U // Freestyle uses 32 byte keys
+#define BLFS_CRYPTO_BYTES_FSTYLE_IV             12U // Freestyle uses 12 byte IV (nonce)
 
 ////////////
 // Header //
@@ -198,7 +205,6 @@ typedef enum stream_cipher_e {
 #define BLFS_HEAD_HEADER_TYPE_FLAKESPERNUGGET   0xF40U
 #define BLFS_HEAD_HEADER_TYPE_FLAKESIZE_BYTES   0xF80U
 #define BLFS_HEAD_HEADER_TYPE_INITIALIZED       0xF100U
-#define BLFS_HEAD_HEADER_TYPE_REKEYING          0xF200U
 
 #define BLFS_HEAD_HEADER_BYTES_VERSION          4U  // uint32_t
 #define BLFS_HEAD_HEADER_BYTES_SALT             BLFS_CRYPTO_BYTES_KDF_SALT // 16U
@@ -209,10 +215,10 @@ typedef enum stream_cipher_e {
 #define BLFS_HEAD_HEADER_BYTES_FLAKESPERNUGGET  4U  // uint32_t
 #define BLFS_HEAD_HEADER_BYTES_FLAKESIZE_BYTES  4U  // uint32_t
 #define BLFS_HEAD_HEADER_BYTES_INITIALIZED      1U  // uint8_t
-#define BLFS_HEAD_HEADER_BYTES_REKEYING         4U  // uint32_t (holds a nugget id)
 
-#define BLFS_HEAD_NUM_HEADERS                   10U
+#define BLFS_HEAD_NUM_HEADERS                   9U
 #define BLFS_HEAD_BYTES_KEYCOUNT                8U // uint64_t
+#define BLFS_HEAD_BYTES_NUGGET_METADATA         8U // uint8_t*
 #define BLFS_HEAD_IS_INITIALIZED_VALUE          0x3CU
 #define BLFS_HEAD_WAS_WIPED_VALUE               0x3DU
 
@@ -296,6 +302,7 @@ typedef enum stream_cipher_e {
 // #define BLFS_KHASH_HEADERS_CACHE_NAME
 // #define BLFS_KHASH_KCS_CACHE_NAME
 // #define BLFS_KHASH_TJ_CACHE_NAME
+// #define BLFS_KHASH_MD_CACHE_NAME
 #define BLFS_KHASH_NUGGET_KEY_SIZE_BYTES        100
 
 /**
@@ -316,7 +323,7 @@ typedef enum stream_cipher_e {
 
 /**
  * Delete a key and its associated pointer value from the hashmap based on the
- * special version of the iterator received from KHASH_CACHE_EXISTS (it's +1'd).
+ * special version of the iterator received from KHASH_CACHE_EXISTS (it's -1'd).
  */
 #define KHASH_CACHE_DEL_WITH_ITRP1(name, hashmap, itr) \
     __extension__ ({ kh_del(name, hashmap, itr-1); })
@@ -336,7 +343,7 @@ typedef enum stream_cipher_e {
 
 /**
  * Grab a pointer from the hashmap corresponding to a special version of the
- * iterator received from KHASH_CACHE_EXISTS (it's +1'd).
+ * iterator received from KHASH_CACHE_EXISTS (it's -1'd).
  */
 #define KHASH_CACHE_GET_WITH_ITRP1(hashmap, itr) \
     __extension__ ({ kh_value(hashmap, itr-1); })

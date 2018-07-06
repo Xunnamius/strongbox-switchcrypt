@@ -21,6 +21,7 @@ CMOCK_ROOT      := $(VENDR_ROOT)/cmock
 MT_ROOT         := $(VENDR_ROOT)/merkle-tree
 ENERGYMON_ROOT  := $(VENDR_ROOT)/energymon
 ESTREAM_ROOT    := $(VENDR_ROOT)/libestream
+CHACHAX_ROOT    := $(VENDR_ROOT)/chacha-opt
 
 # * StrongBox's internal debug level and other interesting compile-time flags
 # ! BLFS_DEBUG_LEVEL=0 when not debugging or suffer the (perf-related) consequences!
@@ -41,10 +42,11 @@ EXENAME := strongbox
 EXECSRC := $(SRC_ROOT)/main.c
 
 # These should typically be in VENDR_ROOT, though they don't have to be
-EXPLICIT_LIBS := $(VENDR_ROOT)/merkle-tree/src/libMerkleTree.a \
+EXPLICIT_LIBS := $(MT_ROOT)/src/libMerkleTree.a \
                  $(ESTREAM_ROOT)/libestream.a \
                  $(ENERGYMON_ROOT)/src/energymon-time-util.c \
-                 $(ENERGYMON_ROOT)/src/ptime/ptime.c
+                 $(ENERGYMON_ROOT)/src/ptime/ptime.c \
+				 $(CHACHAX_ROOT)/bin/chacha.lib
 
 C_TEST_LIBS := $(UNITY_ROOT)/src/unity.c \
                $(CMOCK_ROOT)/src/cmock.c
@@ -69,7 +71,8 @@ IFLAGS      := -I/usr/local/include \
                -I$(CMOCK_ROOT)/src \
                -I$(MT_ROOT)/src \
                -I$(ENERGYMON_ROOT)/src \
-               -I$(ESTREAM_ROOT)
+               -I$(ESTREAM_ROOT) \
+			   -I$(CHACHAX_ROOT)/bin
 
 LDFLAGS     := -L$(VENDR_ROOT) -L/usr/local/lib \
                -lsodium -lzlog -lpthread -lm -lcrypto -lenergymon-default
@@ -226,6 +229,8 @@ vendor: $(VENDR_FILES)
 #	$(MAKE) debug -C ../vendor/merkle-tree
 	$(MAKE) clean -C ../vendor/libestream
 	$(MAKE) libestream.a -C ../vendor/libestream
+	$(MAKE) clean -C ../vendor/chacha-opt
+	$(MAKE) lib -C ../vendor/chacha-opt
 
 src: $(SRC_FILES)
 

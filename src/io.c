@@ -66,7 +66,8 @@ static blfs_backstore_t * backstore_setup_actual_pre(const char * path)
         .file_name        = get_filename_from_path(fpath, BLFS_BACKSTORE_FILENAME_MAXLEN),
         .cache_headers    = kh_init(BLFS_KHASH_HEADERS_CACHE_NAME),
         .cache_kcs_counts = kh_init(BLFS_KHASH_KCS_CACHE_NAME),
-        .cache_tj_entries = kh_init(BLFS_KHASH_TJ_CACHE_NAME)
+        .cache_tj_entries = kh_init(BLFS_KHASH_TJ_CACHE_NAME),
+        .cache_nugget_md  = kh_init(BLFS_KHASH_MD_CACHE_NAME)
     };
     
     IFDEBUG(dzlog_debug("init->file_path = %s", init.file_path));
@@ -132,23 +133,17 @@ void blfs_backstore_setup_actual_post(blfs_backstore_t * backstore)
 
     backstore->kcs_real_offset = header_last->data_offset + header_last->data_length;
     backstore->tj_real_offset  = backstore->kcs_real_offset + backstore->num_nuggets * BLFS_HEAD_BYTES_KEYCOUNT;
+    backstore->md_real_offset  = backstore->tj_real_offset + backstore->num_nuggets * CEIL(backstore->flakes_per_nugget, BITS_IN_A_BYTE)
 
     IFDEBUG(dzlog_debug("backstore->kcs_real_offset = %"PRIu64, backstore->kcs_real_offset));
     IFDEBUG(dzlog_debug("backstore->tj_real_offset = %"PRIu64, backstore->tj_real_offset));
-
-    backstore->kcs_journaled_offset    = backstore->tj_real_offset + backstore->num_nuggets * CEIL(backstore->flakes_per_nugget, BITS_IN_A_BYTE);
-    backstore->tj_journaled_offset     = backstore->kcs_journaled_offset + BLFS_HEAD_BYTES_KEYCOUNT;
-    backstore->nugget_journaled_offset = backstore->tj_journaled_offset + CEIL(backstore->flakes_per_nugget, BITS_IN_A_BYTE);
-
-    IFDEBUG(dzlog_debug("backstore->kcs_journaled_offset = %"PRIu64, backstore->kcs_journaled_offset));
-    IFDEBUG(dzlog_debug("backstore->tj_journaled_offset = %"PRIu64, backstore->tj_journaled_offset));
-    IFDEBUG(dzlog_debug("backstore->nugget_journaled_offset = %"PRIu64, backstore->nugget_journaled_offset));
+    IFDEBUG(dzlog_debug("backstore->md_real_offset = %"PRIu64, backstore->tj_real_offset));
+    
+    backstore->body_real_offset = backstore->md_real_offset + backstore->nugget_size_bytes;
+    IFDEBUG(dzlog_debug("backstore->body_real_offset = %"PRIu64, backstore->body_real_offset));
 
     backstore->nugget_size_bytes = backstore->flakes_per_nugget * backstore->flake_size_bytes;
     IFDEBUG(dzlog_debug("backstore->nugget_size_bytes = %"PRIu32, backstore->nugget_size_bytes));
-    
-    backstore->body_real_offset = backstore->nugget_journaled_offset + backstore->nugget_size_bytes;
-    IFDEBUG(dzlog_debug("backstore->body_real_offset = %"PRIu64, backstore->body_real_offset));
 
     backstore->writeable_size_actual = backstore->num_nuggets * backstore->nugget_size_bytes;
     IFDEBUG(dzlog_debug("file_size_actual - body_real_offset => %"PRId64, ((int64_t) backstore->file_size_actual) - ((int64_t) backstore->body_real_offset)));
@@ -194,7 +189,6 @@ blfs_backstore_t * blfs_backstore_create(const char * path, uint64_t file_size_b
     uint8_t data_flakespernugget[BLFS_HEAD_HEADER_BYTES_FLAKESPERNUGGET];
     uint8_t data_flakesizebytes[BLFS_HEAD_HEADER_BYTES_FLAKESIZE_BYTES];
     uint8_t data_initialized[BLFS_HEAD_HEADER_BYTES_INITIALIZED];
-    uint8_t data_rekeying[BLFS_HEAD_HEADER_BYTES_REKEYING];
 
     memset(data_salt, 0, BLFS_HEAD_HEADER_BYTES_SALT);
     memset(data_mtrh, 0, BLFS_HEAD_HEADER_BYTES_MTRH);
@@ -204,12 +198,10 @@ blfs_backstore_t * blfs_backstore_create(const char * path, uint64_t file_size_b
     memset(data_flakespernugget, 0, BLFS_HEAD_HEADER_BYTES_FLAKESPERNUGGET);
     memset(data_flakesizebytes, 0, BLFS_HEAD_HEADER_BYTES_FLAKESIZE_BYTES);
     memset(data_initialized, 0, BLFS_HEAD_HEADER_BYTES_INITIALIZED);
-    memset(data_rekeying, 0xFF, BLFS_HEAD_HEADER_BYTES_REKEYING);
 
     data_tpmglobalver[0] = 0x01;
 
     // Initialize headers (add them to cache so further opens don't hit disk)
-    // TODO: maybe put this in a loop that references header_types_ordered
     (void) blfs_create_header(backstore, BLFS_HEAD_HEADER_TYPE_VERSION, data_version);
     (void) blfs_create_header(backstore, BLFS_HEAD_HEADER_TYPE_SALT, data_salt);
     (void) blfs_create_header(backstore, BLFS_HEAD_HEADER_TYPE_MTRH, data_mtrh);
@@ -219,17 +211,15 @@ blfs_backstore_t * blfs_backstore_create(const char * path, uint64_t file_size_b
     (void) blfs_create_header(backstore, BLFS_HEAD_HEADER_TYPE_FLAKESPERNUGGET, data_flakespernugget);
     (void) blfs_create_header(backstore, BLFS_HEAD_HEADER_TYPE_FLAKESIZE_BYTES, data_flakesizebytes);
     (void) blfs_create_header(backstore, BLFS_HEAD_HEADER_TYPE_INITIALIZED, data_initialized);
-    (void) blfs_create_header(backstore, BLFS_HEAD_HEADER_TYPE_REKEYING, data_rekeying);
 
     backstore->kcs_real_offset = 0;
     backstore->tj_real_offset = 0;
+    backstore->md_real_offset = 0;
     backstore->body_real_offset = 0;
-    backstore->kcs_journaled_offset = 0;
-    backstore->tj_journaled_offset = 0;
-    backstore->nugget_journaled_offset = 0;
     backstore->nugget_size_bytes = 0;
-    backstore->writeable_size_actual = 0;
     backstore->flake_size_bytes = 0;
+    backstore->writeable_size_actual = 0;
+    backstore->file_size_actual = 0;
     backstore->num_nuggets = 0;
     backstore->flakes_per_nugget = 0;
 
@@ -282,6 +272,7 @@ void blfs_backstore_close(blfs_backstore_t * backstore)
     kh_destroy(BLFS_KHASH_HEADERS_CACHE_NAME, backstore->cache_headers);
     kh_destroy(BLFS_KHASH_KCS_CACHE_NAME, backstore->cache_kcs_counts);
     kh_destroy(BLFS_KHASH_TJ_CACHE_NAME, backstore->cache_tj_entries);
+    kh_destroy(BLFS_KHASH_MD_CACHE_NAME, backstore->cache_nugget_md);
     close(backstore->io_fd);
     free((void *) backstore->file_path);
     free(backstore);

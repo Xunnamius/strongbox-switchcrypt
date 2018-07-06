@@ -81,6 +81,7 @@ blfs_header_t * blfs_create_header(blfs_backstore_t * backstore, uint32_t header
     }
 
     IFDEBUG(dzlog_debug("<creating new blfs_header_t header object>"));
+
     blfs_header_t * header;
     #ifndef __INTELLISENSE__
     header = blfs_generate_header_actual(
@@ -114,7 +115,7 @@ blfs_header_t * blfs_open_header(blfs_backstore_t * backstore, uint32_t header_t
     IFDEBUG(dzlog_debug("<opening blfs_header_t header object>"));
 
     blfs_header_t * header;
-    #ifndef __INTELLISENSE__ 
+    #ifndef __INTELLISENSE__
     header = blfs_generate_header_actual(
         backstore,
         header_type,
@@ -425,71 +426,135 @@ void blfs_close_tjournal_entry(blfs_backstore_t * backstore, blfs_tjournal_entry
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 }
 
-void blfs_fetch_journaled_data(blfs_backstore_t * backstore,
-                               uint64_t rekeying_nugget_index,
-                               blfs_keycount_t * rekeying_count,
-                               blfs_tjournal_entry_t * rekeying_entry,
-                               uint8_t * rekeying_nugget_data)
+blfs_nugget_metadata_t * blfs_create_nugget_metadata(blfs_backstore_t * backstore, uint64_t nugget_index)
 {
     IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
 
-    blfs_keycount_t * jcount = malloc(sizeof(*jcount));
-    blfs_tjournal_entry_t * jentry = malloc(sizeof(*jentry));
+    if(KHASH_CACHE_EXISTS(BLFS_KHASH_MD_CACHE_NAME, backstore->cache_nugget_md, nugget_index))
+    {
+        IFDEBUG(dzlog_error("EXCEPTION: tried to create nugget metadata entry %"PRIu64" when it already exists in the cache", nugget_index));
+        Throw(EXCEPTION_INVALID_OPERATION);
+    }
 
-    if(jcount == NULL || jentry == NULL)
+    blfs_nugget_metadata_t * meta = malloc(sizeof(blfs_nugget_metadata_t));
+
+    if(meta == NULL)
         Throw(EXCEPTION_ALLOC_FAILURE);
 
-    IFDEBUG(dzlog_debug("backstore->kcs_journaled_offset = %"PRIu64, backstore->kcs_journaled_offset));
-    IFDEBUG(dzlog_debug("backstore->tj_journaled_offset = %"PRIu64, backstore->tj_journaled_offset));
-    IFDEBUG(dzlog_debug("backstore->nugget_journaled_offset = %"PRIu64, backstore->nugget_journaled_offset));
+    IFDEBUG(dzlog_debug("BLFS_HEAD_BYTES_NUGGET_METADATA = %"PRIu32, BLFS_HEAD_BYTES_NUGGET_METADATA));
 
-    // Set up jcount
+    meta->nugget_index = nugget_index;
+    meta->data_length = BLFS_HEAD_BYTES_NUGGET_METADATA;
+    meta->data_offset = backstore->md_real_offset + nugget_index * meta->data_length;
 
-    jcount->nugget_index = rekeying_nugget_index;
-    jcount->data_length = BLFS_HEAD_BYTES_KEYCOUNT;
-    jcount->data_offset = backstore->kcs_journaled_offset;
+    meta->cipher_ident = sc_not_impl;
+    meta->data = malloc((meta->data_length - 1) * sizeof(uint8_t));
 
-    uint8_t jcount_data[jcount->data_length];
+    IFDEBUG(dzlog_debug("created new blfs_nugget_metadata_t object"));
+    IFDEBUG(dzlog_debug("backstore->md_real_offset = %"PRIu64, backstore->md_real_offset));
+    IFDEBUG(dzlog_debug("meta->nugget_index = %"PRIu32, meta->nugget_index));
+    IFDEBUG(dzlog_debug("meta->data_offset = %"PRIu64, meta->data_offset));
+    IFDEBUG(dzlog_debug("meta->data_length = %"PRIu64, meta->data_length));
+    IFDEBUG(dzlog_debug("meta->cipher_ident = %"PRIu8, meta->cipher_ident));
+    IFDEBUG(dzlog_debug("meta->data:"));
+    IFDEBUG(hdzlog_debug(meta->data, meta->data_length - 1));
+    
+    KHASH_CACHE_PUT(BLFS_KHASH_MD_CACHE_NAME, backstore->cache_nugget_md, nugget_index, meta);
 
-    blfs_backstore_read(backstore, jcount_data, jcount->data_length, jcount->data_offset);
+    IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
+    return meta;
+}
 
-    memcpy(&(jcount->keycount), jcount_data, jcount->data_length);
+blfs_nugget_metadata_t * blfs_open_nugget_metadata(blfs_backstore_t * backstore, uint64_t nugget_index)
+{
+    IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
 
-    IFDEBUG(dzlog_debug("opened blfs_keycount_t *journaled* count object"));
-    IFDEBUG(dzlog_debug("jcount->nugget_index = %"PRIu32, jcount->nugget_index));
-    IFDEBUG(dzlog_debug("jcount->data_offset = %"PRIu64, jcount->data_offset));
-    IFDEBUG(dzlog_debug("jcount->data_length = %"PRIu64, jcount->data_length));
-    IFDEBUG(dzlog_debug("jcount->keycount = %"PRIu64, jcount->keycount));
-    IFDEBUG(dzlog_debug("jcount->keycount (as data):"));
-    IFDEBUG(hdzlog_debug(&(jcount->keycount), jcount->data_length));
+    blfs_nugget_metadata_t * meta;
+    khint64_t khash_itr_key;
 
-    // Set up jentry
+    if((khash_itr_key = KHASH_CACHE_EXISTS(BLFS_KHASH_MD_CACHE_NAME, backstore->cache_nugget_md, nugget_index)))
+    {
+        IFDEBUG(dzlog_debug("CACHE HIT: metadata for nugget id %"PRIu64" was found in the cache", nugget_index));
+        meta = KHASH_CACHE_GET_WITH_ITRP1(backstore->cache_nugget_md, khash_itr_key);
+    }
 
-    jentry->nugget_index = rekeying_nugget_index;
-    jentry->data_length = backstore->nugget_journaled_offset - backstore->tj_journaled_offset;
-    jentry->data_offset = backstore->tj_journaled_offset;
+    else
+    {
+        IFDEBUG(dzlog_debug("metadata for nugget id %"PRIu64" was not found in the cache", nugget_index));
 
-    IFDEBUG(dzlog_debug("opened blfs_tjournal_entry_t *journaled* entry object"));
-    IFDEBUG(dzlog_debug("jentry->nugget_index = %"PRIu32, jentry->nugget_index));
-    IFDEBUG(dzlog_debug("jentry->data_offset = %"PRIu64, jentry->data_offset));
-    IFDEBUG(dzlog_debug("jentry->data_length = %"PRIu64, jentry->data_length));
+        meta = malloc(sizeof(blfs_nugget_metadata_t));
 
-    uint8_t mask_data[jentry->data_length];
+        if(meta == NULL)
+            Throw(EXCEPTION_ALLOC_FAILURE);
 
-    blfs_backstore_read(backstore, mask_data, jentry->data_length, jentry->data_offset);
-    jentry->bitmask = bitmask_init(mask_data, jentry->data_length);
+        IFDEBUG(dzlog_debug("backstore->flakes_per_nugget = %"PRIu32, backstore->flakes_per_nugget));
 
-    // Set up journaled nugget data
+        meta->nugget_index = nugget_index;
+        meta->data_length = CEIL(backstore->flakes_per_nugget, BITS_IN_A_BYTE);
+        meta->data_offset = backstore->md_real_offset + nugget_index * meta->data_length;
+        meta->data = malloc((meta->data_length - 1) * sizeof(uint8_t));
 
-    blfs_backstore_read(backstore, rekeying_nugget_data, backstore->nugget_size_bytes, backstore->nugget_journaled_offset);
+        uint8_t meta_data[meta->data_length];
+        blfs_backstore_read(backstore, meta_data, meta->data_length, meta->data_offset);
 
-    // Finish up
+        memcpy(&(meta->cipher_ident), meta_data, 1);
+        memcpy(meta->data, meta_data + 1, meta->data_length - 1);
 
-    memcpy(rekeying_count, jcount, sizeof(*jcount));
-    memcpy(rekeying_entry, jentry, sizeof(*jentry));
+        IFDEBUG(dzlog_debug("opened blfs_nugget_metadata_t meta object"));
+        IFDEBUG(dzlog_debug("backstore->md_real_offset = %"PRIu64, backstore->md_real_offset));
+        IFDEBUG(dzlog_debug("meta->nugget_index = %"PRIu32, meta->nugget_index));
+        IFDEBUG(dzlog_debug("meta->data_offset = %"PRIu64, meta->data_offset));
+        IFDEBUG(dzlog_debug("meta->data_length = %"PRIu64, meta->data_length));
+        IFDEBUG(dzlog_debug("meta->cipher_ident = %"PRIu8, meta->cipher_ident));
+        IFDEBUG(dzlog_debug("meta->data:"));
+        IFDEBUG(hdzlog_debug(meta->data, meta->data_length - 1));
 
-    free(jcount);
-    free(jentry);
+        KHASH_CACHE_PUT(BLFS_KHASH_MD_CACHE_NAME, backstore->cache_nugget_md, nugget_index, meta);
+
+        IFDEBUG(dzlog_debug("metadata for nugget id %"PRIu64" was added to the cache", nugget_index));
+    }
+
+    IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
+    return meta;
+}
+
+void blfs_commit_nugget_metadata(blfs_backstore_t * backstore, const blfs_nugget_metadata_t * meta)
+{
+    IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
+
+    blfs_backstore_write(backstore, (uint8_t *) &(meta->cipher_ident), 1, meta->data_offset);
+    blfs_backstore_write(backstore, meta->data, meta->data_length - 1, meta->data_offset + 1);
+
+    IFDEBUG(dzlog_debug("committing nugget metadata to backstore:"));
+    IFDEBUG(dzlog_debug("meta->nugget_index = %"PRIu32, meta->nugget_index));
+    IFDEBUG(dzlog_debug("meta->data_length = %"PRIu64, meta->data_length));
+    IFDEBUG(dzlog_debug("meta->data_offset = %"PRIu64, meta->data_offset));
+    IFDEBUG(dzlog_debug("meta->cipher_ident = %"PRIu64, meta->cipher_ident));
+    IFDEBUG(dzlog_debug("meta->cipher_ident (as data):"));
+    IFDEBUG(hdzlog_debug(&(meta->cipher_ident), 1));
+    IFDEBUG(dzlog_debug("meta->data:"));
+    IFDEBUG(hdzlog_debug(&(meta->data), meta->data_length - 1));
+
+    IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
+}
+
+void blfs_close_nugget_metadata(blfs_backstore_t * backstore, blfs_nugget_metadata_t * meta)
+{
+    IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
+
+    khint64_t khash_itr_key;
+
+    if((khash_itr_key = KHASH_CACHE_EXISTS(BLFS_KHASH_MD_CACHE_NAME, backstore->cache_nugget_md, meta->nugget_index)))
+    {
+        IFDEBUG(dzlog_debug(
+            "CACHE HIT: metadata for nugget id %"PRIu32" was deleted from the cache", meta->nugget_index));
+        KHASH_CACHE_DEL_WITH_ITRP1(BLFS_KHASH_MD_CACHE_NAME, backstore->cache_nugget_md, khash_itr_key);
+    }
+
+    IFDEBUG(dzlog_debug("metadata for nugget id %"PRIu32" is about to be freed...", meta->nugget_index));
+
+    free(meta->data);
+    free(meta);
 
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 }

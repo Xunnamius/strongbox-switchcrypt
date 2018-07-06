@@ -22,7 +22,6 @@ static const uint32_t header_types_ordered[BLFS_HEAD_NUM_HEADERS][2] = {
     { BLFS_HEAD_HEADER_TYPE_FLAKESPERNUGGET, BLFS_HEAD_HEADER_BYTES_FLAKESPERNUGGET },
     { BLFS_HEAD_HEADER_TYPE_FLAKESIZE_BYTES, BLFS_HEAD_HEADER_BYTES_FLAKESIZE_BYTES },
     { BLFS_HEAD_HEADER_TYPE_INITIALIZED, BLFS_HEAD_HEADER_BYTES_INITIALIZED },
-    { BLFS_HEAD_HEADER_TYPE_REKEYING, BLFS_HEAD_HEADER_BYTES_REKEYING },
 };
 
 static const char * const header_types_named[BLFS_HEAD_NUM_HEADERS] = {
@@ -35,7 +34,6 @@ static const char * const header_types_named[BLFS_HEAD_NUM_HEADERS] = {
     "FLAKESPERNUGGET",
     "FLAKESIZE_BYTES",
     "INITIALIZED",
-    "REKEYING",
 };
 
 //////////////////////
@@ -108,6 +106,27 @@ typedef struct blfs_tjournal_entry_t
     bitmask_t * bitmask;
 } blfs_tjournal_entry_t;
 
+/**
+ * Nugget metadata contains all the stored metadata mapped to particular nugget
+ * indices. 1 byte is used to store the encryption cipher (0-255). The rest
+ * (BLFS_HEAD_BYTES_NUGGET_METADATA) is reserved for custom use as the cipher requires.
+ *
+ * @nugget_index    the index of the nugget that this struct corresponds to
+ * @data_offset     data offset in the backstore
+ * @data_length     total data length in bytes; will be BLFS_HEAD_BYTES_NUGGET_METADATA
+ * @cipher_ident    value corresponding to stream_cipher_e (see: constants.h)
+ * @data            (BLFS_HEAD_BYTES_NUGGET_METADATA - 1) bytes of data
+ */
+typedef struct blfs_nugget_metadata_t
+{
+    uint32_t nugget_index;
+    uint64_t data_offset;
+    uint64_t data_length;
+
+    uint8_t cipher_ident;
+    uint8_t * data;
+} blfs_nugget_metadata_t;
+
 ///////////////////////////
 // Cache initializations //
 ///////////////////////////
@@ -117,6 +136,8 @@ KHASH_MAP_INIT_INT64(BLFS_KHASH_HEADERS_CACHE_NAME, blfs_header_t*)
 KHASH_MAP_INIT_INT64(BLFS_KHASH_KCS_CACHE_NAME, blfs_keycount_t*)
 
 KHASH_MAP_INIT_INT64(BLFS_KHASH_TJ_CACHE_NAME, blfs_tjournal_entry_t*)
+
+KHASH_MAP_INIT_INT64(BLFS_KHASH_MD_CACHE_NAME, blfs_nugget_metadata_t*)
 
 /**
  * This struct and its related functions (in io.h) abstract away a lot of the
@@ -157,11 +178,8 @@ typedef struct blfs_backstore_t
 
     uint64_t kcs_real_offset;
     uint64_t tj_real_offset;
+    uint64_t md_real_offset;
     uint64_t body_real_offset;
-
-    uint64_t kcs_journaled_offset;
-    uint64_t tj_journaled_offset;
-    uint64_t nugget_journaled_offset;
 
     uint32_t nugget_size_bytes;
     uint32_t flake_size_bytes;
@@ -176,6 +194,7 @@ typedef struct blfs_backstore_t
     khash_t(BLFS_KHASH_HEADERS_CACHE_NAME)  * cache_headers;
     khash_t(BLFS_KHASH_KCS_CACHE_NAME)      * cache_kcs_counts;
     khash_t(BLFS_KHASH_TJ_CACHE_NAME)       * cache_tj_entries;
+    khash_t(BLFS_KHASH_MD_CACHE_NAME)       * cache_nugget_md;
 } blfs_backstore_t;
 
 /////////////////////////
@@ -270,7 +289,7 @@ void blfs_commit_keycount(blfs_backstore_t * backstore, const blfs_keycount_t * 
 
 /**
  * The specified keycount is free()'d. Be careful calling this. It should rarely
- * be used.
+ * if ever be used.
  *
  * @param backstore
  * @param count
@@ -281,10 +300,10 @@ void blfs_close_keycount(blfs_backstore_t * backstore, blfs_keycount_t * count);
  * Creates the specified TJ entry from the specified backstore. Throws an error
  * upon failure.
  *
- * @param  backstore    [description]
- * @param  nugget_index [description]
+ * @param  backstore
+ * @param  nugget_index
  *
- * @return              [description]
+ * @return              blfs_tjournal_entry_t
  */
 blfs_tjournal_entry_t * blfs_create_tjournal_entry(blfs_backstore_t * backstore, uint64_t nugget_index);
 
@@ -310,7 +329,7 @@ void blfs_commit_tjournal_entry(blfs_backstore_t * backstore, const blfs_tjourna
 
 /**
  * The specified TJ entry is free()'d. Be careful calling this. It should rarely
- * be used.
+ * if ever be used.
  *
  * @param backstore
  * @param entry
@@ -318,24 +337,43 @@ void blfs_commit_tjournal_entry(blfs_backstore_t * backstore, const blfs_tjourna
 void blfs_close_tjournal_entry(blfs_backstore_t * backstore, blfs_tjournal_entry_t * entry);
 
 /**
- * Reads in the journaled keycount store, transaction journal, and nugget data.
- * This data is memcpy'd into the corresponding passed pointer arguments.
+ * Creates the specified nugget metadata from the specified backstore. Throws an
+ * error upon failure.
  *
- * The data is not cached. DO NOT call the various *_close_* functions on the
- * keycounts and tj entries returned by this function!
+ * @param  backstore
+ * @param  nugget_index
  *
- * TODO: Maybe in the future the data should be cached?
+ * @return              blfs_nugget_metadata_t
+ */
+blfs_nugget_metadata_t * blfs_create_nugget_metadata(blfs_backstore_t * backstore, uint64_t nugget_index);
+
+/**
+ * Reads in the specified nugget metadata from the specified backstore. Throws
+ * an error upon failure.
+ *
+ * @param  backstore
+ * @param  nugget_index
+ *
+ * @return              blfs_nugget_metadata_t
+ */
+blfs_nugget_metadata_t * blfs_open_nugget_metadata(blfs_backstore_t * backstore, uint64_t nugget_index);
+
+/**
+ * Immediately writes the specified nugget metadata to the specified backstore.
+ * Throws an error upon failure.
  *
  * @param backstore
- * @param rekeying_nugget_index
- * @param rekeying_count
- * @param rekeying_entry
- * @param rekeying_nugget_data
+ * @param meta
  */
-void blfs_fetch_journaled_data(blfs_backstore_t * backstore,
-                               uint64_t rekeying_nugget_index,
-                               blfs_keycount_t * rekeying_count,
-                               blfs_tjournal_entry_t * rekeying_entry,
-                               uint8_t * rekeying_nugget_data);
+void blfs_commit_nugget_metadata(blfs_backstore_t * backstore, const blfs_nugget_metadata_t * meta);
+
+/**
+ * The specified nugget metadata is free()'d. Be careful calling this. It should
+ * rarely if ever be used.
+ *
+ * @param backstore
+ * @param meta
+ */
+void blfs_close_nugget_metadata(blfs_backstore_t * backstore, blfs_nugget_metadata_t * meta);
 
 #endif /* BLFS_BACKSTORE_H_ */
