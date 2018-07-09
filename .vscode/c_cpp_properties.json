@@ -9,7 +9,8 @@
                 "limitSymbolsToIncludedHeaders": true
             },
             "includePath": [
-                "Z:/gitr/research/build",
+                "Z:/gitr/research/buselfs",
+                "Z:/gitr/research/buselfs/build",
                 "Z:/gitr/research/buselfs/src",
                 "Z:/gitr/research/buselfs/config",
                 "Z:/gitr/research/buselfs/vendor/unity/src",

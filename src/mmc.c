@@ -188,7 +188,7 @@ void rpmb_read_block(uint16_t blk_addr, uint8_t * data_out)
 
     /* Output */
     frame_out = &frame_out_p[0];
-    assert(sizeof(frame_out->data) == BLFS_CRYPTO_RPMB_BLOCK);
+    IFDEBUG(assert(sizeof(frame_out->data) == BLFS_CRYPTO_RPMB_BLOCK));
     memcpy(data_out, frame_out->data, BLFS_CRYPTO_RPMB_BLOCK);
 
     free(frame_out_p);

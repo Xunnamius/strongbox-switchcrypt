@@ -7,10 +7,10 @@
 static stream_cipher_e test_these_ciphers[] = {
     // sc_default,
     // sc_not_impl,
-    //sc_chacha8_neon,
-    //sc_chacha12_neon,
+    sc_chacha8_neon,
+    sc_chacha12_neon,
     sc_chacha20,
-    //sc_chacha20_neon,
+    sc_chacha20_neon,
     sc_salsa8,
     sc_salsa12,
     sc_salsa20,
@@ -19,7 +19,9 @@ static stream_cipher_e test_these_ciphers[] = {
     sc_hc128,
     sc_rabbit,
     sc_sosemanuk,
-    //sc_freestyle,
+    sc_freestyle_fast,
+    sc_freestyle_balanced,
+    sc_freestyle_secure,
 };
 
 #define TRY_FN_CATCH_EXCEPTION(fn_call)           \
@@ -34,16 +36,6 @@ Catch(e_actual)                                   \
 
 void setUp(void)
 {
-    static int runonce = 0;
-
-    if(!runonce && BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
-    {
-        // ERR_load_crypto_strings();
-        // OpenSSL_add_all_algorithms();
-        // OPENSSL_config(NULL);
-        runonce = 1;
-    }
-
     if(sodium_init() == -1)
         exit(EXCEPTION_SODIUM_INIT_FAILURE);
 
@@ -61,74 +53,82 @@ void tearDown(void)
 
 void test_algos_crypt_properly(void)
 {
-    for(size_t ri = 0, j = COUNT(test_these_ciphers) * 2; ri < j; ++ri)
-    {
-        size_t i = ri / 2;
+    TEST_FAIL();
+    // TODO: fix me!
+    // int print = 0;
 
-        dzlog_notice("Testing algorithm #%i", (int) test_these_ciphers[i]);
+    // for(size_t ri = 0, j = COUNT(test_these_ciphers) * 2; ri < j; ++ri, print = !print)
+    // {
+    //     size_t i = ri / 2;
 
-        stream_crypt_common algo = blfs_to_stream_context(test_these_ciphers[i]);
+    //     stream_crypt_common algo = blfs_to_stream_context(test_these_ciphers[i]);
+        
+    //     if(print)
+    //     {
+    //         dzlog_notice("\nTesting algorithm #%i", (int) test_these_ciphers[i]);
+    //         dzlog_notice("%s", attributes->description);
+    //     }
 
-        uint8_t data[20] = "20chardat20chardat!";
-        uint8_t crypted_data[sizeof data] = { 0x00 };
-        uint64_t kcs_keycount = 10242048;
-        uint64_t nugget_internal_offset = 64;
+    //     uint8_t data[20] = "20chardat20chardat!";
+    //     uint8_t crypted_data[sizeof data] = { 0x00 };
+    //     uint64_t kcs_keycount = 10242048;
+    //     uint64_t nugget_internal_offset = 64;
 
-        uint8_t nugget_key[BLFS_CRYPTO_BYTES_AES256_KEY] = {
-            0xd9, 0x76, 0xff, 0x4c, 0xd9, 0xaa, 0x1, 0xea,
-            0xa5, 0xad, 0xdc, 0x68, 0xcf, 0xe1, 0x8f, 0xc1
-        };
+    //     uint8_t nugget_key[BLFS_CRYPTO_BYTES_AES256_KEY] = {
+    //         0xd9, 0x76, 0xff, 0x4c, 0xd9, 0xaa, 0x1, 0xea,
+    //         0xa5, 0xad, 0xdc, 0x68, 0xcf, 0xe1, 0x8f, 0xc1
+    //     };
 
-        algo(crypted_data, data, sizeof data, nugget_key, kcs_keycount, nugget_internal_offset);
+    //     algo(crypted_data, data, sizeof data, nugget_key, kcs_keycount, nugget_internal_offset);
 
-        uint8_t crypted_data_round2[sizeof data] = { 0x00 };
+    //     uint8_t crypted_data_round2[sizeof data] = { 0x00 };
 
-        algo(crypted_data_round2, crypted_data, sizeof data, nugget_key, kcs_keycount, nugget_internal_offset);
+    //     algo(crypted_data_round2, crypted_data, sizeof data, nugget_key, kcs_keycount, nugget_internal_offset);
 
-        TEST_ASSERT_EQUAL_MEMORY(data, crypted_data_round2, sizeof data);
+    //     TEST_ASSERT_EQUAL_MEMORY(data, crypted_data_round2, sizeof data);
 
-        uint8_t crypted_data_round3[1] = { 0x00 };
+    //     uint8_t crypted_data_round3[1] = { 0x00 };
 
-        algo(crypted_data_round3, data, sizeof crypted_data_round3, nugget_key, kcs_keycount, nugget_internal_offset);
+    //     algo(crypted_data_round3, data, sizeof crypted_data_round3, nugget_key, kcs_keycount, nugget_internal_offset);
 
-        TEST_ASSERT_EQUAL_MEMORY(crypted_data, crypted_data_round3, sizeof crypted_data_round3);
+    //     TEST_ASSERT_EQUAL_MEMORY(crypted_data, crypted_data_round3, sizeof crypted_data_round3);
 
-        uint8_t crypted_data_round4[1] = { 0x00 };
+    //     uint8_t crypted_data_round4[1] = { 0x00 };
 
-        algo(crypted_data_round4, crypted_data_round3, sizeof crypted_data_round4, nugget_key, kcs_keycount, nugget_internal_offset);
+    //     algo(crypted_data_round4, crypted_data_round3, sizeof crypted_data_round4, nugget_key, kcs_keycount, nugget_internal_offset);
 
-        TEST_ASSERT_EQUAL_MEMORY(data, crypted_data_round4, sizeof crypted_data_round4);
-    }
+    //     TEST_ASSERT_EQUAL_MEMORY(data, crypted_data_round4, sizeof crypted_data_round4);
+    // }
 }
 
 void test_algos_BIGLY(void)
 {
-    for(size_t ri = 0, j = COUNT(test_these_ciphers) * 2; ri < j; ++ri)
-    {
-        size_t i = ri / 2;
+    TEST_FAIL();
+    // TODO: fix me!
+    // for(size_t ri = 0, j = COUNT(test_these_ciphers) * 2; ri < j; ++ri)
+    // {
+    //     size_t i = ri / 2;
         
-        dzlog_notice("Testing algorithm #%i", (int) test_these_ciphers[i]);
-
-        stream_crypt_common algo = blfs_to_stream_context(test_these_ciphers[i]);
+    //     stream_crypt_common algo = blfs_to_stream_context(test_these_ciphers[i]);
     
-        uint8_t data[4096] = { 0x00 };
-        randombytes_buf(data, sizeof data);
+    //     uint8_t data[4096] = { 0x00 };
+    //     randombytes_buf(data, sizeof data);
 
-        uint8_t crypted_data[sizeof data] = { 0x00 };
-        uint64_t kcs_keycount = 123456789101112;
-        uint64_t nugget_internal_offset = 72;
+    //     uint8_t crypted_data[sizeof data] = { 0x00 };
+    //     uint64_t kcs_keycount = 123456789101112;
+    //     uint64_t nugget_internal_offset = 72;
 
-        uint8_t nugget_key[BLFS_CRYPTO_BYTES_AES256_KEY] = {
-            0xd9, 0x76, 0xff, 0x4c, 0xd9, 0xaa, 0x1, 0xea,
-            0xa5, 0xad, 0xdc, 0x68, 0xcf, 0xe1, 0x8f, 0xc1
-        };
+    //     uint8_t nugget_key[BLFS_CRYPTO_BYTES_AES256_KEY] = {
+    //         0xd9, 0x76, 0xff, 0x4c, 0xd9, 0xaa, 0x1, 0xea,
+    //         0xa5, 0xad, 0xdc, 0x68, 0xcf, 0xe1, 0x8f, 0xc1
+    //     };
 
-        algo(crypted_data, data, sizeof data, nugget_key, kcs_keycount, nugget_internal_offset);
+    //     algo(crypted_data, data, sizeof data, nugget_key, kcs_keycount, nugget_internal_offset);
 
-        uint8_t crypted_data_round2[sizeof data] = { 0x00 };
+    //     uint8_t crypted_data_round2[sizeof data] = { 0x00 };
 
-        algo(crypted_data_round2, crypted_data, sizeof data, nugget_key, kcs_keycount, nugget_internal_offset);
+    //     algo(crypted_data_round2, crypted_data, sizeof data, nugget_key, kcs_keycount, nugget_internal_offset);
 
-        TEST_ASSERT_EQUAL_MEMORY(data, crypted_data_round2, sizeof crypted_data_round2);
-    }
+    //     TEST_ASSERT_EQUAL_MEMORY(data, crypted_data_round2, sizeof crypted_data_round2);
+    // }
 }

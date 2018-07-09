@@ -9,6 +9,7 @@
 #include "khash.h"
 #include "merkletree.h"
 #include "sodium.h"
+#include "swappable.h"
 
 #if BLFS_DEBUG_MONITOR_POWER > 0
 
@@ -23,12 +24,6 @@ typedef struct metrics_t {
 #endif /* BLFS_DEBUG_MONITOR_POWER > 0 */
 
 KHASH_MAP_INIT_STR(BLFS_KHASH_NUGGET_KEY_CACHE_NAME, uint8_t *)
-
-/**
- * Struct that defines the common stream cipher interface for algorithm
- * swapping. See swappable.h for details.
- */
-typedef void (*stream_crypt_common)(uint8_t *, const uint8_t *, uint32_t, const uint8_t *, uint64_t, uint64_t);
 
 /**
  * This struct represents program state and is passed around to various
@@ -99,10 +94,10 @@ typedef struct buselfs_state_t
     IFENERGYMON(energymon * energymon_monitor;)
 
     /**
-     * This stores the default stream cipher context. See swappable.h for
-     * details.
+     * This stores the currently active stream cipher and its context. See
+     * swappable.h for details.
      */
-    stream_crypt_common default_crypt_context;
+    blfs_stream_cipher_t * active_stream_cipher;
 
     /**
      * If we're in crash recover mode (TRUE) or not (FALSE). If we are, then

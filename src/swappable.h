@@ -2,34 +2,57 @@
 #define BLFS_SWAP_H_
 
 #include "constants.h"
-#include "strongbox.h"
 
-#include <openssl/conf.h>
-#include <openssl/evp.h>
-#include <openssl/err.h>
-#include <sodium.h>
-#include <string.h>
+/**
+ * Struct that defines the common stream cipher interface for algorithm
+ * swapping. See swappable.h for details.
+ */
+
+typedef void (*sc_fn_crypt_data)(uint8_t *, const uint8_t *, uint32_t, const uint8_t *, uint64_t, uint64_t);
+/**
+ * Struct that defines the common stream cipher interface for algorithm
+ * swapping. See swappable.h for details.
+ */
+// TODO: fix me!
+typedef void (*sc_fn_crypt_nugget)(uint8_t *, const uint8_t *, uint32_t, const uint8_t *, uint64_t, uint64_t);
+
+/**
+ * Struct that defines the common stream cipher interface for algorithm
+ * swapping. See swappable.h for details.
+ */
+// TODO: fix me!
+typedef void (*sc_fn_read_handle)(uint8_t *, const uint8_t *, uint32_t, const uint8_t *, uint64_t, uint64_t);
+
+/**
+ * Struct that defines the common stream cipher interface for algorithm
+ * swapping. See swappable.h for details.
+ */
+// TODO: fix me!
+typedef void (*sc_fn_write_handle)(uint8_t *, const uint8_t *, uint32_t, const uint8_t *, uint64_t, uint64_t);
+
+/**
+ * A complete package representing a cipher in StrongBox
+ */
+typedef struct blfs_stream_cipher_t {
+    const char * output_name;
+
+    const uint64_t output_size_bytes;
+    const uint64_t key_size_bytes;
+    const uint64_t nonce_size_bytes;
+
+    sc_fn_crypt_data crypt_data;
+    sc_fn_crypt_nugget crypt_nugget;
+    sc_fn_read_handle read_handle;
+    sc_fn_write_handle write_handle;
+} blfs_stream_cipher_t;
 
 /**
  * Accepts stream_cipher_e enum value stream_cipher, which translates into a
- * proper stream cipher context via blfs_to_stream_context(), and sets it in the
- * buselfs_state object.
- *
- * @param buselfs_state
- * @param stream_cipher
- */
-void blfs_set_stream_context(buselfs_state_t * buselfs_state, stream_cipher_e stream_cipher);
-
-/**
- * Accepts a stream_cipher_e enum value stream_cipher and translates it into the
- * proper stream cipher context (i.e. function pointer w/ proper cipher
- * implementation).
+ * proper stream cipher context used to populate set in stream_cipher_struct.
  *
  * @param stream_cipher
- *
- * @return stream_crypt_common function pointer to related cipher implementation
  */
-stream_crypt_common blfs_to_stream_context(stream_cipher_e stream_cipher);
+void blfs_get_stream_cipher(blfs_stream_cipher_t * stream_cipher_struct, stream_cipher_e stream_cipher);
 
 /**
  * Takes a string and converts it to its corresponding stream_cipher_e enum

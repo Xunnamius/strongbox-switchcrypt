@@ -82,7 +82,8 @@ do {                                                                            
 // A file we're looking for does not exist at the path specified
 #define EXCEPTION_FILE_DOES_NOT_EXIST                   0x10U
 
-// Tried to open a backstore that is corrupted or otherwise not properly formatted
+// Tried to open a backstore that is corrupted or otherwise not properly
+// formatted
 #define EXCEPTION_BACKSTORE_NOT_INITIALIZED             0x11U
 
 // The backstore you're trying to load is too old. Make a new one
@@ -94,7 +95,8 @@ do {                                                                            
 // The backstore size provided is WAY too small!
 #define EXCEPTION_BACKSTORE_SIZE_TOO_SMALL              0x14U
 
-// The options passed were not formatted properly, or some required options were missing
+// The options passed were not formatted properly, or some required options were
+// missing
 #define EXCEPTION_BAD_ARGUMENT_FORM                     0x15U
 
 // New password verification step (during create, not open/wipe) failure
@@ -143,7 +145,8 @@ do {                                                                            
 // OpenSSL AES-XTS requires minimum data size of 16 bytes (cipher core req)
 #define EXCEPTION_AESXTS_DATA_LENGTH_TOO_SMALL          0x25U
 
-// OpenSSL AES-CTR is not amused by your antics and returned something unexpected
+// OpenSSL AES-CTR is not amused by your antics and returned something
+// unexpected
 #define EXCEPTION_AESCTR_BAD_RETVAL                     0x26U
 
 // Why you call aes-ctr function when aes-ctr disabled?!?!
@@ -179,10 +182,12 @@ do {                                                                            
 // A failure occurred during an RPMB operation (in high level RPMB frame)
 #define EXCEPTION_RPMB_OP_FAILURE                       0x31U
 
-// Calculated mac doesn't match mac returned in RPMB frame during ioctl operation
+// Calculated mac doesn't match mac returned in RPMB frame during ioctl
+// operation
 #define EXCEPTION_RPMB_MAC_MISMATCH                     0x32U
 
-// Calculated mac doesn't match mac returned in RPMB frame during ioctl operation
+// Calculated mac doesn't match mac returned in RPMB frame during ioctl
+// operation
 #define EXCEPTION_GLOBAL_CORRECTNESS_FAILURE            0x33U
 
 // The TPM ID supplied via --tpm-id angered the gods
@@ -191,9 +196,19 @@ do {                                                                            
 // You tried to pass an invalid cipher string to --cipher
 #define EXCEPTION_STRING_TO_CIPHER_FAILED               0x35U
 
-// No RPMB device was detected. Did you enter the correct path string and recompile?
-// You can also pretend an RPMB device does exist via BLFS_MANUAL_GV_FALLBACK (see Makefile)
+// No RPMB device was detected. Did you enter the correct path string and
+// recompile? You can also pretend an RPMB device does exist via
+// BLFS_MANUAL_GV_FALLBACK (see Makefile)
 #define EXCEPTION_RPMB_DOES_NOT_EXIST                   0x36U
+
+// Flake size passed in was WAY TOO LARGE! Do better!
+#define EXCEPTION_FLAKESIZE_TOO_LARGE                   0x37U
+
+// Unknown freestyle configuration specifier was passed in
+#define EXCEPTION_UNKNOWN_FSTYLE_CONFIGURATION          0x38U
+
+// Unknown chacha (nano optimized) configuration specifier was passed in
+#define EXCEPTION_UNKNOWN_CHACHAN_CONFIGURATION          0x39U
 
 ///////////////////////
 // End Configuration //

@@ -399,7 +399,7 @@ void blfs_commit_tjournal_entry(blfs_backstore_t * backstore, const blfs_tjourna
     IFDEBUG(dzlog_debug("entry->bitmask (as data):"));
     IFDEBUG(hdzlog_debug(entry->bitmask->mask, entry->bitmask->byte_length));
 
-    assert(entry->data_length == entry->bitmask->byte_length);
+    IFDEBUG(assert(entry->data_length == entry->bitmask->byte_length));
     blfs_backstore_write(backstore, entry->bitmask->mask, entry->bitmask->byte_length, entry->data_offset);
 
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));

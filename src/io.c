@@ -5,6 +5,7 @@
  */
 
 #include "io.h"
+#include "swappable.h"
 
 #include <errno.h>
 #include <stdio.h>
@@ -67,7 +68,7 @@ static blfs_backstore_t * backstore_setup_actual_pre(const char * path)
         .cache_headers    = kh_init(BLFS_KHASH_HEADERS_CACHE_NAME),
         .cache_kcs_counts = kh_init(BLFS_KHASH_KCS_CACHE_NAME),
         .cache_tj_entries = kh_init(BLFS_KHASH_TJ_CACHE_NAME),
-        .cache_nugget_md  = kh_init(BLFS_KHASH_MD_CACHE_NAME)
+        .cache_nugget_md  = kh_init(BLFS_KHASH_MD_CACHE_NAME),
     };
     
     IFDEBUG(dzlog_debug("init->file_path = %s", init.file_path));
@@ -152,7 +153,7 @@ void blfs_backstore_setup_actual_post(blfs_backstore_t * backstore)
     if(backstore->writeable_size_actual > backstore->file_size_actual)
         Throw(EXCEPTION_BACKSTORE_SIZE_TOO_SMALL);
 
-    assert(backstore->writeable_size_actual <= ((int64_t) backstore->file_size_actual) - backstore->body_real_offset);
+    IFDEBUG(assert(backstore->writeable_size_actual <= ((int64_t) backstore->file_size_actual) - backstore->body_real_offset));
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 }
 
@@ -313,7 +314,7 @@ void blfs_backstore_read(blfs_backstore_t * backstore, uint8_t * buffer, uint32_
             errno = 0;
         }
 
-        assert(bytes_read > 0);
+        IFDEBUG(assert(bytes_read > 0));
 
         length -= bytes_read;
         temp_buffer += bytes_read;
@@ -366,7 +367,7 @@ void blfs_backstore_write(blfs_backstore_t * backstore, const uint8_t * buffer, 
             errno = 0;
         }
 
-        assert(bytes_written > 0);
+        IFDEBUG(assert(bytes_written > 0));
 
         length -= bytes_written;
         temp_buffer += bytes_written;

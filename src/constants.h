@@ -75,7 +75,9 @@ typedef enum stream_cipher_e {
     sc_hc128, // ?? Slow because estream impl is low (4b) throughput?
     sc_rabbit,
     sc_sosemanuk,
-    sc_freestyle,
+    sc_freestyle_fast,
+    sc_freestyle_balanced,
+    sc_freestyle_secure
 } stream_cipher_e;
 
 #include <string.h> /* strdup() */
@@ -152,7 +154,7 @@ typedef enum stream_cipher_e {
 #define BLFS_CRYPTO_BYTES_AESXTS_KEY            64U // OpenSSL AES-XTS 256-bit requires 64-bit keys (2 32-bit AES keys) 
 #define BLFS_CRYPTO_BYTES_AESXTS_TWEAK          16U // OpenSSL AES-XTS 256-bit requires 16-bit IV
 #define BLFS_CRYPTO_BYTES_AESXTS_DATA_MIN       16U // ! OpenSSL AES-XTS 256-bit will CHOKE AND DIE!!! if passed less
-#define BLFS_CRYPTO_BYTES_KDF_OUT               32U // crypto_box_SEEDBYTES
+#define BLFS_CRYPTO_BYTES_KDF_OUT               32U // !! cannot be changed without several changes to swappable.c // crypto_box_SEEDBYTES
 #define BLFS_CRYPTO_BYTES_KDF_SALT              16U // crypto_pwhash_SALTBYTES
 #define BLFS_CRYPTO_BYTES_FLAKE_TAG_OUT         16U // crypto_onetimeauth_poly1305_BYTES
 #define BLFS_CRYPTO_BYTES_STRUCT_HASH_OUT       16U // crypto_onetimeauth_poly1305_BYTES
@@ -224,7 +226,7 @@ typedef enum stream_cipher_e {
 #define BLFS_HEAD_HEADER_BYTES_SALT             BLFS_CRYPTO_BYTES_KDF_SALT // 16U
 #define BLFS_HEAD_HEADER_BYTES_MTRH             BLFS_CRYPTO_BYTES_MTRH // 32U
 #define BLFS_HEAD_HEADER_BYTES_TPMGLOBALVER     8U  // uint64_t
-#define BLFS_HEAD_HEADER_BYTES_VERIFICATION     32U // Limited by BLFS_CRYPTO_BYTES_MTRH in vendor/mt_config
+#define BLFS_HEAD_HEADER_BYTES_VERIFICATION     32U // limited by BLFS_CRYPTO_BYTES_MTRH in vendor/mt_config
 #define BLFS_HEAD_HEADER_BYTES_NUMNUGGETS       4U  // uint32_t
 #define BLFS_HEAD_HEADER_BYTES_FLAKESPERNUGGET  4U  // uint32_t
 #define BLFS_HEAD_HEADER_BYTES_FLAKESIZE_BYTES  4U  // uint32_t
@@ -232,7 +234,11 @@ typedef enum stream_cipher_e {
 
 #define BLFS_HEAD_NUM_HEADERS                   9U
 #define BLFS_HEAD_BYTES_KEYCOUNT                8U // uint64_t
-#define BLFS_HEAD_BYTES_NUGGET_METADATA         8U // uint8_t*
+// (max fpn * max flksize / fstyle blk + 1) / 2 + 28 init 16-bit randoms / 2
+// ! In a real implementation, calculating this value would be done dynamically to prevent all the wasted disk space...
+#define BLFS_HEAD_BYTES_NUGGET_METADATA         262203U // limited by Freestyle stream cipher; assuming max fpn & flksize
+#define BLFS_HEAD_MAX_FLAKESPERNUGGET           256U
+#define BLFS_HEAD_MAX_FLAKESIZE_BYTES           32768U
 #define BLFS_HEAD_IS_INITIALIZED_VALUE          0x3CU
 #define BLFS_HEAD_WAS_WIPED_VALUE               0x3DU
 

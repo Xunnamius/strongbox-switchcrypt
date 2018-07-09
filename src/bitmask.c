@@ -192,7 +192,7 @@ void bitmask_set_bits(bitmask_t * bitmask, uint_fast32_t start_index, uint_fast3
 
     for(uint_fast64_t i = 1; mask_count--; ++i, bits_remaining -= 8)
     {
-        assert(bits_remaining > 0);
+        IFDEBUG(assert(bits_remaining > 0));
 
         IFDEBUG(uint8_t old_val_at_index_inner = bitmask->mask[i]);
         IFDEBUG(dzlog_debug(
@@ -244,7 +244,7 @@ void bitmask_clear_bits(bitmask_t * bitmask, uint_fast32_t start_index, uint_fas
 
     for(uint_fast64_t i = mask_start_index + 1; mask_count--; ++i, bits_remaining -= 8)
     {
-        assert(bits_remaining > 0);
+        IFDEBUG(assert(bits_remaining > 0));
 
         IFDEBUG(uint8_t old_val_at_index_inner = bitmask->mask[i]);
         IFDEBUG(dzlog_debug(
@@ -296,7 +296,7 @@ void bitmask_toggle_bits(bitmask_t * bitmask, uint_fast32_t start_index, uint_fa
 
     for(uint_fast64_t i = mask_start_index + 1; mask_count--; ++i, bits_remaining -= 8)
     {
-        assert(bits_remaining > 0);
+        IFDEBUG(assert(bits_remaining > 0));
 
         IFDEBUG(uint8_t old_val_at_index_inner = bitmask->mask[i]);
         IFDEBUG(dzlog_debug(
@@ -350,7 +350,7 @@ int bitmask_are_bits_set(bitmask_t * bitmask, uint_fast32_t start_index, uint_fa
 
     for(uint_fast64_t i = mask_start_index + 1; is_set && mask_count--; ++i, bits_remaining -= 8)
     {
-        assert(bits_remaining > 0);
+        IFDEBUG(assert(bits_remaining > 0));
 
         uint8_t not_filter = ~(((1U << (8 - (bits_remaining < 8 ? bits_remaining : 8))) - 1));
 
@@ -402,7 +402,7 @@ int bitmask_any_bits_set(bitmask_t * bitmask, uint_fast32_t start_index, uint_fa
 
     for(uint_fast64_t i = mask_start_index + 1; mask_count--; ++i, bits_remaining -= 8)
     {
-        assert(bits_remaining > 0);
+        IFDEBUG(assert(bits_remaining > 0));
 
         uint8_t not_filter = ~(((1U << (8 - (bits_remaining < 8 ? bits_remaining : 8))) - 1));
 

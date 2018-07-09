@@ -50,7 +50,7 @@ static void make_fake_state()
     buselfs_state->default_password             = BLFS_DEFAULT_PASS;
     buselfs_state->rpmb_secure_index            = _TEST_BLFS_TPM_ID;
 
-    blfs_set_stream_context(buselfs_state, sc_default);
+    blfs_get_stream_cipher(buselfs_state->active_stream_cipher, sc_default);
 
     iofd = open(BACKSTORE_FILE_PATH, O_CREAT | O_RDWR | O_TRUNC, 0777);
 
@@ -739,7 +739,7 @@ void test_strongbox_main_actual_throws_exception_if_nonimpl_cipher(void)
         "progname",
         "--default-password",
         "--cipher",
-        "sc_chacha8",
+        "sc_chacha8_neon",
         "create",
         "device115"
     };

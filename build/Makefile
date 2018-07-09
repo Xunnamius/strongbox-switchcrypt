@@ -64,6 +64,7 @@ CFLAGS      := -pedantic -Wall -Wextra -std=c11
 
 IFLAGS      := -I/usr/local/include \
                -I. \
+               -I.. \
 			   -I$(TEST_ROOT) \
                -I$(VENDR_ROOT) \
                -I$(CONFIG_ROOT) \

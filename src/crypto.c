@@ -323,7 +323,7 @@ void blfs_aesxts_decrypt(uint8_t * plaintext_data,
     memcpy(doublekey, flake_key, BLFS_CRYPTO_BYTES_CHACHA20_KEY);
     memcpy(doublekey + BLFS_CRYPTO_BYTES_CHACHA20_KEY, flake_key, BLFS_CRYPTO_BYTES_CHACHA20_KEY);
 
-    assert(sizeof sector_tweak <= BLFS_CRYPTO_BYTES_AESXTS_TWEAK);
+    IFDEBUG(assert(sizeof sector_tweak <= BLFS_CRYPTO_BYTES_AESXTS_TWEAK));
 
     memcpy(iv_tweak, (uint8_t *) &sector_tweak, sizeof sector_tweak);
 

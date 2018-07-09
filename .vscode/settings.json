@@ -10,7 +10,8 @@
         "freestyle.h": "c",
         "types.h": "c",
         "_struts.h": "c",
-        "chacha-krovetz.h": "c"
+        "chacha-krovetz.h": "c",
+        "_chacha_neon.h": "c"
     },
     "cSpell.words": [
         "ADTC",
