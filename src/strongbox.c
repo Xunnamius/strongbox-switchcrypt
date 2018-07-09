@@ -834,23 +834,28 @@ int buse_read(void * output_buffer, uint32_t length, uint64_t absolute_offset, v
 
         else
         {
-            IFDEBUG(dzlog_debug("blfs_crypt calculated ptr: %p --[ + "
-                                "%"PRIuFAST32" - %"PRIuFAST32" * %"PRIuFAST32" => %"PRIuFAST32
-                                " ]> %p (crypting %"PRIuFAST32" bytes)",
-                                (void *) nugget_data,
-                                nugget_internal_offset,
-                                first_affected_flake,
-                                flake_size,
-                                nugget_internal_offset - first_affected_flake * flake_size,
-                                (void *) (nugget_data + (nugget_internal_offset - first_affected_flake * flake_size)),
-                                buffer_read_length));
+            IFDEBUG(dzlog_debug(
+                "blfs_crypt calculated ptr: %p --[ + "
+                "%"PRIuFAST32" - %"PRIuFAST32" * %"PRIuFAST32" => %"PRIuFAST32
+                " ]> %p (crypting %"PRIuFAST32" bytes)",
+                (void *) nugget_data,
+                nugget_internal_offset,
+                first_affected_flake,
+                flake_size,
+                nugget_internal_offset - first_affected_flake * flake_size,
+                (void *) (nugget_data + (nugget_internal_offset - first_affected_flake * flake_size)),
+                buffer_read_length
+            ));
 
-            buselfs_state->active_stream_cipher->crypt_data(buffer,
-                                nugget_data + (nugget_internal_offset - first_affected_flake * flake_size),
-                                buffer_read_length,
-                                nugget_key,
-                                count->keycount,
-                                nugget_internal_offset);
+            blfs_swappable_crypt(
+                buselfs_state->active_stream_cipher,
+                buffer,
+                nugget_data + (nugget_internal_offset - first_affected_flake * flake_size),
+                buffer_read_length,
+                nugget_key,
+                count->keycount,
+                nugget_internal_offset
+            );
         }
 
         IFDEBUG(dzlog_debug("output_buffer final contents (initial 64 bytes):"));
@@ -1088,12 +1093,15 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
                     IFDEBUG(dzlog_debug("blfs_crypt calculated nio: %"PRIuFAST32,
                                     flake_index * flake_size + flake_internal_offset));
 
-                    buselfs_state->active_stream_cipher->crypt_data(flake_data + flake_internal_offset,
-                                        buffer,
-                                        flake_write_length,
-                                        nugget_key,
-                                        count->keycount,
-                                        flake_index * flake_size + flake_internal_offset);
+                    blfs_swappable_crypt(
+                        buselfs_state->active_stream_cipher,
+                        flake_data + flake_internal_offset,
+                        buffer,
+                        flake_write_length,
+                        nugget_key,
+                        count->keycount,
+                        flake_index * flake_size + flake_internal_offset
+                    );
                 }
 
                 IFDEBUG(dzlog_debug("*complete* flake_data (initial 64 bytes):"));
@@ -1234,7 +1242,7 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
 
 void blfs_rekey_nugget_then_write(buselfs_state_t * buselfs_state,
                                   uint32_t rekeying_nugget_index,
-                                  const void * buffer,
+                                  const uint8_t * buffer,
                                   uint32_t length,
                                   uint64_t nugget_internal_offset)
 {
@@ -1269,12 +1277,15 @@ void blfs_rekey_nugget_then_write(buselfs_state_t * buselfs_state,
     
     if(!BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
     {
-        buselfs_state->active_stream_cipher->crypt_data(new_nugget_data,
-                            rekeying_nugget_data,
-                            buselfs_state->backstore->nugget_size_bytes,
-                            nugget_key,
-                            jcount->keycount,
-                            0);
+        blfs_swappable_crypt(
+            buselfs_state->active_stream_cipher,
+            new_nugget_data,
+            rekeying_nugget_data,
+            buselfs_state->backstore->nugget_size_bytes,
+            nugget_key,
+            jcount->keycount,
+            0
+        );
 
         blfs_backstore_write_body(buselfs_state->backstore,
                             new_nugget_data,
@@ -1881,7 +1892,7 @@ buselfs_state_t * strongbox_main_actual(int argc, char * argv[], char * blockdev
 
             IFDEBUG3(printf("<bare debug>: saw --cipher = %s\n", cin_cipher_str));
 
-            cin_cipher = stream_string_to_cipher(cin_cipher_str);
+            cin_cipher = blfs_stream_string_to_cipher(cin_cipher_str);
 
             IFDEBUG3(printf("<bare debug>: saw --cipher, got enum value: %d\n", cin_cipher));
         }

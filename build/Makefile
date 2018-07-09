@@ -102,7 +102,7 @@ SCARECROWS := aes.o
 vpath test_%.c $(TEST_ROOT)
 vpath % $(SRC_ROOT) $(VENDR_ROOT) $(CONFIG_ROOT)
 
-SRC_FILES   := $(patsubst %.c,%.o,$(subst $(SRC_ROOT)/,,$(filter-out $(EXECSRC),$(wildcard $(SRC_ROOT)/*.c))))
+SRC_FILES   := $(patsubst %.c,%.o,$(subst $(SRC_ROOT)/,,$(filter-out $(EXECSRC),$(wildcard $(SRC_ROOT)/*.c $(SRC_ROOT)/**/*.c))))
 VENDR_FILES := $(patsubst %.c,%.o,$(subst $(VENDR_ROOT)/,,$(wildcard $(VENDR_ROOT)/*.c)))
 TEST_FILES  := $(patsubst %.c,%.o,$(subst $(TEST_ROOT)/,,$(wildcard $(TEST_ROOT)/*.c)))
 RUNR_FILES  := $(patsubst %.c,%_runner.o,$(subst $(TEST_ROOT)/,,$(wildcard $(TEST_ROOT)/*.c)))
@@ -173,20 +173,20 @@ $(SCARECROWS): ;
 
 $(EXENAME): $(SRC_FILES) $(VENDR_FILES)
 	$(CC) $(CFLAGS) $(IFLAGS) $(DEBUG_COMPILE_FLAG) -o $(EXENAME) $(EXECSRC) \
-        $^ \
+        $(call distinct,$(notdir $(SRC_FILES)) $(VENDR_FILES)) \
         $(EXPLICIT_LIBS) \
         $(LDFLAGS)
 	ln -sf strongbox sb
 
 $(SRC_FILES) $(VENDR_FILES): %.o: %.c %.h
 ifneq "$(WE_PROD_NOW)" ""
-	$(CC) $(CFLAGS) $(IFLAGS) $(DEBUG_COMPILE_FLAG) -o $@ -c $<
+	$(CC) $(CFLAGS) $(IFLAGS) $(DEBUG_COMPILE_FLAG) -o $(notdir $@) -c $<
 else
-	$(CC) $(CFLAGS) $(IFLAGS) $(DEBUG_MAKE_FLAGS) $(DEBUG_COMPILE_FLAG) -o $@ -c $<
+	$(CC) $(CFLAGS) $(IFLAGS) $(DEBUG_MAKE_FLAGS) $(DEBUG_COMPILE_FLAG) -o $(notdir $@) -c $<
 endif
 
 $(RUNR_FILES) $(TEST_FILES): %.o: %.c
-	$(CC) $(CFLAGS) $(IFLAGS) $(DEBUG_MAKE_FLAGS) $(DEBUG_COMPILE_FLAG) -o $@ -c $<
+	$(CC) $(CFLAGS) $(IFLAGS) $(DEBUG_MAKE_FLAGS) $(DEBUG_COMPILE_FLAG) -o $(notdir $@) -c $<
 
 # ! dynamically scans prereqs (filled with #include'd headers from source)
 # ! for mocks, includes them, and then removes the unmocked version from the
@@ -195,7 +195,7 @@ $(TEST_TRGTS): test_%: test_%_runner.o test_%.o %.o test_%.d $(SRC_FILES) $(VEND
 	$(eval R_MOCKED_FILES := $(call distinct,$(patsubst %.h,%.c,$(call containing,mock_,$^))))
 	$(eval R_REMAIN_FILES := $(filter-out $(SCARECROWS) %.h %.c %.d $(if $(R_MOCKED_FILES),$(addprefix %,$(patsubst mock_%.c,%.o,$(R_MOCKED_FILES)))), $^))
 	$(CC) $(CFLAGS) $(DEBUG_MAKE_FLAGS) $(IFLAGS) $(DEBUG_COMPILE_FLAG) -o $@ \
-        $(R_REMAIN_FILES) \
+        $(notdir $(R_REMAIN_FILES)) \
         $(R_MOCKED_FILES) \
         $(C_TEST_LIBS) \
         $(EXPLICIT_LIBS) \

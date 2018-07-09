@@ -56,7 +56,7 @@
 ////////////////////
 
 // ? These are the valid values for the --cipher CLI flag
-// ! Note: we are limited to 255 + 1 stream cipher implementations (see: header
+// ! Note: we are limited to 255 stream cipher implementations (see: header
 // ! size) Note: DO NOT change the order of ciphers, just add new ones to the
 // ! bottom. This is because nugget metadata tracks ciphers by enum value!
 typedef enum stream_cipher_e {
@@ -71,7 +71,6 @@ typedef enum stream_cipher_e {
     sc_salsa20,
     sc_aes128_ctr,
     sc_aes256_ctr,
-    sc_aes512_ctr,
     sc_hc128, // ?? Slow because estream impl is low (4b) throughput?
     sc_rabbit,
     sc_sosemanuk,
@@ -170,9 +169,6 @@ typedef enum stream_cipher_e {
 #define BLFS_CRYPTO_BYTES_AES256_BLOCK          16U // OpenSSL AES-256 outputs 16-byte blocks
 #define BLFS_CRYPTO_BYTES_AES256_KEY            32U // AES 256 key size
 #define BLFS_CRYPTO_BYTES_AES256_IV             32U // We use AES-256 in ECB mode with 32 byte "IV"
-#define BLFS_CRYPTO_BYTES_AES512_BLOCK          16U // OpenSSL AES-512 outputs 16-byte blocks
-#define BLFS_CRYPTO_BYTES_AES512_KEY            64U // AES 512 key size
-#define BLFS_CRYPTO_BYTES_AES512_IV             64U // We use AES-512 in ECB mode with 32 byte "IV"
 #define BLFS_CRYPTO_BYTES_CHACHA20_BLOCK        64U // Chacha20/20 outputs randomly accessible 512-bit (64-byte) blocks
 #define BLFS_CRYPTO_BYTES_CHACHA20_KEY          32U // crypto_stream_chacha20_KEYBYTES
 #define BLFS_CRYPTO_BYTES_CHACHA20_NONCE        8U  // crypto_stream_chacha20_NONCEBYTES
@@ -289,6 +285,7 @@ typedef enum stream_cipher_e {
 #define BLFS_BACKSTORE_DEVNAME_MAXLEN           16
 #define BLFS_PASSWORD_BUF_SIZE                  1025
 #define BLFS_PASSWORD_MAX_SIZE                  "1024"
+#define BLFS_MAX_SC_FNS                         255 // limited by uint8_t max
 
 #define BLFS_DEFAULT_TPM_ID                     5U // Of course, one should consider changing this...
 

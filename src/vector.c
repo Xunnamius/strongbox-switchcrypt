@@ -37,7 +37,7 @@ void vector_fini(vector_t * vector)
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 }
 
-void vector_add(vector_t * vector, const void * element)
+void vector_add(vector_t * vector, void * element)
 {
     IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
 
@@ -78,7 +78,7 @@ void vector_delete(vector_t * vector, uint32_t index)
     if(index >= vector->count)
         Throw(EXCEPTION_OUT_OF_BOUNDS);
 
-    IFDEBUG(const void * ptr = vector->data[index]);
+    IFDEBUG(void * ptr = vector->data[index]);
 
     for(uint32_t i = index, j = i + 1; j < vector->count; j++, i++)
         vector->data[i] = vector->data[j];
@@ -90,7 +90,7 @@ void vector_delete(vector_t * vector, uint32_t index)
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 }
 
-const void * vector_get(vector_t * vector, uint32_t index)
+void * vector_get(vector_t * vector, uint32_t index)
 {
     IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
 
@@ -102,7 +102,7 @@ const void * vector_get(vector_t * vector, uint32_t index)
     return vector->data[index];
 }
 
-void vector_set(vector_t * vector, uint32_t index, const void * element)
+void vector_set(vector_t * vector, uint32_t index, void * element)
 {
     IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
 

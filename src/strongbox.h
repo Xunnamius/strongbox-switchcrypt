@@ -209,7 +209,7 @@ int buse_write(const void * buffer, uint32_t len, uint64_t offset, void * userda
  */
 void blfs_rekey_nugget_then_write(buselfs_state_t * buselfs_state,
                                             uint32_t rekeying_nugget_id,
-                                            const void * buffer,
+                                            const uint8_t * buffer,
                                             uint32_t length,
                                             uint64_t nugget_internal_offset);
 

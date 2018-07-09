@@ -11,7 +11,12 @@
         "types.h": "c",
         "_struts.h": "c",
         "chacha-krovetz.h": "c",
-        "_chacha_neon.h": "c"
+        "_chacha_neon.h": "c",
+        "ciphers.h": "c",
+        "hc128.h": "c",
+        "chacha20_neon.h": "c",
+        "chacha20.h": "c",
+        "_base.h": "c"
     },
     "cSpell.words": [
         "ADTC",
@@ -98,5 +103,14 @@
         "vshlq",
         "vsriq",
         "waaaay"
-    ]
+    ],
+    "files.exclude": {
+        "**/.git": true,
+        "**/.svn": true,
+        "**/.hg": true,
+        "**/CVS": true,
+        "**/.DS_Store": true,
+        "build/src": true,
+        "build/test": true,
+    }
 }

@@ -12,7 +12,7 @@
  */
 typedef struct vector_t
 {
-    const void ** data;
+    void ** data;
     uint32_t size;
     uint32_t count;
 } vector_t;
@@ -46,7 +46,7 @@ void vector_fini(vector_t * vector);
  * @param vector
  * @param element
  */
-void vector_add(vector_t * vector, const void * element);
+void vector_add(vector_t * vector, void * element);
 
 /**
  * Delete the element in vector at index.
@@ -71,7 +71,7 @@ void vector_delete(vector_t * vector, uint32_t index);
  *
  * @return        Void pointer to the requested element
  */
-const void * vector_get(vector_t * vector, uint32_t index);
+void * vector_get(vector_t * vector, uint32_t index);
 
 /**
  * Set an index in vector to element.
@@ -82,6 +82,6 @@ const void * vector_get(vector_t * vector, uint32_t index);
  * @param index
  * @param element
  */
-void vector_set(vector_t * vector, uint32_t index, const void * element);
+void vector_set(vector_t * vector, uint32_t index, void * element);
 
 #endif
