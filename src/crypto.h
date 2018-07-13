@@ -9,8 +9,8 @@
 #include <sodium.h>
 #include <string.h>
 
-// If you're looking for the stream cipher functions, those were all moved
-// to swappable.h and swappable.c
+// If you're looking for the cipher functions, those were all moved to
+// swappable.h and swappable.c
 
 /**
  * Accepts a password, length, and salt and returns BLFS_CRYPTO_BYTES_KDF_OUT

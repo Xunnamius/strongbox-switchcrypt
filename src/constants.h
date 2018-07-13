@@ -20,13 +20,6 @@
 #define VECTOR_GROWTH_FACTOR    2
 #define VECTOR_INIT_SIZE        10
 
-/** START: energy/power metric collection */
-
-// ! Must be file path (hardcoded because the data ain't so useful atm)
-#define BLFS_ENERGYMON_OUTPUT_PATH "/tmp/strongbox-energymon-metrics.results"
-
-/** END: energy/power metric collection */
-
 // 0 - no debugging, log writing, or any such output
 // 1U - light debugging to designated log file
 // 2U - ^ and some informative messages to stdout
@@ -56,28 +49,28 @@
 ////////////////////
 
 // ? These are the valid values for the --cipher CLI flag
-// ! Note: we are limited to 255 stream cipher implementations (see: header
-// ! size) Note: DO NOT change the order of ciphers, just add new ones to the
-// ! bottom. This is because nugget metadata tracks ciphers by enum value!
-typedef enum stream_cipher_e {
-    sc_default,
-    sc_not_impl,
-    sc_chacha8_neon,
-    sc_chacha12_neon,
-    sc_chacha20_neon,
-    sc_chacha20,
-    sc_salsa8,
-    sc_salsa12,
-    sc_salsa20,
-    sc_aes128_ctr,
-    sc_aes256_ctr,
-    sc_hc128, // ?? Slow because estream impl is low (4b) throughput?
-    sc_rabbit,
-    sc_sosemanuk,
-    sc_freestyle_fast,
-    sc_freestyle_balanced,
-    sc_freestyle_secure
-} stream_cipher_e;
+
+// ! Note: we are limited to 255 cipher implementations (see: header size)
+typedef enum swappable_cipher_e {
+    sc_default                  =1,
+    sc_not_impl                 =2,
+    sc_chacha8_neon             =3,
+    sc_chacha12_neon            =4,
+    sc_chacha20_neon            =5,
+    sc_chacha20                 =6,
+    sc_salsa8                   =7,
+    sc_salsa12                  =8,
+    sc_salsa20                  =9,
+    sc_aes128_ctr               =10,
+    sc_aes256_ctr               =11,
+    sc_hc128                    =12, // ?? Slow because estream impl is low (4b) throughput?
+    sc_rabbit                   =13,
+    sc_sosemanuk                =14,
+    sc_freestyle_fast           =15,
+    sc_freestyle_balanced       =16,
+    sc_freestyle_secure         =17,
+    sc_aes256_xts               =18,
+} swappable_cipher_e;
 
 #include <string.h> /* strdup() */
 
@@ -97,25 +90,6 @@ typedef enum stream_cipher_e {
 #define IFDEBUG3(expression) expression
 #else
 #define IFDEBUG3(expression)
-#endif
-
-#if BLFS_DEBUG_MONITOR_POWER > 0
-#define IFENERGYMON(expression) expression
-#define ENERGYMON_INIT_IFENERGYMON \
-    metrics_t metrics_start; \
-    metrics_t metrics_end
-#define ENERGYMON_START_IFENERGYMON \
-    blfs_energymon_collect_metrics(&metrics_start, buselfs_state)
-#define ENERGYMON_END_IFENERGYMON \
-    blfs_energymon_collect_metrics(&metrics_end, buselfs_state)
-#define ENERGYMON_OUTPUT_IFENERGYMON(name) \
-    blfs_energymon_writeout_metrics_simple(name, &metrics_start, &metrics_end)
-#else
-#define IFENERGYMON(expression)
-#define ENERGYMON_INIT_IFENERGYMON
-#define ENERGYMON_START_IFENERGYMON
-#define ENERGYMON_END_IFENERGYMON
-#define ENERGYMON_OUTPUT_IFENERGYMON(name)
 #endif
 
 #define STRINGIZE_STR_FN(X) #X
@@ -230,11 +204,10 @@ typedef enum stream_cipher_e {
 
 #define BLFS_HEAD_NUM_HEADERS                   9U
 #define BLFS_HEAD_BYTES_KEYCOUNT                8U // uint64_t
-// (max fpn * max flksize / fstyle blk + 1) / 2 + 28 init 16-bit randoms / 2
-// ! In a real implementation, calculating this value would be done dynamically to prevent all the wasted disk space...
-#define BLFS_HEAD_BYTES_NUGGET_METADATA         262203U // limited by Freestyle stream cipher; assuming max fpn & flksize
+#define BLFS_HEAD_MAX_FLAKESIZE_BYTES           16384U
+#define BLFS_HEAD_MIN_FLAKESIZE_BYTES           512U
 #define BLFS_HEAD_MAX_FLAKESPERNUGGET           256U
-#define BLFS_HEAD_MAX_FLAKESIZE_BYTES           32768U
+#define BLFS_HEAD_MIN_FLAKESPERNUGGET           64U
 #define BLFS_HEAD_IS_INITIALIZED_VALUE          0x3CU
 #define BLFS_HEAD_WAS_WIPED_VALUE               0x3DU
 
@@ -245,6 +218,15 @@ typedef enum stream_cipher_e {
 #ifndef BLFS_MANUAL_GV_FALLBACK
 #define BLFS_MANUAL_GV_FALLBACK -1
 #endif
+
+// ["flakes per nugget" * CEIL("max flksize" / "fstyle blk bytes") * 2] + ("flakes per nugget" * 28 "16 bit hashes" * 2) + (1 "sc ident")
+// TODO: can we calculate this at runtime and save some space?
+// (the below is limited by Freestyle stream cipher; assumes max fpn & flksize)
+#define BLFS_HEAD_BYTES_NUGGET_METADATA ( \
+    BLFS_HEAD_MAX_FLAKESPERNUGGET * CEIL(BLFS_HEAD_MAX_FLAKESIZE_BYTES, BLFS_CRYPTO_BYTES_FSTYLE_BLOCK) * 2 \
+    + BLFS_HEAD_MAX_FLAKESPERNUGGET * 56 \
+    + 1 \
+)
 
 ///////////////
 // Backstore //
@@ -266,14 +248,6 @@ typedef enum stream_cipher_e {
 
 #ifndef BLFS_DEFAULT_DISABLE_KEY_CACHING
 #define BLFS_DEFAULT_DISABLE_KEY_CACHING        TRUE // It might be faster just to recompute?
-#endif
-
-#ifndef BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION
-#define BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION FALSE
-#endif
-
-#ifndef BLFS_NO_READ_INTEGRITY
-#define BLFS_NO_READ_INTEGRITY                  FALSE // Reduce security guarantee to AES-XTS levels if TRUE
 #endif
 
 #define BLFS_DEFAULT_BYTES_FLAKE                4096U

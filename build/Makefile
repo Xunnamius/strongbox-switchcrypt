@@ -11,6 +11,12 @@
 # Configuration #
 #################
 
+# ? Same rules as BLFS_DEBUG_LEVEL and BLFS_MANUAL_GV_FALLBACK
+# ! GLOBAL_DEBUG_MODE=0 when not debugging or suffer the (perf-related) consequences!
+# ! GLOBAL_MANUAL_GV_FALLBACK should be set to -1 unless no RPMB device, then >= 0
+GLOBAL_DEBUG_MODE := 1
+GLOBAL_MANUAL_GV_FALLBACK := 0
+
 SRC_ROOT    := ../src
 VENDR_ROOT  := ../vendor
 TEST_ROOT   := ../test
@@ -24,14 +30,9 @@ ESTREAM_ROOT    := $(VENDR_ROOT)/libestream
 CHACHAX_ROOT    := $(VENDR_ROOT)/chacha-opt
 
 # * StrongBox's internal debug level and other interesting compile-time flags
-# ! BLFS_DEBUG_LEVEL=0 when not debugging or suffer the (perf-related) consequences!
-# ! BLFS_MANUAL_GV_FALLBACK should be set to -1 unless no RPMB device, then >= 0
-# ! BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION=1 renders the --cipher flag meaningless
-DEBUG_COMPILE_FLAG := -DBLFS_DEBUG_LEVEL=0 \
-                      -DBLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION=0 \
-                      -DBLFS_NO_READ_INTEGRITY=0 \
-                      -DBLFS_DEBUG_MONITOR_POWER=0 \
-                      -DBLFS_MANUAL_GV_FALLBACK=0
+DEBUG_COMPILE_FLAG := -DBLFS_DEBUG_LEVEL=$(GLOBAL_DEBUG_MODE) \
+                      -DBLFS_MANUAL_GV_FALLBACK=$(GLOBAL_MANUAL_GV_FALLBACK) \
+					  -DCMOCK_MEM_DYNAMIC=1
 
 # * This is the name of the resulant executable
 EXENAME := strongbox
@@ -89,11 +90,10 @@ CMOCK_CONF := $(CONFIG_ROOT)/cmock_config.yml
 # * List of header file names (no .h or any other extensions) in SRC_ROOT to
 # * mock with cmock e.g. HDRS_TO_MOCK := interactions my_lib You can then
 # * include the mocked header in your source e.g. #include "mock_my_lib.h"
-HDRS_TO_MOCK := io
+HDRS_TO_MOCK := io backstore strongbox
 
 # * Scarecrows (empty targets)
-# aes.o metrics.o: ;
-SCARECROWS := aes.o
+SCARECROWS :=
 
 ########################
 # Pre-processing Setup #
@@ -188,9 +188,9 @@ endif
 $(RUNR_FILES) $(TEST_FILES): %.o: %.c
 	$(CC) $(CFLAGS) $(IFLAGS) $(DEBUG_MAKE_FLAGS) $(DEBUG_COMPILE_FLAG) -o $(notdir $@) -c $<
 
-# ! dynamically scans prereqs (filled with #include'd headers from source)
-# ! for mocks, includes them, and then removes the unmocked version from the
-# ! compilation tree to prevent definition collisions!
+# ? Dynamically scans prereqs (filled with #include'd headers from source)
+# ? for mocks, includes them, and then removes the unmocked version from the
+# ? compilation tree to prevent definition collisions
 $(TEST_TRGTS): test_%: test_%_runner.o test_%.o %.o test_%.d $(SRC_FILES) $(VENDR_FILES)
 	$(eval R_MOCKED_FILES := $(call distinct,$(patsubst %.h,%.c,$(call containing,mock_,$^))))
 	$(eval R_REMAIN_FILES := $(filter-out $(SCARECROWS) %.h %.c %.d $(if $(R_MOCKED_FILES),$(addprefix %,$(patsubst mock_%.c,%.o,$(R_MOCKED_FILES)))), $^))
@@ -227,8 +227,13 @@ check: tests
 
 vendor: $(VENDR_FILES)
 	$(MAKE) clean -C ../vendor/merkle-tree
+	
+ifeq "$(GLOBAL_DEBUG_MODE)" "0"
 	$(MAKE) release -C ../vendor/merkle-tree
-#	$(MAKE) debug -C ../vendor/merkle-tree
+else
+	$(MAKE) debug -C ../vendor/merkle-tree
+endif
+
 	$(MAKE) clean -C ../vendor/libestream
 	$(MAKE) libestream.a -C ../vendor/libestream
 	$(MAKE) clean -C ../vendor/chacha-opt
@@ -236,7 +241,11 @@ vendor: $(VENDR_FILES)
 
 src: $(SRC_FILES)
 
-pre: vendor mocks depends
+code-fix:
+	ln -fs ../test . && ln -fs ../src .
+	
+pre: vendor mocks depends code-fix
+
 tests: pre $(TEST_TRGTS)
 
 # Mock generating targets

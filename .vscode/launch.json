@@ -7,9 +7,9 @@
         {
             "type": "gdb",
             "request": "launch",
-            "name": "@morty",
+            "name": "test_strongbox@morty",
             "target": "./test_strongbox",
-            "cwd": "${workspaceRoot}",
+            "cwd": "${workspaceRoot}/build",
             "ssh": {
                 "forwardX11": true,
                 "host": "192.168.115.5",
@@ -18,10 +18,41 @@
                 "port": 1111,
                 "user": "xunnamius",
                 "x11host": "localhost",
-                "x11port": 6000,
-                // Allow gdb to path back to the appropriate test source
-                // while also working around a stupid windows symlink bug...
-                "bootstrap": "ln -fs ../test . && ln -fs ../src ."
+                "x11port": 6000
+            }
+        },
+        {
+            "type": "gdb",
+            "request": "launch",
+            "name": "test_swappable@morty",
+            "target": "./test_swappable",
+            "cwd": "${workspaceRoot}/build",
+            "ssh": {
+                "forwardX11": true,
+                "host": "192.168.115.5",
+                "cwd": "/home/xunnamius/repos/research/buselfs/build",
+                "keyfile": "F:/OneDrive/.ssh/xunnmorty_rsa_ul",
+                "port": 1111,
+                "user": "xunnamius",
+                "x11host": "localhost",
+                "x11port": 6000
+            }
+        },
+        {
+            "type": "gdb",
+            "request": "launch",
+            "name": "playground@morty",
+            "target": "./test_x",
+            "cwd": "${workspaceRoot}/build",
+            "ssh": {
+                "forwardX11": true,
+                "host": "192.168.115.5",
+                "cwd": "/home/xunnamius/repos/research/buselfs/build",
+                "keyfile": "F:/OneDrive/.ssh/xunnmorty_rsa_ul",
+                "port": 1111,
+                "user": "xunnamius",
+                "x11host": "localhost",
+                "x11port": 6000
             }
         }
     ]

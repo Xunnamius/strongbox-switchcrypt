@@ -170,13 +170,13 @@ void test_integration_with_buselfs_works_as_expected(void)
     buselfs_state->default_password             = BLFS_DEFAULT_PASS;
     buselfs_state->rpmb_secure_index            = _TEST_BLFS_TPM_ID;
 
-    blfs_set_stream_context(buselfs_state, sc_default);
+    blfs_set_cipher_ctx(buselfs_state->active_cipher, sc_default);
 
     iofd = open(BACKSTORE_FILE_PATH, O_CREAT | O_RDWR | O_TRUNC, 0777);
 
     buselfs_state->backstore                    = malloc(sizeof(blfs_backstore_t));
     buselfs_state->backstore->io_fd             = iofd;
-    buselfs_state->backstore->body_real_offset  = 161;
+    buselfs_state->backstore->body_real_offset  = 436359;
     buselfs_state->backstore->file_size_actual  = (uint64_t)(sizeof buffer_init_backstore_state);
 
     blfs_backstore_write(buselfs_state->backstore, buffer_init_backstore_state, sizeof buffer_init_backstore_state, 0);
@@ -215,10 +215,8 @@ void test_integration_with_buselfs_works_as_expected(void)
     uint8_t buffer1[20] = { 0x00 };
     uint64_t offset1 = 28;
 
-    IFENERGYMON(blfs_energymon_init(buselfs_state));
-    buse_write(decrypted_body + offset1, sizeof buffer1, offset1, (void *) buselfs_state);
+    buse_write(test_play_data + offset1, sizeof buffer1, offset1, (void *) buselfs_state);
     buse_read(buffer1, sizeof buffer1, offset1, (void *) buselfs_state);
-    IFENERGYMON(blfs_energymon_fini(buselfs_state));
 
-    TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset1, buffer1, sizeof buffer1);
+    TEST_ASSERT_EQUAL_MEMORY(test_play_data + offset1, buffer1, sizeof buffer1);
 }

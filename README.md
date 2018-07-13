@@ -15,7 +15,7 @@ This is a complete rewrite of the old buselogfs code. This is a Buse + Chacha20 
 - [gcc](https://gcc.gnu.org) (sorry, I'm using some GCC extensions to make life easier)
 - [ruby](https://www.ruby-lang.org/en/) (required iff you're going to be running the tests)
 - [OpenSSL](https://www.openssl.org) (provides swappable algorithm base)
-- [energymon](https://github.com/energymon/energymon) (required iff you want energy metrics [has performance implications])
+- [energymon](https://github.com/energymon/energymon) (required iff you want energy metrics **[currently hardcode disabled]**)
 - [std=c11](https://en.wikipedia.org/wiki/C11_(C_standard_revision))
 - Assumes 32-bit `int`, 64-bit `long long` (due to [`sc_chacha20_alt`](#usage))
 - A device that offers or emulates an [RPMB API](https://lwn.net/Articles/682276/) is required iff you intend to test RPMB functionality. See: [BLFS_RPMB_KEY](#blfs_rpmb_key), [BLFS_RPMB_DEVICE](#blfs_rpmb_device), and [BLFS_MANUAL_GV_FALLBACK](#blfs_manual_gv_fallback).
@@ -32,7 +32,10 @@ This is a complete rewrite of the old buselogfs code. This is a Buse + Chacha20 
 # sb [--default-password][--allow-insecure-start] wipe nbd_device_name
 ```
 
-Observe that `nbd_device_name` must always appear last and the desired command (`open`, `wipe`, or `create`) second to last.
+Observe that `nbd_device_name` must always appear last and the desired command
+(`open`, `wipe`, or `create`) second to last.
+
+> Note that `16384 >= flake-size >= 512` and `256 >= flakes-per-nugget >= 64`. For best performance, both should be powers of 2. Further, the following must hold: `backstore-size >= flake-size * flakes-per-nugget`.
 
 Ciphers available for the `--cipher` and `--swap-cipher` are:
 
@@ -53,11 +56,8 @@ Ciphers available for the `--cipher` and `--swap-cipher` are:
 - `sc_not_impl`
 
 You can see these options defined in [constants.h](src/constants.h). Note that
-`sc_chacha20_alt` is an alternative implementation of ChaCha20 by
-[Krovetz](https://github.com/floodyberry/supercop/blob/master/crypto_stream/chacha20/krovetz)
-(of Chromium fame), whereas `sc_chacha20` is implemented in libsodium and is the
-experimental benchmark. `sc_chacha8` and `sc_chacha12` were also implemented by
-Krovetz and do not appear in libsodium.
+`sc_chachaX_neon` are alternative ARM NEON optimized implementations of ChaCha20
+by [floodyberry](https://github.com/floodyberry/chacha-opt).
 
 Swap strategies available for `--swap-strategy` are:
 
@@ -182,8 +182,6 @@ These tests are compiled without optimization. To compile these tests with optim
     - Several tests in this collection are disabled when the [BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION](#blfs_badbadnotgood_use_aesxts_emulation) flag is in effect.
 - `test_vector`
 
-> (TODO: add new tests for added functionality)
-
 > Note: the **ONLY** test that works with [BLFS_DEBUG_MONITOR_POWER](#blfs_debug_monitor_power) is in effect is `test_strongbox`!
 
 ## File Structure and Internal Construction
@@ -233,16 +231,6 @@ This setting determines the verbosity of StrongBox's debug output. By default, i
 `BLFS_DEBUG_LEVEL=3` => `BLFS_DEBUG_LEVEL=2` with the addition that every single function call is now logged
 
 > **Note that BLFS_DEBUG_LEVEL > 0 breaks security and leaks potentially sensitive information!**
-
-#### **BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION**
-
-`BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION=1` enables this debug flag while `=0` disables it (default). When enabled, StrongBox will emulate AES-XTS in lieu of using a stream cipher for encryption. Necessarily, this flag renders the `--cipher` command line parameter meaningless.
-
-> Note: the `BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION` and `BLFS_NO_READ_INTEGRITY` compile flags CANNOT be used together!
-
-#### **BLFS_NO_READ_INTEGRITY**
-
-`BLFS_NO_READ_INTEGRITY=1` enables this debug flag while `=0` disables it (default). When enabled, StrongBox will skip the extra integrity check when performing crypted writes (but not reads) using your chosen stream cipher. This brings StrongBox's behavior in line with the threat model AES-XTS addresses (instead of doing extra). This necessarily improves the performance of StrongBox.
 
 #### **BLFS_DEBUG_MONITOR_POWER**
 
@@ -307,3 +295,4 @@ Path to the NBD pseudo-device that will be generated on run. Defaults to `/dev/%
 - This prototype has only been tested on the Odroid XU3 platform with Ubuntu Trusty kernel as well as the Odroid XU4 platform with Ubuntu Xenial and no energymon support. No functionality is guaranteed whatsoever on those systems, and it's hit or miss if StrongBox will even compile, let alone function properly, on non-Odroid systems.
 - If you're going to add a new cipher to the collection, be sure to update `src/ciphers.h` as well as add corresponding source and header files to `cipher/`. Also add a new enum entry in `src/constants.h`.
 - While the OpenSSL linkage and the other specialized cipher versions are specifically optimized for ARM NEON/ARMv6-32 CPU features, neither libsodium nor the estream profile ciphers nor freestyle are specially optimized. StrongBox is also a single-threaded application. On the other hand, dm-crypt has the benefit of ARM NEON/ARMv6-32 hardware optimizations as well as parallelization across CPUs.
+- `--flake-size` must be a power greater than or equal to 64 and, for best performance, should be some power of 2.

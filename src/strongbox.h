@@ -8,20 +8,10 @@
 #include "mmc.h"
 #include "khash.h"
 #include "merkletree.h"
-#include "sodium.h"
 #include "swappable.h"
 
-#if BLFS_DEBUG_MONITOR_POWER > 0
-
-#include "energymon/energymon-default.h"
-
-// Struct that holds duration/energy/power data
-typedef struct metrics_t {
-    uint64_t time_ns;
-    uint64_t energy_uj;
-} metrics_t;
-
-#endif /* BLFS_DEBUG_MONITOR_POWER > 0 */
+typedef struct blfs_swappable_cipher_t blfs_swappable_cipher_t;
+typedef struct buselfs_state_t buselfs_state_t;
 
 KHASH_MAP_INIT_STR(BLFS_KHASH_NUGGET_KEY_CACHE_NAME, uint8_t *)
 
@@ -88,16 +78,10 @@ typedef struct buselfs_state_t
     char * default_password;
 
     /**
-     * If StrongBox was compiled with the energy monitoring flags, this
-     * will be used to store the monitor context.
+     * This stores the currently active cipher and its context. See swappable.h
+     * for details.
      */
-    IFENERGYMON(energymon * energymon_monitor;)
-
-    /**
-     * This stores the currently active stream cipher and its context. See
-     * swappable.h for details.
-     */
-    blfs_stream_cipher_t * active_stream_cipher;
+    blfs_swappable_cipher_t * active_cipher;
 
     /**
      * If we're in crash recover mode (TRUE) or not (FALSE). If we are, then
@@ -112,33 +96,76 @@ typedef struct buselfs_state_t
     uint64_t rpmb_secure_index;
 } buselfs_state_t;
 
-// These are all the external caching functions:
-// ! These caches grow, but they never shrink, even though they DEFINITELY should during rekeying. This is a
-// ! memory leak. To be fixed later.
+/**
+ * Add a nugget_index => nugget_key pair to the key cache if it is active. If
+ * the key cache is disabled, this is a noop.
+ *
+ * ! These caches grow, but they never shrink, even though they DEFINITELY
+ * ! should during rekeying. This is a memory leak. To be fixed eventually (so
+ * ! never).
+ */
 void add_index_to_key_cache(buselfs_state_t * buselfs_state, uint32_t nugget_index, uint8_t * nugget_key);
 
+/**
+ * Add a nugget_index (keychain) => nugget_key pair to the key cache if it is
+ * active. A keychain is a key consisting of a chain of data, e.g.
+ * nugget_index||flake_index "chained" together. If the key cache is disabled,
+ * this is a noop.
+ */
 void add_keychain_to_key_cache(buselfs_state_t * buselfs_state,
-                                      uint32_t nugget_index,
-                                      uint32_t flake_index,
-                                      uint64_t keycount,
-                                      uint8_t * flake_key);
+                               uint32_t nugget_index,
+                               uint32_t flake_index,
+                               uint64_t keycount,
+                               uint8_t * flake_key);
 
+/**
+ * Get a nugget_index => nugget_key pair from the key cache if it is active. If
+ * the key cache is disabled, this is a noop.
+ */
 void get_nugget_key_using_index(uint8_t * nugget_key, buselfs_state_t * buselfs_state, uint32_t nugget_index);
 
+/**
+ * Get a nugget_index (keychain) => nugget_key pair from the key cache if it is
+ * active. A keychain is a key consisting of a chain of data, e.g.
+ * nugget_index||flake_index "chained" together. If the key cache is disabled,
+ * this is a noop.
+ */
 void get_flake_key_using_keychain(uint8_t * flake_key,
-                                        buselfs_state_t * buselfs_state,
-                                        uint32_t nugget_index,
-                                        uint32_t flake_index,
-                                        uint64_t keycount);
+                                  const buselfs_state_t * buselfs_state,
+                                  uint32_t nugget_index,
+                                  uint32_t flake_index,
+                                  uint64_t keycount);
+
+/**
+ * Update the global merkle tree root hash
+ *
+ * ! This function MUST be called before buselfs_state->merkle_tree_root_hash
+ * ! is referenced!
+ */
+void update_merkle_tree_root_hash(buselfs_state_t * buselfs_state);
+
+void commit_merkle_tree_root_hash(buselfs_state_t * buselfs_state);
+
+/**
+ * Add a leaf to the global merkle tree
+ */
+void add_to_merkle_tree(uint8_t * data, size_t length, const buselfs_state_t * buselfs_state);
+
+/**
+ * Update a leaf in the global merkle tree
+ */
+void update_in_merkle_tree(uint8_t * data, size_t length, uint32_t index, const buselfs_state_t * buselfs_state);
+
+/**
+ * Verify a leaf in the global merkle tree
+ */
+void verify_in_merkle_tree(uint8_t * data, size_t length, uint32_t index, const buselfs_state_t * buselfs_state);
 
 /**
  * Calculates the total space required to store one nugget and its associated
  * metadata and header data. This has been abstracted out to make it easier to
  * add deep changes to the StrongBox internals (e.g. extra n-dependent storage
  * layers).
- *
- * @nuggetsize
- * @flakes_per_nugget
  */
 uint32_t calculate_total_space_required_for_1nug(uint32_t nuggetsize, uint32_t flakes_per_nugget);
 
@@ -153,7 +180,6 @@ uint32_t calculate_total_space_required_for_1nug(uint32_t nuggetsize, uint32_t f
  * ? population!
  *
  * @nugget_index This function will count nuggets up to BUT EXCLUDING this index
- * @buselfs_state
  */
 uint32_t mt_calculate_expected_size(uint32_t nugget_index, buselfs_state_t * buselfs_state);
 
@@ -161,10 +187,6 @@ uint32_t mt_calculate_expected_size(uint32_t nugget_index, buselfs_state_t * bus
  * Calculates the offset of a flake in the merkle tree. This has been abstracted
  * out to make it easier to add deep changes to the StrongBox internals (e.g.
  * extra n-dependent storage layers).
- *
- * @jump_to_nugget_index
- * @flake_index
- * @buselfs_state
  */
 uint32_t mt_calculate_flake_offset(uint32_t jump_to_nugget_index, uint32_t flake_index, buselfs_state_t * buselfs_state);
 
@@ -177,9 +199,6 @@ uint32_t mt_calculate_flake_offset(uint32_t jump_to_nugget_index, uint32_t flake
  * BUSE read operation handler. Passed directly to the buse core. See buse
  * documentation for more information.
  * 
- * @param  buffer
- * @param  len
- * @param  offset
  * @param  userdata (buselfs_state*)
  */
 int buse_read(void * buffer, uint32_t len, uint64_t offset, void * userdata);
@@ -188,9 +207,6 @@ int buse_read(void * buffer, uint32_t len, uint64_t offset, void * userdata);
  * BUSE write operation handler. Passed directly to the buse core. See buse
  * documentation for more information.
  * 
- * @param  buffer
- * @param  len
- * @param  offset
  * @param  userdata (buselfs_state*)
  */
 int buse_write(const void * buffer, uint32_t len, uint64_t offset, void * userdata);
@@ -200,58 +216,34 @@ int buse_write(const void * buffer, uint32_t len, uint64_t offset, void * userda
  * attempts. Re-encrypts a nugget with an entirely different key, performing an
  * in-memory overwrite before writeback, and updates the cache accordingly. This
  * is called when an overwrite occurs during buse_write().
- *
- * @param buselfs_state
- * @param rekeying_nugget_id
- * @param buffer
- * @param length
- * @param nugget_internal_offset
  */
 void blfs_rekey_nugget_then_write(buselfs_state_t * buselfs_state,
-                                            uint32_t rekeying_nugget_id,
-                                            const uint8_t * buffer,
-                                            uint32_t length,
-                                            uint64_t nugget_internal_offset);
+                                  uint32_t rekeying_nugget_id,
+                                  const uint8_t * buffer,
+                                  uint32_t length,
+                                  uint64_t nugget_internal_offset);
 
 /**
  * Open a backstore and perform initial validation checks and asserts.
- * 
- * @param buselfs_state
  */
 void blfs_soft_open(buselfs_state_t * buselfs_state, uint8_t cin_allow_insecure_start);
 
 /**
  * Implementation of the CREATE command mode.
- * 
- * @param backstore_path
- * @param cin_backstore_size
- * @param cin_flake_size
- * @param cin_flakes_per_nugget
- * @param buselfs_state
  */
 void blfs_run_mode_create(const char * backstore_path,
-                                   uint64_t cin_backstore_size,
-                                   uint32_t cin_flake_size,
-                                   uint32_t cin_flakes_per_nugget,
-                                   buselfs_state_t * buselfs_state);
+                          uint64_t cin_backstore_size,
+                          uint32_t cin_flake_size,
+                          uint32_t cin_flakes_per_nugget,
+                          buselfs_state_t * buselfs_state);
 
 /**
  * Implementation of the OPEN command mode.
- * 
- * @param backstore_path
- * @param cin_backstore_size
- * @param cin_allow_insecure_start
- * @param buselfs_state
  */
 void blfs_run_mode_open(const char * backstore_path, uint8_t cin_allow_insecure_start, buselfs_state_t * buselfs_state);
 
 /**
  * Implementation of the WIPE command mode.
- * 
- * @param backstore_path
- * @param cin_backstore_size
- * @param cin_allow_insecure_start
- * @param buselfs_state
  */
 void blfs_run_mode_wipe(const char * backstore_path, uint8_t cin_allow_insecure_start, buselfs_state_t * buselfs_state);
 
@@ -259,73 +251,12 @@ void blfs_run_mode_wipe(const char * backstore_path, uint8_t cin_allow_insecure_
  * The function that is actually responsible for assembling the disperate
  * pieces that come together to form the functioning StrongBox instance. This
  * function should not be called directly. Call strongbox_main() instead.
- * 
- * @param argc
- * @param argv
- * @param blockdevice
  */
 buselfs_state_t * strongbox_main_actual(int argc, char * argv[], char * blockdevice);
 
 /**
- * The entry point for the StrongBox software. Call this from main().
- * 
- * @param  argc
- * @param  argv
+ * The entry point for the StrongBox software. Call this from main()
  */
 int strongbox_main(int argc, char * argv[]);
 
-#if BLFS_DEBUG_MONITOR_POWER > 0
-
-/**
- * Initialize the internal energy monitor. Must be called before any other
- * blfs_energymon_* functions or StrongBox's behavior is undefined.
- * 
- * @param buselfs_state
- */
-void blfs_energymon_init(buselfs_state_t * buselfs_state);
-
-/**
- * The metrics argument will be populated with the appropriate metrics given
- * the current moment in time. See metrics_t for more information.
- * 
- * @metrics
- * @buselfs_state
- */
-void blfs_energymon_collect_metrics(metrics_t * metrics, buselfs_state_t * buselfs_state);
-
-/**
- * A complex experimental result will be written out to the filesystem. See
- * BLFS_ENERGYMON_OUTPUT_PATH to find out where things are written out to.
- * 
- * Output is divided between read metrics and write metrics.
- * 
- * @tag
- * @read_metrics_start
- * @read_metrics_end
- * @write_metrics_start
- * @write_metrics_end
- */
-void blfs_energymon_writeout_metrics(char * tag,
-                                     metrics_t * read_metrics_start,
-                                     metrics_t * read_metrics_end,
-                                     metrics_t * write_metrics_start,
-                                     metrics_t * write_metrics_end);
-
-/**
- * A simple experimental result will be written out to the filesystem. See
- * BLFS_ENERGYMON_OUTPUT_PATH to find out where things are written out to.
- * 
- * Output is not divided up in any special way.
- */
-void blfs_energymon_writeout_metrics_simple(char * tag, metrics_t * metrics_start, metrics_t * metrics_end);
-
-/**
- * Clean up an initialized internal energy monitor. Should be called when
- * StrongBox is being unmounted/cleaned up, but not before!
- * 
- * @buselfs_state
- */
-void blfs_energymon_fini(buselfs_state_t * buselfs_state);
-
-#endif /* BLFS_DEBUG_MONITOR_POWER > 0 */
 #endif /* BLFS_BUSELFS_H_ */

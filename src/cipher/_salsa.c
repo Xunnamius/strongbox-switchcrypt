@@ -1,7 +1,7 @@
 #include "cipher/_salsa.h"
 
 void sc_generic_salsa_crypt_data(salsa20_variant variant,
-                                 const blfs_stream_cipher_t * stream_cipher,
+                                 const blfs_swappable_cipher_t * sc,
                                  uint64_t interblock_offset,
                                  uint64_t intrablock_offset,
                                  uint64_t num_blocks,
@@ -22,7 +22,7 @@ void sc_generic_salsa_crypt_data(salsa20_variant variant,
     salsa20_master_state key_state;
     salsa20_state output_state;
 
-    uint8_t key[stream_cipher->key_size_bytes];
+    uint8_t key[sc->key_size_bytes];
     // uint8_t iv[BLFS_CRYPTO_BYTES_SALSA8_IV]; // ? represented by the 8 byte keycount
 
     memcpy(key, nugget_key, sizeof key); // ! cutting off the key, bad bad not good! Need key schedule!
@@ -32,14 +32,21 @@ void sc_generic_salsa_crypt_data(salsa20_variant variant,
     salsa20_set_counter(&output_state, interblock_offset);
 
     for(uint64_t i = 0; i < num_blocks; ++i)
-        salsa20_extract(&output_state, xor_str + (i * stream_cipher->output_size_bytes));
+        salsa20_extract(&output_state, xor_str + (i * sc->output_size_bytes));
 
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 }
 
-void sc_impl_salsa(blfs_stream_cipher_t * sc)
+void sc_impl_salsa(blfs_swappable_cipher_t * sc)
 {
-    sc->crypt_nugget = NULL;
+    sc->name = "Salsa (partially initialized)";
+    sc->enum_id = 0;
+
+    sc->key_size_bytes = 0;
+    sc->nonce_size_bytes = 0;
+    sc->output_size_bytes = 0;
+
+    sc->crypt_custom = NULL;
     sc->read_handle = NULL;
     sc->write_handle = NULL;
 }

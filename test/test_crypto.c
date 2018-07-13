@@ -18,16 +18,6 @@ Catch(e_actual)                                   \
 
 void setUp(void)
 {
-    static int runonce = 0;
-
-    if(!runonce && BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
-    {
-        // ERR_load_crypto_strings();
-        // OpenSSL_add_all_algorithms();
-        // OPENSSL_config(NULL);
-        runonce = 1;
-    }
-
     if(sodium_init() == -1)
         exit(EXCEPTION_SODIUM_INIT_FAILURE);
 
@@ -105,7 +95,6 @@ void test_blfs_chacha20_struct_hash_returns_expected_data(void)
     TEST_ASSERT_EQUAL_MEMORY(expected_hash, actual_hash, BLFS_CRYPTO_BYTES_STRUCT_HASH_OUT);
 }
 
-// TODO: upgrade this test if we ever get around to making this work for big endian systems
 void test_blfs_nugget_key_from_data_fails_bad_endianness(void)
 {
     uint8_t actual_nugget_key[BLFS_CRYPTO_BYTES_KDF_OUT] = { 0x00 };
@@ -131,7 +120,6 @@ void test_blfs_nugget_key_from_data_fails_bad_endianness(void)
     
 }
 
-// TODO: upgrade this test if we ever get around to making this work for big endian systems
 void test_blfs_poly1305_key_from_data_fails_bad_endianness(void)
 {
     uint8_t new_key[BLFS_CRYPTO_BYTES_KDF_OUT] = { 0x00 };
@@ -182,84 +170,66 @@ void test_blfs_poly1305_generate_tag_yields_expected_tag(void)
 
 void test_aesxts_in_openssl_is_supported(void)
 {
-    if(!BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
-        TEST_IGNORE_MESSAGE("BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION is NOT in effect, so this test will be skipped!");
+    // ! AES key + AES-XEX key (512 bits)
+    uint8_t flake_key1[] = "01234567890123456789012345678901";
+    uint8_t flake_key2[sizeof flake_key1] = { 0x00 };
+    uint32_t sector_tweak1 = 5;
+    uint32_t sector_tweak2 = 0;
 
-    else
-    {
-        // XXX" AES key + AES-XEX key (512 bits)
-        uint8_t flake_key1[] = "01234567890123456789012345678901";
-        uint8_t flake_key2[sizeof flake_key1] = { 0x00 };
-        uint32_t sector_tweak1 = 5;
-        uint32_t sector_tweak2 = 0;
+    uint8_t plaintext[] = "Zara is my dog. She is a good dog.";
 
-        uint8_t plaintext[] = "Zara is my dog. She is a good dog.";
+    uint8_t decryptedtext1[sizeof plaintext] = { 0x00 };
+    uint8_t decryptedtext2[sizeof plaintext] = { 0x00 };
+    uint8_t decryptedtext3[sizeof plaintext] = { 0x00 };
+    uint8_t decryptedtext4[sizeof plaintext] = { 0x00 };
+    uint8_t ciphertext[sizeof plaintext] = { 0x00 };
 
-        uint8_t decryptedtext1[sizeof plaintext] = { 0x00 };
-        uint8_t decryptedtext2[sizeof plaintext] = { 0x00 };
-        uint8_t decryptedtext3[sizeof plaintext] = { 0x00 };
-        uint8_t decryptedtext4[sizeof plaintext] = { 0x00 };
-        uint8_t ciphertext[sizeof plaintext] = { 0x00 };
+    blfs_aesxts_encrypt(ciphertext, plaintext, sizeof ciphertext, flake_key1, sector_tweak1);
+    blfs_aesxts_decrypt(decryptedtext1, ciphertext, sizeof decryptedtext1, flake_key1, sector_tweak1);
+    blfs_aesxts_decrypt(decryptedtext2, ciphertext, sizeof decryptedtext2, flake_key2, sector_tweak1);
+    blfs_aesxts_decrypt(decryptedtext3, ciphertext, sizeof decryptedtext3, flake_key1, sector_tweak2);
+    blfs_aesxts_decrypt(decryptedtext4, ciphertext, sizeof decryptedtext4, flake_key1, sector_tweak1);
 
-        blfs_aesxts_encrypt(ciphertext, plaintext, sizeof ciphertext, flake_key1, sector_tweak1);
-        blfs_aesxts_decrypt(decryptedtext1, ciphertext, sizeof decryptedtext1, flake_key1, sector_tweak1);
-        blfs_aesxts_decrypt(decryptedtext2, ciphertext, sizeof decryptedtext2, flake_key2, sector_tweak1);
-        blfs_aesxts_decrypt(decryptedtext3, ciphertext, sizeof decryptedtext3, flake_key1, sector_tweak2);
-        blfs_aesxts_decrypt(decryptedtext4, ciphertext, sizeof decryptedtext4, flake_key1, sector_tweak1);
+    TEST_ASSERT_EQUAL_MEMORY(plaintext, decryptedtext1, sizeof plaintext);
+    TEST_ASSERT_EQUAL_MEMORY(plaintext, decryptedtext4, sizeof plaintext);
 
-        TEST_ASSERT_EQUAL_MEMORY(plaintext, decryptedtext1, sizeof plaintext);
-        TEST_ASSERT_EQUAL_MEMORY(plaintext, decryptedtext4, sizeof plaintext);
-
-        TEST_ASSERT_TRUE(memcmp(plaintext, decryptedtext2, sizeof plaintext) != 0);
-        TEST_ASSERT_TRUE(memcmp(plaintext, decryptedtext3, sizeof plaintext) != 0);
-    }
+    TEST_ASSERT_TRUE(memcmp(plaintext, decryptedtext2, sizeof plaintext) != 0);
+    TEST_ASSERT_TRUE(memcmp(plaintext, decryptedtext3, sizeof plaintext) != 0);
 }
 
 void test_aesxts_supports_sameptr_operations(void)
 {
-    if(!BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
-        TEST_IGNORE_MESSAGE("BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION is NOT in effect, so this test will be skipped!");
+    // ! AES key + AES-XEX key (512 bits)
+    uint8_t flake_key[] = "01234567890123456789012345678901";
+    uint32_t sector_tweak = 5;
 
-    else
-    {
-        // XXX" AES key + AES-XEX key (512 bits)
-        uint8_t flake_key[] = "01234567890123456789012345678901";
-        uint32_t sector_tweak = 5;
+    uint8_t original_data[] = "Zara is my dog. She is a good dog.";
+    uint8_t data[sizeof original_data];
 
-        uint8_t original_data[] = "Zara is my dog. She is a good dog.";
-        uint8_t data[sizeof original_data];
+    memcpy(data, original_data, sizeof original_data);
 
-        memcpy(data, original_data, sizeof original_data);
+    blfs_aesxts_encrypt(data, data, sizeof data, flake_key, sector_tweak);
 
-        blfs_aesxts_encrypt(data, data, sizeof data, flake_key, sector_tweak);
+    TEST_ASSERT_TRUE(memcmp(original_data, data, sizeof data) != 0);
 
-        TEST_ASSERT_TRUE(memcmp(original_data, data, sizeof data) != 0);
+    blfs_aesxts_decrypt(data, data, sizeof data, flake_key, sector_tweak);
 
-        blfs_aesxts_decrypt(data, data, sizeof data, flake_key, sector_tweak);
-
-        TEST_ASSERT_EQUAL_MEMORY(original_data, data, sizeof data);
-    }
+    TEST_ASSERT_EQUAL_MEMORY(original_data, data, sizeof data);
 }
 
 void test_aesxts_throws_exceptions_if_length_too_small(void)
 {
-    if(!BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
-        TEST_IGNORE_MESSAGE("BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION is NOT in effect, so this test will be skipped!");
+    uint8_t flake_key[] = "01234567890123456789012345678901";
+    uint32_t sector_tweak = 5;
+    uint8_t plaintext[] = "Zara";
+    uint8_t ciphertext[sizeof plaintext] = { 0x00 };
 
-    else
-    {
-        uint8_t flake_key[] = "01234567890123456789012345678901";
-        uint32_t sector_tweak = 5;
-        uint8_t plaintext[] = "Zara";
-        uint8_t ciphertext[sizeof plaintext] = { 0x00 };
+    CEXCEPTION_T e_expected = EXCEPTION_AESXTS_DATA_LENGTH_TOO_SMALL;
+    volatile CEXCEPTION_T e_actual = EXCEPTION_NO_EXCEPTION;
 
-        CEXCEPTION_T e_expected = EXCEPTION_AESXTS_DATA_LENGTH_TOO_SMALL;
-        volatile CEXCEPTION_T e_actual = EXCEPTION_NO_EXCEPTION;
+    TRY_FN_CATCH_EXCEPTION(blfs_aesxts_encrypt(ciphertext, plaintext, sizeof ciphertext, flake_key, sector_tweak));
 
-        TRY_FN_CATCH_EXCEPTION(blfs_aesxts_encrypt(ciphertext, plaintext, sizeof ciphertext, flake_key, sector_tweak));
+    e_actual = EXCEPTION_NO_EXCEPTION;
 
-        e_actual = EXCEPTION_NO_EXCEPTION;
-
-        TRY_FN_CATCH_EXCEPTION(blfs_aesxts_decrypt(plaintext, ciphertext, sizeof plaintext, flake_key, sector_tweak));
-    }
+    TRY_FN_CATCH_EXCEPTION(blfs_aesxts_decrypt(plaintext, ciphertext, sizeof plaintext, flake_key, sector_tweak));
 }

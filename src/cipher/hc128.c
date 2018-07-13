@@ -1,7 +1,7 @@
 #include "cipher/hc128.h"
 #include "libestream/hc-128.h"
 
-static void crypt_data(const blfs_stream_cipher_t * stream_cipher,
+static void crypt_data(const blfs_swappable_cipher_t * sc,
                        uint64_t interblock_offset,
                        uint64_t intrablock_offset,
                        uint64_t num_blocks,
@@ -35,16 +35,23 @@ static void crypt_data(const blfs_stream_cipher_t * stream_cipher,
         memcpy(stream_nonce + sizeof(kcs_keycount), (uint8_t *) &counter, sizeof(counter));
 
         hc128_init(&output_state, raw_key, stream_nonce);
-        hc128_extract(&output_state, xor_str + (i * stream_cipher->output_size_bytes));
+        hc128_extract(&output_state, xor_str + (i * sc->output_size_bytes));
     }
 
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 }
 
-void sc_impl_hc128(blfs_stream_cipher_t * sc)
+void sc_impl_hc128(blfs_swappable_cipher_t * sc)
 {
-    sc->crypt_data = &crypt_data;
-    sc->crypt_nugget = NULL;
+    sc->crypt_data = crypt_data;
+    sc->crypt_custom = NULL;
     sc->read_handle = NULL;
     sc->write_handle = NULL;
+
+    sc->name = "HC-128";
+    sc->enum_id = sc_hc128;
+
+    sc->key_size_bytes = BLFS_CRYPTO_BYTES_HC128_KEY;
+    sc->nonce_size_bytes = BLFS_CRYPTO_BYTES_HC128_IV;
+    sc->output_size_bytes = BLFS_CRYPTO_BYTES_HC128_BLOCK;
 }

@@ -170,10 +170,10 @@ do {                                                                            
 // Energymon subsystem failed on ffinish
 #define EXCEPTION_ENERGYMON_FFINISH_FAILURE             0x2DU
 
-// The requested stream cipher algorithm is not yet implemented
+// The requested swappable cipher algorithm is not yet implemented
 #define EXCEPTION_SC_ALGO_NO_IMPL                       0x2EU
 
-// The requested stream cipher algorithm does not exist
+// The requested swappable cipher algorithm does not exist
 #define EXCEPTION_SC_ALGO_NOT_FOUND                     0x2FU
 
 // A failure occurred during an RPMB operation (in low level ioctl)
@@ -205,10 +205,19 @@ do {                                                                            
 #define EXCEPTION_FLAKESIZE_TOO_LARGE                   0x37U
 
 // Unknown freestyle configuration specifier was passed in
-#define EXCEPTION_UNKNOWN_FSTYLE_CONFIGURATION          0x38U
+#define EXCEPTION_UNKNOWN_FSTYLE_VARIANT                0x38U
 
 // Unknown chacha (nano optimized) configuration specifier was passed in
-#define EXCEPTION_UNKNOWN_CHACHAN_CONFIGURATION          0x39U
+#define EXCEPTION_UNKNOWN_CHACHAN_CONFIGURATION         0x39U
+
+// A cipher was initialized with an illegal configuration of crypt_*/handles
+#define EXCEPTION_SC_BAD_CIPHER                         0x40U
+
+// Unknown chacha (nano optimized) configuration specifier was passed in
+#define EXCEPTION_FLAKESIZE_TOO_SMALL                   0x41U
+
+// A cipher was initialized with an illegal configuration of crypt_*/handles
+#define EXCEPTION_TOO_FEW_FLAKES_PER_NUGGET             0x42U
 
 ///////////////////////
 // End Configuration //

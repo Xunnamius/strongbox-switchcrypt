@@ -1,19 +1,58 @@
 #include "cipher/_freestyle.h"
 
-void sc_generic_freestyle_read_handle(freestyle_variant variant,
-                                      const blfs_stream_cipher_t * stream_cipher,
-                                      uint64_t interblock_offset,
-                                      uint64_t intrablock_offset,
-                                      uint64_t num_blocks,
-                                      uint64_t zero_str_length,
-                                      uint64_t block_read_upper_bound,
-                                      const uint8_t * nugget_key,
-                                      const uint64_t kcs_keycount,
-                                      const uint8_t * const kcs_keycount_ptr)
+static void variant_as_configuration(freestyle_variant_configuration * config, freestyle_variant variant)
 {
-    // TODO
-    // IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
+    switch(variant)
+    {
+        case FREESTYLE_FAST:
+            config->min_rounds = 8;
+            config->max_rounds = 20;
+            config->hash_interval = 4;
+            config->pepper_bits = 8;
+            break;
 
+        case FREESTYLE_BALANCED:
+            config->min_rounds = 12;
+            config->max_rounds = 24;
+            config->hash_interval = 2;
+            config->pepper_bits = 16;
+            break;
+
+        case FREESTYLE_SECURE:
+            config->min_rounds = 20;
+            config->max_rounds = 32;
+            config->hash_interval = 1;
+            config->pepper_bits = 32;
+            break;
+            
+        default:
+            Throw(EXCEPTION_UNKNOWN_FSTYLE_VARIANT);
+    }
+}
+
+int sc_generic_freestyle_read_handle(freestyle_variant variant,
+                                      uint8_t * buffer,
+                                      const buselfs_state_t * buselfs_state,
+                                      uint_fast32_t buffer_read_length,
+                                      uint_fast32_t flake_index,
+                                      uint_fast32_t flake_end,
+                                      uint_fast32_t first_affected_flake,
+                                      uint32_t flake_size,
+                                      uint_fast32_t flakes_per_nugget,
+                                      uint32_t mt_offset,
+                                      const uint8_t * nugget_data,
+                                      const uint8_t * nugget_key,
+                                      uint_fast32_t nugget_offset,
+                                      uint_fast32_t nugget_internal_offset,
+                                      const blfs_keycount_t * count,
+                                      int first_nugget,
+                                      int last_nugget)
+{
+    IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
+
+    const uint8_t * original_buffer = buffer;
+
+    // TODO:!
     // (void) intrablock_offset;
     // (void) num_blocks;
     // (void) block_read_upper_bound;
@@ -29,39 +68,13 @@ void sc_generic_freestyle_read_handle(freestyle_variant variant,
     // memcpy(stream_nonce, kcs_keycount_ptr, sizeof(sc_context->kcs_keycount));
 
     // IFDEBUG(assert(BLFS_CRYPTO_BYTES_FSTYLE_KEY == BLFS_CRYPTO_BYTES_KDF_OUT));
-    // IFDEBUG(assert(backstore->read_state != backstore->write_state));
 
     // int min_rounds = 0;
     // int max_rounds = 0;
     // int hash_interval = 0;
     // int pepper_bits = 0;
 
-    // switch(freestyle_configuration)
-    // {
-    //     case FREESTYLE_FAST:
-    //         min_rounds = 8;
-    //         max_rounds = 20;
-    //         hash_interval = 4;
-    //         pepper_bits = 8;
-    //         break;
-
-    //     case FREESTYLE_BALANCED:
-    //         min_rounds = 12;
-    //         max_rounds = 24;
-    //         hash_interval = 2;
-    //         pepper_bits = 16;
-    //         break;
-
-    //     case FREESTYLE_SECURE:
-    //         min_rounds = 20;
-    //         max_rounds = 32;
-    //         hash_interval = 1;
-    //         pepper_bits = 32;
-    //         break;
-            
-    //     default:
-    //         Throw(EXCEPTION_UNKNOWN_FSTYLE_CONFIGURATION);
-    // }
+    
 
     // freestyle_ctx crypt;
 
@@ -114,24 +127,44 @@ void sc_generic_freestyle_read_handle(freestyle_variant variant,
     // hc128_extract(&output_state, xor_str + (i * sc_context->output_size_bytes));
 
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
+
+    return buffer - original_buffer;
 }
 
-void sc_generic_freestyle_write_handle(freestyle_variant variant,
-                                       const blfs_stream_cipher_t * stream_cipher,
-                                       uint64_t interblock_offset,
-                                       uint64_t intrablock_offset,
-                                       uint64_t num_blocks,
-                                       uint64_t zero_str_length,
-                                       uint64_t block_read_upper_bound,
+int sc_generic_freestyle_write_handle(freestyle_variant variant,
+                                       const uint8_t * buffer,
+                                       const buselfs_state_t * buselfs_state,
+                                       uint_fast32_t buffer_write_length,
+                                       uint_fast32_t flake_index,
+                                       uint_fast32_t flake_end,
+                                       uint32_t flake_size,
+                                       uint_fast32_t flakes_per_nugget,
+                                       uint_fast32_t flake_internal_offset,
+                                       uint32_t mt_offset,
                                        const uint8_t * nugget_key,
-                                       const uint64_t kcs_keycount,
-                                       const uint8_t * const kcs_keycount_ptr)
+                                       uint_fast32_t nugget_offset,
+                                       const blfs_keycount_t * count)
 {
-    // TODO
+    IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
+
+    const uint8_t * original_buffer = buffer;
+
+    // TODO:!
+
+    IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
+    
+    return buffer - original_buffer;
 }
 
-void sc_impl_freestyle(blfs_stream_cipher_t * sc)
+void sc_impl_freestyle(blfs_swappable_cipher_t * sc)
 {
+    sc->name = "Freestyle (partially initialized)";
+    sc->enum_id = 0;
+
+    sc->key_size_bytes = BLFS_CRYPTO_BYTES_FSTYLE_KEY;
+    sc->nonce_size_bytes = BLFS_CRYPTO_BYTES_FSTYLE_IV;
+    sc->output_size_bytes = BLFS_CRYPTO_BYTES_FSTYLE_BLOCK;
+
     sc->crypt_data = NULL;
-    sc->crypt_nugget = NULL;
+    sc->crypt_custom = NULL;
 }

@@ -16,6 +16,7 @@
 #include "cipher/freestyle_fast.h"
 #include "cipher/aes128_ctr.h"
 #include "cipher/aes256_ctr.h"
+#include "cipher/aes256_xts.h"
 #include "cipher/hc128.h"
 #include "cipher/rabbit.h"
 #include "cipher/sosemanuk.h"

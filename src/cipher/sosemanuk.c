@@ -1,7 +1,7 @@
 #include "cipher/sosemanuk.h"
 #include "libestream/sosemanuk.h"
 
-static void crypt_data(const blfs_stream_cipher_t * stream_cipher,
+static void crypt_data(const blfs_swappable_cipher_t * sc,
                        uint64_t interblock_offset,
                        uint64_t intrablock_offset,
                        uint64_t num_blocks,
@@ -38,16 +38,23 @@ static void crypt_data(const blfs_stream_cipher_t * stream_cipher,
         memcpy(stream_nonce + sizeof(kcs_keycount), (uint8_t *) &counter, sizeof(counter));
 
         sosemanuk_init_iv(&iv_state, &key_state, stream_nonce);
-        sosemanuk_extract(&iv_state, xor_str + (i * stream_cipher->output_size_bytes));
+        sosemanuk_extract(&iv_state, xor_str + (i * sc->output_size_bytes));
     }
 
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 }
 
-void sc_impl_sosemanuk(blfs_stream_cipher_t * sc)
+void sc_impl_sosemanuk(blfs_swappable_cipher_t * sc)
 {
-    sc->crypt_data = &crypt_data;
-    sc->crypt_nugget = NULL;
+    sc->crypt_data = crypt_data;
+    sc->crypt_custom = NULL;
     sc->read_handle = NULL;
     sc->write_handle = NULL;
+
+    sc->name = "Sosemanuk";
+    sc->enum_id = sc_sosemanuk;
+
+    sc->key_size_bytes = BLFS_CRYPTO_BYTES_SOSEK_KEY;
+    sc->nonce_size_bytes = BLFS_CRYPTO_BYTES_SOSEK_IV;
+    sc->output_size_bytes = BLFS_CRYPTO_BYTES_SOSEK_BLOCK;
 }

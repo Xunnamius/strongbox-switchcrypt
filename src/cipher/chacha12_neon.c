@@ -1,6 +1,6 @@
 #include "cipher/chacha12_neon.h"
 
-static void crypt_data(const blfs_stream_cipher_t * stream_cipher,
+static void crypt_data(const blfs_swappable_cipher_t * sc,
                        uint64_t interblock_offset,
                        uint64_t intrablock_offset,
                        uint64_t num_blocks,
@@ -15,7 +15,7 @@ static void crypt_data(const blfs_stream_cipher_t * stream_cipher,
 
     sc_generic_chacha_neon_crypt_data(
         CHACHA12_NEON,
-        stream_cipher,
+        sc,
         interblock_offset,
         intrablock_offset,
         num_blocks,
@@ -30,8 +30,15 @@ static void crypt_data(const blfs_stream_cipher_t * stream_cipher,
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 }
 
-void sc_impl_chacha12_neon(blfs_stream_cipher_t * sc)
+void sc_impl_chacha12_neon(blfs_swappable_cipher_t * sc)
 {
     sc_impl_chacha_neon(sc);
-    sc->crypt_data = &crypt_data;
+    sc->crypt_data = crypt_data;
+
+    sc->name = "Chacha @ 12 rounds (NEON optimized)";
+    sc->enum_id = sc_chacha12_neon;
+
+    sc->key_size_bytes = BLFS_CRYPTO_BYTES_CHACHA12N_KEY;
+    sc->nonce_size_bytes = BLFS_CRYPTO_BYTES_CHACHA12N_NONCE;
+    sc->output_size_bytes = BLFS_CRYPTO_BYTES_CHACHA12N_BLOCK;
 }

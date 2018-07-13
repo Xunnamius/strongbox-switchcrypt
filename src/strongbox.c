@@ -56,150 +56,6 @@ uint32_t mt_calculate_flake_offset(uint32_t jump_to_nugget_index, uint32_t flake
     
 }
 
-#if BLFS_DEBUG_MONITOR_POWER > 0
-
-#include "energymon-time-util.h"
-
-static FILE * metrics_output_fd = NULL;
-
-void blfs_energymon_init(buselfs_state_t * buselfs_state)
-{
-    uid_t euid = geteuid();
-
-    if(euid != 0)
-        Throw(EXCEPTION_MUST_BE_ROOT);
-
-    // Setup energymon
-    errno = 0;
-
-    buselfs_state->energymon_monitor = malloc(sizeof *(buselfs_state->energymon_monitor));
-
-    if(energymon_get_default(buselfs_state->energymon_monitor))
-    {
-        dzlog_fatal("energymon_get_default error: %s", strerror(errno));
-        Throw(EXCEPTION_ENERGYMON_GET_DEFAULT_FAILURE);
-    }
-
-    errno = 0;
-
-    if(buselfs_state->energymon_monitor->finit(buselfs_state->energymon_monitor))
-    {
-        dzlog_fatal("finit error: %s", strerror(errno));
-        Throw(EXCEPTION_ENERGYMON_FINIT_FAILURE);
-    }
-
-    errno = 0;
-
-    if(metrics_output_fd == NULL)
-        metrics_output_fd = fopen(BLFS_ENERGYMON_OUTPUT_PATH, "a");
-    
-    if(metrics_output_fd == NULL || errno)
-    {
-        dzlog_fatal("failed to fopen metrics_output_fd: %s", strerror(errno));
-        Throw(EXCEPTION_OPEN_FAILURE);
-    }
-}
-
-void blfs_energymon_collect_metrics(metrics_t * metrics, buselfs_state_t * buselfs_state)
-{
-    // Grab the initial energy use and time
-    errno = 0;
-    metrics->energy_uj = buselfs_state->energymon_monitor->fread(buselfs_state->energymon_monitor);
-
-    if(!metrics->energy_uj && errno)
-    {
-        dzlog_fatal("energymon metric collection error: %s", strerror(errno));
-        buselfs_state->energymon_monitor->ffinish(buselfs_state->energymon_monitor);
-        Throw(EXCEPTION_ENERGYMON_METRIC_COLLECTION_FAILURE);
-    }
-
-    metrics->time_ns = energymon_gettime_ns();
-}
-
-// TODO: Document/comment these!
-void blfs_energymon_writeout_metrics(char * tag,
-                                     metrics_t * read_metrics_start,
-                                     metrics_t * read_metrics_end,
-                                     metrics_t * write_metrics_start,
-                                     metrics_t * write_metrics_end)
-{
-    // Crunch the results
-    double tr_energy = read_metrics_end->energy_uj - read_metrics_start->energy_uj;
-    double tr_duration = read_metrics_end->time_ns - read_metrics_start->time_ns;
-
-    double tw_energy = 0;
-    double tw_duration = 0;
-    double tr_power = 0;
-    double tw_power = 0;
-
-    tr_energy /= 1000000.0;
-    tr_duration /= 1000000000.0;
-    tr_power = tr_energy / tr_duration;
-
-    if(write_metrics_start != NULL && write_metrics_end != NULL)
-    {
-        tw_energy = write_metrics_end->energy_uj - write_metrics_start->energy_uj;
-        tw_duration = write_metrics_end->time_ns - write_metrics_start->time_ns;
-
-        tw_energy /= 1000000.0;
-        tw_duration /= 1000000000.0;
-        tw_power = tw_energy / tw_duration;
-
-        // Output the results
-        fprintf(metrics_output_fd,
-                "tag: %s\ntr_energy: %f\ntr_duration: %f\ntr_power: %f\ntw_energy: %f\ntw_duration: %f\ntw_power: %f\n---\n",
-                tag,
-                tr_energy,
-                tr_duration,
-                tr_power,
-                tw_energy,
-                tw_duration,
-                tw_power);
-    }
-
-    else
-    {
-        // Output the results
-        fprintf(metrics_output_fd,
-                "tag: %s\nt_energy: %f\nt_duration: %f\nt_power: %f\n---\n",
-                tag,
-                tr_energy,
-                tr_duration,
-                tr_power);
-    }
-
-    // Flush the results
-    fflush(metrics_output_fd);
-}
-
-void blfs_energymon_writeout_metrics_simple(char * tag, metrics_t * metrics_start, metrics_t * metrics_end)
-{
-    blfs_energymon_writeout_metrics(tag, metrics_start, metrics_end, NULL, NULL);
-}
-
-void blfs_energymon_fini(buselfs_state_t * buselfs_state)
-{
-    if(buselfs_state->energymon_monitor->ffinish(buselfs_state->energymon_monitor))
-    {
-        dzlog_fatal("ffinish error: %s", strerror(errno));
-        Throw(EXCEPTION_ENERGYMON_FFINISH_FAILURE);
-    }
-
-    fflush(metrics_output_fd);
-    fclose(metrics_output_fd);
-    
-    free(buselfs_state->energymon_monitor);
-    
-    metrics_output_fd = 0;
-    buselfs_state->energymon_monitor = NULL;
-}
-
-#endif /* BLFS_DEBUG_MONITOR_POWER > 0 */
-
-#if BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION && BLFS_NO_READ_INTEGRITY
-#error "The BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION and BLFS_NO_READ_INTEGRITY compile flags CANNOT be used together!"
-#endif
-
 /**
  * Unimplemented BUSE internal function.
  */
@@ -266,7 +122,7 @@ static struct buse_operations buseops = {
  *
  * @param buselfs_state
  */
-static void update_merkle_tree_root_hash(buselfs_state_t * buselfs_state)
+void update_merkle_tree_root_hash(buselfs_state_t * buselfs_state)
 {
     IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
 
@@ -279,9 +135,9 @@ static void update_merkle_tree_root_hash(buselfs_state_t * buselfs_state)
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 }
 
-static void commit_merkle_tree_root_hash(buselfs_state_t * buselfs_state)
+void commit_merkle_tree_root_hash(buselfs_state_t * buselfs_state)
 {
-    update_merkle_tree_root_hash(buselfs_state);
+    //update_merkle_tree_root_hash(buselfs_state);
 
     blfs_header_t * mtrh_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_MTRH);
     memcpy(mtrh_header->data, buselfs_state->merkle_tree_root_hash, BLFS_HEAD_HEADER_BYTES_MTRH);
@@ -295,7 +151,7 @@ static void commit_merkle_tree_root_hash(buselfs_state_t * buselfs_state)
  * @param length
  * @param buselfs_state
  */
-static void add_to_merkle_tree(uint8_t * data, size_t length, buselfs_state_t * buselfs_state)
+void add_to_merkle_tree(uint8_t * data, size_t length, const buselfs_state_t * buselfs_state)
 {
     IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
 
@@ -322,7 +178,7 @@ static void add_to_merkle_tree(uint8_t * data, size_t length, buselfs_state_t * 
  * @param index
  * @param buselfs_state
  */
-static void update_in_merkle_tree(uint8_t * data, size_t length, uint32_t index, buselfs_state_t * buselfs_state)
+void update_in_merkle_tree(uint8_t * data, size_t length, uint32_t index, const buselfs_state_t * buselfs_state)
 {
     IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
 
@@ -350,7 +206,7 @@ static void update_in_merkle_tree(uint8_t * data, size_t length, uint32_t index,
  * @param index
  * @param buselfs_state
  */
-static void verify_in_merkle_tree(uint8_t * data, size_t length, uint32_t index, buselfs_state_t * buselfs_state)
+void verify_in_merkle_tree(uint8_t * data, size_t length, uint32_t index, const buselfs_state_t * buselfs_state)
 {
     IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
 
@@ -607,10 +463,10 @@ void get_nugget_key_using_index(uint8_t * nugget_key, buselfs_state_t * buselfs_
 }
 
 void get_flake_key_using_keychain(uint8_t * flake_key,
-                                        buselfs_state_t * buselfs_state,
-                                        uint32_t nugget_index,
-                                        uint32_t flake_index,
-                                        uint64_t keycount)
+                                  const buselfs_state_t * buselfs_state,
+                                  uint32_t nugget_index,
+                                  uint32_t flake_index,
+                                  uint64_t keycount)
 {
     if(BLFS_DEFAULT_DISABLE_KEY_CACHING)
         Throw(EXCEPTION_BAD_CACHE);
@@ -632,17 +488,6 @@ int buse_read(void * output_buffer, uint32_t length, uint64_t absolute_offset, v
     uint8_t * buffer = (uint8_t *) output_buffer;
     buselfs_state_t * buselfs_state = (buselfs_state_t *) userdata;
     uint_fast32_t size = length;
-
-    IFDEBUG(assert(!buselfs_state->backstore->read_state));
-
-    IFENERGYMON(metrics_t metrics_init_start);
-    IFENERGYMON(metrics_t metrics_init_end);
-    IFENERGYMON(metrics_t metrics_read_loop_start);
-    IFENERGYMON(metrics_t metrics_read_loop_end);
-    IFENERGYMON(metrics_t metrics_integrity_loop_start);
-    IFENERGYMON(metrics_t metrics_integrity_loop_end);
-
-    IFENERGYMON(blfs_energymon_collect_metrics(&metrics_init_start, buselfs_state));
 
     IFDEBUG(dzlog_debug("output_buffer (ptr): %p", (void *) output_buffer));
     IFDEBUG(dzlog_debug("buffer (ptr): %p", (void *) buffer));
@@ -677,15 +522,12 @@ int buse_read(void * output_buffer, uint32_t length, uint64_t absolute_offset, v
     {
         IFDEBUG(dzlog_debug("starting with length: %"PRIu32, length));
 
-        IFENERGYMON(blfs_energymon_collect_metrics(&metrics_read_loop_start, buselfs_state));
-
         (void) size;
         IFDEBUG(assert(length > 0 && length <= size));
 
         uint8_t nugget_key[BLFS_CRYPTO_BYTES_KDF_OUT];
         
         uint_fast32_t buffer_read_length = MIN(length, nugget_size - nugget_internal_offset); // nmlen
-        uint_fast32_t assert_buffer_read_length = 0;
         uint_fast32_t first_affected_flake = nugget_internal_offset / flake_size;
         uint_fast32_t num_affected_flakes =
             CEIL((nugget_internal_offset + buffer_read_length), flake_size) - first_affected_flake;
@@ -735,10 +577,30 @@ int buse_read(void * output_buffer, uint32_t length, uint64_t absolute_offset, v
         uint_fast32_t flake_index = first_affected_flake;
         uint_fast32_t flake_end = first_affected_flake + num_affected_flakes;
 
-        if(!BLFS_NO_READ_INTEGRITY)
+        if(buselfs_state->active_cipher->read_handle)
         {
-            IFENERGYMON(blfs_energymon_collect_metrics(&metrics_integrity_loop_start, buselfs_state));
+            buffer += buselfs_state->active_cipher->read_handle(
+                buffer,
+                buselfs_state,
+                buffer_read_length,
+                flake_index,
+                flake_end,
+                first_affected_flake,
+                flake_size,
+                flakes_per_nugget,
+                mt_offset,
+                nugget_data,
+                nugget_key,
+                nugget_offset,
+                nugget_internal_offset,
+                count,
+                first_nugget,
+                last_nugget
+            );
+        }
 
+        else
+        {
             for(uint_fast32_t i = 0; flake_index < flake_end; flake_index++, i++)
             {
                 uint8_t flake_key[BLFS_CRYPTO_BYTES_FLAKE_TAG_KEY];
@@ -780,60 +642,8 @@ int buse_read(void * output_buffer, uint32_t length, uint64_t absolute_offset, v
                                     mt_offset + nugget_offset * flakes_per_nugget + flake_index));
 
                 verify_in_merkle_tree(tag, sizeof tag, mt_offset + nugget_offset * flakes_per_nugget + flake_index, buselfs_state);
-
-                if(BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
-                {
-                    uint8_t flake_plaintext[flake_size];
-                    uint32_t first_flake_internal_offset = nugget_internal_offset - first_affected_flake * flake_size;
-
-                    blfs_aesxts_decrypt(flake_plaintext,
-                                        nugget_data + (i * flake_size),
-                                        flake_size,
-                                        flake_key,
-                                        nugget_offset * flakes_per_nugget + flake_index);
-
-                    if(first_nugget && flake_index == first_affected_flake)
-                    {
-                        uint32_t flake_internal_length = MIN(buffer_read_length, flake_size - first_flake_internal_offset);
-
-                        IFDEBUG(assert(first_flake_internal_offset + flake_internal_length <= flake_size));
-                        memcpy(buffer, flake_plaintext + first_flake_internal_offset, flake_internal_length);
-
-                        buffer += flake_internal_length;
-                        assert_buffer_read_length += flake_internal_length;
-                    }
-
-                    else if(last_nugget && flake_index == flake_end - 1)
-                    {
-                        uint32_t flake_internal_end_length = buffer_read_length - (i * flake_size - (first_nugget ? first_flake_internal_offset : 0));
-
-                        IFDEBUG(assert(flake_internal_end_length <= flake_size));
-                        IFDEBUG(assert(flake_internal_end_length > 0));
-                        memcpy(buffer, flake_plaintext, flake_internal_end_length);
-
-                        buffer += flake_internal_end_length;
-                        assert_buffer_read_length += flake_internal_end_length;
-                    }
-
-                    else
-                    {
-                        memcpy(buffer, flake_plaintext, flake_size);
-
-                        buffer += flake_size;
-                        assert_buffer_read_length += flake_size;
-                    }
-                }
             }
 
-            IFENERGYMON(blfs_energymon_collect_metrics(&metrics_integrity_loop_end, buselfs_state));
-            IFENERGYMON(blfs_energymon_writeout_metrics_simple("buse_read.integ_loop", &metrics_integrity_loop_start, &metrics_integrity_loop_end));
-        }
-
-        if(BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
-            IFDEBUG(assert(buffer_read_length == assert_buffer_read_length));
-
-        else
-        {
             IFDEBUG(dzlog_debug(
                 "blfs_crypt calculated ptr: %p --[ + "
                 "%"PRIuFAST32" - %"PRIuFAST32" * %"PRIuFAST32" => %"PRIuFAST32
@@ -848,7 +658,7 @@ int buse_read(void * output_buffer, uint32_t length, uint64_t absolute_offset, v
             ));
 
             blfs_swappable_crypt(
-                buselfs_state->active_stream_cipher,
+                buselfs_state->active_cipher,
                 buffer,
                 nugget_data + (nugget_internal_offset - first_affected_flake * flake_size),
                 buffer_read_length,
@@ -856,13 +666,12 @@ int buse_read(void * output_buffer, uint32_t length, uint64_t absolute_offset, v
                 count->keycount,
                 nugget_internal_offset
             );
-        }
 
-        IFDEBUG(dzlog_debug("output_buffer final contents (initial 64 bytes):"));
-        IFDEBUG(hdzlog_debug(output_buffer, MIN(64U, size)));
+            IFDEBUG(dzlog_debug("output_buffer final contents (initial 64 bytes):"));
+            IFDEBUG(hdzlog_debug(output_buffer, MIN(64U, size)));
 
-        if(!BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
             buffer += buffer_read_length;
+        }
 
         length -= buffer_read_length;
         nugget_internal_offset = 0;
@@ -875,13 +684,7 @@ int buse_read(void * output_buffer, uint32_t length, uint64_t absolute_offset, v
         IFDEBUG(dzlog_debug("nugget_offset: %"PRIuFAST32, nugget_offset));
 
         first_nugget = FALSE;
-
-        IFENERGYMON(blfs_energymon_collect_metrics(&metrics_read_loop_end, buselfs_state));
-        IFENERGYMON(blfs_energymon_writeout_metrics_simple("buse_read.read_loop", &metrics_read_loop_start, &metrics_read_loop_end));
     }
-
-    IFENERGYMON(blfs_energymon_collect_metrics(&metrics_init_end, buselfs_state));
-    IFENERGYMON(blfs_energymon_writeout_metrics_simple("buse_read", &metrics_init_start, &metrics_init_end));
 
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
     return 0;
@@ -894,19 +697,6 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
     const uint8_t * buffer = (const uint8_t *) input_buffer;
     buselfs_state_t * buselfs_state = (buselfs_state_t *) userdata;
     uint_fast32_t size = length;
-
-    IFDEBUG(assert(!buselfs_state->backstore->read_state && !buselfs_state->backstore->write_state));
-
-    IFENERGYMON(metrics_t metrics_init_start);
-    IFENERGYMON(metrics_t metrics_init_end);
-    IFENERGYMON(metrics_t metrics_outer_write_loop_start);
-    IFENERGYMON(metrics_t metrics_outer_write_loop_end);
-    IFENERGYMON(metrics_t metrics_inner_write_loop_start);
-    IFENERGYMON(metrics_t metrics_inner_write_loop_end);
-    IFENERGYMON(metrics_t metrics_rekey_start);
-    IFENERGYMON(metrics_t metrics_rekey_end);
-
-    IFENERGYMON(blfs_energymon_collect_metrics(&metrics_init_start, buselfs_state));
 
     IFDEBUG(dzlog_debug("input_buffer (ptr): %p", (void *) input_buffer));
     IFDEBUG(dzlog_debug("buffer (ptr): %p", (void *) buffer));
@@ -956,8 +746,6 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
     {
         IFDEBUG(dzlog_debug("starting with length: %"PRIu32, length));
 
-        IFENERGYMON(blfs_energymon_collect_metrics(&metrics_outer_write_loop_start, buselfs_state));
-
         (void) size;
         IFDEBUG(assert(length > 0 && length <= size));
 
@@ -970,115 +758,121 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
         IFDEBUG(dzlog_debug("first_affected_flake: %"PRIuFAST32, first_affected_flake));
         IFDEBUG(dzlog_debug("num_affected_flakes: %"PRIuFAST32, num_affected_flakes));
 
-        blfs_tjournal_entry_t * entry;
+        uint8_t nugget_key[BLFS_CRYPTO_BYTES_KDF_OUT];
 
-        IFDEBUG(dzlog_debug("attributes->disable_tj_logic = %i", attributes->disable_tj_logic));
-
-        // First, check if this constitutes an overwrite...
-        entry = blfs_open_tjournal_entry(buselfs_state->backstore, nugget_offset);
-
-        IFDEBUG(dzlog_debug("entry->bitmask (pre-update):"));
-        IFDEBUG(hdzlog_debug(entry->bitmask->mask, entry->bitmask->byte_length));
-
-        if(bitmask_any_bits_set(entry->bitmask, first_affected_flake, num_affected_flakes))
+        if(BLFS_DEFAULT_DISABLE_KEY_CACHING)
         {
-            IFENERGYMON(blfs_energymon_collect_metrics(&metrics_rekey_start, buselfs_state));
-
-            IFDEBUG(dzlog_notice("OVERWRITE DETECTED! PERFORMING IN-PLACE JOURNALED REKEYING + WRITE (l=%"PRIuFAST32")", buffer_write_length));
-            blfs_rekey_nugget_then_write(buselfs_state, nugget_offset, buffer, buffer_write_length, nugget_internal_offset);
-
-            IFENERGYMON(blfs_energymon_collect_metrics(&metrics_rekey_end, buselfs_state));
-            IFENERGYMON(blfs_energymon_writeout_metrics_simple("buse_write.outer_write_loop.rekey", &metrics_rekey_start, &metrics_rekey_end));
-
-            buffer += buffer_write_length;
+            IFDEBUG(dzlog_debug("KEY CACHING DISABLED!"));
+            blfs_nugget_key_from_data(nugget_key, buselfs_state->backstore->master_secret, nugget_offset);
         }
 
         else
         {
-            uint8_t nugget_key[BLFS_CRYPTO_BYTES_KDF_OUT];
+            IFDEBUG(dzlog_debug("KEY CACHING ENABLED!"));
+            get_nugget_key_using_index(nugget_key, buselfs_state, nugget_offset);
+        }
 
-            // ! Maybe update and commit the MTRH here first and again later?
+        IFDEBUG(dzlog_debug("nugget_key (initial 64 bytes):"));
+        IFDEBUG(hdzlog_debug(nugget_key, MIN(64U, BLFS_CRYPTO_BYTES_KDF_OUT)));
 
-            if(BLFS_DEFAULT_DISABLE_KEY_CACHING)
+        blfs_keycount_t * count = blfs_open_keycount(buselfs_state->backstore, nugget_offset);
+        IFDEBUG(dzlog_debug("count->keycount: %"PRIu64, count->keycount));
+
+        uint_fast32_t flake_internal_offset = nugget_internal_offset % flake_size;
+        uint_fast32_t flake_total_bytes_to_write = buffer_write_length;
+        
+        IFDEBUG(dzlog_debug("buffer_write_length: %"PRIuFAST32, buffer_write_length));
+        IFDEBUG(dzlog_debug("nugget_internal_offset: %"PRIuFAST32, nugget_internal_offset));
+        IFDEBUG(dzlog_debug("flake_size: %"PRIuFAST32, flake_size));
+        IFDEBUG(dzlog_debug("flake_internal_offset: %"PRIuFAST32, flake_internal_offset));
+
+        uint_fast32_t flake_index = first_affected_flake;
+        uint_fast32_t flake_end = first_affected_flake + num_affected_flakes;
+
+        if(buselfs_state->active_cipher->write_handle)
+        {
+            buffer += buselfs_state->active_cipher->write_handle(
+                buffer,
+                buselfs_state,
+                buffer_write_length,
+                flake_index,
+                flake_end,
+                flake_size,
+                flakes_per_nugget,
+                flake_internal_offset,
+                mt_offset,
+                nugget_key,
+                nugget_offset,
+                count
+            );
+        }
+
+        else
+        {
+            // First, check if this constitutes an overwrite...
+            blfs_tjournal_entry_t * entry = blfs_open_tjournal_entry(buselfs_state->backstore, nugget_offset);
+
+            IFDEBUG(dzlog_debug("entry->bitmask (pre-update):"));
+            IFDEBUG(hdzlog_debug(entry->bitmask->mask, entry->bitmask->byte_length));
+
+            if(bitmask_any_bits_set(entry->bitmask, first_affected_flake, num_affected_flakes))
             {
-                IFDEBUG(dzlog_debug("KEY CACHING DISABLED!"));
-                blfs_nugget_key_from_data(nugget_key, buselfs_state->backstore->master_secret, nugget_offset);
+                IFDEBUG(dzlog_notice("OVERWRITE DETECTED! PERFORMING IN-PLACE JOURNALED REKEYING + WRITE (l=%"PRIuFAST32")", buffer_write_length));
+                blfs_rekey_nugget_then_write(buselfs_state, nugget_offset, buffer, buffer_write_length, nugget_internal_offset);
+
+                buffer += buffer_write_length;
             }
 
             else
             {
-                IFDEBUG(dzlog_debug("KEY CACHING ENABLED!"));
-                get_nugget_key_using_index(nugget_key, buselfs_state, nugget_offset);
-            }
-
-            IFDEBUG(dzlog_debug("nugget_key (initial 64 bytes):"));
-            IFDEBUG(hdzlog_debug(nugget_key, MIN(64U, BLFS_CRYPTO_BYTES_KDF_OUT)));
-
-            blfs_keycount_t * count = blfs_open_keycount(buselfs_state->backstore, nugget_offset);
-            IFDEBUG(dzlog_debug("count->keycount: %"PRIu64, count->keycount));
-
-            uint_fast32_t flake_internal_offset = nugget_internal_offset % flake_size;
-            uint_fast32_t flake_total_bytes_to_write = buffer_write_length;
-            
-            IFDEBUG(dzlog_debug("buffer_write_length: %"PRIuFAST32, buffer_write_length));
-            IFDEBUG(dzlog_debug("nugget_internal_offset: %"PRIuFAST32, nugget_internal_offset));
-            IFDEBUG(dzlog_debug("flake_size: %"PRIuFAST32, flake_size));
-            IFDEBUG(dzlog_debug("flake_internal_offset: %"PRIuFAST32, flake_internal_offset));
-
-            uint_fast32_t flake_index = first_affected_flake;
-            uint_fast32_t flake_end = first_affected_flake + num_affected_flakes;
-
-
-            for(uint_fast32_t i = 0; flake_index < flake_end; flake_index++, i++)
-            {
-                IFENERGYMON(blfs_energymon_collect_metrics(&metrics_inner_write_loop_start, buselfs_state));
-
-                uint_fast32_t flake_write_length = MIN(flake_total_bytes_to_write, flake_size - flake_internal_offset);
-
-                IFDEBUG(dzlog_debug("flake_write_length: %"PRIuFAST32, flake_write_length));
-                IFDEBUG(dzlog_debug("flake_index: %"PRIuFAST32, flake_index));
-                IFDEBUG(dzlog_debug("flake_end: %"PRIuFAST32, flake_end));
-
-                uint8_t flake_data[flake_size];
-                IFDEBUG(memset(flake_data, 0, flake_size));
-
-                // ! Data to write isn't aligned and/or is smaller than
-                // ! flake_size, so we need to verify its integrity
-                if(flake_internal_offset != 0 || flake_internal_offset + flake_write_length < flake_size)
+                // ! Maybe update and commit the MTRH here first and again later?
+                
+                for(uint_fast32_t i = 0; flake_index < flake_end; flake_index++, i++)
                 {
-                    IFDEBUG(dzlog_debug("UNALIGNED! Write flake requires verification"));
+                    uint_fast32_t flake_write_length = MIN(flake_total_bytes_to_write, flake_size - flake_internal_offset);
 
-                    // Read in the entire flake
-                    blfs_backstore_read_body(buselfs_state->backstore,
-                                             flake_data,
-                                             flake_size,
-                                             nugget_offset * nugget_size + flake_index * flake_size);
+                    IFDEBUG(dzlog_debug("flake_write_length: %"PRIuFAST32, flake_write_length));
+                    IFDEBUG(dzlog_debug("flake_index: %"PRIuFAST32, flake_index));
+                    IFDEBUG(dzlog_debug("flake_end: %"PRIuFAST32, flake_end));
 
-                    // Generate a local flake key
-                    uint8_t local_flake_key[BLFS_CRYPTO_BYTES_FLAKE_TAG_KEY];
-                    uint8_t local_tag[BLFS_CRYPTO_BYTES_FLAKE_TAG_OUT];
+                    uint8_t flake_data[flake_size];
+                    IFDEBUG(memset(flake_data, 0, flake_size));
 
-                    if(BLFS_DEFAULT_DISABLE_KEY_CACHING)
+                    // ! Data to write isn't aligned and/or is smaller than
+                    // ! flake_size, so we need to verify its integrity
+                    if(flake_internal_offset != 0 || flake_internal_offset + flake_write_length < flake_size)
                     {
-                        IFDEBUG(dzlog_debug("KEY CACHING DISABLED!"));
-                        blfs_poly1305_key_from_data(local_flake_key, nugget_key, flake_index, count->keycount);
+                        IFDEBUG(dzlog_debug("UNALIGNED! Write flake requires verification"));
+
+                        // Read in the entire flake
+                        blfs_backstore_read_body(buselfs_state->backstore,
+                                                flake_data,
+                                                flake_size,
+                                                nugget_offset * nugget_size + flake_index * flake_size);
+
+                        // Generate a local flake key
+                        uint8_t local_flake_key[BLFS_CRYPTO_BYTES_FLAKE_TAG_KEY];
+                        uint8_t local_tag[BLFS_CRYPTO_BYTES_FLAKE_TAG_OUT];
+
+                        if(BLFS_DEFAULT_DISABLE_KEY_CACHING)
+                        {
+                            IFDEBUG(dzlog_debug("KEY CACHING DISABLED!"));
+                            blfs_poly1305_key_from_data(local_flake_key, nugget_key, flake_index, count->keycount);
+                        }
+
+                        else
+                        {
+                            IFDEBUG(dzlog_debug("KEY CACHING ENABLED!"));
+                            get_flake_key_using_keychain(local_flake_key, buselfs_state, nugget_offset, flake_index, count->keycount);
+                        }
+
+                        // Generate tag
+                        blfs_poly1305_generate_tag(local_tag, flake_data, flake_size, local_flake_key);
+
+                        // Check tag in Merkle Tree
+                        verify_in_merkle_tree(local_tag, sizeof local_tag, mt_offset + nugget_offset * flakes_per_nugget + flake_index, buselfs_state);
                     }
 
-                    else
-                    {
-                        IFDEBUG(dzlog_debug("KEY CACHING ENABLED!"));
-                        get_flake_key_using_keychain(local_flake_key, buselfs_state, nugget_offset, flake_index, count->keycount);
-                    }
-
-                    // Generate tag
-                    blfs_poly1305_generate_tag(local_tag, flake_data, flake_size, local_flake_key);
-
-                    // Check tag in Merkle Tree
-                    verify_in_merkle_tree(local_tag, sizeof local_tag, mt_offset + nugget_offset * flakes_per_nugget + flake_index, buselfs_state);
-                }
-
-                if(!BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
-                {
                     IFDEBUG(dzlog_debug("INCOMPLETE flake_data (initial 64 bytes):"));
                     IFDEBUG(hdzlog_debug(flake_data, MIN(64U, flake_size)));
 
@@ -1094,7 +888,7 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
                                     flake_index * flake_size + flake_internal_offset));
 
                     blfs_swappable_crypt(
-                        buselfs_state->active_stream_cipher,
+                        buselfs_state->active_cipher,
                         flake_data + flake_internal_offset,
                         buffer,
                         flake_write_length,
@@ -1102,113 +896,74 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
                         count->keycount,
                         flake_index * flake_size + flake_internal_offset
                     );
-                }
 
-                IFDEBUG(dzlog_debug("*complete* flake_data (initial 64 bytes):"));
-                IFDEBUG(hdzlog_debug(flake_data, MIN(64U, flake_size)));
+                    IFDEBUG(dzlog_debug("*complete* flake_data (initial 64 bytes):"));
+                    IFDEBUG(hdzlog_debug(flake_data, MIN(64U, flake_size)));
 
-                uint8_t flake_key[BLFS_CRYPTO_BYTES_FLAKE_TAG_KEY];
-                uint8_t tag[BLFS_CRYPTO_BYTES_FLAKE_TAG_OUT];
+                    uint8_t flake_key[BLFS_CRYPTO_BYTES_FLAKE_TAG_KEY];
+                    uint8_t tag[BLFS_CRYPTO_BYTES_FLAKE_TAG_OUT];
 
-                if(BLFS_DEFAULT_DISABLE_KEY_CACHING)
-                {
-                    IFDEBUG(dzlog_debug("KEY CACHING DISABLED!"));
-                    blfs_poly1305_key_from_data(flake_key, nugget_key, flake_index, count->keycount);
-                }
-
-                else
-                {
-                    IFDEBUG(dzlog_debug("KEY CACHING ENABLED!"));
-                    get_flake_key_using_keychain(flake_key, buselfs_state, nugget_offset, flake_index, count->keycount);
-                }
-
-                if(BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
-                {
-                    if(flake_internal_offset != 0 || flake_internal_offset + flake_write_length < flake_size)
+                    if(BLFS_DEFAULT_DISABLE_KEY_CACHING)
                     {
-                        blfs_aesxts_decrypt(flake_data,
-                                            flake_data,
-                                            flake_size,
-                                            flake_key,
-                                            nugget_offset * flakes_per_nugget + flake_index);
+                        IFDEBUG(dzlog_debug("KEY CACHING DISABLED!"));
+                        blfs_poly1305_key_from_data(flake_key, nugget_key, flake_index, count->keycount);
                     }
 
-                    IFDEBUG(dzlog_debug("flake_write_length: %"PRIuFAST32, flake_write_length));
-                    memcpy(flake_data + flake_internal_offset, buffer, flake_write_length);
+                    else
+                    {
+                        IFDEBUG(dzlog_debug("KEY CACHING ENABLED!"));
+                        get_flake_key_using_keychain(flake_key, buselfs_state, nugget_offset, flake_index, count->keycount);
+                    }
 
-                    blfs_aesxts_encrypt(flake_data,
-                                        flake_data,
-                                        flake_size,
-                                        flake_key,
-                                        nugget_offset * flakes_per_nugget + flake_index);
-                }
+                    blfs_poly1305_generate_tag(tag, flake_data, flake_size, flake_key);
 
-                blfs_poly1305_generate_tag(tag, flake_data, flake_size, flake_key);
+                    IFDEBUG(dzlog_debug("flake_key (initial 64 bytes):"));
+                    IFDEBUG(hdzlog_debug(flake_key, MIN(64U, BLFS_CRYPTO_BYTES_FLAKE_TAG_KEY)));
 
-                IFDEBUG(dzlog_debug("flake_key (initial 64 bytes):"));
-                IFDEBUG(hdzlog_debug(flake_key, MIN(64U, BLFS_CRYPTO_BYTES_FLAKE_TAG_KEY)));
+                    IFDEBUG(dzlog_debug("tag (initial 64 bytes):"));
+                    IFDEBUG(hdzlog_debug(tag, MIN(64U, BLFS_CRYPTO_BYTES_FLAKE_TAG_OUT)));
 
-                IFDEBUG(dzlog_debug("tag (initial 64 bytes):"));
-                IFDEBUG(hdzlog_debug(tag, MIN(64U, BLFS_CRYPTO_BYTES_FLAKE_TAG_OUT)));
+                    IFDEBUG(dzlog_debug("update_in_merkle_tree calculated offset: %"PRIuFAST32,
+                                        mt_offset + nugget_offset * flakes_per_nugget + flake_index));
 
-                IFDEBUG(dzlog_debug("update_in_merkle_tree calculated offset: %"PRIuFAST32,
-                                    mt_offset + nugget_offset * flakes_per_nugget + flake_index));
+                    update_in_merkle_tree(tag, sizeof tag, mt_offset + nugget_offset * flakes_per_nugget + flake_index, buselfs_state);
 
-                update_in_merkle_tree(tag, sizeof tag, mt_offset + nugget_offset * flakes_per_nugget + flake_index, buselfs_state);
-
-                if(!BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
-                {
                     IFDEBUG(dzlog_debug("blfs_backstore_write_body offset: %"PRIuFAST32,
                                         nugget_offset * nugget_size + flake_index * flake_size + flake_internal_offset));
                     
                     blfs_backstore_write_body(buselfs_state->backstore,
-                                             flake_data + flake_internal_offset,
-                                             flake_write_length,
-                                             nugget_offset * nugget_size + flake_index * flake_size + flake_internal_offset);
+                                            flake_data + flake_internal_offset,
+                                            flake_write_length,
+                                            nugget_offset * nugget_size + flake_index * flake_size + flake_internal_offset);
 
                     IFDEBUG(dzlog_debug("blfs_backstore_write_body input (initial 64 bytes):"));
                     IFDEBUG(hdzlog_debug(flake_data + flake_internal_offset, MIN(64U, flake_write_length)));
+
+                    flake_internal_offset = 0;
+
+                    IFDEBUG(assert(flake_total_bytes_to_write > flake_total_bytes_to_write - flake_write_length));
+                    
+                    flake_total_bytes_to_write -= flake_write_length;
+                    buffer += flake_write_length;
+
                 }
 
-                else
-                {
-                    blfs_backstore_write_body(buselfs_state->backstore,
-                                             flake_data,
-                                             flake_size,
-                                             nugget_offset * nugget_size + flake_index * flake_size);
-
-                    IFDEBUG(dzlog_debug("blfs_backstore_write_body input (initial 64 bytes):"));
-                    IFDEBUG(hdzlog_debug(flake_data, MIN(64U, flake_size)));
-                }
-
-                flake_internal_offset = 0;
-
-                IFDEBUG(assert(flake_total_bytes_to_write > flake_total_bytes_to_write - flake_write_length));
-                
-                flake_total_bytes_to_write -= flake_write_length;
-                buffer += flake_write_length;
-
-                IFENERGYMON(blfs_energymon_collect_metrics(&metrics_inner_write_loop_end, buselfs_state));
-                IFENERGYMON(blfs_energymon_writeout_metrics_simple("buse_write.inner_write_loop",
-                                                                   &metrics_inner_write_loop_start,
-                                                                   &metrics_inner_write_loop_end));
+                IFDEBUG(assert(flake_total_bytes_to_write == 0));
             }
 
-            IFDEBUG(assert(flake_total_bytes_to_write == 0));
+            bitmask_set_bits(entry->bitmask, first_affected_flake, num_affected_flakes);
+            blfs_commit_tjournal_entry(buselfs_state->backstore, entry);
+            IFDEBUG(dzlog_debug("entry->bitmask (post-update):"));
+            IFDEBUG(hdzlog_debug(entry->bitmask->mask, entry->bitmask->byte_length));
+
+            IFDEBUG(dzlog_debug("MERKLE TREE: update TJ entry"));
+
+            update_in_merkle_tree(entry->bitmask->mask,
+                entry->bitmask->byte_length,
+                num_nuggets + (BLFS_HEAD_NUM_HEADERS - 3) + nugget_offset,
+                buselfs_state
+            );
         }
-
-        bitmask_set_bits(entry->bitmask, first_affected_flake, num_affected_flakes);
-        blfs_commit_tjournal_entry(buselfs_state->backstore, entry);
-        IFDEBUG(dzlog_debug("entry->bitmask (post-update):"));
-        IFDEBUG(hdzlog_debug(entry->bitmask->mask, entry->bitmask->byte_length));
-
-        IFDEBUG(dzlog_debug("MERKLE TREE: update TJ entry"));
-
-        update_in_merkle_tree(entry->bitmask->mask,
-            entry->bitmask->byte_length,
-            num_nuggets + (BLFS_HEAD_NUM_HEADERS - 3) + nugget_offset,
-            buselfs_state
-        );
 
         length -= buffer_write_length;
         nugget_internal_offset = 0;
@@ -1219,11 +974,6 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
         IFDEBUG(dzlog_debug("length: %"PRIu32, length));
         IFDEBUG(dzlog_debug("nugget_internal_offset: %"PRIuFAST32, nugget_internal_offset));
         IFDEBUG(dzlog_debug("nugget_offset: %"PRIuFAST32, nugget_offset));
-
-        IFENERGYMON(blfs_energymon_collect_metrics(&metrics_outer_write_loop_end, buselfs_state));
-        IFENERGYMON(blfs_energymon_writeout_metrics_simple("buse_write.outer_write_loop",
-                                                           &metrics_outer_write_loop_start,
-                                                           &metrics_outer_write_loop_end));
     }
 
     blfs_commit_header(buselfs_state->backstore, tpmv_header);
@@ -1232,9 +982,6 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
     update_in_merkle_tree(tpmv_header->data, BLFS_HEAD_HEADER_BYTES_TPMGLOBALVER, 0, buselfs_state);
 
     commit_merkle_tree_root_hash(buselfs_state);
-
-    IFENERGYMON(blfs_energymon_collect_metrics(&metrics_init_end, buselfs_state));
-    IFENERGYMON(blfs_energymon_writeout_metrics_simple("buse_write", &metrics_init_start, &metrics_init_end));
 
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
     return 0;
@@ -1275,23 +1022,22 @@ void blfs_rekey_nugget_then_write(buselfs_state_t * buselfs_state,
     // ! burned, so we must take that possibility into account when rekeying.
     jcount->keycount = jcount->keycount + (buselfs_state->crash_recovery ? 2 : 1);
     
-    if(!BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
-    {
-        blfs_swappable_crypt(
-            buselfs_state->active_stream_cipher,
-            new_nugget_data,
-            rekeying_nugget_data,
-            buselfs_state->backstore->nugget_size_bytes,
-            nugget_key,
-            jcount->keycount,
-            0
-        );
+    blfs_swappable_crypt(
+        buselfs_state->active_cipher,
+        new_nugget_data,
+        rekeying_nugget_data,
+        buselfs_state->backstore->nugget_size_bytes,
+        nugget_key,
+        jcount->keycount,
+        0
+    );
 
-        blfs_backstore_write_body(buselfs_state->backstore,
-                            new_nugget_data,
-                            buselfs_state->backstore->nugget_size_bytes,
-                            rekeying_nugget_index * buselfs_state->backstore->nugget_size_bytes);
-    }
+    blfs_backstore_write_body(
+        buselfs_state->backstore,
+        new_nugget_data,
+        buselfs_state->backstore->nugget_size_bytes,
+        rekeying_nugget_index * buselfs_state->backstore->nugget_size_bytes
+    );
 
     uint32_t flake_size = buselfs_state->backstore->flake_size_bytes;
 
@@ -1308,22 +1054,7 @@ void blfs_rekey_nugget_then_write(buselfs_state_t * buselfs_state,
 
         blfs_poly1305_key_from_data(flake_key, nugget_key, flake_index, jcount->keycount);
 
-        if(BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
-        {
-            blfs_aesxts_encrypt(flake_data,
-                                rekeying_nugget_data + flake_index * flake_size,
-                                flake_size,
-                                flake_key,
-                                rekeying_nugget_index * buselfs_state->backstore->flakes_per_nugget + flake_index);
-
-            blfs_backstore_write_body(buselfs_state->backstore,
-                            flake_data,
-                            flake_size,
-                            rekeying_nugget_index * buselfs_state->backstore->nugget_size_bytes + flake_index * flake_size);
-        }
-
-        else
-            memcpy(flake_data, new_nugget_data + flake_index * flake_size, flake_size);
+        memcpy(flake_data, new_nugget_data + flake_index * flake_size, flake_size);
 
         if(!BLFS_DEFAULT_DISABLE_KEY_CACHING)
             remove_keychain_from_key_cache(buselfs_state, rekeying_nugget_index, flake_index, jcount->keycount);
@@ -1744,20 +1475,10 @@ buselfs_state_t * strongbox_main_actual(int argc, char * argv[], char * blockdev
         Throw(EXCEPTION_ALLOC_FAILURE);
 
     buselfs_state->backstore = NULL;
-    IFENERGYMON(buselfs_state->energymon_monitor = NULL);
-
-    IFENERGYMON(blfs_energymon_init(buselfs_state));
-    IFENERGYMON(dzlog_info("Energymon interface initialized!"));
-    IFENERGYMON(IFDEBUG(dzlog_debug("Energymon output: %s", BLFS_ENERGYMON_OUTPUT_PATH)));
-
-    IFENERGYMON(IFDEBUG(dzlog_debug("beginning startup energy monitoring...")));
-
-    ENERGYMON_INIT_IFENERGYMON;
-    ENERGYMON_START_IFENERGYMON;
 
     uint8_t  cin_allow_insecure_start       = FALSE;
     uint8_t  cin_use_default_password       = FALSE;
-    stream_cipher_e cin_cipher              = sc_default;
+    swappable_cipher_e cin_cipher              = sc_default;
     uint8_t  cin_backstore_mode             = BLFS_BACKSTORE_CREATE_MODE_UNKNOWN;
     uint64_t cin_backstore_size             = BLFS_DEFAULT_BYTES_BACKSTORE * BYTES_IN_A_MB;
     uint32_t cin_flake_size                 = BLFS_DEFAULT_BYTES_FLAKE;
@@ -1767,7 +1488,7 @@ buselfs_state_t * strongbox_main_actual(int argc, char * argv[], char * blockdev
 
     if(argc <= 1 || argc > MAX_NUM_ARGC)
     {
-        printf( // TODO: update this (and also update the README.md version) with all the new stuff once we're done!
+        printf( // TODO:! update this (and also update the README.md version) with all the new stuff once we're done!
         "\nUsage:\n"
         "  %s [--default-password][--backstore-size %"PRIu64"][--flake-size %"PRIu32"][--flakes-per-nugget %"PRIu32"][--cipher sc_default][--tpm-id %"PRIu32"] create nbd_device_name\n\n"
         "  %s [--default-password][--allow-insecure-start] open nbd_device_name\n\n"
@@ -1784,7 +1505,7 @@ buselfs_state_t * strongbox_main_actual(int argc, char * argv[], char * blockdev
         "- backstore-size    size of the backstore; must be in MEGABYTES.\n"
         "- flake-size        size of each individual flake; must be in BYTES\n"
         "- flakes-per-nugget number of flakes per nugget\n"
-        "- cipher            chosen stream cipher for crypt (see constants.h for choices here)\n"
+        "- cipher            chosen cipher for crypt (see constants.h for choices here)\n"
         "- tpm-id            internal index used by RPMB module\n\n"
         "Defaults are shown above. \n\n"
         
@@ -1892,7 +1613,7 @@ buselfs_state_t * strongbox_main_actual(int argc, char * argv[], char * blockdev
 
             IFDEBUG3(printf("<bare debug>: saw --cipher = %s\n", cin_cipher_str));
 
-            cin_cipher = blfs_stream_string_to_cipher(cin_cipher_str);
+            cin_cipher = blfs_ident_string_to_cipher(cin_cipher_str);
 
             IFDEBUG3(printf("<bare debug>: saw --cipher, got enum value: %d\n", cin_cipher));
         }
@@ -1955,10 +1676,16 @@ buselfs_state_t * strongbox_main_actual(int argc, char * argv[], char * blockdev
     if(cin_flake_size > BLFS_HEAD_MAX_FLAKESIZE_BYTES)
         Throw(EXCEPTION_FLAKESIZE_TOO_LARGE);
     
+    if(cin_flake_size < BLFS_HEAD_MIN_FLAKESIZE_BYTES)
+        Throw(EXCEPTION_FLAKESIZE_TOO_SMALL);
+    
     if(cin_flakes_per_nugget > BLFS_HEAD_MAX_FLAKESPERNUGGET)
         Throw(EXCEPTION_TOO_MANY_FLAKES_PER_NUGGET);
+    
+    if(cin_flakes_per_nugget < BLFS_HEAD_MIN_FLAKESPERNUGGET)
+        Throw(EXCEPTION_TOO_FEW_FLAKES_PER_NUGGET);
 
-    blfs_get_stream_cipher(buselfs_state->active_stream_cipher, cin_cipher);
+    blfs_set_cipher_ctx(buselfs_state->active_cipher, cin_cipher);
 
     /* Prepare to setup the backstore file */
 
@@ -1971,18 +1698,6 @@ buselfs_state_t * strongbox_main_actual(int argc, char * argv[], char * blockdev
 
     if(sodium_init() == -1)
         Throw(EXCEPTION_SODIUM_INIT_FAILURE);
-
-    /* Initialize OpenSSL if we're going to be using AES-XTS emulation */
-
-    if(BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
-    {
-        dzlog_warn("WARNING: AES-XTS emulation is ON! It is NOT secure!");
-
-        // ? Unnecessary as of OpenSSL 1.1.0
-        // ERR_load_crypto_strings();
-        // OpenSSL_add_all_algorithms();
-        // OPENSSL_config(NULL);
-    }
 
     /* Initialize nugget key cache */
 
@@ -2018,7 +1733,6 @@ buselfs_state_t * strongbox_main_actual(int argc, char * argv[], char * blockdev
     IFDEBUG(assert(crypto_onetimeauth_poly1305_BYTES == BLFS_CRYPTO_BYTES_FLAKE_TAG_OUT));
     IFDEBUG(assert(crypto_onetimeauth_poly1305_KEYBYTES == BLFS_CRYPTO_BYTES_FLAKE_TAG_KEY));
     IFDEBUG(assert(HASH_LENGTH == BLFS_CRYPTO_BYTES_MTRH));
-    IFDEBUG(assert(!(BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION && BLFS_NO_READ_INTEGRITY) && "These two cannot be used together!"));
 
     IFDEBUG(dzlog_debug("cin_flakes_per_nugget >? BLFS_CRYPTO_BYTES_MTRH: (%"PRIu32" >? %"PRIu32")",
                         cin_flakes_per_nugget, BLFS_CRYPTO_BYTES_MTRH * BITS_IN_A_BYTE));
@@ -2064,10 +1778,6 @@ buselfs_state_t * strongbox_main_actual(int argc, char * argv[], char * blockdev
 
     sprintf(blockdevice, BLFS_BACKSTORE_DEVICEPATH, cin_device_name);
     IFDEBUG(dzlog_debug("RETURN: blockdevice = %s", blockdevice));
-
-    ENERGYMON_END_IFENERGYMON;
-    ENERGYMON_OUTPUT_IFENERGYMON("blfs_startup");
-    IFENERGYMON(blfs_energymon_fini(buselfs_state));
     
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 

@@ -1,10 +1,13 @@
 :cmock:
-  :callback_after_arg_check: 0
+  :callback_after_arg_check: true
   :mock_path: .
   :mock_prefix: mock_
   :when_ptr: :smart
   :when_no_prototypes: :warn
   :verbosity: 2
+  :strippables:
+    - '(?:attribute\s*(.*?)+)'
+    - '(?:KHASH_MAP_INIT_(?:INT64|STR)\(.*?\))'
   :plugins:
     - :ignore
     - :ignore_arg
@@ -12,3 +15,4 @@
     - :cexception
     - :callback
     - :return_thru_ptr
+    - :expect_any_args

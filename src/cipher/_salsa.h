@@ -11,7 +11,7 @@
  * @param sc_context
  */
 void sc_generic_salsa_crypt_data(salsa20_variant variant,
-                                 const blfs_stream_cipher_t * stream_cipher,
+                                 const blfs_swappable_cipher_t * sc,
                                  uint64_t interblock_offset,
                                  uint64_t intrablock_offset,
                                  uint64_t num_blocks,
@@ -22,7 +22,12 @@ void sc_generic_salsa_crypt_data(salsa20_variant variant,
                                  const uint8_t * const kcs_keycount_ptr,
                                  uint8_t * xor_str);
 
-// TODO: comment me!
-void sc_impl_salsa(blfs_stream_cipher_t * sc);
+
+/**
+ * This function adheres to the standard swappable cipher interface for
+ * initializing and returning (through the sc pointer) specific cipher
+ * implementations. See the StrongBox documentation for more information.
+ */
+void sc_impl_salsa(blfs_swappable_cipher_t * sc);
 
 #endif /* BLFS_CIPHER__SALSA_H_ */

@@ -13,19 +13,8 @@
  * This is a generic implementation of using the AES block cipher in CTR mode to
  * crypt some amount of data. Makes adding new AES-based algo versions much
  * easier!
- *
- * @stream_cipher
- * @interblock_offset
- * @intrablock_offset
- * @num_blocks
- * @zero_str_length
- * @block_read_upper_bound
- * @nugget_key
- * @kcs_keycount
- * @kcs_keycount_ptr
- * @xor_str
  */
-void sc_generic_aes_crypt_data(const blfs_stream_cipher_t * stream_cipher,
+void sc_generic_aes_crypt_data(const blfs_swappable_cipher_t * sc,
                                uint64_t interblock_offset,
                                uint64_t intrablock_offset,
                                uint64_t num_blocks,
@@ -36,7 +25,11 @@ void sc_generic_aes_crypt_data(const blfs_stream_cipher_t * stream_cipher,
                                const uint8_t * const kcs_keycount_ptr,
                                uint8_t * xor_str);
 
-// TODO: comment me!
-void sc_impl_aes(blfs_stream_cipher_t * stream_cipher);
+/**
+ * This function adheres to the standard swappable cipher interface for
+ * initializing and returning (through the sc pointer) specific cipher
+ * implementations. See the StrongBox documentation for more information.
+ */
+void sc_impl_aes(blfs_swappable_cipher_t * sc);
 
 #endif /* BLFS_CIPHER__AES_H_ */

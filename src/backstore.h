@@ -114,7 +114,7 @@ typedef struct blfs_tjournal_entry_t
  * @nugget_index    the index of the nugget that this struct corresponds to
  * @data_offset     data offset in the backstore
  * @data_length     total data length in bytes; will be BLFS_HEAD_BYTES_NUGGET_METADATA
- * @cipher_ident    value corresponding to stream_cipher_e (see: constants.h)
+ * @cipher_ident    value corresponding to swappable_cipher_e (see: constants.h)
  * @data            (BLFS_HEAD_BYTES_NUGGET_METADATA - 1) bytes of data
  */
 typedef struct blfs_nugget_metadata_t
@@ -132,11 +132,8 @@ typedef struct blfs_nugget_metadata_t
 ///////////////////////////
 
 KHASH_MAP_INIT_INT64(BLFS_KHASH_HEADERS_CACHE_NAME, blfs_header_t*)
-
 KHASH_MAP_INIT_INT64(BLFS_KHASH_KCS_CACHE_NAME, blfs_keycount_t*)
-
 KHASH_MAP_INIT_INT64(BLFS_KHASH_TJ_CACHE_NAME, blfs_tjournal_entry_t*)
-
 KHASH_MAP_INIT_INT64(BLFS_KHASH_MD_CACHE_NAME, blfs_nugget_metadata_t*)
 
 /**

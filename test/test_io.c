@@ -198,13 +198,12 @@ void test_blfs_backstore_open_work_as_expected(void)
 
     blfs_backstore_t * backstore = blfs_backstore_open(BACKSTORE_FILE_PATH);
 
-    // backstore size should be 209 bytes
     TEST_ASSERT_EQUAL_STRING(BACKSTORE_FILE_PATH, backstore->file_path);
     TEST_ASSERT_EQUAL_STRING("test.io.bin", backstore->file_name);
     TEST_ASSERT_EQUAL_UINT(105, backstore->kcs_real_offset);
     TEST_ASSERT_EQUAL_UINT(129, backstore->tj_real_offset);
     TEST_ASSERT_EQUAL_UINT(132, backstore->md_real_offset);
-    TEST_ASSERT_EQUAL_UINT(156, backstore->body_real_offset);
+    TEST_ASSERT_EQUAL_UINT(436359, backstore->body_real_offset);
     TEST_ASSERT_EQUAL_UINT(48, backstore->writeable_size_actual);
     TEST_ASSERT_EQUAL_UINT(16, backstore->nugget_size_bytes);
     TEST_ASSERT_EQUAL_UINT(8, backstore->flake_size_bytes);

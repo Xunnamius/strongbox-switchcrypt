@@ -149,110 +149,113 @@ typedef struct freestyle_ctx {
 
 } freestyle_ctx;
 
-void freestyle_increment_counter (
+void freestyle_increment_counter(
 	freestyle_ctx *x
 );
 
-u16 random_round_number (
+u16 random_round_number(
 	const freestyle_ctx *x
 );
 
-void freestyle_init_common (
-		freestyle_ctx 	*x,
+void freestyle_init_common(
+	freestyle_ctx 	*x,
 	const 	u8 		*key,
 	const 	u32		key_length_bits,
 	const 	u8 		*iv,
-	const 	u16 		min_rounds,
+	const 	u16 	min_rounds,
 	const	u16		max_rounds,
-	const	u16 		hash_interval,
-	const	u8 		pepper_bits
+	const	u16 	hash_interval,
+	const	u8 		pepper_bits,
+    const   u8      *counter
 );
 
-void freestyle_init_encrypt (
-		freestyle_ctx 	*x,
+void freestyle_init_encrypt(
+	freestyle_ctx 	*x,
 	const 	u8 		*key,
-	const 	u32 		key_length_bits,
+	const 	u32 	key_length_bits,
 	const 	u8 		*iv,
-	const 	u16 		min_rounds,
+	const 	u16 	min_rounds,
 	const 	u16		max_rounds,
-	const 	u16 		hash_interval,
-	const 	u8 		pepper_bits
-);
-
-void freestyle_init_decrypt (
-		freestyle_ctx 	*x,
-	const 	u8 		*key,
-	const 	u32 		key_length_bits,
-	const 	u8 		*iv,
-	const 	u16 		min_rounds,
-	const 	u16		max_rounds,
-	const 	u16 		hash_interval,
+	const 	u16 	hash_interval,
 	const 	u8 		pepper_bits,
-	const	u16 		*init_hash
+    const   u8      *counter
+);
+
+void freestyle_init_decrypt(
+	freestyle_ctx 	*x,
+	const 	u8 		*key,
+	const 	u32 	key_length_bits,
+	const 	u8 		*iv,
+	const 	u16 	min_rounds,
+	const 	u16		max_rounds,
+	const 	u16 	hash_interval,
+	const 	u8 		pepper_bits,
+	const	u16 	*init_hash,
+    const   u8      *counter
 );
 
 void freestyle_keysetup (
-		freestyle_ctx 	*x,
+	freestyle_ctx 	*x,
 	const 	u8 		*key,
-	const 	u32 		key_length_bits
+	const 	u32 	key_length_bits
 );
 
 void freestyle_ivsetup (
-		freestyle_ctx 	*x,
+	freestyle_ctx 	*x,
 	const 	u8 		*iv,
 	const 	u8 		*counter
 ); 
 
 void freestyle_hashsetup (
-		freestyle_ctx 	*x,
-	const 	u16 		hash_interval
+	freestyle_ctx 	*x,
+	const 	u16 	hash_interval
 );
 
 void freestyle_roundsetup (
-		freestyle_ctx 	*x,
-	const	u16 		min_rounds,
-	const	u16 		max_rounds,
+	freestyle_ctx 	*x,
+	const	u16 	min_rounds,
+	const	u16 	max_rounds,
 	const	u8 		pepper_bits
 );
 
 void freestyle_randomsetup_encrypt (
-		freestyle_ctx 	*x
+	freestyle_ctx 	*x
 );
 
 void freestyle_randomsetup_decrypt (
-		freestyle_ctx 	*x
+	freestyle_ctx 	*x
 );
 
 int freestyle_encrypt (
-		freestyle_ctx 	*x,
-	const 	u8 		*input,
-		u8 		*output,
-		u32 		bytes,
-		u16 		*hash
+	freestyle_ctx 	*x,
+	const u8 		*input,
+	u8 				*output,
+	u32 			bytes,
+	u16 			*hash
 );
 
 int freestyle_decrypt (
-		freestyle_ctx 	*x,
-	const 	u8 		*input,
-		u8 		*output,
-		u32 		bytes,
-		u16 		*hash
+	freestyle_ctx 	*x,
+	const u8 		*input,
+	u8 				*output,
+	u32 			bytes,
+	u16 			*hash
 );
 
 u16 freestyle_encrypt_block (
-		freestyle_ctx	*x,	
-	const 	u8 		*plaintext,
-		u8 		*ciphertext,
-		u8 		bytes,
-		u16		*expected_hash
+	freestyle_ctx	*x,	
+	const u8 		*plaintext,
+	u8 				*ciphertext,
+	u8 				bytes,
+	u16				*expected_hash
 );
 
 u16 freestyle_decrypt_block (
-		freestyle_ctx	*x,	
-		u8 		*plaintext,
-	const	u8 		*ciphertext,
-		u8 		bytes,
-		u16		*expected_hash
+	freestyle_ctx	*x,	
+	u8 				*plaintext,
+	const u8 		*ciphertext,
+	u8 				bytes,
+	u16				*expected_hash
 );
 
 #define COMPUTE_HASH(x,hash,rounds)  do {			\

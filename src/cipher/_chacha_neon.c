@@ -1,7 +1,7 @@
 #include "cipher/_chacha_neon.h"
 
 void sc_generic_chacha_neon_crypt_data(chacha_neon_variant variant,
-                                       const blfs_stream_cipher_t * stream_cipher,
+                                       const blfs_swappable_cipher_t * sc,
                                        uint64_t interblock_offset,
                                        uint64_t intrablock_offset,
                                        uint64_t num_blocks,
@@ -14,6 +14,7 @@ void sc_generic_chacha_neon_crypt_data(chacha_neon_variant variant,
 {
     IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
 
+    // TODO:!
     (void) intrablock_offset;
     (void) num_blocks;
     (void) block_read_upper_bound;
@@ -42,9 +43,16 @@ void sc_generic_chacha_neon_crypt_data(chacha_neon_variant variant,
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 }
 
-void sc_impl_chacha_neon(blfs_stream_cipher_t * sc)
+void sc_impl_chacha_neon(blfs_swappable_cipher_t * sc)
 {
-    sc->crypt_nugget = NULL;
+    sc->name = "Chacha (with NEON optimizations) (partially initialized)";
+
+    sc->key_size_bytes = 0;
+    sc->nonce_size_bytes = 0;
+    sc->output_size_bytes = 0;
+    sc->enum_id = 0;
+
+    sc->crypt_custom = NULL;
     sc->read_handle = NULL;
     sc->write_handle = NULL;
 }

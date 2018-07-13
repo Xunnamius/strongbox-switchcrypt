@@ -12,8 +12,12 @@ typedef enum {
     CHACHA20_NEON
 } chacha_neon_variant;
 
+/**
+ * This function provides a generic implementation of Neon-optimized Chacha.
+ * Makes adding new similar algo versions much easier!
+ */
 void sc_generic_chacha_neon_crypt_data(chacha_neon_variant variant,
-                                       const blfs_stream_cipher_t * stream_cipher,
+                                       const blfs_swappable_cipher_t * sc,
                                        uint64_t interblock_offset,
                                        uint64_t intrablock_offset,
                                        uint64_t num_blocks,
@@ -24,6 +28,12 @@ void sc_generic_chacha_neon_crypt_data(chacha_neon_variant variant,
                                        const uint8_t * const kcs_keycount_ptr,
                                        uint8_t * xor_str);
 
-// TODO: comment me!
-void sc_impl_chacha_neon(blfs_stream_cipher_t * stream_cipher);
+
+/**
+ * This function adheres to the standard swappable cipher interface for
+ * initializing and returning (through the sc pointer) specific cipher
+ * implementations. See the StrongBox documentation for more information.
+ */
+void sc_impl_chacha_neon(blfs_swappable_cipher_t * sc);
+
 #endif /* BLFS__CIPHER_CHACHA_NEON_H_ */

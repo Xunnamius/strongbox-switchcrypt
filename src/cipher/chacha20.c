@@ -1,6 +1,6 @@
 #include "cipher/chacha20.h"
 
-static void crypt_data(const blfs_stream_cipher_t * stream_cipher,
+static void crypt_data(const blfs_swappable_cipher_t * sc,
                        uint64_t interblock_offset,
                        uint64_t intrablock_offset,
                        uint64_t num_blocks,
@@ -17,7 +17,7 @@ static void crypt_data(const blfs_stream_cipher_t * stream_cipher,
     (void) num_blocks;
     (void) block_read_upper_bound;
     (void) kcs_keycount;
-    (void) stream_cipher; // ? This cipher is hardcoded into StrongBox
+    (void) sc; // ? This cipher is hardcoded into StrongBox
 
     uint8_t * zero_str = calloc(zero_str_length, sizeof(*zero_str));
 
@@ -40,10 +40,17 @@ static void crypt_data(const blfs_stream_cipher_t * stream_cipher,
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 }
 
-void sc_impl_chacha20(blfs_stream_cipher_t * sc)
+void sc_impl_chacha20(blfs_swappable_cipher_t * sc)
 {
-    sc->crypt_data = &crypt_data;
-    sc->crypt_nugget = NULL;
+    sc->crypt_data = crypt_data;
+    sc->crypt_custom = NULL;
     sc->read_handle = NULL;
     sc->write_handle = NULL;
+
+    sc->name = "Chacha @ 20 rounds";
+    sc->enum_id = sc_chacha20;
+
+    sc->key_size_bytes = BLFS_CRYPTO_BYTES_CHACHA20_KEY;
+    sc->nonce_size_bytes = BLFS_CRYPTO_BYTES_CHACHA20_NONCE;
+    sc->output_size_bytes = BLFS_CRYPTO_BYTES_CHACHA20_BLOCK;
 }

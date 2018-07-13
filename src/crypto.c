@@ -10,11 +10,11 @@
 #include <assert.h>
 #include <string.h>
 #include <inttypes.h>
-// TODO: make sure things work without OpenSSL and other similar deps when apropos flags are false
+
 #include "openssl/aes.h"
 
-// If you're looking for the stream cipher functions, those were all moved
-// to swappable.h and swappable.c
+// If you're looking for the cipher functions, those were all moved to
+// swappable.h and swappable.c
 
 void blfs_password_to_secret(uint8_t * secret, const char * passwd, uint32_t passwd_length, const uint8_t * salt)
 {
@@ -243,17 +243,14 @@ void blfs_aesxts_encrypt(uint8_t * encrypted_data,
 {
     IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
 
-    if(!BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
-        Throw(EXCEPTION_BAD_AESXTS);
-
     if(data_length < BLFS_CRYPTO_BYTES_AESXTS_DATA_MIN)
         Throw(EXCEPTION_AESXTS_DATA_LENGTH_TOO_SMALL);
 
     uint8_t doublekey[BLFS_CRYPTO_BYTES_AESXTS_KEY];
     uint8_t iv_tweak[BLFS_CRYPTO_BYTES_AESXTS_TWEAK] = { 0x00 };
 
-    memcpy(doublekey, flake_key, BLFS_CRYPTO_BYTES_CHACHA20_KEY);
-    memcpy(doublekey + BLFS_CRYPTO_BYTES_CHACHA20_KEY, flake_key, BLFS_CRYPTO_BYTES_CHACHA20_KEY);
+    memcpy(doublekey, flake_key, BLFS_CRYPTO_BYTES_AESXTS_KEY/2);
+    memcpy(doublekey + BLFS_CRYPTO_BYTES_AESXTS_KEY/2, flake_key, BLFS_CRYPTO_BYTES_AESXTS_KEY/2);
     memcpy(iv_tweak, (uint8_t *) &sector_tweak, sizeof sector_tweak);
 
     IFDEBUG(dzlog_debug("sector_tweak: %"PRIu32, sector_tweak));
@@ -311,17 +308,14 @@ void blfs_aesxts_decrypt(uint8_t * plaintext_data,
 {
     IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
 
-    if(!BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
-        Throw(EXCEPTION_BAD_AESXTS);
-
     if(data_length < BLFS_CRYPTO_BYTES_AESXTS_DATA_MIN)
         Throw(EXCEPTION_AESXTS_DATA_LENGTH_TOO_SMALL);
 
     uint8_t doublekey[BLFS_CRYPTO_BYTES_AESXTS_KEY];
     uint8_t iv_tweak[BLFS_CRYPTO_BYTES_AESXTS_TWEAK] = { 0x00 };
 
-    memcpy(doublekey, flake_key, BLFS_CRYPTO_BYTES_CHACHA20_KEY);
-    memcpy(doublekey + BLFS_CRYPTO_BYTES_CHACHA20_KEY, flake_key, BLFS_CRYPTO_BYTES_CHACHA20_KEY);
+    memcpy(doublekey, flake_key, BLFS_CRYPTO_BYTES_AESXTS_KEY/2);
+    memcpy(doublekey + BLFS_CRYPTO_BYTES_AESXTS_KEY/2, flake_key, BLFS_CRYPTO_BYTES_AESXTS_KEY/2);
 
     IFDEBUG(assert(sizeof sector_tweak <= BLFS_CRYPTO_BYTES_AESXTS_TWEAK));
 

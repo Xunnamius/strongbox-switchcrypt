@@ -50,13 +50,13 @@ static void make_fake_state()
     buselfs_state->default_password             = BLFS_DEFAULT_PASS;
     buselfs_state->rpmb_secure_index            = _TEST_BLFS_TPM_ID;
 
-    blfs_get_stream_cipher(buselfs_state->active_stream_cipher, sc_default);
+    blfs_set_cipher_ctx(buselfs_state->active_cipher, sc_default);
 
     iofd = open(BACKSTORE_FILE_PATH, O_CREAT | O_RDWR | O_TRUNC, 0777);
 
     buselfs_state->backstore                    = malloc(sizeof(blfs_backstore_t));
     buselfs_state->backstore->io_fd             = iofd;
-    buselfs_state->backstore->body_real_offset  = 161;
+    buselfs_state->backstore->body_real_offset  = 436359;
     buselfs_state->backstore->file_size_actual  = (uint64_t)(sizeof buffer_init_backstore_state);
 
     blfs_backstore_write(buselfs_state->backstore, buffer_init_backstore_state, sizeof buffer_init_backstore_state, 0);
@@ -103,19 +103,6 @@ static void clear_tj()
     blfs_backstore_close(backstore);
 }
 
-static int is_dummy_source()
-{
-    #if BLFS_DEBUG_MONITOR_POWER > 0
-    char em_source[16];
-    energymon mon;
-    energymon_get_default(&mon);
-    (void) mon.fsource(em_source, sizeof em_source);
-    return !strcmp(em_source, "Dummy Source");
-    #else
-    return 0;
-    #endif
-}
-
 static int is_sudo()
 {
     return !geteuid();
@@ -131,6 +118,12 @@ void setUp(void)
     
     if(dzlog_init(BLFS_CONFIG_ZLOG, buf))
         exit(EXCEPTION_ZLOG_INIT_FAILURE);
+    
+    if(BLFS_MANUAL_GV_FALLBACK == -1 && !is_sudo())
+    {
+        dzlog_fatal("Must be root!");
+        exit(255);
+    }
     
     make_fake_state();
 }
@@ -273,71 +266,65 @@ void test_blfs_soft_open_works_as_expected(void)
 {
     free(buselfs_state->backstore);
 
-    if(BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
-        TEST_IGNORE_MESSAGE("BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION is in effect. All non- AES-XTS emulation tests will be ignored!");
+    buselfs_state->backstore = blfs_backstore_open(BACKSTORE_FILE_PATH);
+    blfs_soft_open(buselfs_state, (uint8_t)(0));
 
-    else
-    {
-        buselfs_state->backstore = blfs_backstore_open(BACKSTORE_FILE_PATH);
-        blfs_soft_open(buselfs_state, (uint8_t)(0));
+    // Ensure initial state is accurate
 
-        // Ensure initial state is accurate
-
-        TEST_ASSERT_EQUAL_STRING(BACKSTORE_FILE_PATH, buselfs_state->backstore->file_path);
-        TEST_ASSERT_EQUAL_STRING("test.io.bin", buselfs_state->backstore->file_name);
-        TEST_ASSERT_EQUAL_UINT(105, buselfs_state->backstore->kcs_real_offset);
-        TEST_ASSERT_EQUAL_UINT(129, buselfs_state->backstore->tj_real_offset);
-        TEST_ASSERT_EQUAL_UINT(132, buselfs_state->backstore->md_real_offset);
-        TEST_ASSERT_EQUAL_UINT(156, buselfs_state->backstore->body_real_offset);
-        TEST_ASSERT_EQUAL_UINT(48, buselfs_state->backstore->writeable_size_actual);
-        TEST_ASSERT_EQUAL_UINT(16, buselfs_state->backstore->nugget_size_bytes);
-        TEST_ASSERT_EQUAL_UINT(8, buselfs_state->backstore->flake_size_bytes);
-        TEST_ASSERT_EQUAL_UINT(3, buselfs_state->backstore->num_nuggets);
-        TEST_ASSERT_EQUAL_UINT(2, buselfs_state->backstore->flakes_per_nugget);
-        TEST_ASSERT_EQUAL_UINT(204, buselfs_state->backstore->file_size_actual);
+    TEST_ASSERT_EQUAL_STRING(BACKSTORE_FILE_PATH, buselfs_state->backstore->file_path);
+    TEST_ASSERT_EQUAL_STRING("test.io.bin", buselfs_state->backstore->file_name);
+    TEST_ASSERT_EQUAL_UINT(105, buselfs_state->backstore->kcs_real_offset);
+    TEST_ASSERT_EQUAL_UINT(129, buselfs_state->backstore->tj_real_offset);
+    TEST_ASSERT_EQUAL_UINT(132, buselfs_state->backstore->md_real_offset);
+    TEST_ASSERT_EQUAL_UINT(156, buselfs_state->backstore->body_real_offset);
+    TEST_ASSERT_EQUAL_UINT(48, buselfs_state->backstore->writeable_size_actual);
+    TEST_ASSERT_EQUAL_UINT(16, buselfs_state->backstore->nugget_size_bytes);
+    TEST_ASSERT_EQUAL_UINT(8, buselfs_state->backstore->flake_size_bytes);
+    TEST_ASSERT_EQUAL_UINT(3, buselfs_state->backstore->num_nuggets);
+    TEST_ASSERT_EQUAL_UINT(2, buselfs_state->backstore->flakes_per_nugget);
+    TEST_ASSERT_EQUAL_UINT(204, buselfs_state->backstore->file_size_actual);
 
 
-        blfs_header_t * header_version = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_VERSION);
-        blfs_header_t * header_salt = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_SALT);
-        blfs_header_t * header_mtrh = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_MTRH);
-        blfs_header_t * header_tpmglobalver = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_TPMGLOBALVER);
-        blfs_header_t * header_verification = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_VERIFICATION);
-        blfs_header_t * header_numnuggets = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_NUMNUGGETS);
-        blfs_header_t * header_flakespernugget = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_FLAKESPERNUGGET);
-        blfs_header_t * header_flakesize_bytes = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_FLAKESIZE_BYTES);
-        blfs_header_t * header_initialized = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_INITIALIZED);
+    blfs_header_t * header_version = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_VERSION);
+    blfs_header_t * header_salt = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_SALT);
+    blfs_header_t * header_mtrh = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_MTRH);
+    blfs_header_t * header_tpmglobalver = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_TPMGLOBALVER);
+    blfs_header_t * header_verification = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_VERIFICATION);
+    blfs_header_t * header_numnuggets = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_NUMNUGGETS);
+    blfs_header_t * header_flakespernugget = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_FLAKESPERNUGGET);
+    blfs_header_t * header_flakesize_bytes = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_FLAKESIZE_BYTES);
+    blfs_header_t * header_initialized = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_INITIALIZED);
 
-        uint8_t expected_ver[BLFS_HEAD_HEADER_BYTES_VERSION] = { 0xFF, 0xFF, 0xFF, 0xFF };
-        uint8_t expected_salt[BLFS_HEAD_HEADER_BYTES_SALT] = {
-            0x8f, 0xa2, 0x0d, 0x92, 0x35, 0xd6, 0xc2, 0x4c, 0xe4, 0xbc, 0x4f, 0x47,
-            0xa4, 0xce, 0x69, 0xa8
-        };
+    uint8_t expected_ver[BLFS_HEAD_HEADER_BYTES_VERSION] = { 0xFF, 0xFF, 0xFF, 0xFF };
+    uint8_t expected_salt[BLFS_HEAD_HEADER_BYTES_SALT] = {
+        0x8f, 0xa2, 0x0d, 0x92, 0x35, 0xd6, 0xc2, 0x4c, 0xe4, 0xbc, 0x4f, 0x47,
+        0xa4, 0xce, 0x69, 0xa8
+    };
 
-        uint8_t expected_tpmglobalver[BLFS_HEAD_HEADER_BYTES_TPMGLOBALVER] = { 0x06, 0x07, 0x08, 0x09, 0x06, 0x07, 0x08, 0x09 };
-        uint8_t expected_verification[BLFS_HEAD_HEADER_BYTES_VERIFICATION] = {
-            0xa7, 0x35, 0x05, 0xed, 0x0a, 0x2c, 0x81, 0xf9, 0x74, 0xf9, 0xd4, 0xe7,
-            0x59, 0xaf, 0x92, 0xca, 0xe7, 0x15, 0x52, 0x04, 0xed, 0xb1, 0xb5, 0x46,
-            0x24, 0x18, 0x31, 0x7f, 0xfb, 0x84, 0x79, 0x1d
-        };
+    uint8_t expected_tpmglobalver[BLFS_HEAD_HEADER_BYTES_TPMGLOBALVER] = { 0x06, 0x07, 0x08, 0x09, 0x06, 0x07, 0x08, 0x09 };
+    uint8_t expected_verification[BLFS_HEAD_HEADER_BYTES_VERIFICATION] = {
+        0xa7, 0x35, 0x05, 0xed, 0x0a, 0x2c, 0x81, 0xf9, 0x74, 0xf9, 0xd4, 0xe7,
+        0x59, 0xaf, 0x92, 0xca, 0xe7, 0x15, 0x52, 0x04, 0xed, 0xb1, 0xb5, 0x46,
+        0x24, 0x18, 0x31, 0x7f, 0xfb, 0x84, 0x79, 0x1d
+    };
 
-        uint8_t nexpected_master_secret[BLFS_CRYPTO_BYTES_KDF_OUT] = { 0x00 };
-        uint8_t set_initialized[BLFS_HEAD_HEADER_BYTES_INITIALIZED] = { BLFS_HEAD_IS_INITIALIZED_VALUE };
+    uint8_t nexpected_master_secret[BLFS_CRYPTO_BYTES_KDF_OUT] = { 0x00 };
+    uint8_t set_initialized[BLFS_HEAD_HEADER_BYTES_INITIALIZED] = { BLFS_HEAD_IS_INITIALIZED_VALUE };
 
-        TEST_ASSERT_EQUAL_UINT(*(uint32_t *) expected_ver, *(uint32_t *) header_version->data);
-        TEST_ASSERT_EQUAL_MEMORY(expected_salt, header_salt->data, BLFS_HEAD_HEADER_BYTES_SALT);
-        TEST_ASSERT_EQUAL_MEMORY(buffer_init_backstore_state + 20, header_mtrh->data, BLFS_HEAD_HEADER_BYTES_MTRH);
-        TEST_ASSERT_EQUAL_MEMORY(expected_tpmglobalver, header_tpmglobalver->data, BLFS_HEAD_HEADER_BYTES_TPMGLOBALVER);
-        TEST_ASSERT_EQUAL_MEMORY(expected_verification, header_verification->data, BLFS_HEAD_HEADER_BYTES_VERIFICATION);
-        TEST_ASSERT_EQUAL_UINT32(3, *(uint32_t *) header_numnuggets->data);
-        TEST_ASSERT_EQUAL_UINT32(2, *(uint32_t *) header_flakespernugget->data);
-        TEST_ASSERT_EQUAL_UINT32(8, *(uint32_t *) header_flakesize_bytes->data);
-        TEST_ASSERT_EQUAL_MEMORY(set_initialized, header_initialized->data, BLFS_HEAD_HEADER_BYTES_INITIALIZED);
+    TEST_ASSERT_EQUAL_UINT(*(uint32_t *) expected_ver, *(uint32_t *) header_version->data);
+    TEST_ASSERT_EQUAL_MEMORY(expected_salt, header_salt->data, BLFS_HEAD_HEADER_BYTES_SALT);
+    TEST_ASSERT_EQUAL_MEMORY(buffer_init_backstore_state + 20, header_mtrh->data, BLFS_HEAD_HEADER_BYTES_MTRH);
+    TEST_ASSERT_EQUAL_MEMORY(expected_tpmglobalver, header_tpmglobalver->data, BLFS_HEAD_HEADER_BYTES_TPMGLOBALVER);
+    TEST_ASSERT_EQUAL_MEMORY(expected_verification, header_verification->data, BLFS_HEAD_HEADER_BYTES_VERIFICATION);
+    TEST_ASSERT_EQUAL_UINT32(3, *(uint32_t *) header_numnuggets->data);
+    TEST_ASSERT_EQUAL_UINT32(2, *(uint32_t *) header_flakespernugget->data);
+    TEST_ASSERT_EQUAL_UINT32(8, *(uint32_t *) header_flakesize_bytes->data);
+    TEST_ASSERT_EQUAL_MEMORY(set_initialized, header_initialized->data, BLFS_HEAD_HEADER_BYTES_INITIALIZED);
 
-        // Ensure remaining state is accurate
-        TEST_ASSERT_TRUE(memcmp(buselfs_state->backstore->master_secret, nexpected_master_secret, BLFS_CRYPTO_BYTES_KDF_OUT) != 0);
+    // Ensure remaining state is accurate
+    TEST_ASSERT_TRUE(memcmp(buselfs_state->backstore->master_secret, nexpected_master_secret, BLFS_CRYPTO_BYTES_KDF_OUT) != 0);
 
-        blfs_backstore_close(buselfs_state->backstore);
-    }
+    blfs_backstore_close(buselfs_state->backstore);
 }
 
 void test_blfs_soft_open_initializes_keycache_and_merkle_tree_properly(void)
@@ -398,93 +385,81 @@ void test_blfs_soft_open_initializes_keycache_and_merkle_tree_properly(void)
 
 void test_blfs_run_mode_create_works_when_backstore_exists_already(void)
 {
-    if(BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
-        TEST_IGNORE_MESSAGE("BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION is in effect. All non- AES-XTS emulation tests will be ignored!");
+    blfs_run_mode_create(BACKSTORE_FILE_PATH, 4096, 2, 12, buselfs_state);
+    blfs_backstore_t * backstore = buselfs_state->backstore;
 
-    else
-    {
-        blfs_run_mode_create(BACKSTORE_FILE_PATH, 4096, 2, 12, buselfs_state);
-        blfs_backstore_t * backstore = buselfs_state->backstore;
+    // Ensure initial state is accurate
 
-        // Ensure initial state is accurate
+    TEST_ASSERT_EQUAL_STRING(BACKSTORE_FILE_PATH, backstore->file_path);
+    TEST_ASSERT_EQUAL_STRING("test.io.bin", backstore->file_name);
+    TEST_ASSERT_EQUAL_UINT(105, backstore->kcs_real_offset);
+    TEST_ASSERT_EQUAL_UINT(865, backstore->tj_real_offset);
+    TEST_ASSERT_EQUAL_UINT(1055, backstore->md_real_offset);
+    TEST_ASSERT_EQUAL_UINT(1815, backstore->body_real_offset);
+    TEST_ASSERT_EQUAL_UINT(2280, backstore->writeable_size_actual);
+    TEST_ASSERT_EQUAL_UINT(24, backstore->nugget_size_bytes);
+    TEST_ASSERT_EQUAL_UINT(2, backstore->flake_size_bytes);
+    TEST_ASSERT_EQUAL_UINT(12, backstore->flakes_per_nugget);
+    TEST_ASSERT_EQUAL_UINT(95, backstore->num_nuggets);
+    TEST_ASSERT_EQUAL_UINT(4096, backstore->file_size_actual);
 
-        TEST_ASSERT_EQUAL_STRING(BACKSTORE_FILE_PATH, backstore->file_path);
-        TEST_ASSERT_EQUAL_STRING("test.io.bin", backstore->file_name);
-        TEST_ASSERT_EQUAL_UINT(105, backstore->kcs_real_offset);
-        TEST_ASSERT_EQUAL_UINT(865, backstore->tj_real_offset);
-        TEST_ASSERT_EQUAL_UINT(1055, backstore->md_real_offset);
-        TEST_ASSERT_EQUAL_UINT(1815, backstore->body_real_offset);
-        TEST_ASSERT_EQUAL_UINT(2280, backstore->writeable_size_actual);
-        TEST_ASSERT_EQUAL_UINT(24, backstore->nugget_size_bytes);
-        TEST_ASSERT_EQUAL_UINT(2, backstore->flake_size_bytes);
-        TEST_ASSERT_EQUAL_UINT(12, backstore->flakes_per_nugget);
-        TEST_ASSERT_EQUAL_UINT(95, backstore->num_nuggets);
-        TEST_ASSERT_EQUAL_UINT(4096, backstore->file_size_actual);
+    // Ensure headers are accurate
 
-        // Ensure headers are accurate
+    blfs_header_t * header_version = blfs_open_header(backstore, BLFS_HEAD_HEADER_TYPE_VERSION);
+    blfs_header_t * header_salt = blfs_open_header(backstore, BLFS_HEAD_HEADER_TYPE_SALT);
+    blfs_header_t * header_mtrh = blfs_open_header(backstore, BLFS_HEAD_HEADER_TYPE_MTRH);
+    blfs_header_t * header_tpmglobalver = blfs_open_header(backstore, BLFS_HEAD_HEADER_TYPE_TPMGLOBALVER);
+    blfs_header_t * header_verification = blfs_open_header(backstore, BLFS_HEAD_HEADER_TYPE_VERIFICATION);
+    blfs_header_t * header_numnuggets = blfs_open_header(backstore, BLFS_HEAD_HEADER_TYPE_NUMNUGGETS);
+    blfs_header_t * header_flakespernugget = blfs_open_header(backstore, BLFS_HEAD_HEADER_TYPE_FLAKESPERNUGGET);
+    blfs_header_t * header_flakesize_bytes = blfs_open_header(backstore, BLFS_HEAD_HEADER_TYPE_FLAKESIZE_BYTES);
+    blfs_header_t * header_initialized = blfs_open_header(backstore, BLFS_HEAD_HEADER_TYPE_INITIALIZED);
 
-        blfs_header_t * header_version = blfs_open_header(backstore, BLFS_HEAD_HEADER_TYPE_VERSION);
-        blfs_header_t * header_salt = blfs_open_header(backstore, BLFS_HEAD_HEADER_TYPE_SALT);
-        blfs_header_t * header_mtrh = blfs_open_header(backstore, BLFS_HEAD_HEADER_TYPE_MTRH);
-        blfs_header_t * header_tpmglobalver = blfs_open_header(backstore, BLFS_HEAD_HEADER_TYPE_TPMGLOBALVER);
-        blfs_header_t * header_verification = blfs_open_header(backstore, BLFS_HEAD_HEADER_TYPE_VERIFICATION);
-        blfs_header_t * header_numnuggets = blfs_open_header(backstore, BLFS_HEAD_HEADER_TYPE_NUMNUGGETS);
-        blfs_header_t * header_flakespernugget = blfs_open_header(backstore, BLFS_HEAD_HEADER_TYPE_FLAKESPERNUGGET);
-        blfs_header_t * header_flakesize_bytes = blfs_open_header(backstore, BLFS_HEAD_HEADER_TYPE_FLAKESIZE_BYTES);
-        blfs_header_t * header_initialized = blfs_open_header(backstore, BLFS_HEAD_HEADER_TYPE_INITIALIZED);
+    uint8_t zero_salt[BLFS_HEAD_HEADER_BYTES_SALT] = { 0x00 };
+    uint8_t zero_tpmglobalver[BLFS_HEAD_HEADER_BYTES_TPMGLOBALVER] = { 0x00 };
+    uint8_t zero_verification[BLFS_HEAD_HEADER_BYTES_VERIFICATION] = { 0x00 };
+    uint8_t zero_master_secret[BLFS_CRYPTO_BYTES_KDF_OUT] = { 0x00 };
+    uint8_t set_initialized[BLFS_HEAD_HEADER_BYTES_INITIALIZED] = { BLFS_HEAD_IS_INITIALIZED_VALUE };
 
-        uint8_t zero_salt[BLFS_HEAD_HEADER_BYTES_SALT] = { 0x00 };
-        uint8_t zero_tpmglobalver[BLFS_HEAD_HEADER_BYTES_TPMGLOBALVER] = { 0x00 };
-        uint8_t zero_verification[BLFS_HEAD_HEADER_BYTES_VERIFICATION] = { 0x00 };
-        uint8_t zero_master_secret[BLFS_CRYPTO_BYTES_KDF_OUT] = { 0x00 };
-        uint8_t set_initialized[BLFS_HEAD_HEADER_BYTES_INITIALIZED] = { BLFS_HEAD_IS_INITIALIZED_VALUE };
+    TEST_ASSERT_EQUAL_UINT32(BLFS_CURRENT_VERSION, *(uint32_t *) header_version->data);
+    TEST_ASSERT_TRUE(memcmp(header_salt->data, zero_salt, BLFS_HEAD_HEADER_BYTES_SALT) != 0);
+    TEST_ASSERT_TRUE(memcmp(header_mtrh->data, buffer_init_backstore_state + 20, BLFS_HEAD_HEADER_BYTES_MTRH) != 0);
+    TEST_ASSERT_TRUE(memcmp(header_tpmglobalver->data, zero_tpmglobalver, BLFS_HEAD_HEADER_BYTES_TPMGLOBALVER) != 0);
+    TEST_ASSERT_TRUE(memcmp(header_verification->data, zero_verification, BLFS_HEAD_HEADER_BYTES_VERIFICATION) != 0);
+    TEST_ASSERT_EQUAL_UINT32(95, *(uint32_t *) header_numnuggets->data);
+    TEST_ASSERT_EQUAL_UINT32(12, *(uint32_t *) header_flakespernugget->data);
+    TEST_ASSERT_EQUAL_UINT32(2, *(uint32_t *) header_flakesize_bytes->data);
+    TEST_ASSERT_EQUAL_MEMORY(set_initialized, header_initialized->data, BLFS_HEAD_HEADER_BYTES_INITIALIZED);
 
-        TEST_ASSERT_EQUAL_UINT32(BLFS_CURRENT_VERSION, *(uint32_t *) header_version->data);
-        TEST_ASSERT_TRUE(memcmp(header_salt->data, zero_salt, BLFS_HEAD_HEADER_BYTES_SALT) != 0);
-        TEST_ASSERT_TRUE(memcmp(header_mtrh->data, buffer_init_backstore_state + 20, BLFS_HEAD_HEADER_BYTES_MTRH) != 0);
-        TEST_ASSERT_TRUE(memcmp(header_tpmglobalver->data, zero_tpmglobalver, BLFS_HEAD_HEADER_BYTES_TPMGLOBALVER) != 0);
-        TEST_ASSERT_TRUE(memcmp(header_verification->data, zero_verification, BLFS_HEAD_HEADER_BYTES_VERIFICATION) != 0);
-        TEST_ASSERT_EQUAL_UINT32(95, *(uint32_t *) header_numnuggets->data);
-        TEST_ASSERT_EQUAL_UINT32(12, *(uint32_t *) header_flakespernugget->data);
-        TEST_ASSERT_EQUAL_UINT32(2, *(uint32_t *) header_flakesize_bytes->data);
-        TEST_ASSERT_EQUAL_MEMORY(set_initialized, header_initialized->data, BLFS_HEAD_HEADER_BYTES_INITIALIZED);
+    // Ensure remaining state is accurate
+    TEST_ASSERT_TRUE(memcmp(backstore->master_secret, zero_master_secret, BLFS_CRYPTO_BYTES_KDF_OUT) != 0);
 
-        // Ensure remaining state is accurate
-        TEST_ASSERT_TRUE(memcmp(backstore->master_secret, zero_master_secret, BLFS_CRYPTO_BYTES_KDF_OUT) != 0);
-
-        blfs_backstore_close(backstore);
-    }
+    blfs_backstore_close(backstore);
 }
 
 void test_blfs_run_mode_create_works_when_backstore_DNE(void)
 {
-    if(BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
-        TEST_IGNORE_MESSAGE("BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION is in effect. All non- AES-XTS emulation tests will be ignored!");
+    unlink(BACKSTORE_FILE_PATH);
+    blfs_run_mode_create(BACKSTORE_FILE_PATH, 4096, 2, 12, buselfs_state);
 
-    else
-    {
-        unlink(BACKSTORE_FILE_PATH);
-        blfs_run_mode_create(BACKSTORE_FILE_PATH, 4096, 2, 12, buselfs_state);
+    blfs_backstore_t * backstore = buselfs_state->backstore;
 
-        blfs_backstore_t * backstore = buselfs_state->backstore;
+    // Ensure initial state is accurate
 
-        // Ensure initial state is accurate
+    TEST_ASSERT_EQUAL_STRING(BACKSTORE_FILE_PATH, backstore->file_path);
+    TEST_ASSERT_EQUAL_STRING("test.io.bin", backstore->file_name);
+    TEST_ASSERT_EQUAL_UINT(105, backstore->kcs_real_offset);
+    TEST_ASSERT_EQUAL_UINT(865, backstore->tj_real_offset);
+    TEST_ASSERT_EQUAL_UINT(1055, backstore->md_real_offset);
+    TEST_ASSERT_EQUAL_UINT(1815, backstore->body_real_offset);
+    TEST_ASSERT_EQUAL_UINT(2280, backstore->writeable_size_actual);
+    TEST_ASSERT_EQUAL_UINT(24, backstore->nugget_size_bytes);
+    TEST_ASSERT_EQUAL_UINT(2, backstore->flake_size_bytes);
+    TEST_ASSERT_EQUAL_UINT(12, backstore->flakes_per_nugget);
+    TEST_ASSERT_EQUAL_UINT(95, backstore->num_nuggets);
+    TEST_ASSERT_EQUAL_UINT(4096, backstore->file_size_actual);
 
-        TEST_ASSERT_EQUAL_STRING(BACKSTORE_FILE_PATH, backstore->file_path);
-        TEST_ASSERT_EQUAL_STRING("test.io.bin", backstore->file_name);
-        TEST_ASSERT_EQUAL_UINT(105, backstore->kcs_real_offset);
-        TEST_ASSERT_EQUAL_UINT(865, backstore->tj_real_offset);
-        TEST_ASSERT_EQUAL_UINT(1055, backstore->md_real_offset);
-        TEST_ASSERT_EQUAL_UINT(1815, backstore->body_real_offset);
-        TEST_ASSERT_EQUAL_UINT(2280, backstore->writeable_size_actual);
-        TEST_ASSERT_EQUAL_UINT(24, backstore->nugget_size_bytes);
-        TEST_ASSERT_EQUAL_UINT(2, backstore->flake_size_bytes);
-        TEST_ASSERT_EQUAL_UINT(12, backstore->flakes_per_nugget);
-        TEST_ASSERT_EQUAL_UINT(95, backstore->num_nuggets);
-        TEST_ASSERT_EQUAL_UINT(4096, backstore->file_size_actual);
-
-        blfs_backstore_close(backstore);
-    }
+    blfs_backstore_close(backstore);
 }
 
 void test_blfs_run_mode_create_initializes_keycache_and_merkle_tree_properly(void)
@@ -493,9 +468,6 @@ void test_blfs_run_mode_create_initializes_keycache_and_merkle_tree_properly(voi
 
     if(BLFS_DEFAULT_DISABLE_KEY_CACHING)
         TEST_IGNORE_MESSAGE("BLFS_DEFAULT_DISABLE_KEY_CACHING is in effect, so this test will be skipped!");
-
-    else if(BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
-        TEST_IGNORE_MESSAGE("BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION is in effect. All non- AES-XTS emulation tests will be ignored!");
 
     else
     {
@@ -747,168 +719,12 @@ void test_strongbox_main_actual_throws_exception_if_nonimpl_cipher(void)
     TRY_FN_CATCH_EXCEPTION(strongbox_main_actual(6, argv, blockdevice));
 }
 
-// Metrics Tests
-
-void test_blfs_energymon_init_works_as_expected(void)
-{
-    if(!BLFS_DEBUG_MONITOR_POWER)
-    {
-        TEST_IGNORE_MESSAGE("BLFS_DEBUG_MONITOR_POWER is disabled. All metric gathering tests are disabled!");
-        return;
-    }
-
-    if(is_dummy_source())
-    {
-        TEST_IGNORE_MESSAGE("Dummy source detected. This test will be skipped.");
-        return;
-    }
-
-    if(!is_sudo())
-    {
-        TEST_IGNORE_MESSAGE("Test skipped. You must be sudo to run this test.");
-        return;
-    }
-    
-    #if BLFS_DEBUG_MONITOR_POWER > 0
-    blfs_energymon_init(buselfs_state);
-    #endif
-}
-
-void test_blfs_energymon_fini_works_as_expected(void)
-{
-    if(!BLFS_DEBUG_MONITOR_POWER)
-    {
-        TEST_IGNORE_MESSAGE("BLFS_DEBUG_MONITOR_POWER is disabled. All metric gathering tests are disabled!");
-        return;
-    }
-
-    if(is_dummy_source())
-    {
-        TEST_IGNORE_MESSAGE("Dummy source detected. This test will be skipped.");
-        return;
-    }
-
-    if(!is_sudo())
-    {
-        TEST_IGNORE_MESSAGE("Test skipped. You must be sudo to run this test.");
-        return;
-    }
-
-    #if BLFS_DEBUG_MONITOR_POWER > 0
-
-    blfs_energymon_init(buselfs_state);
-    blfs_energymon_fini(buselfs_state);
-    blfs_energymon_init(buselfs_state);
-    blfs_energymon_fini(buselfs_state);
-
-    #endif
-}
-
-void test_blfs_energymon_collect_metrics_works_as_expected(void)
-{
-    if(!BLFS_DEBUG_MONITOR_POWER)
-    {
-        TEST_IGNORE_MESSAGE("BLFS_DEBUG_MONITOR_POWER is disabled. All metric gathering tests are disabled!");
-        return;
-    }
-
-    if(is_dummy_source())
-    {
-        TEST_IGNORE_MESSAGE("Dummy source detected. This test will be skipped.");
-        return;
-    }
-
-    if(!is_sudo())
-    {
-        TEST_IGNORE_MESSAGE("Test skipped. You must be sudo to run this test.");
-        return;
-    }
-
-    #if BLFS_DEBUG_MONITOR_POWER > 0
-    
-    metrics_t metrics_start;
-    metrics_t metrics_end;
-
-    blfs_energymon_init(buselfs_state);
-    blfs_energymon_collect_metrics(&metrics_start, buselfs_state);
-    sleep(3);
-    blfs_energymon_collect_metrics(&metrics_end, buselfs_state);
-    blfs_energymon_fini(buselfs_state);
-
-    TEST_ASSERT_TRUE_MESSAGE(metrics_end.energy_uj, "metrics_start.energy_uj == 0");
-    TEST_ASSERT_NOT_EQUAL_MESSAGE(metrics_start.energy_uj, metrics_end.energy_uj, "metrics_end.energy_uj <= metrics_start.energy_uj");
-
-    TEST_ASSERT_TRUE_MESSAGE(metrics_start.time_ns, "metrics_start.time_ns == 0");
-    TEST_ASSERT_NOT_EQUAL_MESSAGE(metrics_start.time_ns, metrics_end.time_ns, "metrics_end.time_ns == metrics_start.time_ns");
-
-    #endif
-}
-
-void test_blfs_energymon_writeout_metrics_works_as_expected(void)
-{
-    if(!BLFS_DEBUG_MONITOR_POWER)
-    {
-        TEST_IGNORE_MESSAGE("BLFS_DEBUG_MONITOR_POWER is disabled. All metric gathering tests are disabled!");
-        return;
-    }
-
-    if(is_dummy_source())
-    {
-        TEST_IGNORE_MESSAGE("Dummy source detected. This test will be skipped.");
-        return;
-    }
-
-    if(!is_sudo())
-    {
-        TEST_IGNORE_MESSAGE("Test skipped. You must be sudo to run this test.");
-        return;
-    }
-    
-    #if BLFS_DEBUG_MONITOR_POWER > 0
-
-    metrics_t metrics_read_start  = { .energy_uj = 50000000,  .time_ns = 100000000000 };
-    metrics_t metrics_read_end    = { .energy_uj = 100000000, .time_ns = 150000000000 };
-    metrics_t metrics_write_start = { .energy_uj = 200000000, .time_ns = 250000000000 };
-    metrics_t metrics_write_end   = { .energy_uj = 400000000, .time_ns = 450000000000 };
-
-    FILE * metrics_output_fd = fopen(BLFS_ENERGYMON_OUTPUT_PATH, "w+");
-    long fsize = 0;
-
-    blfs_energymon_init(buselfs_state);
-    blfs_energymon_writeout_metrics("test", &metrics_read_start, &metrics_read_end, &metrics_write_start, &metrics_write_end);
-
-    fseek(metrics_output_fd, 0, SEEK_END);
-    fsize = ftell(metrics_output_fd);
-    fseek(metrics_output_fd, 0, SEEK_SET);
-
-    char results[fsize];
-    assert(fread(results, sizeof(char), fsize, metrics_output_fd) > 0);
-
-    dzlog_notice("metrics_output_fd:\n%s\n", results);
-
-    fclose(metrics_output_fd);
-    remove(BLFS_ENERGYMON_OUTPUT_PATH);
-
-    blfs_energymon_fini(buselfs_state);
-
-    TEST_ASSERT_TRUE_MESSAGE(fsize, "expected a write (fsize == 0)");
-
-    #endif
-}
-
 // * All read and write tests should go below this line! *
 
 void test_buse_read_works_as_expected(void)
 {
-    if(BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
-    {
-        TEST_IGNORE_MESSAGE("BLFS_BADBADNOTGOOD_USE_AES*_EMULATION is in effect. All non-AES-XTS emulation tests will be ignored!");
-        return;
-    }
-
     free(buselfs_state->backstore);
 
-    IFENERGYMON(blfs_energymon_init(buselfs_state));
     blfs_run_mode_open(BACKSTORE_FILE_PATH, (uint8_t)(0), buselfs_state);
 
     uint8_t buffer1[1] = { 0x00 };
@@ -916,75 +732,67 @@ void test_buse_read_works_as_expected(void)
 
     buse_read(buffer1, sizeof buffer1, offset1, (void *) buselfs_state);
 
-    TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset1, buffer1, sizeof buffer1);
+    TEST_ASSERT_EQUAL_MEMORY(test_play_data + offset1, buffer1, sizeof buffer1);
 
     uint8_t buffer2[16] = { 0x00 };
     uint64_t offset2 = 0;
 
     buse_read(buffer2, sizeof buffer2, offset2, (void *) buselfs_state);
 
-    TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset2, buffer2, sizeof buffer2);
+    TEST_ASSERT_EQUAL_MEMORY(test_play_data + offset2, buffer2, sizeof buffer2);
 
     uint8_t buffer3[20] = { 0x00 };
     uint64_t offset3 = 0;
 
     buse_read(buffer3, sizeof buffer3, offset3, (void *) buselfs_state);
 
-    TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset3, buffer3, sizeof buffer3);
+    TEST_ASSERT_EQUAL_MEMORY(test_play_data + offset3, buffer3, sizeof buffer3);
 
     uint8_t buffer4[20] = { 0x00 };
     uint64_t offset4 = 20;
 
     buse_read(buffer4, sizeof buffer4, offset4, (void *) buselfs_state);
 
-    TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset4, buffer4, sizeof buffer4);
+    TEST_ASSERT_EQUAL_MEMORY(test_play_data + offset4, buffer4, sizeof buffer4);
 
     uint8_t buffer5[48] = { 0x00 };
     uint64_t offset5 = 0;
 
     buse_read(buffer5, sizeof buffer5, offset5, (void *) buselfs_state);
 
-    TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset5, buffer5, sizeof buffer5);
+    TEST_ASSERT_EQUAL_MEMORY(test_play_data + offset5, buffer5, sizeof buffer5);
 
     uint8_t buffer6[1] = { 0x00 };
     uint64_t offset6 = 47;
 
     buse_read(buffer6, sizeof buffer6, offset6, (void *) buselfs_state);
 
-    TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset6, buffer6, sizeof buffer6);
+    TEST_ASSERT_EQUAL_MEMORY(test_play_data + offset6, buffer6, sizeof buffer6);
 
     uint8_t buffer7[35] = { 0x00 };
     uint64_t offset7 = 10;
 
     buse_read(buffer7, sizeof buffer7, offset7, (void *) buselfs_state);
 
-    TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset7, buffer7, sizeof buffer7);
+    TEST_ASSERT_EQUAL_MEMORY(test_play_data + offset7, buffer7, sizeof buffer7);
 
     uint8_t buffer8[20] = { 0x00 };
     uint64_t offset8 = 28;
 
     buse_read(buffer8, sizeof buffer8, offset8, (void *) buselfs_state);
 
-    TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset8, buffer8, sizeof buffer8);
+    TEST_ASSERT_EQUAL_MEMORY(test_play_data + offset8, buffer8, sizeof buffer8);
 
     uint8_t buffer9[8] = { 0x00 };
     uint64_t offset9 = 1;
 
     buse_read(buffer9, sizeof buffer9, offset9, (void *) buselfs_state);
 
-    TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset9, buffer9, sizeof buffer9);
-
-    IFENERGYMON(blfs_energymon_fini(buselfs_state));
+    TEST_ASSERT_EQUAL_MEMORY(test_play_data + offset9, buffer9, sizeof buffer9);
 }
 
 void test_buse_writeread_works_as_expected1(void)
 {
-    if(BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
-    {
-        TEST_IGNORE_MESSAGE("BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION is in effect. All non- AES-XTS emulation tests will be ignored!");
-        return;
-    }
-
     free(buselfs_state->backstore);
 
     clear_tj();
@@ -994,22 +802,14 @@ void test_buse_writeread_works_as_expected1(void)
     uint8_t buffer1[20] = { 0x00 };
     uint64_t offset1 = 28;
 
-    IFENERGYMON(blfs_energymon_init(buselfs_state));
-    buse_write(decrypted_body + offset1, sizeof buffer1, offset1, (void *) buselfs_state);
+    buse_write(test_play_data + offset1, sizeof buffer1, offset1, (void *) buselfs_state);
     buse_read(buffer1, sizeof buffer1, offset1, (void *) buselfs_state);
-    IFENERGYMON(blfs_energymon_fini(buselfs_state));
 
-    TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset1, buffer1, sizeof buffer1);
+    TEST_ASSERT_EQUAL_MEMORY(test_play_data + offset1, buffer1, sizeof buffer1);
 }
 
 void test_buse_writeread_works_as_expected2(void)
 {
-    if(BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
-    {
-        TEST_IGNORE_MESSAGE("BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION is in effect. All non- AES-XTS emulation tests will be ignored!");
-        return;
-    }
-
     free(buselfs_state->backstore);
 
     clear_tj();
@@ -1019,22 +819,14 @@ void test_buse_writeread_works_as_expected2(void)
     uint8_t buffer2[20] = { 0x00 };
     uint64_t offset2 = 28;
 
-    IFENERGYMON(blfs_energymon_init(buselfs_state));
-    buse_write(decrypted_body + offset2, sizeof buffer2, offset2, (void *) buselfs_state);
+    buse_write(test_play_data + offset2, sizeof buffer2, offset2, (void *) buselfs_state);
     buse_read(buffer2, sizeof buffer2, offset2, (void *) buselfs_state);
-    IFENERGYMON(blfs_energymon_fini(buselfs_state));
 
-    TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset2, buffer2, sizeof buffer2);
+    TEST_ASSERT_EQUAL_MEMORY(test_play_data + offset2, buffer2, sizeof buffer2);
 }
 
 void test_buse_writeread_works_as_expected3(void)
 {
-    if(BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
-    {
-        TEST_IGNORE_MESSAGE("BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION is in effect. All non- AES-XTS emulation tests will be ignored!");
-        return;
-    }
-
     free(buselfs_state->backstore);
 
     clear_tj();
@@ -1044,22 +836,14 @@ void test_buse_writeread_works_as_expected3(void)
     uint8_t buffer3[48] = { 0x00 };
     uint64_t offset3 = 0;
 
-    IFENERGYMON(blfs_energymon_init(buselfs_state));
-    buse_write(decrypted_body + offset3, sizeof buffer3, offset3, (void *) buselfs_state);
+    buse_write(test_play_data + offset3, sizeof buffer3, offset3, (void *) buselfs_state);
     buse_read(buffer3, sizeof buffer3, offset3, (void *) buselfs_state);
-    IFENERGYMON(blfs_energymon_fini(buselfs_state));
 
-    TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset3, buffer3, sizeof buffer3);
+    TEST_ASSERT_EQUAL_MEMORY(test_play_data + offset3, buffer3, sizeof buffer3);
 }
 
 void test_buse_writeread_works_as_expected4(void)
 {
-    if(BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
-    {
-        TEST_IGNORE_MESSAGE("BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION is in effect. All non- AES-XTS emulation tests will be ignored!");
-        return;
-    }
-
     free(buselfs_state->backstore);
 
     clear_tj();
@@ -1069,23 +853,15 @@ void test_buse_writeread_works_as_expected4(void)
     uint8_t buffer4[8] = { 0x00 };
     uint64_t offset4 = 0;
 
-    IFENERGYMON(blfs_energymon_init(buselfs_state));
-    buse_write(decrypted_body + offset4, sizeof buffer4, offset4, (void *) buselfs_state);
+    buse_write(test_play_data + offset4, sizeof buffer4, offset4, (void *) buselfs_state);
     buse_read(buffer4, sizeof buffer4, offset4, (void *) buselfs_state);
-    IFENERGYMON(blfs_energymon_fini(buselfs_state));
 
-    TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset4, buffer4, sizeof buffer4);
+    TEST_ASSERT_EQUAL_MEMORY(test_play_data + offset4, buffer4, sizeof buffer4);
 }
 
 // ? interflake
 void test_buse_writeread_works_as_expected5(void)
 {
-    if(BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
-    {
-        TEST_IGNORE_MESSAGE("BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION is in effect. All non- AES-XTS emulation tests will be ignored!");
-        return;
-    }
-
     free(buselfs_state->backstore);
 
     clear_tj();
@@ -1095,22 +871,14 @@ void test_buse_writeread_works_as_expected5(void)
     uint8_t buffer5[8] = { 0x00 };
     uint64_t offset5 = 1;
 
-    IFENERGYMON(blfs_energymon_init(buselfs_state));
-    buse_write(decrypted_body + offset5, sizeof buffer5, offset5, (void *) buselfs_state);
+    buse_write(test_play_data + offset5, sizeof buffer5, offset5, (void *) buselfs_state);
     buse_read(buffer5, sizeof buffer5, offset5, (void *) buselfs_state);
-    IFENERGYMON(blfs_energymon_fini(buselfs_state));
 
-    TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset5, buffer5, sizeof buffer5);
+    TEST_ASSERT_EQUAL_MEMORY(test_play_data + offset5, buffer5, sizeof buffer5);
 }
 
 void test_buse_writeread_works_as_expected6(void)
 {
-    if(BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
-    {
-        TEST_IGNORE_MESSAGE("BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION is in effect. All non- AES-XTS emulation tests will be ignored!");
-        return;
-    }
-
     free(buselfs_state->backstore);
 
     clear_tj();
@@ -1120,22 +888,14 @@ void test_buse_writeread_works_as_expected6(void)
     uint8_t buffer6[1] = { 0x00 };
     uint64_t offset6 = 47;
 
-    IFENERGYMON(blfs_energymon_init(buselfs_state));
-    buse_write(decrypted_body + offset6, sizeof buffer6, offset6, (void *) buselfs_state);
+    buse_write(test_play_data + offset6, sizeof buffer6, offset6, (void *) buselfs_state);
     buse_read(buffer6, sizeof buffer6, offset6, (void *) buselfs_state);
-    IFENERGYMON(blfs_energymon_fini(buselfs_state));
 
-    TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset6, buffer6, sizeof buffer6);
+    TEST_ASSERT_EQUAL_MEMORY(test_play_data + offset6, buffer6, sizeof buffer6);
 }
 
 void test_buse_writeread_works_as_expected7(void)
 {
-    if(BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
-    {
-        TEST_IGNORE_MESSAGE("BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION is in effect. All non- AES-XTS emulation tests will be ignored!");
-        return;
-    }
-
     free(buselfs_state->backstore);
 
     clear_tj();
@@ -1145,22 +905,14 @@ void test_buse_writeread_works_as_expected7(void)
     uint8_t buffer7[1] = { 0x00 };
     uint64_t offset7 = 35;
 
-    IFENERGYMON(blfs_energymon_init(buselfs_state));
-    buse_write(decrypted_body + offset7, sizeof buffer7, offset7, (void *) buselfs_state);
+    buse_write(test_play_data + offset7, sizeof buffer7, offset7, (void *) buselfs_state);
     buse_read(buffer7, sizeof buffer7, offset7, (void *) buselfs_state);
-    IFENERGYMON(blfs_energymon_fini(buselfs_state));
 
-    TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset7, buffer7, sizeof buffer7);
+    TEST_ASSERT_EQUAL_MEMORY(test_play_data + offset7, buffer7, sizeof buffer7);
 }
 
 void test_buse_writeread_works_as_expected8(void)
 {
-    if(BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
-    {
-        TEST_IGNORE_MESSAGE("BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION is in effect. All non- AES-XTS emulation tests will be ignored!");
-        return;
-    }
-
     free(buselfs_state->backstore);
 
     clear_tj();
@@ -1170,23 +922,15 @@ void test_buse_writeread_works_as_expected8(void)
     uint8_t buffer[8] = { 0x00 };
     uint64_t offset = 17;
 
-    IFENERGYMON(blfs_energymon_init(buselfs_state));
-    buse_write(decrypted_body + offset, sizeof buffer, offset, (void *) buselfs_state);
+    buse_write(test_play_data + offset, sizeof buffer, offset, (void *) buselfs_state);
     buse_read(buffer, sizeof buffer, offset, (void *) buselfs_state);
-    IFENERGYMON(blfs_energymon_fini(buselfs_state));
 
-    TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset, buffer, sizeof buffer);
+    TEST_ASSERT_EQUAL_MEMORY(test_play_data + offset, buffer, sizeof buffer);
 }
 
 // ? interflake
 void test_buse_writeread_works_as_expected9(void)
 {
-    if(BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
-    {
-        TEST_IGNORE_MESSAGE("BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION is in effect. All non- AES-XTS emulation tests will be ignored!");
-        return;
-    }
-
     free(buselfs_state->backstore);
 
     clear_tj();
@@ -1196,23 +940,15 @@ void test_buse_writeread_works_as_expected9(void)
     uint8_t buffer[32] = { 0x00 };
     uint64_t offset = 0;
 
-    IFENERGYMON(blfs_energymon_init(buselfs_state));
-    buse_write(decrypted_body + offset, sizeof buffer, offset, (void *) buselfs_state);
+    buse_write(test_play_data + offset, sizeof buffer, offset, (void *) buselfs_state);
     buse_read(buffer, sizeof buffer, offset, (void *) buselfs_state);
-    IFENERGYMON(blfs_energymon_fini(buselfs_state));
 
-    TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset, buffer, sizeof buffer);
+    TEST_ASSERT_EQUAL_MEMORY(test_play_data + offset, buffer, sizeof buffer);
 }
 
 // ? interflake internugget
 void test_buse_writeread_works_as_expected10(void)
 {
-    if(BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
-    {
-        TEST_IGNORE_MESSAGE("BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION is in effect. All non- AES-XTS emulation tests will be ignored!");
-        return;
-    }
-
     free(buselfs_state->backstore);
 
     clear_tj();
@@ -1222,23 +958,15 @@ void test_buse_writeread_works_as_expected10(void)
     uint8_t buffer[32] = { 0x00 };
     uint64_t offset = 1;
 
-    IFENERGYMON(blfs_energymon_init(buselfs_state));
-    buse_write(decrypted_body + offset, sizeof buffer, offset, (void *) buselfs_state);
+    buse_write(test_play_data + offset, sizeof buffer, offset, (void *) buselfs_state);
     buse_read(buffer, sizeof buffer, offset, (void *) buselfs_state);
-    IFENERGYMON(blfs_energymon_fini(buselfs_state));
 
-    TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset, buffer, sizeof buffer);
+    TEST_ASSERT_EQUAL_MEMORY(test_play_data + offset, buffer, sizeof buffer);
 }
 
 // ? interflake internugget
 void test_buse_writeread_works_as_expected11(void)
 {
-    if(BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
-    {
-        TEST_IGNORE_MESSAGE("BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION is in effect. All non- AES-XTS emulation tests will be ignored!");
-        return;
-    }
-
     free(buselfs_state->backstore);
 
     clear_tj();
@@ -1248,22 +976,14 @@ void test_buse_writeread_works_as_expected11(void)
     uint8_t buffer[46] = { 0x00 };
     uint64_t offset = 1;
 
-    IFENERGYMON(blfs_energymon_init(buselfs_state));
-    buse_write(decrypted_body + offset, sizeof buffer, offset, (void *) buselfs_state);
+    buse_write(test_play_data + offset, sizeof buffer, offset, (void *) buselfs_state);
     buse_read(buffer, sizeof buffer, offset, (void *) buselfs_state);
-    IFENERGYMON(blfs_energymon_fini(buselfs_state));
 
-    TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset, buffer, sizeof buffer);
+    TEST_ASSERT_EQUAL_MEMORY(test_play_data + offset, buffer, sizeof buffer);
 }
 
 void test_buse_write_dirty_write_triggers_rekeying1(void)
 {
-    if(BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
-    {
-        TEST_IGNORE_MESSAGE("BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION is in effect. All non- AES-XTS emulation tests will be ignored!");
-        return;
-    }
-
     free(buselfs_state->backstore);
 
     blfs_run_mode_open(BACKSTORE_FILE_PATH, (uint8_t)(0), buselfs_state);
@@ -1271,22 +991,14 @@ void test_buse_write_dirty_write_triggers_rekeying1(void)
     uint8_t buffer[8] = { 0x00 };
     uint64_t offset = 17;
 
-    IFENERGYMON(blfs_energymon_init(buselfs_state));
-    buse_write(decrypted_body + offset, sizeof buffer, offset, (void *) buselfs_state);
+    buse_write(test_play_data + offset, sizeof buffer, offset, (void *) buselfs_state);
     buse_read(buffer, sizeof buffer, offset, (void *) buselfs_state);
-    IFENERGYMON(blfs_energymon_fini(buselfs_state));
 
-    TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset, buffer, sizeof buffer);
+    TEST_ASSERT_EQUAL_MEMORY(test_play_data + offset, buffer, sizeof buffer);
 }
 
 void test_buse_write_dirty_write_triggers_rekeying2(void)
 {
-    if(BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
-    {
-        TEST_IGNORE_MESSAGE("BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION is in effect. All non- AES-XTS emulation tests will be ignored!");
-        return;
-    }
-
     free(buselfs_state->backstore);
 
     blfs_run_mode_open(BACKSTORE_FILE_PATH, (uint8_t)(0), buselfs_state);
@@ -1294,22 +1006,14 @@ void test_buse_write_dirty_write_triggers_rekeying2(void)
     uint8_t buffer5[8] = { 0x00 };
     uint64_t offset5 = 1;
 
-    IFENERGYMON(blfs_energymon_init(buselfs_state));
-    buse_write(decrypted_body + offset5, sizeof buffer5, offset5, (void *) buselfs_state);
+    buse_write(test_play_data + offset5, sizeof buffer5, offset5, (void *) buselfs_state);
     buse_read(buffer5, sizeof buffer5, offset5, (void *) buselfs_state);
-    IFENERGYMON(blfs_energymon_fini(buselfs_state));
 
-    TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset5, buffer5, sizeof buffer5);
+    TEST_ASSERT_EQUAL_MEMORY(test_play_data + offset5, buffer5, sizeof buffer5);
 }
 
 void test_buse_write_dirty_write_triggers_rekeying3(void)
 {
-    if(BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
-    {
-        TEST_IGNORE_MESSAGE("BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION is in effect. All non- AES-XTS emulation tests will be ignored!");
-        return;
-    }
-
     free(buselfs_state->backstore);
 
     blfs_run_mode_open(BACKSTORE_FILE_PATH, (uint8_t)(0), buselfs_state);
@@ -1317,22 +1021,14 @@ void test_buse_write_dirty_write_triggers_rekeying3(void)
     uint8_t buffer6[1] = { 0x00 };
     uint64_t offset6 = 47;
 
-    IFENERGYMON(blfs_energymon_init(buselfs_state));
-    buse_write(decrypted_body + offset6, sizeof buffer6, offset6, (void *) buselfs_state);
+    buse_write(test_play_data + offset6, sizeof buffer6, offset6, (void *) buselfs_state);
     buse_read(buffer6, sizeof buffer6, offset6, (void *) buselfs_state);
-    IFENERGYMON(blfs_energymon_fini(buselfs_state));
 
-    TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset6, buffer6, sizeof buffer6);
+    TEST_ASSERT_EQUAL_MEMORY(test_play_data + offset6, buffer6, sizeof buffer6);
 }
 
 void test_buse_write_dirty_write_triggers_rekeying4(void)
 {
-    if(BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
-    {
-        TEST_IGNORE_MESSAGE("BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION is in effect. All non- AES-XTS emulation tests will be ignored!");
-        return;
-    }
-
     free(buselfs_state->backstore);
 
     blfs_run_mode_open(BACKSTORE_FILE_PATH, (uint8_t)(0), buselfs_state);
@@ -1340,22 +1036,14 @@ void test_buse_write_dirty_write_triggers_rekeying4(void)
     uint8_t buffer7[1] = { 0x00 };
     uint64_t offset7 = 35;
 
-    IFENERGYMON(blfs_energymon_init(buselfs_state));
-    buse_write(decrypted_body + offset7, sizeof buffer7, offset7, (void *) buselfs_state);
+    buse_write(test_play_data + offset7, sizeof buffer7, offset7, (void *) buselfs_state);
     buse_read(buffer7, sizeof buffer7, offset7, (void *) buselfs_state);
-    IFENERGYMON(blfs_energymon_fini(buselfs_state));
 
-    TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset7, buffer7, sizeof buffer7);
+    TEST_ASSERT_EQUAL_MEMORY(test_play_data + offset7, buffer7, sizeof buffer7);
 }
 
 void test_buse_write_dirty_write_triggers_rekeying5(void)
 {
-    if(BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
-    {
-        TEST_IGNORE_MESSAGE("BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION is in effect. All non- AES-XTS emulation tests will be ignored!");
-        return;
-    }
-
     free(buselfs_state->backstore);
 
     blfs_run_mode_open(BACKSTORE_FILE_PATH, (uint8_t)(0), buselfs_state);
@@ -1363,22 +1051,14 @@ void test_buse_write_dirty_write_triggers_rekeying5(void)
     uint8_t buffer7[1] = { 0x00 };
     uint64_t offset7 = 0;
 
-    IFENERGYMON(blfs_energymon_init(buselfs_state));
-    buse_write(decrypted_body + offset7, sizeof buffer7, offset7, (void *) buselfs_state);
+    buse_write(test_play_data + offset7, sizeof buffer7, offset7, (void *) buselfs_state);
     buse_read(buffer7, sizeof buffer7, offset7, (void *) buselfs_state);
-    IFENERGYMON(blfs_energymon_fini(buselfs_state));
 
-    TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset7, buffer7, sizeof buffer7);
+    TEST_ASSERT_EQUAL_MEMORY(test_play_data + offset7, buffer7, sizeof buffer7);
 }
 
 void test_buse_write_dirty_write_triggers_rekeying6(void)
 {
-    if(BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
-    {
-        TEST_IGNORE_MESSAGE("BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION is in effect. All non- AES-XTS emulation tests will be ignored!");
-        return;
-    }
-
     free(buselfs_state->backstore);
 
     blfs_run_mode_open(BACKSTORE_FILE_PATH, (uint8_t)(0), buselfs_state);
@@ -1386,22 +1066,14 @@ void test_buse_write_dirty_write_triggers_rekeying6(void)
     uint8_t buffer7[8] = { 0x00 };
     uint64_t offset7 = 0;
 
-    IFENERGYMON(blfs_energymon_init(buselfs_state));
-    buse_write(decrypted_body + offset7, sizeof buffer7, offset7, (void *) buselfs_state);
+    buse_write(test_play_data + offset7, sizeof buffer7, offset7, (void *) buselfs_state);
     buse_read(buffer7, sizeof buffer7, offset7, (void *) buselfs_state);
-    IFENERGYMON(blfs_energymon_fini(buselfs_state));
 
-    TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset7, buffer7, sizeof buffer7);
+    TEST_ASSERT_EQUAL_MEMORY(test_play_data + offset7, buffer7, sizeof buffer7);
 }
 
 void test_buse_write_dirty_write_triggers_rekeying7(void)
 {
-    if(BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
-    {
-        TEST_IGNORE_MESSAGE("BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION is in effect. All non- AES-XTS emulation tests will be ignored!");
-        return;
-    }
-
     free(buselfs_state->backstore);
 
     blfs_run_mode_open(BACKSTORE_FILE_PATH, (uint8_t)(0), buselfs_state);
@@ -1409,22 +1081,14 @@ void test_buse_write_dirty_write_triggers_rekeying7(void)
     uint8_t buffer7[1] = { 0x00 };
     uint64_t offset7 = 47;
 
-    IFENERGYMON(blfs_energymon_init(buselfs_state));
-    buse_write(decrypted_body + offset7, sizeof buffer7, offset7, (void *) buselfs_state);
+    buse_write(test_play_data + offset7, sizeof buffer7, offset7, (void *) buselfs_state);
     buse_read(buffer7, sizeof buffer7, offset7, (void *) buselfs_state);
-    IFENERGYMON(blfs_energymon_fini(buselfs_state));
 
-    TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset7, buffer7, sizeof buffer7);
+    TEST_ASSERT_EQUAL_MEMORY(test_play_data + offset7, buffer7, sizeof buffer7);
 }
 
 void test_buse_write_dirty_write_triggers_rekeying8(void)
 {
-    if(BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
-    {
-        TEST_IGNORE_MESSAGE("BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION is in effect. All non- AES-XTS emulation tests will be ignored!");
-        return;
-    }
-
     free(buselfs_state->backstore);
 
     blfs_run_mode_open(BACKSTORE_FILE_PATH, (uint8_t)(0), buselfs_state);
@@ -1432,12 +1096,10 @@ void test_buse_write_dirty_write_triggers_rekeying8(void)
     uint8_t buffer7[8] = { 0x00 };
     uint64_t offset7 = 40;
 
-    IFENERGYMON(blfs_energymon_init(buselfs_state));
-    buse_write(decrypted_body + offset7, sizeof buffer7, offset7, (void *) buselfs_state);
+    buse_write(test_play_data + offset7, sizeof buffer7, offset7, (void *) buselfs_state);
     buse_read(buffer7, sizeof buffer7, offset7, (void *) buselfs_state);
-    IFENERGYMON(blfs_energymon_fini(buselfs_state));
 
-    TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset7, buffer7, sizeof buffer7);
+    TEST_ASSERT_EQUAL_MEMORY(test_play_data + offset7, buffer7, sizeof buffer7);
 }
 
 static void readwrite_quicktests()
@@ -1450,7 +1112,6 @@ static void readwrite_quicktests()
     expected_buffer1[4094] = 0xAA;
     uint32_t offset = 0;
 
-    IFENERGYMON(blfs_energymon_init(buselfs_state));
 
     for(; offset < 1024; offset++)
     {
@@ -1496,8 +1157,6 @@ static void readwrite_quicktests()
     buse_read(buffer, sizeof buffer, offset, (void *) buselfs_state);
 
     TEST_ASSERT_EQUAL_MEMORY_MESSAGE(expected_buffer1, buffer, sizeof buffer, strbuf);
-
-    IFENERGYMON(blfs_energymon_fini(buselfs_state));
 }
 
 void test_strongbox_main_actual_creates(void)
@@ -1571,8 +1230,8 @@ void test_strongbox_main_actual_creates_with_alternate_cipher_and_tpm(void)
     readwrite_quicktests();
 }
 
-// TODO: something is wrong here (we probably need a bigger backsize/realistic offset/size calculations)
-/*void test_strongbox_main_actual_creates_expected_buselfs_state(void)
+
+void test_strongbox_main_actual_creates_expected_buselfs_state(void)
 {
     zlog_fini();
 
@@ -1584,29 +1243,29 @@ void test_strongbox_main_actual_creates_with_alternate_cipher_and_tpm(void)
         "--tpm-id",
         "115",
         "--cipher",
-        "sc_salsa8",
+        "sc_aes256_xts",
         "--backstore-size",
-        "2048",
+        "32768",
         "--flake-size",
-        "2048",
+        "512",
         "--flakes-per-nugget",
-        "32",
+        "64",
         "create",
         "device_actual-115"
     };
 
     buselfs_state = strongbox_main_actual(argc, argv_create1, blockdevice);
     
-    TEST_ASSERT_EQUAL_UINT(sc_salsa8, buselfs_state->default_crypt_context);
+    TEST_ASSERT_EQUAL_UINT(sc_aes256_xts, buselfs_state->active_cipher->enum_id);
     TEST_ASSERT_EQUAL_UINT(115, buselfs_state->rpmb_secure_index);
     TEST_ASSERT_EQUAL_UINT(65536, buselfs_state->backstore->nugget_size_bytes);
     TEST_ASSERT_EQUAL_UINT(2048, buselfs_state->backstore->flake_size_bytes);
     TEST_ASSERT_EQUAL_UINT(2147483648, buselfs_state->backstore->file_size_actual);
     TEST_ASSERT_EQUAL_UINT(32760, buselfs_state->backstore->num_nuggets);
     TEST_ASSERT_EQUAL_UINT(32, buselfs_state->backstore->flakes_per_nugget);
-}*/
+}
 
-// TODO
+// TODO: fix run mode open
 /*void test_strongbox_main_actual_opens(void)
 {
     zlog_fini();
@@ -1624,7 +1283,7 @@ void test_strongbox_main_actual_creates_with_alternate_cipher_and_tpm(void)
     blfs_backstore_close(buselfs_state->backstore);
 }*/
 
-// TODO
+// TODO: fix run mode open
 /*void test_strongbox_main_actual_opens_after_create()
 {
     zlog_fini();
@@ -1652,44 +1311,37 @@ void test_strongbox_main_actual_creates_with_alternate_cipher_and_tpm(void)
     uint8_t buffer5[8] = { 0x00 };
     uint64_t offset5 = 1;
 
-    buse_write(decrypted_body + offset5, sizeof buffer5, offset5, (void *) buselfs_state);
+    buse_write(test_play_data + offset5, sizeof buffer5, offset5, (void *) buselfs_state);
     buse_read(buffer5, sizeof buffer5, offset5, (void *) buselfs_state);
 
-    TEST_ASSERT_EQUAL_MEMORY(decrypted_body + offset5, buffer5, sizeof buffer5);
+    TEST_ASSERT_EQUAL_MEMORY(test_play_data + offset5, buffer5, sizeof buffer5);
 
     setUp();
 }*/
 
-// TODO: fix run mode open completely first (this test uses outdated values)
+// TODO: fix run mode open
 /*void test_blfs_run_mode_open_works_as_expected(void)
 {
+    buselfs_state->backstore = blfs_backstore_open(BACKSTORE_FILE_PATH);
+    blfs_run_mode_open(BACKSTORE_FILE_PATH, (uint8_t)(0), buselfs_state);
 
-    if(BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
-        TEST_IGNORE_MESSAGE("BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION is in effect. All non- AES-XTS emulation tests will be ignored!");
+    TEST_ASSERT_EQUAL_STRING(BACKSTORE_FILE_PATH, buselfs_state->backstore->file_path);
+    TEST_ASSERT_EQUAL_STRING("test.io.bin", buselfs_state->backstore->file_name);
+    TEST_ASSERT_EQUAL_UINT(109, buselfs_state->backstore->kcs_real_offset);
+    TEST_ASSERT_EQUAL_UINT(133, buselfs_state->backstore->tj_real_offset);
+    TEST_ASSERT_EQUAL_UINT(136, buselfs_state->backstore->kcs_journaled_offset);
+    TEST_ASSERT_EQUAL_UINT(144, buselfs_state->backstore->tj_journaled_offset);
+    TEST_ASSERT_EQUAL_UINT(145, buselfs_state->backstore->nugget_journaled_offset);
+    TEST_ASSERT_EQUAL_UINT(161, buselfs_state->backstore->body_real_offset);
+    TEST_ASSERT_EQUAL_UINT(48, buselfs_state->backstore->writeable_size_actual);
+    TEST_ASSERT_EQUAL_UINT(16, buselfs_state->backstore->nugget_size_bytes);
+    TEST_ASSERT_EQUAL_UINT(209, buselfs_state->backstore->file_size_actual);
+    TEST_ASSERT_EQUAL_UINT(8, buselfs_state->backstore->flake_size_bytes);
+    TEST_ASSERT_EQUAL_UINT(3, buselfs_state->backstore->num_nuggets);
+    TEST_ASSERT_EQUAL_UINT(2, buselfs_state->backstore->flakes_per_nugget);
+    TEST_ASSERT_EQUAL_UINT(209, buselfs_state->backstore->file_size_actual);
 
-    else
-    {
-        buselfs_state->backstore = blfs_backstore_open(BACKSTORE_FILE_PATH);
-        blfs_run_mode_open(BACKSTORE_FILE_PATH, (uint8_t)(0), buselfs_state);
-
-        TEST_ASSERT_EQUAL_STRING(BACKSTORE_FILE_PATH, buselfs_state->backstore->file_path);
-        TEST_ASSERT_EQUAL_STRING("test.io.bin", buselfs_state->backstore->file_name);
-        TEST_ASSERT_EQUAL_UINT(109, buselfs_state->backstore->kcs_real_offset);
-        TEST_ASSERT_EQUAL_UINT(133, buselfs_state->backstore->tj_real_offset);
-        TEST_ASSERT_EQUAL_UINT(136, buselfs_state->backstore->kcs_journaled_offset);
-        TEST_ASSERT_EQUAL_UINT(144, buselfs_state->backstore->tj_journaled_offset);
-        TEST_ASSERT_EQUAL_UINT(145, buselfs_state->backstore->nugget_journaled_offset);
-        TEST_ASSERT_EQUAL_UINT(161, buselfs_state->backstore->body_real_offset);
-        TEST_ASSERT_EQUAL_UINT(48, buselfs_state->backstore->writeable_size_actual);
-        TEST_ASSERT_EQUAL_UINT(16, buselfs_state->backstore->nugget_size_bytes);
-        TEST_ASSERT_EQUAL_UINT(209, buselfs_state->backstore->file_size_actual);
-        TEST_ASSERT_EQUAL_UINT(8, buselfs_state->backstore->flake_size_bytes);
-        TEST_ASSERT_EQUAL_UINT(3, buselfs_state->backstore->num_nuggets);
-        TEST_ASSERT_EQUAL_UINT(2, buselfs_state->backstore->flakes_per_nugget);
-        TEST_ASSERT_EQUAL_UINT(209, buselfs_state->backstore->file_size_actual);
-
-        blfs_backstore_close(buselfs_state->backstore);
-    }
+    blfs_backstore_close(buselfs_state->backstore);
 }*/
 
 // TODO: fix run mode wipe
@@ -1751,16 +1403,10 @@ void test_strongbox_main_actual_creates_with_alternate_cipher_and_tpm(void)
     blfs_backstore_close(buselfs_state->backstore);
 }*/
 
-// TODO: see above
+// TODO: fix run mode wipe
 /*void test_blfs_run_mode_open_properly_opens_wiped_backstores(void)
 {
     free(buselfs_state->backstore);
-
-    if(BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION)
-    {
-        TEST_IGNORE_MESSAGE("BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION is in effect. All non- AES-XTS emulation tests will be ignored!");
-        return;
-    }
 
     CEXCEPTION_T e_expected = EXCEPTION_MUST_HALT;
     volatile CEXCEPTION_T e_actual = EXCEPTION_NO_EXCEPTION;

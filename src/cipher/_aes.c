@@ -1,6 +1,6 @@
 #include "cipher/_aes.h"
 
-void sc_generic_aes_crypt_data(const blfs_stream_cipher_t * stream_cipher,
+void sc_generic_aes_crypt_data(const blfs_swappable_cipher_t * sc,
                                uint64_t interblock_offset,
                                uint64_t intrablock_offset,
                                uint64_t num_blocks,
@@ -16,11 +16,11 @@ void sc_generic_aes_crypt_data(const blfs_stream_cipher_t * stream_cipher,
     (void) zero_str_length;
 
     uint64_t counter = interblock_offset;
-    uint8_t stream_nonce[stream_cipher->nonce_size_bytes];
-    uint8_t raw_key[stream_cipher->key_size_bytes];
+    uint8_t stream_nonce[sc->nonce_size_bytes];
+    uint8_t raw_key[sc->key_size_bytes];
 
     const uint8_t * raw_key_bin = (const uint8_t *) &raw_key;
-    int key_size_bits = (int)(stream_cipher->key_size_bytes * BITS_IN_A_BYTE);
+    int key_size_bits = (int)(sc->key_size_bytes * BITS_IN_A_BYTE);
 
     AES_KEY aes_key;
     AES_KEY * aes_key_ptr = &aes_key;
@@ -36,13 +36,20 @@ void sc_generic_aes_crypt_data(const blfs_stream_cipher_t * stream_cipher,
         memcpy(stream_nonce + sizeof(kcs_keycount), (uint8_t *) &counter, sizeof(counter));
 
         AES_set_encrypt_key(raw_key_bin, key_size_bits, aes_key_ptr);
-        AES_encrypt(stream_nonce, xor_str + (i * stream_cipher->output_size_bytes), aes_key_ptr);
+        AES_encrypt(stream_nonce, xor_str + (i * sc->output_size_bytes), aes_key_ptr);
     }
 }
 
-void sc_impl_aes(blfs_stream_cipher_t * sc)
+void sc_impl_aes(blfs_swappable_cipher_t * sc)
 {
-    sc->crypt_nugget = NULL;
+    sc->name = "AES (partially initialized)";
+
+    sc->key_size_bytes = 0;
+    sc->nonce_size_bytes = 0;
+    sc->output_size_bytes = 0;
+    sc->enum_id = 0;
+    
+    sc->crypt_custom = NULL;
     sc->read_handle = NULL;
     sc->write_handle = NULL;
 }
