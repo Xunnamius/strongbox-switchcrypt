@@ -237,8 +237,8 @@ endif
 
 	$(MAKE) clean -C ../vendor/libestream
 	$(MAKE) libestream.a -C ../vendor/libestream
-	$(MAKE) clean -C ../vendor/chacha-opt
 	cd ../vendor/chacha-opt; ./configure
+	$(MAKE) clean -C ../vendor/chacha-opt
 	$(MAKE) lib -C ../vendor/chacha-opt
 
 src: $(SRC_FILES)
