@@ -15,7 +15,7 @@
 # ! GLOBAL_DEBUG_MODE=0 when not debugging or suffer the (perf-related) consequences!
 # ! GLOBAL_MANUAL_GV_FALLBACK should be set to -1 unless no RPMB device, then >= 0
 GLOBAL_DEBUG_MODE := 0
-GLOBAL_MANUAL_GV_FALLBACK := 0
+GLOBAL_MANUAL_GV_FALLBACK := -1
 
 SRC_ROOT    := ../src
 VENDR_ROOT  := ../vendor
@@ -238,6 +238,7 @@ endif
 	$(MAKE) clean -C ../vendor/libestream
 	$(MAKE) libestream.a -C ../vendor/libestream
 	$(MAKE) clean -C ../vendor/chacha-opt
+	cd ../vendor/chacha-opt; ./configure
 	$(MAKE) lib -C ../vendor/chacha-opt
 
 src: $(SRC_FILES)
