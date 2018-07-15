@@ -63,7 +63,7 @@ void test_rpmb_read_counter_works_as_expected(void)
 
         if(dev_fd < 0)
         {
-            IFDEBUG(dzlog_warn("RPMB device "BLFS_RPMB_DEVICE" not found: %s", strerror(errno)));
+            IFDEBUG(dzlog_warn("RPMB device "BLFS_RPMB_DEVICE" not found during mmc test (wtf?): %s", strerror(errno)));
             Throw(EXCEPTION_OPEN_FAILURE);
         }
 
@@ -174,16 +174,16 @@ void test_integration_with_buselfs_works_as_expected(void)
 
     iofd = open(BACKSTORE_FILE_PATH, O_CREAT | O_RDWR | O_TRUNC, 0777);
 
-    buselfs_state->backstore                    = malloc(sizeof(blfs_backstore_t));
+    buselfs_state->backstore                    = malloc(sizeof *buselfs_state->backstore);
     buselfs_state->backstore->io_fd             = iofd;
-    buselfs_state->backstore->body_real_offset  = 436359;
+    buselfs_state->backstore->body_real_offset  = 180;
     buselfs_state->backstore->file_size_actual  = (uint64_t)(sizeof buffer_init_backstore_state);
 
     blfs_backstore_write(buselfs_state->backstore, buffer_init_backstore_state, sizeof buffer_init_backstore_state, 0);
 
     // Clear the TJ
 
-    blfs_backstore_t * backstore = blfs_backstore_open(BACKSTORE_FILE_PATH);
+    blfs_backstore_t * backstore = blfs_backstore_open_with_ctx(BACKSTORE_FILE_PATH, buselfs_state);
 
     blfs_tjournal_entry_t * entry0 = blfs_open_tjournal_entry(backstore, 0);
     blfs_tjournal_entry_t * entry1 = blfs_open_tjournal_entry(backstore, 1);

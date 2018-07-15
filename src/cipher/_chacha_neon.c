@@ -46,13 +46,4 @@ void sc_generic_chacha_neon_crypt_data(chacha_neon_variant variant,
 void sc_impl_chacha_neon(blfs_swappable_cipher_t * sc)
 {
     sc->name = "Chacha (with NEON optimizations) (partially initialized)";
-
-    sc->key_size_bytes = 0;
-    sc->nonce_size_bytes = 0;
-    sc->output_size_bytes = 0;
-    sc->enum_id = 0;
-
-    sc->crypt_custom = NULL;
-    sc->read_handle = NULL;
-    sc->write_handle = NULL;
 }

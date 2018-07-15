@@ -35,7 +35,7 @@ void setUp(void)
 
     iofd = open(BACKSTORE_FILE_PATH, O_CREAT | O_RDWR | O_TRUNC, 0777);
 
-    fake_backstore = malloc(sizeof(blfs_backstore_t));
+    fake_backstore = malloc(sizeof *fake_backstore);
     fake_backstore->io_fd = iofd;
     fake_backstore->body_real_offset = 128;
 }
@@ -179,6 +179,7 @@ void test_blfs_backstore_create_work_as_expected(void)
     TEST_ASSERT_EQUAL_UINT(0, backstore->writeable_size_actual);
     TEST_ASSERT_EQUAL_UINT(0, backstore->nugget_size_bytes);
     TEST_ASSERT_EQUAL_UINT(0, backstore->flake_size_bytes);
+    TEST_ASSERT_EQUAL_UINT(1, backstore->md_bytes_per_nugget);
     TEST_ASSERT_EQUAL_UINT(0, backstore->num_nuggets);
     TEST_ASSERT_EQUAL_UINT(0, backstore->flakes_per_nugget);
     TEST_ASSERT_EQUAL_UINT(4096, backstore->file_size_actual);
@@ -197,19 +198,38 @@ void test_blfs_backstore_open_work_as_expected(void)
     blfs_backstore_write(fake_backstore, buffer_init_backstore_state, sizeof buffer_init_backstore_state, 0);
 
     blfs_backstore_t * backstore = blfs_backstore_open(BACKSTORE_FILE_PATH);
+    blfs_backstore_t backstore2;
+
+    memcpy(&backstore2, backstore, sizeof backstore2);
 
     TEST_ASSERT_EQUAL_STRING(BACKSTORE_FILE_PATH, backstore->file_path);
     TEST_ASSERT_EQUAL_STRING("test.io.bin", backstore->file_name);
     TEST_ASSERT_EQUAL_UINT(105, backstore->kcs_real_offset);
     TEST_ASSERT_EQUAL_UINT(129, backstore->tj_real_offset);
     TEST_ASSERT_EQUAL_UINT(132, backstore->md_real_offset);
-    TEST_ASSERT_EQUAL_UINT(436359, backstore->body_real_offset);
+    TEST_ASSERT_EQUAL_UINT(0, backstore->body_real_offset);
+
+    blfs_backstore_setup_actual_finish(backstore);
+
+    TEST_ASSERT_EQUAL_UINT(132, backstore->body_real_offset);
     TEST_ASSERT_EQUAL_UINT(48, backstore->writeable_size_actual);
     TEST_ASSERT_EQUAL_UINT(16, backstore->nugget_size_bytes);
     TEST_ASSERT_EQUAL_UINT(8, backstore->flake_size_bytes);
     TEST_ASSERT_EQUAL_UINT(3, backstore->num_nuggets);
     TEST_ASSERT_EQUAL_UINT(2, backstore->flakes_per_nugget);
     TEST_ASSERT_EQUAL_UINT(204, backstore->file_size_actual);
+
+    backstore2.md_bytes_per_nugget = 8;
+
+    blfs_backstore_setup_actual_finish(&backstore2);
+
+    TEST_ASSERT_EQUAL_UINT(156, backstore2.body_real_offset);
+    TEST_ASSERT_EQUAL_UINT(48, backstore2.writeable_size_actual);
+    TEST_ASSERT_EQUAL_UINT(16, backstore2.nugget_size_bytes);
+    TEST_ASSERT_EQUAL_UINT(8, backstore2.flake_size_bytes);
+    TEST_ASSERT_EQUAL_UINT(3, backstore2.num_nuggets);
+    TEST_ASSERT_EQUAL_UINT(2, backstore2.flakes_per_nugget);
+    TEST_ASSERT_EQUAL_UINT(204, backstore2.file_size_actual);
 }
 
 void test_blfs_backstore_close_work_as_expected(void)

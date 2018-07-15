@@ -8,6 +8,20 @@
 
 void blfs_set_cipher_ctx(blfs_swappable_cipher_t * sc_ctx, swappable_cipher_e sc)
 {
+    sc_ctx->name = "<uninitialized>";
+    
+    sc_ctx->enum_id = 0;
+    sc_ctx->output_size_bytes = 0;
+    sc_ctx->key_size_bytes = 0;
+    sc_ctx->nonce_size_bytes = 0;
+    sc_ctx->requested_md_bytes_per_nugget = 0;
+
+    sc_ctx->crypt_data = NULL;
+    sc_ctx->crypt_custom = NULL;
+    sc_ctx->read_handle = NULL;
+    sc_ctx->write_handle = NULL;
+    sc_ctx->calc_handle = NULL;
+
     switch(sc)
     {
         case sc_default:
@@ -126,10 +140,10 @@ void blfs_set_cipher_ctx(blfs_swappable_cipher_t * sc_ctx, swappable_cipher_e sc
     if((sc_ctx->crypt_custom && sc_ctx->crypt_data)
         || ((sc_ctx->crypt_data || sc_ctx->crypt_custom) && (sc_ctx->read_handle || sc_ctx->write_handle))
         || (sc_ctx->crypt_custom == NULL && sc_ctx->crypt_data == NULL && sc_ctx->read_handle == NULL && sc_ctx->write_handle == NULL)
-        || (sc_ctx->name == NULL || sc_ctx->enum_id <= 0 || sc_ctx->enum_id != sc)
+        || (sc_ctx->name == NULL || sc_ctx->enum_id <= 0 || (sc != sc_default && sc_ctx->enum_id != sc))
     )
     {
-        IFDEBUG(dzlog_fatal("ERROR: cipher has an invalid configuration"));
+        IFDEBUG(dzlog_fatal("ERROR: cipher has an invalid configuration, please report this"));
         IFDEBUG(dzlog_debug("valid configs are: `crypt_data` != NULL, `crypt_custom` != NULL, or `read_handle` AND `write_handle` != NULL"));
         Throw(EXCEPTION_SC_BAD_CIPHER);
     }
@@ -296,4 +310,9 @@ void blfs_swappable_crypt(blfs_swappable_cipher_t * sc,
     IFDEBUG(hdzlog_debug(crypted_data, MIN(64U, data_length)));
 
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
+}
+
+void blfs_calculate_cipher_bytes_per_nugget(blfs_swappable_cipher_t * sc_ctx, buselfs_state_t * buselfs_state)
+{
+    sc_ctx->requested_md_bytes_per_nugget = sc_ctx->calc_handle ? sc_ctx->calc_handle(buselfs_state) : 0;
 }

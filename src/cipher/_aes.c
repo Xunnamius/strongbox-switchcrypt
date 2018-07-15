@@ -43,13 +43,4 @@ void sc_generic_aes_crypt_data(const blfs_swappable_cipher_t * sc,
 void sc_impl_aes(blfs_swappable_cipher_t * sc)
 {
     sc->name = "AES (partially initialized)";
-
-    sc->key_size_bytes = 0;
-    sc->nonce_size_bytes = 0;
-    sc->output_size_bytes = 0;
-    sc->enum_id = 0;
-    
-    sc->crypt_custom = NULL;
-    sc->read_handle = NULL;
-    sc->write_handle = NULL;
 }

@@ -24,26 +24,25 @@
 
 // ! This must be changed/updated if we're adding new storage layers (e.g.
 // ! the new "nugget metadata" layer)
-uint32_t calculate_total_space_required_for_1nug(uint32_t nuggetsize, uint32_t flakes_per_nugget)
+uint32_t calculate_total_space_required_for_1nug(uint32_t nuggetsize, uint32_t flakes_per_nugget, uint32_t md_bytes_per_nugget)
 {
     return nuggetsize // ? Space for 1 nugget
         + BLFS_HEAD_BYTES_KEYCOUNT // ? Space for 1 kcs
         + CEIL(flakes_per_nugget, BITS_IN_A_BYTE) // ? Space for 1 TJ entry
-        + BLFS_HEAD_BYTES_NUGGET_METADATA; // ? Space for 1 nugget md
+        + md_bytes_per_nugget; // ? Space for 1 nugget md
 }
 
 // ! This must be changed/updated if we're adding new storage layers (e.g.
 // ! the new "nugget metadata" layer)
 uint32_t mt_calculate_expected_size(uint32_t nugget_index, buselfs_state_t * buselfs_state)
 {
-    // ? 3*n+(BLFS_HEAD_NUM_HEADERS-3)+(n*fpn)+1
+    // ? 3*N+(BLFS_HEAD_NUM_HEADERS-3)+(nugget_index*fpn)+1
     // See the `merkle_tree` declaration in the `buselfs_state_t` definition in
     // `strongbox.h` for more details on this calculation.
     return 1
         + (BLFS_HEAD_NUM_HEADERS - 3)
         + buselfs_state->backstore->num_nuggets * 3
         + nugget_index * buselfs_state->backstore->flakes_per_nugget;
-    
 }
 
 // ! This must be changed/updated if we're adding new storage layers (e.g.
@@ -53,7 +52,6 @@ uint32_t mt_calculate_flake_offset(uint32_t jump_to_nugget_index, uint32_t flake
     // ? Jump over indicies that aren't associated w/ this nug and land on the
     // ? flake that we're looking for (at an index contained in this nug)
     return mt_calculate_expected_size(jump_to_nugget_index, buselfs_state) + flake_index;
-    
 }
 
 /**
@@ -137,7 +135,8 @@ void update_merkle_tree_root_hash(buselfs_state_t * buselfs_state)
 
 void commit_merkle_tree_root_hash(buselfs_state_t * buselfs_state)
 {
-    //update_merkle_tree_root_hash(buselfs_state);
+    // TODO:! is this breaking shit?
+    update_merkle_tree_root_hash(buselfs_state);
 
     blfs_header_t * mtrh_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_MTRH);
     memcpy(mtrh_header->data, buselfs_state->merkle_tree_root_hash, BLFS_HEAD_HEADER_BYTES_MTRH);
@@ -237,7 +236,7 @@ static void populate_key_cache(buselfs_state_t * buselfs_state)
         // nugget_index => (nugget_key = master_secret+nugget_index)
         for(uint32_t nugget_index = 0; nugget_index < buselfs_state->backstore->num_nuggets; nugget_index++)
         {
-            uint8_t * nugget_key = malloc(sizeof(*nugget_key) * BLFS_CRYPTO_BYTES_KDF_OUT);
+            uint8_t * nugget_key = malloc(BLFS_CRYPTO_BYTES_KDF_OUT * sizeof *nugget_key);
             blfs_keycount_t * count;
             
             count = blfs_open_keycount(buselfs_state->backstore, nugget_index);
@@ -252,7 +251,7 @@ static void populate_key_cache(buselfs_state_t * buselfs_state)
             // nugget_index||flake_index||associated_keycount => master_secret+nugget_index+flake_index+associated_keycount
             for(uint32_t flake_index = 0; flake_index < buselfs_state->backstore->flakes_per_nugget; flake_index++)
             {
-                uint8_t * flake_key = malloc(sizeof(*flake_key) * BLFS_CRYPTO_BYTES_FLAKE_TAG_KEY);
+                uint8_t * flake_key = malloc(BLFS_CRYPTO_BYTES_FLAKE_TAG_KEY * sizeof *flake_key);
 
                 if(flake_key == NULL)
                     Throw(EXCEPTION_ALLOC_FAILURE);
@@ -351,14 +350,16 @@ static void populate_mt(buselfs_state_t * buselfs_state)
         uint8_t hash[BLFS_CRYPTO_BYTES_STRUCT_HASH_OUT];
 
         memcpy(data, &(meta->cipher_ident), 1);
-        memcpy(data + 1, meta->data, meta->data_length - 1);
+
+        if(meta->metadata_length)
+            memcpy(data + 1, meta->metadata, meta->metadata_length);
 
         blfs_chacha20_struct_hash(hash, data, meta->data_length, buselfs_state->backstore->master_secret);
         add_to_merkle_tree(hash, BLFS_CRYPTO_BYTES_STRUCT_HASH_OUT, buselfs_state);
         IFDEBUG(verify_in_merkle_tree(hash, BLFS_CRYPTO_BYTES_STRUCT_HASH_OUT, operations_completed, buselfs_state));
         IFNDEBUG(interact_print_percent_done((operations_completed + 1) * 100 / operations_total));
     }
-    
+
     // Finally, the flake tags
     IFDEBUG(dzlog_debug("MERKLE TREE: adding flake tags..."));
     IFDEBUG(dzlog_debug("MERKLE TREE: starting index %"PRIu32, operations_completed));
@@ -376,7 +377,7 @@ static void populate_mt(buselfs_state_t * buselfs_state)
         for(uint32_t flake_index = 0; flake_index < buselfs_state->backstore->flakes_per_nugget; flake_index++, operations_completed++)
         {
             uint8_t flake_key[BLFS_CRYPTO_BYTES_FLAKE_TAG_KEY] = { 0x00 };
-            uint8_t * tag = malloc(sizeof(*tag) * BLFS_CRYPTO_BYTES_FLAKE_TAG_OUT);
+            uint8_t * tag = malloc(BLFS_CRYPTO_BYTES_FLAKE_TAG_OUT * sizeof *tag);
             uint8_t flake_data[flakesize];
 
             if(tag == NULL)
@@ -479,6 +480,28 @@ void get_flake_key_using_keychain(uint8_t * flake_key,
 
     fk = KHASH_CACHE_GET_WITH_KEY(BLFS_KHASH_NUGGET_KEY_CACHE_NAME, buselfs_state->cache_nugget_keys, kh_flake_key);
     memcpy(flake_key, fk, BLFS_CRYPTO_BYTES_FLAKE_TAG_KEY);
+}
+
+blfs_backstore_t * blfs_backstore_open_with_ctx(const char * path, buselfs_state_t * buselfs_state)
+{
+    blfs_backstore_t * backstore = blfs_backstore_open(path);
+
+    // TODO: choose the larger of the two requested sizes if cipher switching
+    // ? +1 for the byte that holds the swappable_cipher_e identifier associated
+    // ? with that nugget
+    backstore->md_bytes_per_nugget = buselfs_state->active_cipher->requested_md_bytes_per_nugget + 1;
+
+    IFDEBUG(dzlog_debug("cipher requested %"PRIu32" (additional) bytes of metadata per nugget",
+        buselfs_state->active_cipher->requested_md_bytes_per_nugget
+    ));
+
+    IFDEBUG(dzlog_debug("decided to allocate %"PRIu32" bytes of metadata per nugget",
+        backstore->md_bytes_per_nugget
+    ));
+
+    blfs_backstore_setup_actual_finish(backstore);
+
+    return backstore;
 }
 
 int buse_read(void * output_buffer, uint32_t length, uint64_t absolute_offset, void * userdata)
@@ -1045,7 +1068,7 @@ void blfs_rekey_nugget_then_write(buselfs_state_t * buselfs_state,
     for(uint32_t flake_index = 0; flake_index < buselfs_state->backstore->flakes_per_nugget; flake_index++)
     {
         uint8_t flake_key[BLFS_CRYPTO_BYTES_FLAKE_TAG_KEY] = { 0x00 };
-        uint8_t * tag = malloc(sizeof(*tag) * BLFS_CRYPTO_BYTES_FLAKE_TAG_OUT);
+        uint8_t * tag = malloc(BLFS_CRYPTO_BYTES_FLAKE_TAG_OUT * sizeof *tag);
         uint8_t flake_data[flake_size];
         uint32_t mt_offset = mt_calculate_flake_offset(rekeying_nugget_index, flake_index, buselfs_state);
 
@@ -1215,13 +1238,13 @@ void blfs_soft_open(buselfs_state_t * buselfs_state, uint8_t cin_allow_insecure_
     }
 
     commit_merkle_tree_root_hash(buselfs_state);
-
+    
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 }
 
 // TODO: DRY this function and the *soft_open and *wipe versions of this
 // TODO: function waaaay out! This includes the cache population steps that are
-// TODO: duped...
+// TODO: duped. Also, mode_open is lacking many of mode_create's new features!
 void blfs_run_mode_create(const char * backstore_path,
                           uint64_t cin_backstore_size,
                           uint32_t cin_flake_size,
@@ -1233,7 +1256,7 @@ void blfs_run_mode_create(const char * backstore_path,
     volatile blfs_backstore_t * backstore_v;
     volatile uint8_t already_attempted_delete = 0;
     volatile CEXCEPTION_T e = EXCEPTION_NO_EXCEPTION;
-    
+
     IFDEBUG(dzlog_debug("running in CREATE mode!"));
 
     Try
@@ -1244,7 +1267,7 @@ void blfs_run_mode_create(const char * backstore_path,
         // ! will be lost during an exception. It's technically a memory
         // ! leak, but it's not so pressing an issue at the moment.
     }
-    
+
     Catch(e)
     {
         if(e == EXCEPTION_FILE_ALREADY_EXISTS && !already_attempted_delete)
@@ -1360,6 +1383,21 @@ void blfs_run_mode_create(const char * backstore_path,
     memcpy(flakesize_header->data, data_flakesize, BLFS_HEAD_HEADER_BYTES_FLAKESIZE_BYTES);
     memcpy(fpn_header->data, data_fpn, BLFS_HEAD_HEADER_BYTES_FLAKESPERNUGGET);
 
+    // TODO: choose the larger of the two requested sizes if cipher switching
+    // ? +1 for the byte that holds the swappable_cipher_e identifier associated
+    // ? with that nugget
+    buselfs_state->backstore->md_bytes_per_nugget = buselfs_state->active_cipher->requested_md_bytes_per_nugget + 1;
+
+    IFDEBUG(dzlog_debug("cipher requested %"PRIu32" (additional) bytes of metadata per nugget",
+        buselfs_state->active_cipher->requested_md_bytes_per_nugget
+    ));
+
+    IFDEBUG(dzlog_debug("decided to allocate %"PRIu32" bytes of metadata per nugget",
+        buselfs_state->backstore->md_bytes_per_nugget
+    ));
+
+    IFDEBUG(dzlog_debug("calculated md_bytes_per_nugget = %"PRIu32, buselfs_state->backstore->md_bytes_per_nugget));
+
     // Calculate numnugget headers (head and body are packed together; bytes at the end are ignored)
     blfs_header_t * numnuggets_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_NUMNUGGETS);
     blfs_header_t * last_header = blfs_open_header(buselfs_state->backstore,
@@ -1370,7 +1408,11 @@ void blfs_run_mode_create(const char * backstore_path,
     int64_t space_remaining = cin_backstore_size - headersize;
     int64_t num_nuggets_calculated_64 = 0;
 
-    uint64_t total_space_req_for_one_nug = calculate_total_space_required_for_1nug(nuggetsize, cin_flakes_per_nugget);
+    uint64_t total_space_req_for_one_nug = calculate_total_space_required_for_1nug(
+        nuggetsize,
+        cin_flakes_per_nugget,
+        buselfs_state->backstore->md_bytes_per_nugget
+    );
 
     IFDEBUG(dzlog_debug("headersize = %"PRIu64, headersize));
     IFDEBUG(dzlog_debug("nuggetsize = %"PRIu64, nuggetsize));
@@ -1403,7 +1445,8 @@ void blfs_run_mode_create(const char * backstore_path,
 
     // Do some intermediate number crunching
     blfs_backstore_setup_actual_post(buselfs_state->backstore);
-
+    blfs_backstore_setup_actual_finish(buselfs_state->backstore);
+    
     dzlog_notice("Prefetching data caches...");
 
     // Make sure keycounts, tj entries, and nugget metadata are cached (prefetched)
@@ -1446,7 +1489,7 @@ void blfs_run_mode_open(const char * backstore_path, uint8_t cin_allow_insecure_
     IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
     IFDEBUG(dzlog_debug("running in OPEN mode!"));
 
-    buselfs_state->backstore = blfs_backstore_open(backstore_path);
+    buselfs_state->backstore = blfs_backstore_open_with_ctx(backstore_path, buselfs_state);
     blfs_soft_open(buselfs_state, cin_allow_insecure_start);
 
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
@@ -1469,7 +1512,7 @@ buselfs_state_t * strongbox_main_actual(int argc, char * argv[], char * blockdev
     char backstore_path[BLFS_BACKSTORE_FILENAME_MAXLEN] = { 0x00 };
 
     // ! Not free()'d!
-    buselfs_state_t * buselfs_state = malloc(sizeof(*buselfs_state));
+    buselfs_state_t * buselfs_state = malloc(sizeof *buselfs_state);
 
     if(buselfs_state == NULL)
         Throw(EXCEPTION_ALLOC_FAILURE);
@@ -1685,7 +1728,11 @@ buselfs_state_t * strongbox_main_actual(int argc, char * argv[], char * blockdev
     if(cin_flakes_per_nugget < BLFS_HEAD_MIN_FLAKESPERNUGGET)
         Throw(EXCEPTION_TOO_FEW_FLAKES_PER_NUGGET);
 
+    /* Cipher selection and initialization */
+    buselfs_state->active_cipher = malloc(sizeof *buselfs_state->active_cipher);
+    
     blfs_set_cipher_ctx(buselfs_state->active_cipher, cin_cipher);
+    blfs_calculate_cipher_bytes_per_nugget(buselfs_state->active_cipher, buselfs_state);
 
     /* Prepare to setup the backstore file */
 

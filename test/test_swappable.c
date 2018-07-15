@@ -31,6 +31,12 @@ static swappable_cipher_e test_ciphers_fn_crypt_data[] = {
     sc_sosemanuk,
 };
 
+// ! Welcome back !
+
+// ? Any new ciphers should be tested here in this file. You should also include
+// ? tests that validate what blfs_calculate_cipher_bytes_per_nugget calculates
+// ? is what you expect IFF your cipher sets requested_md_bytes_per_nugget != 0.
+
 // ? The *_handle and other functions that some ciphers expose accept a
 // ? virtually infinite set of argument configurations and so must be tested
 // ? individually. Add your tests for new advanced ciphers to this file.
@@ -620,4 +626,19 @@ void test_aes256_xts_handles_offset_crypt_properly(void)
         original_ftb,
         "plaintext failed from-ftb-to$ match"
     );
+}
+
+void test_freestyle_handles_basic_crypt_properly(void)
+{
+    TEST_FAIL();
+}
+
+void test_freestyle_handles_offset_crypt_properly(void)
+{
+    TEST_FAIL();
+}
+
+void test_blfs_calculate_cipher_bytes_per_nugget_calculates_freestyle_md_bytes_properly(void)
+{
+    TEST_FAIL();
 }

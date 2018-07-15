@@ -5,14 +5,21 @@
 #include "backstore.h"
 
 /**
- * Finish initializing a blfs_backstore_t object.
- * 
+ * Continue initializing a blfs_backstore_t object.
+ *
  * This should only be called after first using blfs_backstore_create() and
  * further initializing the backstore and its dependencies.
- *
- * @param  backstore
  */
 void blfs_backstore_setup_actual_post(blfs_backstore_t * backstore);
+
+/**
+ * Finish initializing a blfs_backstore_t object.
+ *
+ * This should only be called after first using blfs_backstore_create() and
+ * blfs_backstore_setup_actual_post(). Before calling this function, ensure
+ * backstore->md_bytes_per_nugget is accurate.
+ */
+void blfs_backstore_setup_actual_finish(blfs_backstore_t * backstore);
 
 /**
  * Initialize a blfs_backstore_t object and create the appropriate backstore

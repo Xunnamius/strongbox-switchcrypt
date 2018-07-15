@@ -109,22 +109,24 @@ typedef struct blfs_tjournal_entry_t
 /**
  * Nugget metadata contains all the stored metadata mapped to particular nugget
  * indices. 1 byte is used to store the encryption cipher (0-255). The rest
- * (BLFS_HEAD_BYTES_NUGGET_METADATA) is reserved for custom use as the cipher requires.
+ * (md_bytes_per_nugget - 1) is reserved for custom use as the cipher requires.
  *
  * @nugget_index    the index of the nugget that this struct corresponds to
  * @data_offset     data offset in the backstore
- * @data_length     total data length in bytes; will be BLFS_HEAD_BYTES_NUGGET_METADATA
+ * @data_length     total data length in bytes; will be
+ * @md_bytes_per_nugget
  * @cipher_ident    value corresponding to swappable_cipher_e (see: constants.h)
- * @data            (BLFS_HEAD_BYTES_NUGGET_METADATA - 1) bytes of data
+ * @data            (md_bytes_per_nugget - 1) bytes of data
  */
 typedef struct blfs_nugget_metadata_t
 {
     uint32_t nugget_index;
     uint64_t data_offset;
     uint64_t data_length;
+    uint64_t metadata_length;
 
     uint8_t cipher_ident;
-    uint8_t * data;
+    uint8_t * metadata;
 } blfs_nugget_metadata_t;
 
 ///////////////////////////
@@ -185,6 +187,7 @@ typedef struct blfs_backstore_t
 
     uint32_t num_nuggets;
     uint32_t flakes_per_nugget;
+    uint32_t md_bytes_per_nugget;
 
     uint8_t master_secret[BLFS_CRYPTO_BYTES_KDF_OUT];
 

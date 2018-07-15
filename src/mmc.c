@@ -150,7 +150,7 @@ void rpmb_read_block(uint16_t blk_addr, uint8_t * data_out)
 
     if(dev_fd < 0)
     {
-        IFDEBUG(dzlog_warn("RPMB device "BLFS_RPMB_DEVICE" not found: %s", strerror(errno)));
+        IFDEBUG(dzlog_debug("RPMB device "BLFS_RPMB_DEVICE" not found while attempting read: %s", strerror(errno)));
         Throw(EXCEPTION_RPMB_DOES_NOT_EXIST);
     }
 
@@ -212,7 +212,7 @@ void rpmb_write_block(uint16_t blk_addr, const uint8_t * data)
 
     if(dev_fd < 0)
     {
-        IFDEBUG(dzlog_warn("RPMB device "BLFS_RPMB_DEVICE" not found: %s", strerror(errno)));
+        IFDEBUG(dzlog_debug("RPMB device "BLFS_RPMB_DEVICE" not found while attempting write: %s", strerror(errno)));
         Throw(EXCEPTION_RPMB_DOES_NOT_EXIST);
     }
 

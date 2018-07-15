@@ -14,7 +14,7 @@ vector_t * vector_init()
 {
     IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
 
-    vector_t * vector = malloc(sizeof(vector_t));
+    vector_t * vector = malloc(sizeof *vector);
 
     if(vector == NULL)
         Throw(EXCEPTION_ALLOC_FAILURE);
@@ -55,7 +55,7 @@ void vector_add(vector_t * vector, void * element)
     if(vector->size == vector->count)
     {
         vector->size *= VECTOR_GROWTH_FACTOR;
-        vector->data = realloc(vector->data, sizeof(void *) * vector->size);
+        vector->data = realloc(vector->data, vector->size * sizeof(void*));
 
         if(vector->data == NULL)
             Throw(EXCEPTION_ALLOC_FAILURE);

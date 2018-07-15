@@ -59,12 +59,14 @@ typedef struct buselfs_state_t
      * ? Transaction journal entries:
      * *    index [n+(BLFS_HEAD_NUM_HEADERS-2), 2*n+(BLFS_HEAD_NUM_HEADERS-3)]
      * ? Nugget metadata structs:
-     * *    index [2*n+(BLFS_HEAD_NUM_HEADERS-2), 3*n+(BLFS_HEAD_NUM_HEADERS-3)]
+     * *    index [2*n+(BLFS_HEAD_NUM_HEADERS-2), 2*n+(BLFS_HEAD_NUM_HEADERS-3)+(n*fpn)]
      * ? Flake poly1305 tags:
-     * *    index [3*n+(BLFS_HEAD_NUM_HEADERS-2), 3*n+(BLFS_HEAD_NUM_HEADERS-3)+(n*fpn)]
+     * *    index [2*n+(BLFS_HEAD_NUM_HEADERS-2)+(n*fpn), 2*n+(BLFS_HEAD_NUM_HEADERS-3)+(2*n*fpn)]
      * 
-     * ?? As of version 500, with (n=10, fpn=5), this structure yields:
-     * * 0 [1, 6] [7, 16] [17, 26] [27, 36] [37, 86]
+     * ?? As of version 500, with (n=3, fpn=2), this structure yields:
+     * * 0 [1, 6] [7, 9] [10, 12] [13, 18] [19, 24]
+     * 
+     * ? Total (since it's zero index) = 2*n+(BLFS_HEAD_NUM_HEADERS-3)+(2*n*fpn)+1
      * 
      * See mt_calculate_expected_size() for exact calculation
      */
@@ -167,7 +169,7 @@ void verify_in_merkle_tree(uint8_t * data, size_t length, uint32_t index, const 
  * add deep changes to the StrongBox internals (e.g. extra n-dependent storage
  * layers).
  */
-uint32_t calculate_total_space_required_for_1nug(uint32_t nuggetsize, uint32_t flakes_per_nugget);
+uint32_t calculate_total_space_required_for_1nug(uint32_t nuggetsize, uint32_t flakes_per_nugget, uint32_t md_bytes_per_nugget);
 
 /**
  * Calculates the expected size of the merkle tree after it's been initially
@@ -210,6 +212,12 @@ int buse_read(void * buffer, uint32_t len, uint64_t offset, void * userdata);
  * @param  userdata (buselfs_state*)
  */
 int buse_write(const void * buffer, uint32_t len, uint64_t offset, void * userdata);
+
+/**
+ * Sugar function wrapping blfs_backstore_open that handles updating
+ * md_bytes_per_nugget at the correct point and with context (buselfs_state).
+ */
+blfs_backstore_t * blfs_backstore_open_with_ctx(const char * path, buselfs_state_t * buselfs_state);
 
 /**
  * Implementation of the StrongBox rekeying procedure for on-write overwrite

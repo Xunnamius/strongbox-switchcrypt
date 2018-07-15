@@ -92,10 +92,10 @@ typedef void (*sc_fn_crypt_data_custom)(
  * the blfs_swappable_cipher_t::crypt_* properties **MUST** also be NULL.
  *
  * Note that this function should only ever operate on a single nugget or its
- * behavior is undefined.
- *
- * ! Also note that nugget_data[0] will always be aligned with the start of the
- * ! first affected flake!
+ * behavior is undefined. Also note that nugget_data[0] will always be aligned
+ * with the start of the first affected flake.
+ * 
+ * ! This function should return the total number of bytes read in.
  */
 typedef int (*sc_fn_read_handle)(
     uint8_t * buffer,
@@ -135,6 +135,8 @@ typedef int (*sc_fn_read_handle)(
  * Note that writes must be flake-atomic, by which I mean it is illegal for your
  * cipher to end up writing less than/some non-multiple of a flake's worth of
  * data to the backstore.
+ * 
+ * ! This function should return the total number of bytes written out.
  */
 typedef int (*sc_fn_write_handle)(
     const uint8_t * buffer,
@@ -152,6 +154,14 @@ typedef int (*sc_fn_write_handle)(
 );
 
 /**
+ * This struct defines a common handle for calculating the requested bytes per
+ * flake of nugget metadata. It is not meant to be accessed directly.
+ */
+typedef uint32_t (*sc_fn_calc_handle)(
+    const buselfs_state_t * buselfs_state
+);
+
+/**
  * A complete package representing a cipher in StrongBox
  */
 struct blfs_swappable_cipher_t
@@ -163,10 +173,14 @@ struct blfs_swappable_cipher_t
     uint64_t key_size_bytes;
     uint64_t nonce_size_bytes;
 
+    uint32_t requested_md_bytes_per_nugget;
+
     sc_fn_crypt_data crypt_data;
     sc_fn_crypt_data_custom crypt_custom;
     sc_fn_read_handle read_handle;
     sc_fn_write_handle write_handle;
+
+    sc_fn_calc_handle calc_handle;
 };
 
 /**
@@ -176,6 +190,13 @@ struct blfs_swappable_cipher_t
  * @param sc
  */
 void blfs_set_cipher_ctx(blfs_swappable_cipher_t * sc_ctx, swappable_cipher_e sc);
+
+/**
+ * Allows the cipher to calculate dynamically the bytes per nugget of metadata
+ * StrongBox will allocate in the backing store during initialization. This
+ * function should be called alongside blfs_set_cipher_ctx.
+ */
+void blfs_calculate_cipher_bytes_per_nugget(blfs_swappable_cipher_t * sc_ctx, buselfs_state_t * buselfs_state);
 
 /**
  * Takes a string and converts it to its corresponding swappable_cipher_e enum

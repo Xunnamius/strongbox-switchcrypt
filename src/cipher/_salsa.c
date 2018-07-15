@@ -40,13 +40,4 @@ void sc_generic_salsa_crypt_data(salsa20_variant variant,
 void sc_impl_salsa(blfs_swappable_cipher_t * sc)
 {
     sc->name = "Salsa (partially initialized)";
-    sc->enum_id = 0;
-
-    sc->key_size_bytes = 0;
-    sc->nonce_size_bytes = 0;
-    sc->output_size_bytes = 0;
-
-    sc->crypt_custom = NULL;
-    sc->read_handle = NULL;
-    sc->write_handle = NULL;
 }

@@ -45,10 +45,7 @@ static void crypt_data(const blfs_swappable_cipher_t * sc,
 
 void sc_impl_rabbit(blfs_swappable_cipher_t * sc)
 {
-    sc->crypt_data = crypt_data;
-    sc->crypt_custom = NULL;
-    sc->read_handle = NULL;
-    sc->write_handle = NULL;
+    sc->crypt_data = &crypt_data;
 
     sc->name = "Rabbit";
     sc->enum_id = sc_rabbit;

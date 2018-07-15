@@ -33,7 +33,7 @@ static void crypt_data(const blfs_swappable_cipher_t * sc,
 void sc_impl_salsa8(blfs_swappable_cipher_t * sc)
 {
     sc_impl_salsa(sc);
-    sc->crypt_data = crypt_data;
+    sc->crypt_data = &crypt_data;
 
     sc->name = "Salsa @ 8 rounds";
     sc->enum_id = sc_salsa8;

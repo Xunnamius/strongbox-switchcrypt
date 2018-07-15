@@ -74,12 +74,12 @@ static blfs_backstore_t * backstore_setup_actual_pre(const char * path)
     IFDEBUG(dzlog_debug("init->file_path = %s", init.file_path));
     IFDEBUG(dzlog_debug("init->file_name = %s", init.file_name));
 
-    blfs_backstore_t * backstore = malloc(sizeof(blfs_backstore_t));
+    blfs_backstore_t * backstore = malloc(sizeof *backstore);
 
     if(backstore == NULL)
         Throw(EXCEPTION_ALLOC_FAILURE);
 
-    memcpy(backstore, &init, sizeof(blfs_backstore_t));
+    memcpy(backstore, &init, sizeof *backstore);
     
     backstore->io_fd = open(backstore->file_path, O_CREAT | O_RDWR, BLFS_DEFAULT_BACKSTORE_FILE_PERMS);
 
@@ -106,7 +106,7 @@ static blfs_backstore_t * backstore_setup_actual_pre(const char * path)
 void blfs_backstore_setup_actual_post(blfs_backstore_t * backstore)
 {
     IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
-
+    
     // ! get the last item in the header (before the start of the kcs) and
     // ! use its offset + length to determine the true length of the HEAD header
     blfs_header_t * header_last = blfs_open_header(backstore, header_types_ordered[BLFS_HEAD_NUM_HEADERS - 1][0]);
@@ -130,8 +130,6 @@ void blfs_backstore_setup_actual_post(blfs_backstore_t * backstore)
     IFDEBUG(dzlog_debug("backstore->flake_size_bytes = %"PRIu32, backstore->flake_size_bytes));
     IFDEBUG(dzlog_debug("header_last->data_length = %"PRIu64, header_last->data_length));
 
-    // ! Maybe I should add some overflow protection here and elsewhere... maybe later
-
     backstore->kcs_real_offset = header_last->data_offset + header_last->data_length;
     backstore->tj_real_offset  = backstore->kcs_real_offset + backstore->num_nuggets * BLFS_HEAD_BYTES_KEYCOUNT;
     backstore->md_real_offset  = backstore->tj_real_offset + backstore->num_nuggets * CEIL(backstore->flakes_per_nugget, BITS_IN_A_BYTE);
@@ -139,8 +137,11 @@ void blfs_backstore_setup_actual_post(blfs_backstore_t * backstore)
     IFDEBUG(dzlog_debug("backstore->kcs_real_offset = %"PRIu64, backstore->kcs_real_offset));
     IFDEBUG(dzlog_debug("backstore->tj_real_offset = %"PRIu64, backstore->tj_real_offset));
     IFDEBUG(dzlog_debug("backstore->md_real_offset = %"PRIu64, backstore->tj_real_offset));
-    
-    backstore->body_real_offset = backstore->md_real_offset + backstore->num_nuggets * BLFS_HEAD_BYTES_NUGGET_METADATA;
+}
+
+void blfs_backstore_setup_actual_finish(blfs_backstore_t * backstore)
+{  
+    backstore->body_real_offset = backstore->md_real_offset + backstore->num_nuggets * backstore->md_bytes_per_nugget;
     IFDEBUG(dzlog_debug("backstore->body_real_offset = %"PRIu64, backstore->body_real_offset));
 
     backstore->nugget_size_bytes = backstore->flakes_per_nugget * backstore->flake_size_bytes;
@@ -150,10 +151,9 @@ void blfs_backstore_setup_actual_post(blfs_backstore_t * backstore)
     IFDEBUG(dzlog_debug("file_size_actual - body_real_offset => %"PRId64, ((int64_t) backstore->file_size_actual) - ((int64_t) backstore->body_real_offset)));
     IFDEBUG(dzlog_debug("backstore->writeable_size_actual = %"PRIu64, backstore->writeable_size_actual));
 
-    if(backstore->writeable_size_actual > backstore->file_size_actual)
+    if(backstore->writeable_size_actual > backstore->file_size_actual - backstore->body_real_offset)
         Throw(EXCEPTION_BACKSTORE_SIZE_TOO_SMALL);
 
-    IFDEBUG(assert(backstore->writeable_size_actual <= ((int64_t) backstore->file_size_actual) - backstore->body_real_offset));
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 }
 
@@ -220,6 +220,7 @@ blfs_backstore_t * blfs_backstore_create(const char * path, uint64_t file_size_b
     backstore->nugget_size_bytes = 0;
     backstore->flake_size_bytes = 0;
     backstore->writeable_size_actual = 0;
+    backstore->md_bytes_per_nugget = 1;
     backstore->num_nuggets = 0;
     backstore->flakes_per_nugget = 0;
 
@@ -237,7 +238,7 @@ blfs_backstore_t * blfs_backstore_open(const char * path)
 
     blfs_backstore_t * backstore = backstore_setup_actual_pre(path);
 
-    // Make sure that the backstore has been initialized
+    // Make sure the backstore has been initialized
     blfs_header_t * header_initialized = blfs_open_header(backstore, BLFS_HEAD_HEADER_TYPE_INITIALIZED);
     uint8_t is_initized = *(header_initialized->data);
 
@@ -285,7 +286,7 @@ void blfs_backstore_read(blfs_backstore_t * backstore, uint8_t * buffer, uint32_
     IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
 
     uint32_t size = length;
-    uint8_t * temp_buffer = malloc(sizeof(uint8_t) * length);
+    uint8_t * temp_buffer = malloc(length * sizeof *temp_buffer);
     uint8_t * original_buffer = temp_buffer;
 
     if(temp_buffer == NULL)
@@ -334,7 +335,7 @@ void blfs_backstore_write(blfs_backstore_t * backstore, const uint8_t * buffer, 
 {
     IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
 
-    uint8_t * temp_buffer = malloc(sizeof(uint8_t) * length);
+    uint8_t * temp_buffer = malloc(length * sizeof *temp_buffer);
     uint8_t * original_buffer = temp_buffer;
 
     if(temp_buffer == NULL)

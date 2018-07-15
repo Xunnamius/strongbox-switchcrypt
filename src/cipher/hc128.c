@@ -43,10 +43,7 @@ static void crypt_data(const blfs_swappable_cipher_t * sc,
 
 void sc_impl_hc128(blfs_swappable_cipher_t * sc)
 {
-    sc->crypt_data = crypt_data;
-    sc->crypt_custom = NULL;
-    sc->read_handle = NULL;
-    sc->write_handle = NULL;
+    sc->crypt_data = &crypt_data;
 
     sc->name = "HC-128";
     sc->enum_id = sc_hc128;

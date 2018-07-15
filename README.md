@@ -35,7 +35,9 @@ This is a complete rewrite of the old buselogfs code. This is a Buse + Chacha20 
 Observe that `nbd_device_name` must always appear last and the desired command
 (`open`, `wipe`, or `create`) second to last.
 
-> Note that `16384 >= flake-size >= 512` and `256 >= flakes-per-nugget >= 64`. For best performance, both should be powers of 2. Further, the following must hold: `backstore-size >= flake-size * flakes-per-nugget`.
+> Note that `16384 >= flake-size >= 512` and `256 >= flakes-per-nugget >= 8`. For best performance, both should be powers of 2. Defaults are `4096` and `64` respectively.
+
+> Further, the following must hold: `backstore-size >= flake-size * flakes-per-nugget + A`. `A` is equal to `total-number-of-nuggets * (greatest-cipher-md-requested-bytes-per-flake + 1)` but is calculated automatically from `flake-size` and `flakes-per-nugget`. The above formula is more important.
 
 Ciphers available for the `--cipher` and `--swap-cipher` are:
 
@@ -292,7 +294,7 @@ Path to the NBD pseudo-device that will be generated on run. Defaults to `/dev/%
 - Byte order is assumed to be **little endian**. Might have to an implement endian conversion layer touching `io.c` and `crypto.c`, perhaps using the standard functions, if this becomes an issue.
 - Merkle Tree implementation has a hard upper limit (2<sup>TREE_DEPTH</sup> or 1,048,576 elements, soft limited to 524288) to the number of leaves and tree node levels 
 - The `open` and `wipe` commands do not currently work, since their proper functioning wasn't necessary for gathering results. If they become germane to the research at some future point, they will be fixed.
-- This prototype has only been tested on the Odroid XU3 platform with Ubuntu Trusty kernel as well as the Odroid XU4 platform with Ubuntu Xenial and no energymon support. No functionality is guaranteed whatsoever on those systems, and it's hit or miss if StrongBox will even compile, let alone function properly, on non-Odroid systems.
-- If you're going to add a new cipher to the collection, be sure to update `src/ciphers.h` as well as add corresponding source and header files to `cipher/`. Also add a new enum entry in `src/constants.h`.
+- This prototype has only been tested on the Odroid XU3 platform with Ubuntu Trusty kernel as well as the Odroid XU4 platform with Ubuntu Xenial and no energymon support. No functionality is guaranteed whatsoever on those systems, and it's hit or miss if StrongBox will even compile, let alone function properly, on non-odroid systems.
+- If you're going to add a new cipher to the collection, be sure to update `src/ciphers.h` and add corresponding source and header files to `src/cipher/`. Also add a new enum entry in `src/constants.h` and add new connective tissue for your cipher to `src/swappable.c`. Finally, don't forget to add your cipher's unit tests to `test/test_swappable.c`.
 - While the OpenSSL linkage and the other specialized cipher versions are specifically optimized for ARM NEON/ARMv6-32 CPU features, neither libsodium nor the estream profile ciphers nor freestyle are specially optimized. StrongBox is also a single-threaded application. On the other hand, dm-crypt has the benefit of ARM NEON/ARMv6-32 hardware optimizations as well as parallelization across CPUs.
 - `--flake-size` must be a power greater than or equal to 64 and, for best performance, should be some power of 2.

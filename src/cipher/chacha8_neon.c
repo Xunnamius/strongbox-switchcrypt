@@ -33,7 +33,7 @@ static void crypt_data(const blfs_swappable_cipher_t * sc,
 void sc_impl_chacha8_neon(blfs_swappable_cipher_t * sc)
 {
     sc_impl_chacha_neon(sc);
-    sc->crypt_data = crypt_data;
+    sc->crypt_data = &crypt_data;
 
     sc->name = "Chacha @ 8 rounds (NEON optimized)";
     sc->enum_id = sc_chacha8_neon;

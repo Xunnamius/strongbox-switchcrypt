@@ -225,8 +225,8 @@ void sc_impl_aes256_xts(blfs_swappable_cipher_t * sc)
     sc->nonce_size_bytes = 0;
     sc->output_size_bytes = 0;
 
-    sc->read_handle = read_handle;
-    sc->write_handle = write_handle;
+    sc->read_handle = &read_handle;
+    sc->write_handle = &write_handle;
     sc->crypt_data = NULL;
     sc->crypt_custom = NULL;
 }

@@ -63,7 +63,7 @@ typedef enum swappable_cipher_e {
     sc_salsa20                  =9,
     sc_aes128_ctr               =10,
     sc_aes256_ctr               =11,
-    sc_hc128                    =12, // ?? Slow because estream impl is low (4b) throughput?
+    sc_hc128                    =12, // ?? Slow because estream impl is low (4 blks/op) throughput?
     sc_rabbit                   =13,
     sc_sosemanuk                =14,
     sc_freestyle_fast           =15,
@@ -127,6 +127,7 @@ typedef enum swappable_cipher_e {
 #define BLFS_CRYPTO_BYTES_AESXTS_KEY            64U // OpenSSL AES-XTS 256-bit requires 64-bit keys (2 32-bit AES keys) 
 #define BLFS_CRYPTO_BYTES_AESXTS_TWEAK          16U // OpenSSL AES-XTS 256-bit requires 16-bit IV
 #define BLFS_CRYPTO_BYTES_AESXTS_DATA_MIN       16U // ! OpenSSL AES-XTS 256-bit will CHOKE AND DIE!!! if passed less
+#define BLFS_CRYPTO_BYTES_FSTYLE_INIT_HASHES    56U // see src/cipher/_freestyle.c
 #define BLFS_CRYPTO_BYTES_KDF_OUT               32U // !! cannot be changed without several changes to swappable.c // crypto_box_SEEDBYTES
 #define BLFS_CRYPTO_BYTES_KDF_SALT              16U // crypto_pwhash_SALTBYTES
 #define BLFS_CRYPTO_BYTES_FLAKE_TAG_OUT         16U // crypto_onetimeauth_poly1305_BYTES
@@ -207,7 +208,7 @@ typedef enum swappable_cipher_e {
 #define BLFS_HEAD_MAX_FLAKESIZE_BYTES           16384U
 #define BLFS_HEAD_MIN_FLAKESIZE_BYTES           512U
 #define BLFS_HEAD_MAX_FLAKESPERNUGGET           256U
-#define BLFS_HEAD_MIN_FLAKESPERNUGGET           64U
+#define BLFS_HEAD_MIN_FLAKESPERNUGGET           8U
 #define BLFS_HEAD_IS_INITIALIZED_VALUE          0x3CU
 #define BLFS_HEAD_WAS_WIPED_VALUE               0x3DU
 
@@ -219,14 +220,7 @@ typedef enum swappable_cipher_e {
 #define BLFS_MANUAL_GV_FALLBACK -1
 #endif
 
-// ["flakes per nugget" * CEIL("max flksize" / "fstyle blk bytes") * 2] + ("flakes per nugget" * 28 "16 bit hashes" * 2) + (1 "sc ident")
-// TODO: can we calculate this at runtime and save some space?
-// (the below is limited by Freestyle stream cipher; assumes max fpn & flksize)
-#define BLFS_HEAD_BYTES_NUGGET_METADATA ( \
-    BLFS_HEAD_MAX_FLAKESPERNUGGET * CEIL(BLFS_HEAD_MAX_FLAKESIZE_BYTES, BLFS_CRYPTO_BYTES_FSTYLE_BLOCK) * 2 \
-    + BLFS_HEAD_MAX_FLAKESPERNUGGET * 56 \
-    + 1 \
-)
+// ! BLFS_HEAD_BYTES_NUGGET_METADATA is deprecated—now calculated dynamically in calc_handle; see swappable.h
 
 ///////////////
 // Backstore //

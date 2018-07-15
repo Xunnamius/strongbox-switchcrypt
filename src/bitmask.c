@@ -17,13 +17,13 @@ bitmask_t * bitmask_init(uint8_t * init_mask, size_t length)
     if(length == 0 || SIZE_MAX / sizeof(uint8_t) < length)
         Throw(EXCEPTION_SIZE_T_OUT_OF_BOUNDS);
 
-    bitmask_t * bitmask = (bitmask_t *) malloc(sizeof(bitmask_t));
+    bitmask_t * bitmask = (bitmask_t *) malloc(sizeof *bitmask);
 
     if(bitmask == NULL)
         Throw(EXCEPTION_ALLOC_FAILURE);
 
     bitmask->byte_length = length;
-    bitmask->mask = calloc(length, sizeof(uint8_t));
+    bitmask->mask = calloc(length, sizeof *bitmask->mask);
 
     if(bitmask->mask == NULL)
         Throw(EXCEPTION_ALLOC_FAILURE);

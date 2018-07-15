@@ -17,6 +17,8 @@
 
 #include "_struts.h"
 
+// ? Ye olde integration tests
+
 // ! The passwords used for this test are always "t" (without the quotes, of
 // ! course)
 // !
@@ -39,6 +41,19 @@ Catch(e_actual)                                   \
 static int iofd;
 static buselfs_state_t * buselfs_state;
 static char blockdevice[BLFS_BACKSTORE_FILENAME_MAXLEN] = { 0x00 };
+static blfs_swappable_cipher_t global_active_cipher;
+
+static void open_real_backstore()
+{
+    free(buselfs_state->backstore);
+
+    buselfs_state->backstore = blfs_backstore_open(BACKSTORE_FILE_PATH);
+
+    // ? set to 8 to match the dummy data
+    buselfs_state->backstore->md_bytes_per_nugget = 8;
+
+    blfs_backstore_setup_actual_finish(buselfs_state->backstore);
+}
 
 static void make_fake_state()
 {
@@ -50,14 +65,20 @@ static void make_fake_state()
     buselfs_state->default_password             = BLFS_DEFAULT_PASS;
     buselfs_state->rpmb_secure_index            = _TEST_BLFS_TPM_ID;
 
+    buselfs_state->active_cipher = &global_active_cipher;
+
     blfs_set_cipher_ctx(buselfs_state->active_cipher, sc_default);
 
     iofd = open(BACKSTORE_FILE_PATH, O_CREAT | O_RDWR | O_TRUNC, 0777);
 
-    buselfs_state->backstore                    = malloc(sizeof(blfs_backstore_t));
+    buselfs_state->backstore                    = malloc(sizeof *buselfs_state->backstore);
     buselfs_state->backstore->io_fd             = iofd;
-    buselfs_state->backstore->body_real_offset  = 436359;
+    buselfs_state->backstore->body_real_offset  = 180;
     buselfs_state->backstore->file_size_actual  = (uint64_t)(sizeof buffer_init_backstore_state);
+
+    // ? set to 8 to match the dummy data
+    buselfs_state->backstore->md_bytes_per_nugget = 8;
+    buselfs_state->active_cipher->requested_md_bytes_per_nugget = buselfs_state->backstore->md_bytes_per_nugget - 1;
 
     blfs_backstore_write(buselfs_state->backstore, buffer_init_backstore_state, sizeof buffer_init_backstore_state, 0);
 
@@ -86,7 +107,7 @@ static void make_fake_state()
 
 static void clear_tj()
 {
-    blfs_backstore_t * backstore = blfs_backstore_open(BACKSTORE_FILE_PATH);
+    blfs_backstore_t * backstore = blfs_backstore_open_with_ctx(BACKSTORE_FILE_PATH, buselfs_state);
 
     blfs_tjournal_entry_t * entry0 = blfs_open_tjournal_entry(backstore, 0);
     blfs_tjournal_entry_t * entry1 = blfs_open_tjournal_entry(backstore, 1);
@@ -204,9 +225,8 @@ void test_adding_and_evicting_from_the_keycache_works_as_expected(void)
 // ! Don't forget to also test using the correct password!
 void test_blfs_soft_open_throws_exception_on_invalid_password(void)
 {
-    free(buselfs_state->backstore);
+    open_real_backstore();
 
-    buselfs_state->backstore = blfs_backstore_open(BACKSTORE_FILE_PATH);
     blfs_header_t * header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_VERIFICATION);
     memset(header->data, 0xFF, BLFS_HEAD_HEADER_BYTES_VERIFICATION);
     blfs_commit_header(buselfs_state->backstore, header);
@@ -220,9 +240,8 @@ void test_blfs_soft_open_throws_exception_on_invalid_password(void)
 
 void test_blfs_soft_open_throws_exception_on_bad_init_header(void)
 {
-    free(buselfs_state->backstore);
+    open_real_backstore();
 
-    buselfs_state->backstore = blfs_backstore_open(BACKSTORE_FILE_PATH);
     blfs_header_t * header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_INITIALIZED);
     memset(header->data, 0xFF, BLFS_HEAD_HEADER_BYTES_INITIALIZED);
     blfs_commit_header(buselfs_state->backstore, header);
@@ -238,9 +257,8 @@ void test_blfs_soft_open_throws_exception_on_invalid_mtrh(void)
 {
     uint8_t data_write[BLFS_HEAD_HEADER_BYTES_MTRH] = { 0xFF, 0xFF };
     blfs_backstore_write(buselfs_state->backstore, data_write, sizeof data_write, 20);
-    free(buselfs_state->backstore);
     
-    buselfs_state->backstore = blfs_backstore_open(BACKSTORE_FILE_PATH);
+    open_real_backstore();
 
     CEXCEPTION_T e_expected = EXCEPTION_INTEGRITY_FAILURE;
     volatile CEXCEPTION_T e_actual = EXCEPTION_NO_EXCEPTION;
@@ -251,9 +269,8 @@ void test_blfs_soft_open_throws_exception_on_invalid_mtrh(void)
 
 void test_blfs_soft_open_does_not_throw_exception_if_ignore_flag_is_1(void)
 {
-    free(buselfs_state->backstore);
+    open_real_backstore();
 
-    buselfs_state->backstore = blfs_backstore_open(BACKSTORE_FILE_PATH);
     blfs_header_t * header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_MTRH);
     memset(header->data, 0xFF, BLFS_HEAD_HEADER_BYTES_MTRH);
     blfs_commit_header(buselfs_state->backstore, header);
@@ -264,9 +281,8 @@ void test_blfs_soft_open_does_not_throw_exception_if_ignore_flag_is_1(void)
 
 void test_blfs_soft_open_works_as_expected(void)
 {
-    free(buselfs_state->backstore);
+    open_real_backstore();
 
-    buselfs_state->backstore = blfs_backstore_open(BACKSTORE_FILE_PATH);
     blfs_soft_open(buselfs_state, (uint8_t)(0));
 
     // Ensure initial state is accurate
@@ -322,6 +338,7 @@ void test_blfs_soft_open_works_as_expected(void)
     TEST_ASSERT_EQUAL_MEMORY(set_initialized, header_initialized->data, BLFS_HEAD_HEADER_BYTES_INITIALIZED);
 
     // Ensure remaining state is accurate
+
     TEST_ASSERT_TRUE(memcmp(buselfs_state->backstore->master_secret, nexpected_master_secret, BLFS_CRYPTO_BYTES_KDF_OUT) != 0);
 
     blfs_backstore_close(buselfs_state->backstore);
@@ -329,14 +346,12 @@ void test_blfs_soft_open_works_as_expected(void)
 
 void test_blfs_soft_open_initializes_keycache_and_merkle_tree_properly(void)
 {
-    free(buselfs_state->backstore);
-
     if(BLFS_DEFAULT_DISABLE_KEY_CACHING)
         TEST_IGNORE_MESSAGE("BLFS_DEFAULT_DISABLE_KEY_CACHING is in effect, so this test will be skipped!");
 
     else
     {
-        buselfs_state->backstore = blfs_backstore_open(BACKSTORE_FILE_PATH);
+        open_real_backstore();
         blfs_soft_open(buselfs_state, (uint8_t)(0));
 
         TEST_ASSERT(KHASH_CACHE_EXISTS(BLFS_KHASH_NUGGET_KEY_CACHE_NAME, buselfs_state->cache_nugget_keys, "0"));
@@ -426,12 +441,13 @@ void test_blfs_run_mode_create_works_when_backstore_exists_already(void)
     TEST_ASSERT_TRUE(memcmp(header_mtrh->data, buffer_init_backstore_state + 20, BLFS_HEAD_HEADER_BYTES_MTRH) != 0);
     TEST_ASSERT_TRUE(memcmp(header_tpmglobalver->data, zero_tpmglobalver, BLFS_HEAD_HEADER_BYTES_TPMGLOBALVER) != 0);
     TEST_ASSERT_TRUE(memcmp(header_verification->data, zero_verification, BLFS_HEAD_HEADER_BYTES_VERIFICATION) != 0);
-    TEST_ASSERT_EQUAL_UINT32(95, *(uint32_t *) header_numnuggets->data);
-    TEST_ASSERT_EQUAL_UINT32(12, *(uint32_t *) header_flakespernugget->data);
-    TEST_ASSERT_EQUAL_UINT32(2, *(uint32_t *) header_flakesize_bytes->data);
+    TEST_ASSERT_EQUAL_UINT32(backstore->num_nuggets, *(uint32_t *) header_numnuggets->data);
+    TEST_ASSERT_EQUAL_UINT32(backstore->flakes_per_nugget, *(uint32_t *) header_flakespernugget->data);
+    TEST_ASSERT_EQUAL_UINT32(backstore->flake_size_bytes, *(uint32_t *) header_flakesize_bytes->data);
     TEST_ASSERT_EQUAL_MEMORY(set_initialized, header_initialized->data, BLFS_HEAD_HEADER_BYTES_INITIALIZED);
 
     // Ensure remaining state is accurate
+
     TEST_ASSERT_TRUE(memcmp(backstore->master_secret, zero_master_secret, BLFS_CRYPTO_BYTES_KDF_OUT) != 0);
 
     blfs_backstore_close(backstore);
@@ -512,10 +528,9 @@ void test_blfs_run_mode_create_initializes_keycache_and_merkle_tree_properly(voi
         blfs_backstore_close(buselfs_state->backstore);
     }
 }
-
+   
 void test_strongbox_main_actual_throws_exception_if_wrong_argc(void)
 {
-   
     CEXCEPTION_T e_expected = EXCEPTION_MUST_HALT;
     volatile CEXCEPTION_T e_actual = EXCEPTION_NO_EXCEPTION;
 
@@ -704,14 +719,14 @@ void test_strongbox_main_actual_throws_exception_if_nonimpl_cipher(void)
 {
     zlog_fini();
 
-    CEXCEPTION_T e_expected = EXCEPTION_SC_ALGO_NO_IMPL;
+    CEXCEPTION_T e_expected = EXCEPTION_STRING_TO_CIPHER_FAILED;//EXCEPTION_SC_ALGO_NO_IMPL;
     volatile CEXCEPTION_T e_actual = EXCEPTION_NO_EXCEPTION;
 
     char * argv[] = {
         "progname",
         "--default-password",
         "--cipher",
-        "sc_chacha8_neon",
+        "sc_not_impl",
         "create",
         "device115"
     };
@@ -724,7 +739,7 @@ void test_strongbox_main_actual_throws_exception_if_nonimpl_cipher(void)
 void test_buse_read_works_as_expected(void)
 {
     free(buselfs_state->backstore);
-
+    
     blfs_run_mode_open(BACKSTORE_FILE_PATH, (uint8_t)(0), buselfs_state);
 
     uint8_t buffer1[1] = { 0x00 };
@@ -793,11 +808,13 @@ void test_buse_read_works_as_expected(void)
 
 void test_buse_writeread_works_as_expected1(void)
 {
+    blfs_backstore_write(buselfs_state->backstore, alternate_mtrh_data, sizeof alternate_mtrh_data, 20);
+
     free(buselfs_state->backstore);
 
     clear_tj();
 
-    blfs_run_mode_open(BACKSTORE_FILE_PATH, (uint8_t)(1), buselfs_state);
+    blfs_run_mode_open(BACKSTORE_FILE_PATH, (uint8_t)(0), buselfs_state);
 
     uint8_t buffer1[20] = { 0x00 };
     uint64_t offset1 = 28;
@@ -810,11 +827,13 @@ void test_buse_writeread_works_as_expected1(void)
 
 void test_buse_writeread_works_as_expected2(void)
 {
+    blfs_backstore_write(buselfs_state->backstore, alternate_mtrh_data, sizeof alternate_mtrh_data, 20);
+    
     free(buselfs_state->backstore);
 
     clear_tj();
 
-    blfs_run_mode_open(BACKSTORE_FILE_PATH, (uint8_t)(1), buselfs_state);
+    blfs_run_mode_open(BACKSTORE_FILE_PATH, (uint8_t)(0), buselfs_state);
 
     uint8_t buffer2[20] = { 0x00 };
     uint64_t offset2 = 28;
@@ -827,11 +846,13 @@ void test_buse_writeread_works_as_expected2(void)
 
 void test_buse_writeread_works_as_expected3(void)
 {
+    blfs_backstore_write(buselfs_state->backstore, alternate_mtrh_data, sizeof alternate_mtrh_data, 20);
+    
     free(buselfs_state->backstore);
 
     clear_tj();
 
-    blfs_run_mode_open(BACKSTORE_FILE_PATH, (uint8_t)(1), buselfs_state);
+    blfs_run_mode_open(BACKSTORE_FILE_PATH, (uint8_t)(0), buselfs_state);
 
     uint8_t buffer3[48] = { 0x00 };
     uint64_t offset3 = 0;
@@ -844,11 +865,13 @@ void test_buse_writeread_works_as_expected3(void)
 
 void test_buse_writeread_works_as_expected4(void)
 {
+    blfs_backstore_write(buselfs_state->backstore, alternate_mtrh_data, sizeof alternate_mtrh_data, 20);
+    
     free(buselfs_state->backstore);
 
     clear_tj();
 
-    blfs_run_mode_open(BACKSTORE_FILE_PATH, (uint8_t)(1), buselfs_state);
+    blfs_run_mode_open(BACKSTORE_FILE_PATH, (uint8_t)(0), buselfs_state);
 
     uint8_t buffer4[8] = { 0x00 };
     uint64_t offset4 = 0;
@@ -862,11 +885,13 @@ void test_buse_writeread_works_as_expected4(void)
 // ? interflake
 void test_buse_writeread_works_as_expected5(void)
 {
+    blfs_backstore_write(buselfs_state->backstore, alternate_mtrh_data, sizeof alternate_mtrh_data, 20);
+    
     free(buselfs_state->backstore);
 
     clear_tj();
 
-    blfs_run_mode_open(BACKSTORE_FILE_PATH, (uint8_t)(1), buselfs_state);
+    blfs_run_mode_open(BACKSTORE_FILE_PATH, (uint8_t)(0), buselfs_state);
 
     uint8_t buffer5[8] = { 0x00 };
     uint64_t offset5 = 1;
@@ -879,11 +904,13 @@ void test_buse_writeread_works_as_expected5(void)
 
 void test_buse_writeread_works_as_expected6(void)
 {
+    blfs_backstore_write(buselfs_state->backstore, alternate_mtrh_data, sizeof alternate_mtrh_data, 20);
+    
     free(buselfs_state->backstore);
 
     clear_tj();
 
-    blfs_run_mode_open(BACKSTORE_FILE_PATH, (uint8_t)(1), buselfs_state);
+    blfs_run_mode_open(BACKSTORE_FILE_PATH, (uint8_t)(0), buselfs_state);
 
     uint8_t buffer6[1] = { 0x00 };
     uint64_t offset6 = 47;
@@ -896,11 +923,13 @@ void test_buse_writeread_works_as_expected6(void)
 
 void test_buse_writeread_works_as_expected7(void)
 {
+    blfs_backstore_write(buselfs_state->backstore, alternate_mtrh_data, sizeof alternate_mtrh_data, 20);
+    
     free(buselfs_state->backstore);
 
     clear_tj();
 
-    blfs_run_mode_open(BACKSTORE_FILE_PATH, (uint8_t)(1), buselfs_state);
+    blfs_run_mode_open(BACKSTORE_FILE_PATH, (uint8_t)(0), buselfs_state);
 
     uint8_t buffer7[1] = { 0x00 };
     uint64_t offset7 = 35;
@@ -913,11 +942,13 @@ void test_buse_writeread_works_as_expected7(void)
 
 void test_buse_writeread_works_as_expected8(void)
 {
+    blfs_backstore_write(buselfs_state->backstore, alternate_mtrh_data, sizeof alternate_mtrh_data, 20);
+    
     free(buselfs_state->backstore);
 
     clear_tj();
 
-    blfs_run_mode_open(BACKSTORE_FILE_PATH, (uint8_t)(1), buselfs_state);
+    blfs_run_mode_open(BACKSTORE_FILE_PATH, (uint8_t)(0), buselfs_state);
 
     uint8_t buffer[8] = { 0x00 };
     uint64_t offset = 17;
@@ -931,11 +962,13 @@ void test_buse_writeread_works_as_expected8(void)
 // ? interflake
 void test_buse_writeread_works_as_expected9(void)
 {
+    blfs_backstore_write(buselfs_state->backstore, alternate_mtrh_data, sizeof alternate_mtrh_data, 20);
+    
     free(buselfs_state->backstore);
 
     clear_tj();
 
-    blfs_run_mode_open(BACKSTORE_FILE_PATH, (uint8_t)(1), buselfs_state);
+    blfs_run_mode_open(BACKSTORE_FILE_PATH, (uint8_t)(0), buselfs_state);
 
     uint8_t buffer[32] = { 0x00 };
     uint64_t offset = 0;
@@ -949,11 +982,13 @@ void test_buse_writeread_works_as_expected9(void)
 // ? interflake internugget
 void test_buse_writeread_works_as_expected10(void)
 {
+    blfs_backstore_write(buselfs_state->backstore, alternate_mtrh_data, sizeof alternate_mtrh_data, 20);
+    
     free(buselfs_state->backstore);
 
     clear_tj();
 
-    blfs_run_mode_open(BACKSTORE_FILE_PATH, (uint8_t)(1), buselfs_state);
+    blfs_run_mode_open(BACKSTORE_FILE_PATH, (uint8_t)(0), buselfs_state);
 
     uint8_t buffer[32] = { 0x00 };
     uint64_t offset = 1;
@@ -967,11 +1002,13 @@ void test_buse_writeread_works_as_expected10(void)
 // ? interflake internugget
 void test_buse_writeread_works_as_expected11(void)
 {
+    blfs_backstore_write(buselfs_state->backstore, alternate_mtrh_data, sizeof alternate_mtrh_data, 20);
+    
     free(buselfs_state->backstore);
 
     clear_tj();
 
-    blfs_run_mode_open(BACKSTORE_FILE_PATH, (uint8_t)(1), buselfs_state);
+    blfs_run_mode_open(BACKSTORE_FILE_PATH, (uint8_t)(0), buselfs_state);
 
     uint8_t buffer[46] = { 0x00 };
     uint64_t offset = 1;
@@ -982,6 +1019,8 @@ void test_buse_writeread_works_as_expected11(void)
     TEST_ASSERT_EQUAL_MEMORY(test_play_data + offset, buffer, sizeof buffer);
 }
 
+// TODO: implement checking if the keycount increased instead of visual cues from debug output
+// TODO: not all of these trigger rekeyings (some are just r/w tests)...???
 void test_buse_write_dirty_write_triggers_rekeying1(void)
 {
     free(buselfs_state->backstore);
@@ -1105,13 +1144,13 @@ void test_buse_write_dirty_write_triggers_rekeying8(void)
 static void readwrite_quicktests()
 {
     dzlog_notice("Running read/write quicktests (stage 1)...\n");
+    fflush(stdout);
 
     uint8_t expected_buffer1[4096];
     memset(&expected_buffer1, 0xCE, 4096);
     expected_buffer1[4095] = 0xAB;
     expected_buffer1[4094] = 0xAA;
     uint32_t offset = 0;
-
 
     for(; offset < 1024; offset++)
     {
@@ -1127,6 +1166,7 @@ static void readwrite_quicktests()
     }
 
     dzlog_notice("Running read/write quicktests (stage 2)...\n");
+    fflush(stdout);
 
     uint8_t expected_buffer2[5000] = { 0x00 };
     memset(&expected_buffer2, 0xFA, 5000);
@@ -1145,6 +1185,7 @@ static void readwrite_quicktests()
     }
 
     dzlog_notice("Running read/write quicktests (stage 3)...\n");
+    fflush(stdout);
 
     // Test end writes
     uint8_t buffer[sizeof expected_buffer1];
@@ -1209,7 +1250,7 @@ void test_strongbox_main_actual_does_not_throw_exception_if_valid_tpm_id(void)
     strongbox_main_actual(6, argv, blockdevice);
 }
 
-void test_strongbox_main_actual_creates_with_alternate_cipher_and_tpm(void)
+void test_strongbox_main_actual_creates_with_cipher_and_tpm(void)
 {
     zlog_fini();
 
@@ -1230,7 +1271,6 @@ void test_strongbox_main_actual_creates_with_alternate_cipher_and_tpm(void)
     readwrite_quicktests();
 }
 
-
 void test_strongbox_main_actual_creates_expected_buselfs_state(void)
 {
     zlog_fini();
@@ -1245,25 +1285,41 @@ void test_strongbox_main_actual_creates_expected_buselfs_state(void)
         "--cipher",
         "sc_aes256_xts",
         "--backstore-size",
-        "32768",
+        "500",
         "--flake-size",
-        "512",
+        "16384",
         "--flakes-per-nugget",
-        "64",
+        "8",
         "create",
         "device_actual-115"
     };
 
     buselfs_state = strongbox_main_actual(argc, argv_create1, blockdevice);
-    
+
     TEST_ASSERT_EQUAL_UINT(sc_aes256_xts, buselfs_state->active_cipher->enum_id);
     TEST_ASSERT_EQUAL_UINT(115, buselfs_state->rpmb_secure_index);
-    TEST_ASSERT_EQUAL_UINT(65536, buselfs_state->backstore->nugget_size_bytes);
-    TEST_ASSERT_EQUAL_UINT(2048, buselfs_state->backstore->flake_size_bytes);
-    TEST_ASSERT_EQUAL_UINT(2147483648, buselfs_state->backstore->file_size_actual);
-    TEST_ASSERT_EQUAL_UINT(32760, buselfs_state->backstore->num_nuggets);
-    TEST_ASSERT_EQUAL_UINT(32, buselfs_state->backstore->flakes_per_nugget);
+    TEST_ASSERT_EQUAL_UINT(131072, buselfs_state->backstore->nugget_size_bytes);
+    TEST_ASSERT_EQUAL_UINT(16384, buselfs_state->backstore->flake_size_bytes);
+    TEST_ASSERT_EQUAL_UINT(524288000, buselfs_state->backstore->file_size_actual);
+    TEST_ASSERT_EQUAL_UINT(3999, buselfs_state->backstore->num_nuggets);
+    TEST_ASSERT_EQUAL_UINT(8, buselfs_state->backstore->flakes_per_nugget);
 }
+
+// void test_strongbox_inits_with_requested_md_bytes_per_nugget(void)
+// {
+//     TEST_FAIL();
+// }
+    
+// void test_strongbox_inits_properly_with_0_md_bytes_per_nugget(void)
+// {
+//     // backstore->md_bytes_per_nugget always >= 1
+//     TEST_FAIL();
+// }
+
+// void test_strongbox_main_actual_creates_with_standard_cipher_and_swap_cipher(void)
+// {
+//     TEST_FAIL();
+// }
 
 // TODO: fix run mode open
 /*void test_strongbox_main_actual_opens(void)
@@ -1322,7 +1378,7 @@ void test_strongbox_main_actual_creates_expected_buselfs_state(void)
 // TODO: fix run mode open
 /*void test_blfs_run_mode_open_works_as_expected(void)
 {
-    buselfs_state->backstore = blfs_backstore_open(BACKSTORE_FILE_PATH);
+    open_real_backstore();
     blfs_run_mode_open(BACKSTORE_FILE_PATH, (uint8_t)(0), buselfs_state);
 
     TEST_ASSERT_EQUAL_STRING(BACKSTORE_FILE_PATH, buselfs_state->backstore->file_path);
@@ -1347,9 +1403,8 @@ void test_strongbox_main_actual_creates_expected_buselfs_state(void)
 // TODO: fix run mode wipe
 /*void test_blfs_run_mode_wipe_works_as_expected(void)
 {
-    free(buselfs_state->backstore);
+    open_real_backstore();
 
-    buselfs_state->backstore = blfs_backstore_open(BACKSTORE_FILE_PATH);
 
     CEXCEPTION_T e_expected = EXCEPTION_MUST_HALT;
     volatile CEXCEPTION_T e_actual = EXCEPTION_NO_EXCEPTION;

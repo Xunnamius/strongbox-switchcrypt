@@ -1,4 +1,5 @@
 #include "cipher/_freestyle.h"
+#include "strongbox.h"
 
 static void variant_as_configuration(freestyle_variant_configuration * config, freestyle_variant variant)
 {
@@ -28,6 +29,15 @@ static void variant_as_configuration(freestyle_variant_configuration * config, f
         default:
             Throw(EXCEPTION_UNKNOWN_FSTYLE_VARIANT);
     }
+}
+
+static uint32_t calc_handle(buselfs_state_t * buselfs_state)
+{
+    // ? {["flakes per nugget" * CEIL("max flksize" / "fstyle blk bytes") * 2] + ("flakes per nugget" * 28 "16 bit hashes" * 2) + (1 "sc ident")} bytes
+    return buselfs_state->backstore->flakes_per_nugget
+        * CEIL(buselfs_state->backstore->flake_size_bytes, BLFS_CRYPTO_BYTES_FSTYLE_BLOCK) * 2
+        + buselfs_state->backstore->flakes_per_nugget * BLFS_CRYPTO_BYTES_FSTYLE_INIT_HASHES
+        + 1;
 }
 
 int sc_generic_freestyle_read_handle(freestyle_variant variant,
@@ -62,7 +72,7 @@ int sc_generic_freestyle_read_handle(freestyle_variant variant,
     // uint64_t counter = interblock_offset;
     // uint8_t stream_nonce[BLFS_CRYPTO_BYTES_FSTYLE_IV];
 
-    // IFDEBUG(assert(sizeof(sc_context->kcs_keycount) + sizeof(counter) <= sizeof(stream_nonce)));
+    // IFDEBUG(assert(sizeof sc_context->kcs_keycount + sizeof counter <= sizeof stream_nonce));
 
     // memset(stream_nonce, 0, sizeof(stream_nonce));
     // memcpy(stream_nonce, kcs_keycount_ptr, sizeof(sc_context->kcs_keycount));
@@ -165,6 +175,5 @@ void sc_impl_freestyle(blfs_swappable_cipher_t * sc)
     sc->nonce_size_bytes = BLFS_CRYPTO_BYTES_FSTYLE_IV;
     sc->output_size_bytes = BLFS_CRYPTO_BYTES_FSTYLE_BLOCK;
 
-    sc->crypt_data = NULL;
-    sc->crypt_custom = NULL;
+    sc->calc_handle = &calc_handle;
 }

@@ -14,7 +14,7 @@
 # ? Same rules as BLFS_DEBUG_LEVEL and BLFS_MANUAL_GV_FALLBACK
 # ! GLOBAL_DEBUG_MODE=0 when not debugging or suffer the (perf-related) consequences!
 # ! GLOBAL_MANUAL_GV_FALLBACK should be set to -1 unless no RPMB device, then >= 0
-GLOBAL_DEBUG_MODE := 1
+GLOBAL_DEBUG_MODE := 0
 GLOBAL_MANUAL_GV_FALLBACK := 0
 
 SRC_ROOT    := ../src
@@ -219,6 +219,7 @@ O3:
 
 clean:
 	find . -not -name 'Makefile' -not -name '.gitignore' -type f -exec rm {} +
+	rm -f /tmp/blfs*
 	rm -f /tmp/test.io.bin
 	rm -f sb
 
