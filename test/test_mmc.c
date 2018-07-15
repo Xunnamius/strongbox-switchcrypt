@@ -10,6 +10,7 @@
 #include <sodium.h>
 #include <errno.h>
 #include <assert.h>
+#include <unistd.h>
 
 #include "unity.h"
 #include "strongbox.h"
@@ -31,6 +32,11 @@ Try                                               \
 Catch(e_actual)                                   \
     TEST_ASSERT_EQUAL_HEX_MESSAGE(e_expected, e_actual, "Encountered an unsuspected error condition!");
 
+static int is_sudo()
+{
+    return !geteuid();
+}
+
 void setUp(void)
 {
     if(sodium_init() == -1)
@@ -41,6 +47,12 @@ void setUp(void)
 
     if(dzlog_init(BLFS_CONFIG_ZLOG, buf))
         exit(EXCEPTION_ZLOG_INIT_FAILURE);
+
+    if(BLFS_MANUAL_GV_FALLBACK == -1 && !is_sudo())
+    {
+        dzlog_fatal("Must be root!");
+        exit(255);
+    }
 }
 
 void tearDown(void)
