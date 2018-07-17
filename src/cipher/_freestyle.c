@@ -1,6 +1,8 @@
 #include "cipher/_freestyle.h"
 #include "strongbox.h"
 
+static int32_t INIT_COUNT = 0;
+
 static void variant_as_configuration(freestyle_variant_configuration * config, freestyle_variant variant)
 {
     switch(variant)
@@ -31,15 +33,24 @@ static void variant_as_configuration(freestyle_variant_configuration * config, f
     }
 }
 
-static uint32_t calc_handle(buselfs_state_t * buselfs_state)
+static uint32_t calc_expected_hashes_size_bytes(uint32_t flake_size_bytes, uint64_t output_size_bytes)
 {
-    // ? {["flakes per nugget" * CEIL("max flksize" / "fstyle blk bytes") * 2] + ("flakes per nugget" * 28 "16 bit hashes" * 2) + (1 "sc ident")} bytes
-    return buselfs_state->backstore->flakes_per_nugget
-        * CEIL(buselfs_state->backstore->flake_size_bytes, BLFS_CRYPTO_BYTES_FSTYLE_BLOCK) * 2
-        + buselfs_state->backstore->flakes_per_nugget * BLFS_CRYPTO_BYTES_FSTYLE_INIT_HASHES
-        + 1;
+    // ? space for output hashes
+    return CEIL(flake_size_bytes, output_size_bytes) * 2;
 }
 
+static uint32_t calc_handle(const buselfs_state_t * buselfs_state)
+{
+    // ? {["flakes per nugget" * CEIL("max flksize" / "fstyle blk bytes") * 2] + ("flakes per nugget" * 28 "16 bit hashes" * 2)
+    // ! The (1 "sc ident")} bytes are added by strongbox.c
+
+    return buselfs_state->backstore->flakes_per_nugget
+        * calc_expected_hashes_size_bytes(buselfs_state->backstore->flake_size_bytes, buselfs_state->active_cipher->output_size_bytes)
+        + buselfs_state->backstore->flakes_per_nugget * BLFS_CRYPTO_BYTES_FSTYLE_INIT_HASHES; // ? space for init (input) hashes
+}
+
+// TODO: DRY out the read and write handle functions, refactoring similar code
+// TODO: back into the higher level read and write functions in strongbox.c
 int sc_generic_freestyle_read_handle(freestyle_variant variant,
                                       uint8_t * buffer,
                                       const buselfs_state_t * buselfs_state,
@@ -62,79 +73,100 @@ int sc_generic_freestyle_read_handle(freestyle_variant variant,
 
     const uint8_t * original_buffer = buffer;
 
-    // TODO:!
-    // (void) intrablock_offset;
-    // (void) num_blocks;
-    // (void) block_read_upper_bound;
+    freestyle_variant_configuration config;
+    variant_as_configuration(&config, variant);
 
-    // sc_context_t * sc_context = (sc_context_t *) context;
+    const blfs_nugget_metadata_t * meta = blfs_open_nugget_metadata(buselfs_state->backstore, nugget_offset);
 
-    // uint64_t counter = interblock_offset;
-    // uint8_t stream_nonce[BLFS_CRYPTO_BYTES_FSTYLE_IV];
-
-    // IFDEBUG(assert(sizeof sc_context->kcs_keycount + sizeof counter <= sizeof stream_nonce));
-
-    // memset(stream_nonce, 0, sizeof(stream_nonce));
-    // memcpy(stream_nonce, kcs_keycount_ptr, sizeof(sc_context->kcs_keycount));
-
-    // IFDEBUG(assert(BLFS_CRYPTO_BYTES_FSTYLE_KEY == BLFS_CRYPTO_BYTES_KDF_OUT));
-
-    // int min_rounds = 0;
-    // int max_rounds = 0;
-    // int hash_interval = 0;
-    // int pepper_bits = 0;
-
+    uint32_t expected_hashes_size_bytes = calc_expected_hashes_size_bytes(
+        buselfs_state->backstore->flake_size_bytes,
+        buselfs_state->active_cipher->output_size_bytes
+    );
     
+    for(uint_fast32_t i = 0; flake_index < flake_end; flake_index++, i++)
+    {
+        uint8_t flake_key[BLFS_CRYPTO_BYTES_FLAKE_TAG_KEY];
+        uint8_t tag[BLFS_CRYPTO_BYTES_FLAKE_TAG_OUT];
 
-    // freestyle_ctx crypt;
+        if(BLFS_DEFAULT_DISABLE_KEY_CACHING)
+        {
+            IFDEBUG(dzlog_debug("KEY CACHING DISABLED!"));
+            blfs_poly1305_key_from_data(flake_key, nugget_key, flake_index, count->keycount);
+        }
 
-    // for(uint64_t i = 0; i < num_blocks; i++, counter++)
-    // {
-    //     // ! Needs to be more flexible taking into account changing constants like FSTYLE IV size et al
-    //     memcpy(stream_nonce + sizeof(sc_context->kcs_keycount) - 4, (uint8_t *) &counter, sizeof(counter));
+        else
+        {
+            IFDEBUG(dzlog_debug("KEY CACHING ENABLED!"));
+            get_flake_key_using_keychain(flake_key, buselfs_state, nugget_offset, flake_index, count->keycount);
+        }
+
+        blfs_poly1305_generate_tag(tag, nugget_data + (i * flake_size), flake_size, flake_key);
+        verify_in_merkle_tree(tag, sizeof tag, mt_offset + nugget_offset * flakes_per_nugget + flake_index, buselfs_state);
+
+        uint8_t flake_plaintext[flake_size];
+        uint32_t first_flake_internal_offset = nugget_internal_offset - first_affected_flake * flake_size;
+
+        // ! Potential endianness problem
+        uint32_t nonce = nugget_offset * flakes_per_nugget + flake_index;
+        uint8_t * nonce_ptr = (uint8_t *) &nonce;
+        uint8_t stream_nonce[buselfs_state->active_cipher->nonce_size_bytes];
         
-    //     if(backstore->read_state)
-    //     {
-    //         freestyle_init_encrypt(
-    //             &crypt,
-    //             sc_context->nugget_key,
-    //             BLFS_CRYPTO_BYTES_FSTYLE_KEY * BITS_IN_A_BYTE,
-    //             stream_nonce,
-    //             min_rounds,
-    //             max_rounds,
-    //             hash_interval,
-    //             pepper_bits
-    //         );
+        memcpy(stream_nonce, nonce_ptr, sizeof nonce);
 
-    //         freestyle_encrypt_block(&crypt, )
-    //     }
+        IFDEBUG(assert(buselfs_state->active_cipher->key_size_bytes == BLFS_CRYPTO_BYTES_FLAKE_TAG_KEY));
+        IFDEBUG(assert(buselfs_state->active_cipher->nonce_size_bytes >= sizeof nonce));
 
-    //     else
-    //     {
-    //         freestyle_init_decrypt(
-    //             &crypt,
-    //             sc_context->nugget_key,
-    //             BLFS_CRYPTO_BYTES_FSTYLE_KEY * BITS_IN_A_BYTE,
-    //             stream_nonce,
-    //             min_rounds,
-    //             max_rounds,
-    //             hash_interval,
-    //             pepper_bits,
+        freestyle_ctx crypt;
 
-    //         );
+        uint16_t * init_hashes     = (uint16_t *)(meta->metadata + i * BLFS_CRYPTO_BYTES_FSTYLE_INIT_HASHES);
+        uint16_t * expected_hashes = (uint16_t *)(meta->metadata
+            + buselfs_state->backstore->flakes_per_nugget * BLFS_CRYPTO_BYTES_FSTYLE_INIT_HASHES
+            + i * expected_hashes_size_bytes);
 
-    //         freestyle_decrypt_block(&crypt, stream_nonce, xor_str + (i * sc_context->output_size_bytes))
-    //     }
-    // }
+        freestyle_init_decrypt(
+            &crypt,
+            flake_key,
+            sizeof(flake_key) * BITS_IN_A_BYTE,
+            stream_nonce,
+            config.min_rounds,
+            config.max_rounds,
+            config.hash_interval,
+            config.pepper_bits,
+            init_hashes,
+            (uint8_t *) &INIT_COUNT
+        );
 
-    // for(uint64_t i = intrablock_offset, j = block_read_upper_bound, k = 0; i < j; ++i, ++k)
-    // {
-    //     IFDEBUG(assert(k < sc_context->data_length));
-    //     sc_context->crypted_data[k] = sc_context->data[k] ^ xor_str[i];
-    // }
+        IFDEBUG(assert(flake_size == (uint16_t) flake_size));
 
-    // hc128_init(&output_state, raw_key, stream_nonce);
-    // hc128_extract(&output_state, xor_str + (i * sc_context->output_size_bytes));
+        freestyle_decrypt(&crypt, nugget_data + (i * flake_size), flake_plaintext, flake_size, expected_hashes);
+
+        if(first_nugget && flake_index == first_affected_flake)
+        {
+            uint32_t flake_internal_length = MIN(buffer_read_length, flake_size - first_flake_internal_offset);
+
+            IFDEBUG(assert(first_flake_internal_offset + flake_internal_length <= flake_size));
+            memcpy(buffer, flake_plaintext + first_flake_internal_offset, flake_internal_length);
+
+            buffer += flake_internal_length;
+        }
+
+        else if(last_nugget && flake_index == flake_end - 1)
+        {
+            uint32_t flake_internal_end_length = buffer_read_length - (i * flake_size - (first_nugget ? first_flake_internal_offset : 0));
+
+            IFDEBUG(assert(flake_internal_end_length <= flake_size));
+            IFDEBUG(assert(flake_internal_end_length > 0));
+            memcpy(buffer, flake_plaintext, flake_internal_end_length);
+
+            buffer += flake_internal_end_length;
+        }
+
+        else
+        {
+            memcpy(buffer, flake_plaintext, flake_size);
+            buffer += flake_size;
+        }
+    }
 
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 
@@ -159,7 +191,242 @@ int sc_generic_freestyle_write_handle(freestyle_variant variant,
 
     const uint8_t * original_buffer = buffer;
 
-    // TODO:!
+    freestyle_variant_configuration config;
+    variant_as_configuration(&config, variant);
+
+    // ! Maybe update and commit the MTRH here first and again later?
+    uint_fast32_t flake_total_bytes_to_write = buffer_write_length;
+    uint_fast32_t nugget_size = buselfs_state->backstore->nugget_size_bytes;
+
+    blfs_nugget_metadata_t * meta = blfs_open_nugget_metadata(buselfs_state->backstore, nugget_offset);
+
+    uint32_t expected_hashes_size_bytes = calc_expected_hashes_size_bytes(
+        buselfs_state->backstore->flake_size_bytes,
+        buselfs_state->active_cipher->output_size_bytes
+    );
+
+    for(uint_fast32_t i = 0; flake_index < flake_end; flake_index++, i++)
+    {
+        uint_fast32_t flake_write_length = MIN(flake_total_bytes_to_write, flake_size - flake_internal_offset);
+
+        uint16_t * init_hashes     = (uint16_t *)(meta->metadata + i * BLFS_CRYPTO_BYTES_FSTYLE_INIT_HASHES);
+        uint16_t * expected_hashes = (uint16_t *)(meta->metadata
+            + buselfs_state->backstore->flakes_per_nugget * BLFS_CRYPTO_BYTES_FSTYLE_INIT_HASHES
+            + i * expected_hashes_size_bytes);
+        
+        // ! Potential endianness problem
+        uint32_t nonce = nugget_offset * flakes_per_nugget + flake_index;
+        uint8_t * nonce_ptr = (uint8_t *) &nonce;
+        uint8_t stream_nonce[buselfs_state->active_cipher->nonce_size_bytes];
+        
+        memset(stream_nonce, 0, sizeof stream_nonce);
+        memcpy(stream_nonce, nonce_ptr, sizeof nonce);
+
+        IFDEBUG(assert(buselfs_state->active_cipher->key_size_bytes == BLFS_CRYPTO_BYTES_FLAKE_TAG_KEY));
+        IFDEBUG(assert(buselfs_state->active_cipher->nonce_size_bytes >= sizeof nonce));
+
+        IFDEBUG(dzlog_debug("flake_write_length: %"PRIuFAST32, flake_write_length));
+        IFDEBUG(dzlog_debug("flake_index: %"PRIuFAST32, flake_index));
+        IFDEBUG(dzlog_debug("flake_end: %"PRIuFAST32, flake_end));
+
+        uint8_t flake_data[flake_size];
+        uint8_t flake_out[flake_size];
+        IFDEBUG(memset(flake_data, 0x3D, flake_size));
+        IFDEBUG(memset(flake_out, 0x3E, flake_size));
+
+        // ! Data to write isn't aligned and/or is smaller than
+        // ! flake_size, so we need to verify its integrity
+        if(flake_internal_offset != 0 || flake_internal_offset + flake_write_length < flake_size)
+        {
+            IFDEBUG(dzlog_debug("UNALIGNED! Write flake requires verification"));
+
+            // Read in the entire flake
+            blfs_backstore_read_body(buselfs_state->backstore,
+                                    flake_data,
+                                    flake_size,
+                                    nugget_offset * nugget_size + flake_index * flake_size);
+            
+            // Generate a local flake key
+            uint8_t local_flake_key[BLFS_CRYPTO_BYTES_FLAKE_TAG_KEY];
+            uint8_t local_tag[BLFS_CRYPTO_BYTES_FLAKE_TAG_OUT];
+
+            if(BLFS_DEFAULT_DISABLE_KEY_CACHING)
+            {
+                IFDEBUG(dzlog_debug("KEY CACHING DISABLED!"));
+                blfs_poly1305_key_from_data(local_flake_key, nugget_key, flake_index, count->keycount);
+            }
+
+            else
+            {
+                IFDEBUG(dzlog_debug("KEY CACHING ENABLED!"));
+                get_flake_key_using_keychain(local_flake_key, buselfs_state, nugget_offset, flake_index, count->keycount);
+            }
+
+            // Generate tag
+            blfs_poly1305_generate_tag(local_tag, flake_data, flake_size, local_flake_key);
+
+            // Check tag in Merkle Tree
+            verify_in_merkle_tree(local_tag, sizeof local_tag, mt_offset + nugget_offset * flakes_per_nugget + flake_index, buselfs_state);
+        }
+
+        IFDEBUG(dzlog_debug("*complete* flake_data (initial 64 bytes):"));
+        IFDEBUG(hdzlog_debug(flake_data, MIN(64U, flake_size)));
+
+        uint8_t flake_key[BLFS_CRYPTO_BYTES_FLAKE_TAG_KEY];
+        uint8_t tag[BLFS_CRYPTO_BYTES_FLAKE_TAG_OUT];
+
+        if(BLFS_DEFAULT_DISABLE_KEY_CACHING)
+        {
+            IFDEBUG(dzlog_debug("KEY CACHING DISABLED!"));
+            blfs_poly1305_key_from_data(flake_key, nugget_key, flake_index, count->keycount);
+        }
+
+        else
+        {
+            IFDEBUG(dzlog_debug("KEY CACHING ENABLED!"));
+            get_flake_key_using_keychain(flake_key, buselfs_state, nugget_offset, flake_index, count->keycount);
+        }
+
+        if(flake_internal_offset != 0 || flake_internal_offset + flake_write_length < flake_size)
+        {
+            freestyle_ctx decrypt;
+
+            freestyle_init_decrypt(
+                &decrypt,
+                flake_key,
+                sizeof(flake_key) * BITS_IN_A_BYTE,
+                stream_nonce,
+                config.min_rounds,
+                config.max_rounds,
+                config.hash_interval,
+                config.pepper_bits,
+                init_hashes,
+                (uint8_t *) &INIT_COUNT
+            );
+
+            IFDEBUG(assert(flake_size == (uint16_t) flake_size));
+
+            freestyle_decrypt(&decrypt, flake_data, flake_out, flake_size, expected_hashes);
+            memcpy(flake_data, flake_out, flake_size);
+        }
+
+        IFDEBUG(dzlog_debug("flake_write_length: %"PRIuFAST32, flake_write_length));
+        memcpy(flake_data + flake_internal_offset, buffer, flake_write_length);
+
+        freestyle_ctx encrypt;
+
+        freestyle_init_encrypt(
+            &encrypt,
+            flake_key,
+            sizeof(flake_key) * BITS_IN_A_BYTE,
+            stream_nonce,
+            config.min_rounds,
+            config.max_rounds,
+            config.hash_interval,
+            config.pepper_bits,
+            (uint8_t *) &INIT_COUNT
+        );
+
+        freestyle_encrypt(&encrypt, flake_data, flake_out, flake_size, expected_hashes);
+        
+        memcpy(init_hashes, encrypt.init_hash, BLFS_CRYPTO_BYTES_FSTYLE_INIT_HASHES);
+
+        blfs_poly1305_generate_tag(tag, flake_out, flake_size, flake_key);
+
+        IFDEBUG(dzlog_debug("flake_key (initial 64 bytes):"));
+        IFDEBUG(hdzlog_debug(flake_key, MIN(64U, BLFS_CRYPTO_BYTES_FLAKE_TAG_KEY)));
+
+        IFDEBUG(dzlog_debug("tag (initial 64 bytes):"));
+        IFDEBUG(hdzlog_debug(tag, MIN(64U, BLFS_CRYPTO_BYTES_FLAKE_TAG_OUT)));
+
+        IFDEBUG(dzlog_debug("update_in_merkle_tree calculated offset: %"PRIuFAST32,
+                            mt_offset + nugget_offset * flakes_per_nugget + flake_index));
+
+        update_in_merkle_tree(tag, sizeof tag, mt_offset + nugget_offset * flakes_per_nugget + flake_index, buselfs_state);
+
+        blfs_backstore_write_body(buselfs_state->backstore,
+                                  flake_out,
+                                  flake_size,
+                                  nugget_offset * nugget_size + flake_index * flake_size);
+
+        IFDEBUG(dzlog_debug("blfs_backstore_write_body input (initial 64 bytes):"));
+        IFDEBUG(hdzlog_debug(flake_out, MIN(64U, flake_size)));
+
+        // freestyle_ctx encrypt;
+        // freestyle_ctx decrypt;
+
+        // u8 plaintext[flake_write_length];
+        // u8 ciphertext[flake_write_length];
+
+        // // memset(plaintext, 0x77, flake_write_length);
+        // // memset(ciphertext, 0x88, flake_write_length);
+        
+        // freestyle_init_encrypt(
+        //     &encrypt,
+        //     flake_key,
+        //     sizeof(flake_key) * BITS_IN_A_BYTE,
+        //     stream_nonce,
+        //     config.min_rounds,
+        //     config.max_rounds,
+        //     config.hash_interval,
+        //     config.pepper_bits,
+        //     (uint8_t *) &INIT_COUNT
+        // );
+
+        // memcpy(init_hashes, encrypt.init_hash, BLFS_CRYPTO_BYTES_FSTYLE_INIT_HASHES);
+
+        // freestyle_encrypt(&encrypt, buffer, ciphertext, flake_write_length, expected_hashes);
+        
+        // freestyle_init_decrypt(
+        //     &decrypt,
+        //     flake_key,
+        //     sizeof(flake_key) * BITS_IN_A_BYTE,
+        //     stream_nonce,
+        //     config.min_rounds,
+        //     config.max_rounds,
+        //     config.hash_interval,
+        //     config.pepper_bits,
+        //     init_hashes,
+        //     (uint8_t *) &INIT_COUNT
+        // );
+
+        // freestyle_decrypt(&decrypt, ciphertext, plaintext, flake_write_length, expected_hashes);
+
+        // printf("1) enc matches dec: %s\n", 0 == memcmp(plaintext, buffer, flake_write_length) ? "success" : "FAILURE!");
+        // fflush(stdout);
+
+        // flake_internal_offset = 0;
+
+        // IFDEBUG(assert(flake_total_bytes_to_write >= flake_write_length));
+        
+        // flake_total_bytes_to_write -= flake_write_length;
+        // buffer += flake_write_length;
+    }
+
+    if(meta->metadata_length)
+    {
+        blfs_commit_nugget_metadata(buselfs_state->backstore, meta);
+
+        uint8_t data[meta->data_length];
+        uint8_t hash[BLFS_CRYPTO_BYTES_STRUCT_HASH_OUT];
+
+        memcpy(data, &(meta->cipher_ident), 1);
+
+        if(meta->metadata_length)
+            memcpy(data + 1, meta->metadata, meta->metadata_length);
+
+        blfs_chacha20_struct_hash(hash, data, meta->data_length, buselfs_state->backstore->master_secret);
+
+        // ! Update this if you add new layers to StrongBox ahead of the metadata layer
+        // TODO: add another more flexible mt_calculate_* function to
+        // TODO: strongbox.c that can encapsulate these calculations
+        update_in_merkle_tree(
+            hash,
+            sizeof hash,
+            1 + buselfs_state->backstore->num_nuggets * 2 + (BLFS_HEAD_NUM_HEADERS - 3) + nugget_offset,
+            buselfs_state
+        );
+    }
 
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
     

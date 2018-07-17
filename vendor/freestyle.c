@@ -432,7 +432,7 @@ int freestyle_encrypt(
 
         COMPUTE_HASH(x, hash, x->min_rounds);
 
-        hash_collided[hash / 512] |= (1 << (hash % 64));
+        hash_collided[hash / 512] |= ((u64)1 << (hash % 64));
 
         for(r = x->min_rounds + 1; r <= rounds; ++r)
         {
@@ -445,12 +445,12 @@ int freestyle_encrypt(
             {
                 COMPUTE_HASH(x, hash, r);
 
-                while ((hash_collided[hash / 512] & (1 << (hash % 64))) > 0)
+                while ((hash_collided[hash / 512] & ((u64)1 << (hash % 64))) > 0)
                 {
                     ++hash;
                 }
 
-                hash_collided[hash / 512] |= (1 << (hash % 64));
+                hash_collided[hash / 512] |= ((u64)1 << (hash % 64));
             }
         }
 
@@ -596,7 +596,7 @@ int freestyle_decrypt(
         if(hash == expected_hash[block])
             goto decryption;
 
-        hash_collided[hash / 512] |= (1 << (hash % 64));
+        hash_collided[hash / 512] |= ((u64)1 << (hash % 64));
 
         for(r = x->min_rounds + 1; r <= x->max_rounds; ++r)
         {
@@ -609,12 +609,12 @@ int freestyle_decrypt(
             {
                 COMPUTE_HASH(x, hash, r);
 
-                while ((hash_collided[hash / 512] & (1 << (hash % 64))) > 0)
+                while ((hash_collided[hash / 512] & ((u64)1 << (hash % 64))) > 0)
                 {
                     ++hash;
                 }
 
-                hash_collided[hash / 512] |= (1 << (hash % 64));
+                hash_collided[hash / 512] |= ((u64)1 << (hash % 64));
 
                 if(hash == expected_hash[block])
                 {
@@ -730,12 +730,12 @@ u16 freestyle_encrypt_block(
         {
             COMPUTE_HASH(x, hash, r);
 
-            while ((hash_collided[hash / 512] & (1 << (hash % 64))) > 0)
+            while ((hash_collided[hash / 512] & ((u64)1 << (hash % 64))) > 0)
             {
                 ++hash;
             }
 
-            hash_collided[hash / 512] |= (1 << (hash % 64));
+            hash_collided[hash / 512] |= ((u64)1 << (hash % 64));
         }
     }
 
@@ -824,12 +824,12 @@ u16 freestyle_decrypt_block(
         {
             COMPUTE_HASH(x, hash, r);
 
-            while ((hash_collided[hash / 512] & (1 << (hash % 64))) > 0)
+            while ((hash_collided[hash / 512] & ((u64)1 << (hash % 64))) > 0)
             {
                 ++hash;
             }
 
-            hash_collided[hash / 512] |= (1 << (hash % 64));
+            hash_collided[hash / 512] |= ((u64)1 << (hash % 64));
 
             if(hash == *expected_hash)
             {

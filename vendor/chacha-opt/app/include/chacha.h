@@ -11,9 +11,20 @@
 extern "C" {
 #endif
 
+enum chacha_constants {
+	CHACHA_BLOCKBYTES = 64,
+};
+
 typedef struct chacha_state_t {
 	unsigned char opaque[128];
 } chacha_state;
+
+typedef struct chacha_state_internal_t {
+	unsigned char s[48];
+	size_t rounds;
+	size_t leftover;
+	unsigned char buffer[CHACHA_BLOCKBYTES];
+} chacha_state_internal;
 
 typedef struct chacha_key_t {
 	unsigned char b[32];

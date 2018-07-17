@@ -4,17 +4,6 @@
 #include "cpuid.h"
 #include "chacha.h"
 
-enum chacha_constants {
-	CHACHA_BLOCKBYTES = 64,
-};
-
-typedef struct chacha_state_internal_t {
-	unsigned char s[48];
-	size_t rounds;
-	size_t leftover;
-	unsigned char buffer[CHACHA_BLOCKBYTES];
-} chacha_state_internal;
-
 static void * (* volatile secure_memset)(void *, int, size_t) = memset;
 
 typedef struct chacha_impl_t {

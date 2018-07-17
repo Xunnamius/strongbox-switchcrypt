@@ -13,6 +13,7 @@
 
 #define BLFS_TEST_FLAKE_SIZE 512
 #define BLFS_TEST_FLAKES_PER_NUGGET 64
+#define BLFS_TEST_NUGGET_SIZE_BYTES BLFS_TEST_FLAKE_SIZE * BLFS_TEST_FLAKES_PER_NUGGET
 
 static swappable_cipher_e test_ciphers_fn_crypt_data[] = {
     // sc_default,
@@ -34,7 +35,7 @@ static swappable_cipher_e test_ciphers_fn_crypt_data[] = {
 // ! Welcome back !
 
 // ? Any new ciphers should be tested here in this file. You should also include
-// ? tests that validate what blfs_calculate_cipher_bytes_per_nugget calculates
+// ? tests that validate what sc_calculate_cipher_bytes_per_nugget calculates
 // ? is what you expect IFF your cipher sets requested_md_bytes_per_nugget != 0.
 
 // ? The *_handle and other functions that some ciphers expose accept a
@@ -104,7 +105,7 @@ void test_crypt_data_algos_crypt_properly(void)
         size_t i = ri / 2;
         blfs_swappable_cipher_t sc;
 
-        blfs_set_cipher_ctx(&sc, test_ciphers_fn_crypt_data[i]);
+        sc_set_cipher_ctx(&sc, test_ciphers_fn_crypt_data[i]);
         
         if(print)
             dzlog_notice("Testing %s (#%i)", sc.name, (int) test_ciphers_fn_crypt_data[i]);
@@ -172,7 +173,7 @@ void test_crypt_data_algos_with_BIGLY_inputs(void)
         size_t i = ri / 2;
         blfs_swappable_cipher_t sc;
 
-        blfs_set_cipher_ctx(&sc, test_ciphers_fn_crypt_data[i]);
+        sc_set_cipher_ctx(&sc, test_ciphers_fn_crypt_data[i]);
     
         uint8_t data[4096] = { 0x00 };
         randombytes_buf(data, sizeof data);
@@ -227,11 +228,12 @@ void test_aes256_xts_handles_basic_crypt_properly(void)
     nugget_offset = 50;
     // * 1 nugget size = 32768
 
-    blfs_set_cipher_ctx(&sc, sc_aes256_xts);
+    sc_set_cipher_ctx(&sc, sc_aes256_xts);
 
+    TEST_ASSERT_EQUAL_INT32_MESSAGE(0, sc.requested_md_bytes_per_nugget, "requested metadata bytes per nugget init failed");
     uint8_t nugget_key[BLFS_CRYPTO_BYTES_KDF_OUT];
     uint8_t message[BLFS_TEST_FLAKE_SIZE*BLFS_TEST_FLAKES_PER_NUGGET];
-    uint8_t ciphertext[sizeof message];
+    uint8_t ciphertext[sizeof message] = { 0 };
     uint8_t plaintext[sizeof message];
     uint8_t plaintext2[sizeof message];
 
@@ -410,6 +412,7 @@ void test_aes256_xts_handles_basic_crypt_properly(void)
 void test_aes256_xts_handles_offset_crypt_properly(void)
 {
     blfs_swappable_cipher_t sc;
+    buselfs_state_t buselfs_state;
 
     flake_size = BLFS_TEST_FLAKE_SIZE;
     flakes_per_nugget = BLFS_TEST_FLAKES_PER_NUGGET;
@@ -420,13 +423,16 @@ void test_aes256_xts_handles_offset_crypt_properly(void)
     nugget_offset = 50;
     // * 1 nugget size = 32768
 
-    blfs_set_cipher_ctx(&sc, sc_aes256_xts);
+    sc_set_cipher_ctx(&sc, sc_aes256_xts);
+    sc_calculate_cipher_bytes_per_nugget(&sc, &buselfs_state);
+
+    TEST_ASSERT_EQUAL_INT32_MESSAGE(0, sc.requested_md_bytes_per_nugget, "requested metadata bytes per nugget miscalculation");
 
     uint8_t nugget_key[BLFS_CRYPTO_BYTES_KDF_OUT];
     uint8_t message[BLFS_TEST_FLAKE_SIZE*BLFS_TEST_FLAKES_PER_NUGGET];
     uint8_t message2[sizeof message];
-    uint8_t ciphertext[sizeof message];
-    uint8_t ciphertext_original[sizeof message];
+    uint8_t ciphertext[sizeof message] = { 0 };
+    uint8_t ciphertext_original[sizeof message] = { 0 };
     uint8_t plaintext[sizeof message];
 
     memset(ciphertext_original, 0xF0, sizeof message);
@@ -450,7 +456,6 @@ void test_aes256_xts_handles_offset_crypt_properly(void)
         message2[i] = rand();
     }
 
-    buselfs_state_t buselfs_state;
     blfs_backstore_t backstore;
     blfs_keycount_t count;
 
@@ -628,17 +633,186 @@ void test_aes256_xts_handles_offset_crypt_properly(void)
     );
 }
 
-void test_freestyle_handles_basic_crypt_properly(void)
-{
-    TEST_FAIL();
-}
+// void test_freestyle_handles_basic_crypt_properly(void)
+// {
+    // TODO:!
+//     blfs_swappable_cipher_t sc;
+//     buselfs_state_t buselfs_state;
+//     blfs_backstore_t backstore;
+//     blfs_keycount_t count;
+//     swappable_cipher_e cipher;
 
-void test_freestyle_handles_offset_crypt_properly(void)
-{
-    TEST_FAIL();
-}
+//     buselfs_state.backstore = &backstore;
+//     backstore.nugget_size_bytes = BLFS_TEST_NUGGET_SIZE_BYTES;
+//     buselfs_state.active_cipher = &sc;
 
-void test_blfs_calculate_cipher_bytes_per_nugget_calculates_freestyle_md_bytes_properly(void)
-{
-    TEST_FAIL();
-}
+//     flake_size = backstore.flake_size_bytes = BLFS_TEST_FLAKE_SIZE;
+//     flakes_per_nugget = backstore.flakes_per_nugget = BLFS_TEST_FLAKES_PER_NUGGET;
+//     flake_index = 0;
+//     flake_end = 64;
+//     flake_internal_offset = 0;
+//     mt_offset = 127;
+//     nugget_offset = 50;
+    
+//     backstore.md_real_offset = 500;
+//     backstore.num_nuggets = 60;
+
+//     swappable_cipher_e ciphers_under_test[3] = { sc_freestyle_fast, sc_freestyle_balanced, sc_freestyle_secure };
+
+//     for(uint32_t runs = 0; runs < sizeof ciphers_under_test; ++runs)
+//     {
+//         cipher = ciphers_under_test[runs];
+
+//         sc_set_cipher_ctx(&sc, cipher);
+
+//         TEST_ASSERT_EQUAL_INT32_MESSAGE(0, sc.requested_md_bytes_per_nugget, "requested metadata bytes per nugget init failed");
+
+//         sc_calculate_cipher_bytes_per_nugget(&sc, &buselfs_state);
+
+//         TEST_ASSERT_EQUAL_INT32_MESSAGE(4608, sc.requested_md_bytes_per_nugget, "requested metadata bytes per nugget miscalculation");
+
+//         backstore.md_bytes_per_nugget = sc.requested_md_bytes_per_nugget + 1;
+
+//         dzlog_info("Testing %s", sc.name);
+//         fflush(stdout);
+
+//         uint8_t nugget_key[BLFS_CRYPTO_BYTES_KDF_OUT];
+//         uint8_t message[BLFS_TEST_NUGGET_SIZE_BYTES];
+//         uint8_t plaintext[sizeof message];
+//         uint8_t plaintext2[sizeof message];
+//         uint8_t metadata[backstore.md_bytes_per_nugget];
+//         uint8_t * ciphertext = global_buffer1 = malloc(BLFS_TEST_NUGGET_SIZE_BYTES * sizeof(uint8_t));
+
+//         memset(ciphertext, 0x3A, BLFS_TEST_NUGGET_SIZE_BYTES);
+//         memset(metadata, 0xDD, sizeof metadata);
+
+//         srand(5);
+
+//         uint32_t i;
+
+//         for(i = 0; i < sizeof nugget_key; ++i)
+//             nugget_key[i] = rand();
+
+//         for(i = 0; i < sizeof message; ++i)
+//             message[i] = rand();
+
+//         buffer_read_length = (uint_fast32_t) sizeof plaintext;
+//         buffer_write_length = (uint_fast32_t) sizeof message;
+
+//         blfs_nugget_metadata_t meta;
+
+//         meta.data_length = backstore.md_bytes_per_nugget;
+//         meta.metadata_length = meta.data_length - 1;
+//         meta.metadata = metadata;
+//         meta.nugget_index = nugget_offset;
+//         meta.cipher_ident = sc.enum_id;
+
+//         // ? 1 writes + 2 reads
+//         blfs_open_nugget_metadata_ExpectAndReturn(&backstore, nugget_offset, &meta);
+//         blfs_open_nugget_metadata_ExpectAndReturn(&backstore, nugget_offset, &meta);
+//         blfs_open_nugget_metadata_ExpectAndReturn(&backstore, nugget_offset, &meta);
+
+//         for(uint32_t counter = flake_index; counter < flake_end; counter++)
+//         {
+//             // Encrypted write
+//             update_in_merkle_tree_Expect(
+//                 NULL,
+//                 BLFS_CRYPTO_BYTES_FLAKE_TAG_OUT,
+//                 mt_offset + nugget_offset * flakes_per_nugget + counter,
+//                 &buselfs_state
+//             );
+
+//             update_in_merkle_tree_IgnoreArg_data();
+
+//             blfs_backstore_write_body_ExpectAnyArgs();
+//             blfs_backstore_write_body_StubWithCallback(&blfs_backstore_write_body_callback);
+
+//             // For the two reads
+//             verify_in_merkle_tree_ExpectAnyArgs();
+//             verify_in_merkle_tree_ExpectAnyArgs();
+//         }
+
+//         // Commit nugget metadata and hash to merkle tree
+
+//         blfs_commit_nugget_metadata_ExpectAnyArgs();
+//         update_in_merkle_tree_Expect(
+//             NULL,
+//             BLFS_CRYPTO_BYTES_STRUCT_HASH_OUT,
+//             1 + backstore.num_nuggets * 2 + (BLFS_HEAD_NUM_HEADERS - 3) + nugget_offset,
+//             &buselfs_state
+//         );
+
+//         update_in_merkle_tree_IgnoreArg_data();
+
+//         sc.write_handle(
+//             message,
+//             (const buselfs_state_t *) &buselfs_state,
+//             buffer_write_length,
+//             flake_index,
+//             flake_end,
+//             flake_size,
+//             flakes_per_nugget,
+//             flake_internal_offset,
+//             mt_offset,
+//             nugget_key,
+//             nugget_offset,
+//             (const blfs_keycount_t *) &count
+//         );
+
+//         first_affected_flake = 0;
+//         nugget_internal_offset = 0;
+
+//         sc.read_handle(
+//             plaintext,
+//             (const buselfs_state_t *) &buselfs_state,
+//             buffer_read_length,
+//             flake_index,
+//             flake_end,
+//             first_affected_flake,
+//             flake_size,
+//             flakes_per_nugget,
+//             mt_offset,
+//             ciphertext,
+//             nugget_key,
+//             nugget_offset,
+//             nugget_internal_offset,
+//             (const blfs_keycount_t *) &count,
+//             true,
+//             true
+//         );
+
+//         TEST_ASSERT_EQUAL_MEMORY_MESSAGE(message, plaintext, sizeof message, "write-then-read failed");
+
+//         first_affected_flake = 0;
+//         nugget_internal_offset = 0;
+
+//         sc.read_handle(
+//             plaintext2,
+//             (const buselfs_state_t *) &buselfs_state,
+//             buffer_read_length,
+//             flake_index,
+//             flake_end,
+//             first_affected_flake,
+//             flake_size,
+//             flakes_per_nugget,
+//             mt_offset,
+//             ciphertext,
+//             nugget_key,
+//             nugget_offset,
+//             nugget_internal_offset,
+//             (const blfs_keycount_t *) &count,
+//             true,
+//             true
+//         );
+
+//         TEST_ASSERT_EQUAL_MEMORY_MESSAGE(plaintext, plaintext2, sizeof plaintext, "plaintext to plaintext2 match failed");
+
+//         free(ciphertext);
+//     }
+// }
+
+// void test_freestyle_handles_offset_crypt_properly(void)
+// {
+    // TODO:!
+//     TEST_FAIL();
+// }

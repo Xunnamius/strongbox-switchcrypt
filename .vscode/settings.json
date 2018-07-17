@@ -20,7 +20,8 @@
         "mock_io.h": "c",
         "mock_backstore.h": "c",
         "backstore.h": "c",
-        "errno.h": "c"
+        "errno.h": "c",
+        "chacha.h": "c"
     },
     "cSpell.words": [
         "ADTC",

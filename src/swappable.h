@@ -189,14 +189,14 @@ struct blfs_swappable_cipher_t
  *
  * @param sc
  */
-void blfs_set_cipher_ctx(blfs_swappable_cipher_t * sc_ctx, swappable_cipher_e sc);
+void sc_set_cipher_ctx(blfs_swappable_cipher_t * sc_ctx, swappable_cipher_e sc);
 
 /**
  * Allows the cipher to calculate dynamically the bytes per nugget of metadata
  * StrongBox will allocate in the backing store during initialization. This
- * function should be called alongside blfs_set_cipher_ctx.
+ * function should be called alongside sc_set_cipher_ctx.
  */
-void blfs_calculate_cipher_bytes_per_nugget(blfs_swappable_cipher_t * sc_ctx, buselfs_state_t * buselfs_state);
+void sc_calculate_cipher_bytes_per_nugget(blfs_swappable_cipher_t * sc_ctx, buselfs_state_t * buselfs_state);
 
 /**
  * Takes a string and converts it to its corresponding swappable_cipher_e enum

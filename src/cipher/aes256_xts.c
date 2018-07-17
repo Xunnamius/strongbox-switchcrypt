@@ -207,7 +207,7 @@ static int write_handle(const uint8_t * buffer,
 
         flake_internal_offset = 0;
 
-        IFDEBUG(assert(flake_total_bytes_to_write > flake_total_bytes_to_write - flake_write_length));
+        IFDEBUG(assert(flake_total_bytes_to_write >= flake_write_length));
         
         flake_total_bytes_to_write -= flake_write_length;
         buffer += flake_write_length;

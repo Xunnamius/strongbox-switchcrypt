@@ -67,7 +67,7 @@ static void make_fake_state()
 
     buselfs_state->active_cipher = &global_active_cipher;
 
-    blfs_set_cipher_ctx(buselfs_state->active_cipher, sc_default);
+    sc_set_cipher_ctx(buselfs_state->active_cipher, sc_default);
 
     iofd = open(BACKSTORE_FILE_PATH, O_CREAT | O_RDWR | O_TRUNC, 0777);
 
@@ -1143,7 +1143,7 @@ void test_buse_write_dirty_write_triggers_rekeying8(void)
 
 static void readwrite_quicktests()
 {
-    dzlog_notice("Running read/write quicktests (stage 1)...\n");
+    dzlog_notice("Running read/write quicktests (stage 1)...");
     fflush(stdout);
 
     uint8_t expected_buffer1[4096];
@@ -1165,7 +1165,7 @@ static void readwrite_quicktests()
         TEST_ASSERT_EQUAL_MEMORY_MESSAGE(expected_buffer1, buffer, sizeof buffer, strbuf);
     }
 
-    dzlog_notice("Running read/write quicktests (stage 2)...\n");
+    dzlog_notice("Running read/write quicktests (stage 2)...");
     fflush(stdout);
 
     uint8_t expected_buffer2[5000] = { 0x00 };
@@ -1184,7 +1184,7 @@ static void readwrite_quicktests()
         TEST_ASSERT_EQUAL_MEMORY_MESSAGE(expected_buffer2, buffer, sizeof buffer, strbuf);
     }
 
-    dzlog_notice("Running read/write quicktests (stage 3)...\n");
+    dzlog_notice("Running read/write quicktests (stage 3)...");
     fflush(stdout);
 
     // Test end writes
@@ -1307,17 +1307,20 @@ void test_strongbox_main_actual_creates_expected_buselfs_state(void)
 
 // void test_strongbox_inits_with_requested_md_bytes_per_nugget(void)
 // {
+    // TODO:!
 //     TEST_FAIL();
 // }
     
 // void test_strongbox_inits_properly_with_0_md_bytes_per_nugget(void)
 // {
+    // TODO:!
 //     // backstore->md_bytes_per_nugget always >= 1
 //     TEST_FAIL();
 // }
 
 // void test_strongbox_main_actual_creates_with_standard_cipher_and_swap_cipher(void)
 // {
+    // TODO:!
 //     TEST_FAIL();
 // }
 

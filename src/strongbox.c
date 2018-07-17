@@ -135,9 +135,6 @@ void update_merkle_tree_root_hash(buselfs_state_t * buselfs_state)
 
 void commit_merkle_tree_root_hash(buselfs_state_t * buselfs_state)
 {
-    // TODO:! is this breaking shit?
-    update_merkle_tree_root_hash(buselfs_state);
-
     blfs_header_t * mtrh_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_MTRH);
     memcpy(mtrh_header->data, buselfs_state->merkle_tree_root_hash, BLFS_HEAD_HEADER_BYTES_MTRH);
     blfs_commit_header(buselfs_state->backstore, mtrh_header);
@@ -355,7 +352,7 @@ static void populate_mt(buselfs_state_t * buselfs_state)
             memcpy(data + 1, meta->metadata, meta->metadata_length);
 
         blfs_chacha20_struct_hash(hash, data, meta->data_length, buselfs_state->backstore->master_secret);
-        add_to_merkle_tree(hash, BLFS_CRYPTO_BYTES_STRUCT_HASH_OUT, buselfs_state);
+        add_to_merkle_tree(hash, sizeof hash, buselfs_state);
         IFDEBUG(verify_in_merkle_tree(hash, BLFS_CRYPTO_BYTES_STRUCT_HASH_OUT, operations_completed, buselfs_state));
         IFNDEBUG(interact_print_percent_done((operations_completed + 1) * 100 / operations_total));
     }
@@ -981,8 +978,12 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
 
             IFDEBUG(dzlog_debug("MERKLE TREE: update TJ entry"));
 
-            update_in_merkle_tree(entry->bitmask->mask,
-                entry->bitmask->byte_length,
+            uint8_t hash[BLFS_CRYPTO_BYTES_STRUCT_HASH_OUT];
+            
+            blfs_chacha20_struct_hash(hash, entry->bitmask->mask, entry->bitmask->byte_length, buselfs_state->backstore->master_secret);
+            update_in_merkle_tree(
+                hash,
+                sizeof hash,
                 num_nuggets + (BLFS_HEAD_NUM_HEADERS - 3) + nugget_offset,
                 buselfs_state
             );
@@ -1531,7 +1532,7 @@ buselfs_state_t * strongbox_main_actual(int argc, char * argv[], char * blockdev
 
     if(argc <= 1 || argc > MAX_NUM_ARGC)
     {
-        printf( // TODO:! update this (and also update the README.md version) with all the new stuff once we're done!
+        printf( // TODO: update this (and also update the README.md version) with all the new stuff once we're done!
         "\nUsage:\n"
         "  %s [--default-password][--backstore-size %"PRIu64"][--flake-size %"PRIu32"][--flakes-per-nugget %"PRIu32"][--cipher sc_default][--tpm-id %"PRIu32"] create nbd_device_name\n\n"
         "  %s [--default-password][--allow-insecure-start] open nbd_device_name\n\n"
@@ -1731,8 +1732,8 @@ buselfs_state_t * strongbox_main_actual(int argc, char * argv[], char * blockdev
     /* Cipher selection and initialization */
     buselfs_state->active_cipher = malloc(sizeof *buselfs_state->active_cipher);
     
-    blfs_set_cipher_ctx(buselfs_state->active_cipher, cin_cipher);
-    blfs_calculate_cipher_bytes_per_nugget(buselfs_state->active_cipher, buselfs_state);
+    sc_set_cipher_ctx(buselfs_state->active_cipher, cin_cipher);
+    sc_calculate_cipher_bytes_per_nugget(buselfs_state->active_cipher, buselfs_state);
 
     /* Prepare to setup the backstore file */
 

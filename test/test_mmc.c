@@ -182,7 +182,7 @@ void test_integration_with_buselfs_works_as_expected(void)
     buselfs_state->default_password             = BLFS_DEFAULT_PASS;
     buselfs_state->rpmb_secure_index            = _TEST_BLFS_TPM_ID;
 
-    blfs_set_cipher_ctx(buselfs_state->active_cipher, sc_default);
+    sc_set_cipher_ctx(buselfs_state->active_cipher, sc_default);
 
     iofd = open(BACKSTORE_FILE_PATH, O_CREAT | O_RDWR | O_TRUNC, 0777);
 

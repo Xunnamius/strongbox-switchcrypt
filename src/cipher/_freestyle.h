@@ -13,6 +13,9 @@ typedef enum {
     FREESTYLE_SECURE
 } freestyle_variant;
 
+/**
+ * Internal configuration structure 
+ */
 typedef struct freestyle_variant_configuration {
     uint16_t min_rounds;
     uint16_t max_rounds;

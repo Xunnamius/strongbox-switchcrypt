@@ -7,9 +7,9 @@
  * Chacha (with Neon optimizations) round count version selection
  */
 typedef enum {
-    CHACHA8_NEON,
-    CHACHA12_NEON,
-    CHACHA20_NEON
+    CHACHA8_NEON = 8,
+    CHACHA12_NEON = 12,
+    CHACHA20_NEON = 20
 } chacha_neon_variant;
 
 /**
