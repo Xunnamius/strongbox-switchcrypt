@@ -1305,23 +1305,50 @@ void test_strongbox_main_actual_creates_expected_buselfs_state(void)
     TEST_ASSERT_EQUAL_UINT(8, buselfs_state->backstore->flakes_per_nugget);
 }
 
-// void test_strongbox_inits_with_requested_md_bytes_per_nugget(void)
-// {
-    // TODO:!
-//     TEST_FAIL();
-// }
+void test_strongbox_inits_with_requested_md_bytes_per_nugget(void)
+{
+    zlog_fini();
+
+    int argc = 11;
+
+    char * argv_create1[] = {
+        "progname",
+        "--default-password",
+        "--cipher",
+        "sc_freestyle_fast",
+        "create",
+        "device_actual-116"
+    };
+
+    buselfs_state = strongbox_main_actual(argc, argv_create1, blockdevice);
+
+    TEST_ASSERT_EQUAL_UINT(buselfs_state->active_cipher->requested_md_bytes_per_nugget + 1, buselfs_state->backstore->md_bytes_per_nugget);
+}
     
-// void test_strongbox_inits_properly_with_0_md_bytes_per_nugget(void)
-// {
-    // TODO:!
-//     // backstore->md_bytes_per_nugget always >= 1
-//     TEST_FAIL();
-// }
+void test_strongbox_inits_properly_with_1_md_bytes_per_nugget(void)
+{
+    zlog_fini();
+
+    int argc = 11;
+
+    char * argv_create1[] = {
+        "progname",
+        "--default-password",
+        "--cipher",
+        "sc_freestyle_fast",
+        "create",
+        "device_actual-116"
+    };
+
+    buselfs_state = strongbox_main_actual(argc, argv_create1, blockdevice);
+
+    TEST_ASSERT_EQUAL_UINT(0, buselfs_state->active_cipher->requested_md_bytes_per_nugget);
+    TEST_ASSERT_EQUAL_UINT(1, buselfs_state->backstore->md_bytes_per_nugget);
+}
 
 // void test_strongbox_main_actual_creates_with_standard_cipher_and_swap_cipher(void)
 // {
-    // TODO:!
-//     TEST_FAIL();
+     // TODO
 // }
 
 // TODO: fix run mode open
