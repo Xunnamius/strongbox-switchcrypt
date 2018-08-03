@@ -43,22 +43,22 @@ static int read_handle(uint8_t * buffer,
 }
 
 static int write_handle(const uint8_t * buffer,
-                           const buselfs_state_t * buselfs_state,
-                           uint_fast32_t buffer_write_length,
-                           uint_fast32_t flake_index,
-                           uint_fast32_t flake_end,
-                           uint32_t flake_size,
-                           uint_fast32_t flakes_per_nugget,
-                           uint_fast32_t flake_internal_offset,
-                           uint32_t mt_offset,
-                           const uint8_t * nugget_key,
-                           uint_fast32_t nugget_offset,
-                           const blfs_keycount_t * count)
+                        const buselfs_state_t * buselfs_state,
+                        uint_fast32_t buffer_write_length,
+                        uint_fast32_t flake_index,
+                        uint_fast32_t flake_end,
+                        uint32_t flake_size,
+                        uint_fast32_t flakes_per_nugget,
+                        uint_fast32_t flake_internal_offset,
+                        uint32_t mt_offset,
+                        const uint8_t * nugget_key,
+                        uint_fast32_t nugget_offset,
+                        const blfs_keycount_t * count)
 {
     IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
 
     return sc_generic_freestyle_write_handle(
-        FREESTYLE_FAST,
+        FREESTYLE_BALANCED,
         buffer,
         buselfs_state,
         buffer_write_length,

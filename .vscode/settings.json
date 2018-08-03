@@ -129,7 +129,15 @@
         "**/.hg": true,
         "**/CVS": true,
         "**/.DS_Store": true,
-        "build/src": true,
-        "build/test": true,
+        "build/{src,test,*.o,*.c,*.h,*.d,*_*}": true,
+    },
+    "files.watcherExclude": {
+        "**/.git/objects/**": true,
+        "**/.git/subtree-cache/**": true,
+        "**/vendor/*/**": true,
+        "**/build/*/**": true,
+    },
+    "search.exclude": {
+        "build/{src,test,*.o,*.c,*.h,*.d,*_*}": true,
     }
 }

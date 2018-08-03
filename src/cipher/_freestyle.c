@@ -16,18 +16,18 @@ static void variant_as_configuration(freestyle_variant_configuration * config, f
 
         case FREESTYLE_BALANCED:
             config->min_rounds = 12;
-            config->max_rounds = 24;
+            config->max_rounds = 28;
             config->hash_interval = 2;
-            config->pepper_bits = 16;
+            config->pepper_bits = 10;
             break;
 
         case FREESTYLE_SECURE:
             config->min_rounds = 20;
-            config->max_rounds = 32;
+            config->max_rounds = 36;
             config->hash_interval = 1;
-            config->pepper_bits = 32;
+            config->pepper_bits = 12;
             break;
-            
+
         default:
             Throw(EXCEPTION_UNKNOWN_FSTYLE_VARIANT);
     }
@@ -82,7 +82,7 @@ int sc_generic_freestyle_read_handle(freestyle_variant variant,
         buselfs_state->backstore->flake_size_bytes,
         buselfs_state->active_cipher->output_size_bytes
     );
-    
+
     for(uint_fast32_t i = 0; flake_index < flake_end; flake_index++, i++)
     {
         uint8_t flake_key[BLFS_CRYPTO_BYTES_FLAKE_TAG_KEY];
@@ -111,6 +111,7 @@ int sc_generic_freestyle_read_handle(freestyle_variant variant,
         uint8_t * nonce_ptr = (uint8_t *) &nonce;
         uint8_t stream_nonce[buselfs_state->active_cipher->nonce_size_bytes];
         
+        memset(stream_nonce, 0, sizeof stream_nonce);
         memcpy(stream_nonce, nonce_ptr, sizeof nonce);
 
         IFDEBUG(assert(buselfs_state->active_cipher->key_size_bytes == BLFS_CRYPTO_BYTES_FLAKE_TAG_KEY));
@@ -358,8 +359,8 @@ int sc_generic_freestyle_write_handle(freestyle_variant variant,
         // u8 plaintext[flake_write_length];
         // u8 ciphertext[flake_write_length];
 
-        // // memset(plaintext, 0x77, flake_write_length);
-        // // memset(ciphertext, 0x88, flake_write_length);
+        // memset(plaintext, 0x77, flake_write_length);
+        // memset(ciphertext, 0x88, flake_write_length);
         
         // freestyle_init_encrypt(
         //     &encrypt,
@@ -376,7 +377,7 @@ int sc_generic_freestyle_write_handle(freestyle_variant variant,
         // memcpy(init_hashes, encrypt.init_hash, BLFS_CRYPTO_BYTES_FSTYLE_INIT_HASHES);
 
         // freestyle_encrypt(&encrypt, buffer, ciphertext, flake_write_length, expected_hashes);
-        
+
         // freestyle_init_decrypt(
         //     &decrypt,
         //     flake_key,
@@ -395,12 +396,12 @@ int sc_generic_freestyle_write_handle(freestyle_variant variant,
         // printf("1) enc matches dec: %s\n", 0 == memcmp(plaintext, buffer, flake_write_length) ? "success" : "FAILURE!");
         // fflush(stdout);
 
-        // flake_internal_offset = 0;
+        flake_internal_offset = 0;
 
-        // IFDEBUG(assert(flake_total_bytes_to_write >= flake_write_length));
+        IFDEBUG(assert(flake_total_bytes_to_write >= flake_write_length));
         
-        // flake_total_bytes_to_write -= flake_write_length;
-        // buffer += flake_write_length;
+        flake_total_bytes_to_write -= flake_write_length;
+        buffer += flake_write_length;
     }
 
     if(meta->metadata_length)

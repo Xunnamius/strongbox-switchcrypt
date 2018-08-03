@@ -58,7 +58,7 @@ static int write_handle(const uint8_t * buffer,
     IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
 
     return sc_generic_freestyle_write_handle(
-        FREESTYLE_FAST,
+        FREESTYLE_SECURE,
         buffer,
         buselfs_state,
         buffer_write_length,
