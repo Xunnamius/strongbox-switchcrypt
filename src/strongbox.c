@@ -1716,24 +1716,29 @@ buselfs_state_t * strongbox_main_actual(int argc, char * argv[], char * blockdev
 
     if(!cin_flakes_per_nugget || cin_flakes_per_nugget > UINT_MAX)
         Throw(EXCEPTION_INVALID_FLAKES_PER_NUGGET);
-    
+
     if(cin_flake_size > BLFS_HEAD_MAX_FLAKESIZE_BYTES)
         Throw(EXCEPTION_FLAKESIZE_TOO_LARGE);
-    
+
     if(cin_flake_size < BLFS_HEAD_MIN_FLAKESIZE_BYTES)
         Throw(EXCEPTION_FLAKESIZE_TOO_SMALL);
-    
+
     if(cin_flakes_per_nugget > BLFS_HEAD_MAX_FLAKESPERNUGGET)
         Throw(EXCEPTION_TOO_MANY_FLAKES_PER_NUGGET);
-    
+
     if(cin_flakes_per_nugget < BLFS_HEAD_MIN_FLAKESPERNUGGET)
         Throw(EXCEPTION_TOO_FEW_FLAKES_PER_NUGGET);
 
     /* Cipher selection and initialization */
     buselfs_state->active_cipher = malloc(sizeof *buselfs_state->active_cipher);
-    
+
     sc_set_cipher_ctx(buselfs_state->active_cipher, cin_cipher);
-    sc_calculate_cipher_bytes_per_nugget(buselfs_state->active_cipher, buselfs_state);
+    sc_calculate_cipher_bytes_per_nugget(
+        buselfs_state->active_cipher,
+        cin_flakes_per_nugget,
+        cin_flake_size,
+        buselfs_state->active_cipher->output_size_bytes
+    );
 
     /* Prepare to setup the backstore file */
 

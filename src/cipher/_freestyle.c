@@ -39,14 +39,14 @@ static uint32_t calc_expected_hashes_size_bytes(uint32_t flake_size_bytes, uint6
     return CEIL(flake_size_bytes, output_size_bytes) * 2;
 }
 
-static uint32_t calc_handle(const buselfs_state_t * buselfs_state)
+static uint32_t calc_handle(uint32_t flakes_per_nugget, uint32_t flake_size_bytes, uint64_t output_size_bytes)
 {
     // ? {["flakes per nugget" * CEIL("max flksize" / "fstyle blk bytes") * 2] + ("flakes per nugget" * 28 "16 bit hashes" * 2)
     // ! The (1 "sc ident")} bytes are added by strongbox.c
 
-    return buselfs_state->backstore->flakes_per_nugget
-        * calc_expected_hashes_size_bytes(buselfs_state->backstore->flake_size_bytes, buselfs_state->active_cipher->output_size_bytes)
-        + buselfs_state->backstore->flakes_per_nugget * BLFS_CRYPTO_BYTES_FSTYLE_INIT_HASHES; // ? space for init (input) hashes
+    return flakes_per_nugget
+        * calc_expected_hashes_size_bytes(flake_size_bytes, output_size_bytes)
+        + flakes_per_nugget * BLFS_CRYPTO_BYTES_FSTYLE_INIT_HASHES; // ? space for init (16-bit input) hashes per flake
 }
 
 // TODO: DRY out the read and write handle functions, refactoring similar code
@@ -119,10 +119,10 @@ int sc_generic_freestyle_read_handle(freestyle_variant variant,
 
         freestyle_ctx crypt;
 
-        uint16_t * init_hashes     = (uint16_t *)(meta->metadata + i * BLFS_CRYPTO_BYTES_FSTYLE_INIT_HASHES);
+        uint16_t * init_hashes     = (uint16_t *)(meta->metadata + flake_index * BLFS_CRYPTO_BYTES_FSTYLE_INIT_HASHES);
         uint16_t * expected_hashes = (uint16_t *)(meta->metadata
             + buselfs_state->backstore->flakes_per_nugget * BLFS_CRYPTO_BYTES_FSTYLE_INIT_HASHES
-            + i * expected_hashes_size_bytes);
+            + flake_index * expected_hashes_size_bytes);
 
         freestyle_init_decrypt(
             &crypt,
@@ -206,14 +206,14 @@ int sc_generic_freestyle_write_handle(freestyle_variant variant,
         buselfs_state->active_cipher->output_size_bytes
     );
 
-    for(uint_fast32_t i = 0; flake_index < flake_end; flake_index++, i++)
+    for(; flake_index < flake_end; flake_index++)
     {
         uint_fast32_t flake_write_length = MIN(flake_total_bytes_to_write, flake_size - flake_internal_offset);
 
-        uint16_t * init_hashes     = (uint16_t *)(meta->metadata + i * BLFS_CRYPTO_BYTES_FSTYLE_INIT_HASHES);
+        uint16_t * init_hashes     = (uint16_t *)(meta->metadata + flake_index * BLFS_CRYPTO_BYTES_FSTYLE_INIT_HASHES);
         uint16_t * expected_hashes = (uint16_t *)(meta->metadata
             + buselfs_state->backstore->flakes_per_nugget * BLFS_CRYPTO_BYTES_FSTYLE_INIT_HASHES
-            + i * expected_hashes_size_bytes);
+            + flake_index * expected_hashes_size_bytes);
         
         // ! Potential endianness problem
         uint32_t nonce = nugget_offset * flakes_per_nugget + flake_index;
@@ -353,49 +353,6 @@ int sc_generic_freestyle_write_handle(freestyle_variant variant,
         IFDEBUG(dzlog_debug("blfs_backstore_write_body input (initial 64 bytes):"));
         IFDEBUG(hdzlog_debug(flake_out, MIN(64U, flake_size)));
 
-        // freestyle_ctx encrypt;
-        // freestyle_ctx decrypt;
-
-        // u8 plaintext[flake_write_length];
-        // u8 ciphertext[flake_write_length];
-
-        // memset(plaintext, 0x77, flake_write_length);
-        // memset(ciphertext, 0x88, flake_write_length);
-        
-        // freestyle_init_encrypt(
-        //     &encrypt,
-        //     flake_key,
-        //     sizeof(flake_key) * BITS_IN_A_BYTE,
-        //     stream_nonce,
-        //     config.min_rounds,
-        //     config.max_rounds,
-        //     config.hash_interval,
-        //     config.pepper_bits,
-        //     (uint8_t *) &INIT_COUNT
-        // );
-
-        // memcpy(init_hashes, encrypt.init_hash, BLFS_CRYPTO_BYTES_FSTYLE_INIT_HASHES);
-
-        // freestyle_encrypt(&encrypt, buffer, ciphertext, flake_write_length, expected_hashes);
-
-        // freestyle_init_decrypt(
-        //     &decrypt,
-        //     flake_key,
-        //     sizeof(flake_key) * BITS_IN_A_BYTE,
-        //     stream_nonce,
-        //     config.min_rounds,
-        //     config.max_rounds,
-        //     config.hash_interval,
-        //     config.pepper_bits,
-        //     init_hashes,
-        //     (uint8_t *) &INIT_COUNT
-        // );
-
-        // freestyle_decrypt(&decrypt, ciphertext, plaintext, flake_write_length, expected_hashes);
-
-        // printf("1) enc matches dec: %s\n", 0 == memcmp(plaintext, buffer, flake_write_length) ? "success" : "FAILURE!");
-        // fflush(stdout);
-
         flake_internal_offset = 0;
 
         IFDEBUG(assert(flake_total_bytes_to_write >= flake_write_length));
@@ -412,9 +369,7 @@ int sc_generic_freestyle_write_handle(freestyle_variant variant,
         uint8_t hash[BLFS_CRYPTO_BYTES_STRUCT_HASH_OUT];
 
         memcpy(data, &(meta->cipher_ident), 1);
-
-        if(meta->metadata_length)
-            memcpy(data + 1, meta->metadata, meta->metadata_length);
+        memcpy(data + 1, meta->metadata, meta->metadata_length);
 
         blfs_chacha20_struct_hash(hash, data, meta->data_length, buselfs_state->backstore->master_secret);
 

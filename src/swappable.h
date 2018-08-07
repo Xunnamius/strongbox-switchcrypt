@@ -158,7 +158,9 @@ typedef int (*sc_fn_write_handle)(
  * flake of nugget metadata. It is not meant to be accessed directly.
  */
 typedef uint32_t (*sc_fn_calc_handle)(
-    const buselfs_state_t * buselfs_state
+    uint32_t flakes_per_nugget,
+    uint32_t flake_size_bytes,
+    uint64_t output_size_bytes
 );
 
 /**
@@ -196,7 +198,10 @@ void sc_set_cipher_ctx(blfs_swappable_cipher_t * sc_ctx, swappable_cipher_e sc);
  * StrongBox will allocate in the backing store during initialization. This
  * function should be called alongside sc_set_cipher_ctx.
  */
-void sc_calculate_cipher_bytes_per_nugget(blfs_swappable_cipher_t * sc_ctx, buselfs_state_t * buselfs_state);
+void sc_calculate_cipher_bytes_per_nugget(blfs_swappable_cipher_t * sc_ctx,
+                                          uint32_t flakes_per_nugget,
+                                          uint32_t flake_size_bytes,
+                                          uint64_t output_size_bytes);
 
 /**
  * Takes a string and converts it to its corresponding swappable_cipher_e enum

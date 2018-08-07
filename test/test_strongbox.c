@@ -1204,14 +1204,14 @@ void test_strongbox_main_actual_creates(void)
 {
     zlog_fini();
 
-    int argc = 4;
-
     char * argv_create1[] = {
         "progname",
         "--default-password",
         "create",
-        "device_actual1"
+        "device_actual-112"
     };
+
+    int argc = sizeof(argv_create1)/sizeof(argv_create1[0]);
 
     buselfs_state = strongbox_main_actual(argc, argv_create1, blockdevice);
     readwrite_quicktests();
@@ -1228,10 +1228,12 @@ void test_strongbox_main_actual_does_not_throw_exception_if_valid_cipher(void)
         "--cipher",
         "sc_sosemanuk",
         "create",
-        "device115"
+        "device_actual-113"
     };
 
-    strongbox_main_actual(6, argv, blockdevice);
+    int argc = sizeof(argv)/sizeof(argv[0]);
+
+    strongbox_main_actual(argc, argv, blockdevice);
 }
 
 void test_strongbox_main_actual_does_not_throw_exception_if_valid_tpm_id(void)
@@ -1244,17 +1246,17 @@ void test_strongbox_main_actual_does_not_throw_exception_if_valid_tpm_id(void)
         "--tpm-id",
         "115",
         "create",
-        "device-115"
+        "device_actual-114"
     };
 
-    strongbox_main_actual(6, argv, blockdevice);
+    int argc = sizeof(argv)/sizeof(argv[0]);
+
+    strongbox_main_actual(argc, argv, blockdevice);
 }
 
 void test_strongbox_main_actual_creates_with_cipher_and_tpm(void)
 {
     zlog_fini();
-
-    int argc = 8;
 
     char * argv_create1[] = {
         "progname",
@@ -1264,8 +1266,10 @@ void test_strongbox_main_actual_creates_with_cipher_and_tpm(void)
         "--cipher",
         "sc_salsa8",
         "create",
-        "device_actual115"
+        "device_actual-115"
     };
+
+    int argc = sizeof(argv_create1)/sizeof(argv_create1[0]);
 
     buselfs_state = strongbox_main_actual(argc, argv_create1, blockdevice);
     readwrite_quicktests();
@@ -1274,8 +1278,6 @@ void test_strongbox_main_actual_creates_with_cipher_and_tpm(void)
 void test_strongbox_main_actual_creates_expected_buselfs_state(void)
 {
     zlog_fini();
-
-    int argc = 14;
 
     char * argv_create1[] = {
         "progname",
@@ -1291,8 +1293,10 @@ void test_strongbox_main_actual_creates_expected_buselfs_state(void)
         "--flakes-per-nugget",
         "8",
         "create",
-        "device_actual-115"
+        "device_actual-116"
     };
+
+    int argc = sizeof(argv_create1)/sizeof(argv_create1[0]);
 
     buselfs_state = strongbox_main_actual(argc, argv_create1, blockdevice);
 
@@ -1309,16 +1313,16 @@ void test_strongbox_inits_with_requested_md_bytes_per_nugget(void)
 {
     zlog_fini();
 
-    int argc = 11;
-
     char * argv_create1[] = {
         "progname",
         "--default-password",
         "--cipher",
         "sc_freestyle_fast",
         "create",
-        "device_actual-116"
+        "device_actual-117"
     };
+
+    int argc = sizeof(argv_create1)/sizeof(argv_create1[0]);
 
     buselfs_state = strongbox_main_actual(argc, argv_create1, blockdevice);
 
@@ -1329,16 +1333,14 @@ void test_strongbox_inits_properly_with_1_md_bytes_per_nugget(void)
 {
     zlog_fini();
 
-    int argc = 11;
-
     char * argv_create1[] = {
         "progname",
         "--default-password",
-        "--cipher",
-        "sc_freestyle_fast",
         "create",
-        "device_actual-116"
+        "device_actual-118"
     };
+
+    int argc = sizeof(argv_create1)/sizeof(argv_create1[0]);
 
     buselfs_state = strongbox_main_actual(argc, argv_create1, blockdevice);
 

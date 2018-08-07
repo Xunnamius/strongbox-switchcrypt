@@ -312,7 +312,10 @@ void blfs_swappable_crypt(blfs_swappable_cipher_t * sc,
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 }
 
-void sc_calculate_cipher_bytes_per_nugget(blfs_swappable_cipher_t * sc_ctx, buselfs_state_t * buselfs_state)
+void sc_calculate_cipher_bytes_per_nugget(blfs_swappable_cipher_t * sc_ctx,
+                                          uint32_t flakes_per_nugget,
+                                          uint32_t flake_size_bytes,
+                                          uint64_t output_size_bytes)
 {
-    sc_ctx->requested_md_bytes_per_nugget = sc_ctx->calc_handle ? sc_ctx->calc_handle(buselfs_state) : 0;
+    sc_ctx->requested_md_bytes_per_nugget = sc_ctx->calc_handle ? sc_ctx->calc_handle(flakes_per_nugget, flake_size_bytes, output_size_bytes) : 0;
 }
