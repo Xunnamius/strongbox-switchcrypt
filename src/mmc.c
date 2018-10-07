@@ -17,14 +17,14 @@
 
 /**
  * Performans an RPMB operation.
- * 
+ *
  * @param  fd        device on which we should perform ioctl command
  * @param  frame_in  input RPMB frame; should be properly initialized output
  *                   (result) RPMB frame. Caller is responsible for checking.
  * @param  frame_out result and req_resp for output frame.
  * @param  out_cnt   count of outer frames. Used only for reading multiple
  *                   blocks. In the other cases, -EINVAL will be returned.
- * 
+ *
  * @return           0 if no error occurred
  */
 static int do_rpmb_op(int fd, const rpmb_frame * frame_in, rpmb_frame * frame_out, unsigned int out_cnt)

@@ -140,5 +140,5 @@
     "search.exclude": {
         "build/{src,test,*.o,*.c,*.h,*.d,*_*}": true,
         "vendor/": true,
-    }
+    },
 }

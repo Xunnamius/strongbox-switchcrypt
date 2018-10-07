@@ -447,7 +447,7 @@ void test_blfs_open_nugget_md_works_even_with_1_md_bytes_per_nugget(void)
     blfs_backstore_read_ReturnArrayThruPtr_buffer(expected_output, 1);
 
     backstore->md_bytes_per_nugget = 1;
-    
+
     blfs_nugget_metadata_t * actual_nugget_metadata = blfs_open_nugget_metadata(backstore, nugget_index);
 
     TEST_ASSERT_EQUAL_UINT(nugget_index, actual_nugget_metadata->nugget_index);

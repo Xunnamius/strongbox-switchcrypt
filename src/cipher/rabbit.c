@@ -35,7 +35,7 @@ static void crypt_data(const blfs_swappable_cipher_t * sc,
         // ! NOTE THAT THIS IMPLEMENTATION IS CERTAINLY NOT SECURE (we discard keycount here for expedience)
         // ! Possible remedy: hash the keycount and the counter and use that output as IV
         (void) kcs_keycount_ptr;
-        
+
         rabbit_init_iv(&iv_state, &key_state, (uint8_t *) &counter);
         rabbit_extract(&iv_state, xor_str + (i * sc->output_size_bytes));
     }

@@ -21,7 +21,7 @@ typedef struct vector_t
  * Create a new vector yielded to the vector pointer parameter.
  *
  * ! It is advisable that you do NOT mix different types in the same vector!
- * 
+ *
  * This function is O(1).
  *
  * @param vector
@@ -31,7 +31,7 @@ vector_t * vector_init();
 /**
  * Destroy a vector (free all components). Note that the elements of the vector
  * will not themselves be freed. This must be done manually.
- * 
+ *
  * This function is O(1).
  *
  * @param vector
@@ -40,7 +40,7 @@ void vector_fini(vector_t * vector);
 
 /**
  * Add element to the end of vector.
- * 
+ *
  * This function is O(1).
  *
  * @param vector
@@ -50,7 +50,7 @@ void vector_add(vector_t * vector, void * element);
 
 /**
  * Delete the element in vector at index.
- * 
+ *
  * Note that while the element at the specified index will be removed, the
  * element itself will not be free()'d. You'll have to do that manually.
  *
@@ -63,7 +63,7 @@ void vector_delete(vector_t * vector, uint32_t index);
 
 /**
  * Get the element in vector at index.
- * 
+ *
  * This function is O(1).
  *
  * @param  vector
@@ -75,7 +75,7 @@ void * vector_get(vector_t * vector, uint32_t index);
 
 /**
  * Set an index in vector to element.
- * 
+ *
  * This function is O(1).
  *
  * @param vector

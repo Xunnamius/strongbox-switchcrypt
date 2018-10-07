@@ -32,7 +32,7 @@ void interact_prompt_user(const char * prompt, char * response, size_t length)
     scanf("%ms", &r);
     printf("\n");
 
-    #pragma GCC diagnostic pop 
+    #pragma GCC diagnostic pop
 
     IFDEBUG(dzlog_debug("prompt = %s", prompt));
     IFDEBUG(dzlog_debug("r = %s", r));

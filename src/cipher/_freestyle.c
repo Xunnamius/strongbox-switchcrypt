@@ -110,7 +110,7 @@ int sc_generic_freestyle_read_handle(freestyle_variant variant,
         uint32_t nonce = nugget_offset * flakes_per_nugget + flake_index;
         uint8_t * nonce_ptr = (uint8_t *) &nonce;
         uint8_t stream_nonce[buselfs_state->active_cipher->nonce_size_bytes];
-        
+
         memset(stream_nonce, 0, sizeof stream_nonce);
         memcpy(stream_nonce, nonce_ptr, sizeof nonce);
 
@@ -214,12 +214,12 @@ int sc_generic_freestyle_write_handle(freestyle_variant variant,
         uint16_t * expected_hashes = (uint16_t *)(meta->metadata
             + buselfs_state->backstore->flakes_per_nugget * BLFS_CRYPTO_BYTES_FSTYLE_INIT_HASHES
             + flake_index * expected_hashes_size_bytes);
-        
+
         // ! Potential endianness problem
         uint32_t nonce = nugget_offset * flakes_per_nugget + flake_index;
         uint8_t * nonce_ptr = (uint8_t *) &nonce;
         uint8_t stream_nonce[buselfs_state->active_cipher->nonce_size_bytes];
-        
+
         memset(stream_nonce, 0, sizeof stream_nonce);
         memcpy(stream_nonce, nonce_ptr, sizeof nonce);
 
@@ -246,7 +246,7 @@ int sc_generic_freestyle_write_handle(freestyle_variant variant,
                                     flake_data,
                                     flake_size,
                                     nugget_offset * nugget_size + flake_index * flake_size);
-            
+
             // Generate a local flake key
             uint8_t local_flake_key[BLFS_CRYPTO_BYTES_FLAKE_TAG_KEY];
             uint8_t local_tag[BLFS_CRYPTO_BYTES_FLAKE_TAG_OUT];
@@ -329,7 +329,7 @@ int sc_generic_freestyle_write_handle(freestyle_variant variant,
         );
 
         freestyle_encrypt(&encrypt, flake_data, flake_out, flake_size, expected_hashes);
-        
+
         memcpy(init_hashes, encrypt.init_hash, BLFS_CRYPTO_BYTES_FSTYLE_INIT_HASHES);
 
         blfs_poly1305_generate_tag(tag, flake_out, flake_size, flake_key);
@@ -356,7 +356,7 @@ int sc_generic_freestyle_write_handle(freestyle_variant variant,
         flake_internal_offset = 0;
 
         IFDEBUG(assert(flake_total_bytes_to_write >= flake_write_length));
-        
+
         flake_total_bytes_to_write -= flake_write_length;
         buffer += flake_write_length;
     }
@@ -385,7 +385,7 @@ int sc_generic_freestyle_write_handle(freestyle_variant variant,
     }
 
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
-    
+
     return buffer - original_buffer;
 }
 

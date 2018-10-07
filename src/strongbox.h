@@ -62,12 +62,12 @@ typedef struct buselfs_state_t
      * *    index [2*n+(BLFS_HEAD_NUM_HEADERS-2), 2*n+(BLFS_HEAD_NUM_HEADERS-3)+(n*fpn)]
      * ? Flake poly1305 tags:
      * *    index [2*n+(BLFS_HEAD_NUM_HEADERS-2)+(n*fpn), 2*n+(BLFS_HEAD_NUM_HEADERS-3)+(2*n*fpn)]
-     * 
+     *
      * ?? As of version 500, with (n=3, fpn=2), this structure yields:
      * * 0 [1, 6] [7, 9] [10, 12] [13, 18] [19, 24]
-     * 
+     *
      * ? Total (since it's zero index) = 2*n+(BLFS_HEAD_NUM_HEADERS-3)+(2*n*fpn)+1
-     * 
+     *
      * See mt_calculate_expected_size() for exact calculation
      */
     mt_t * merkle_tree;
@@ -193,14 +193,14 @@ uint32_t mt_calculate_expected_size(uint32_t nugget_index, buselfs_state_t * bus
 uint32_t mt_calculate_flake_offset(uint32_t jump_to_nugget_index, uint32_t flake_index, buselfs_state_t * buselfs_state);
 
 // ? Note: you may be wondering why the main file has been broken up like this.
-// ? 
+// ?
 // ? The answer is simple: unit testing. One cannot unit test a big fat main
 // ? function in any pleasing way. Comes with free organizational boons, too!
 
 /**
  * BUSE read operation handler. Passed directly to the buse core. See buse
  * documentation for more information.
- * 
+ *
  * @param  userdata (buselfs_state*)
  */
 int buse_read(void * buffer, uint32_t len, uint64_t offset, void * userdata);
@@ -208,7 +208,7 @@ int buse_read(void * buffer, uint32_t len, uint64_t offset, void * userdata);
 /**
  * BUSE write operation handler. Passed directly to the buse core. See buse
  * documentation for more information.
- * 
+ *
  * @param  userdata (buselfs_state*)
  */
 int buse_write(const void * buffer, uint32_t len, uint64_t offset, void * userdata);

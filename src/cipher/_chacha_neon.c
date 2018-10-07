@@ -29,14 +29,14 @@ void sc_generic_chacha_neon_crypt_data(chacha_neon_variant variant,
 
     if(zero_str == NULL)
         Throw(EXCEPTION_ALLOC_FAILURE);
-    
+
     chacha_state S;
     chacha_key key;
     chacha_iv iv;
 
     memcpy(key.b, nugget_key, sc->key_size_bytes);
     memcpy(iv.b, kcs_keycount_ptr, sc->nonce_size_bytes);
-    
+
     chacha_init(&S, &key, &iv, rounds);
 
     chacha_state_internal * state = (chacha_state_internal *) &S;

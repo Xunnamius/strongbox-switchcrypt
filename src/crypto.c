@@ -160,7 +160,7 @@ int blfs_globalversion_verify(uint64_t id, uint64_t global_version)
         {
             dzlog_warn("RPMB device is not able to be opened. Falling back to BLFS_MANUAL_GV_FALLBACK (%i)",
                        BLFS_MANUAL_GV_FALLBACK);
-            
+
             return BLFS_MANUAL_GV_FALLBACK;
         }
 

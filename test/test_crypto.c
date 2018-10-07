@@ -117,7 +117,7 @@ void test_blfs_nugget_key_from_data_fails_bad_endianness(void)
     };
 
     TEST_ASSERT_EQUAL_MEMORY(expected_nugget_key, actual_nugget_key, BLFS_CRYPTO_BYTES_KDF_OUT);
-    
+
 }
 
 void test_blfs_poly1305_key_from_data_fails_bad_endianness(void)

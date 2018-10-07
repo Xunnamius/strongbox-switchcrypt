@@ -39,7 +39,7 @@ Observe that `nbd_device_name` must always appear last and the desired command
 
 > Note that `16384 >= flake-size >= 512` and `256 >= flakes-per-nugget >= 8`. For best performance, both should be powers of 2. Defaults are `4096` and `64` respectively.
 
-> Further, the following must hold: `backstore-size >= flake-size * flakes-per-nugget + A`. `A` is equal to `total-number-of-nuggets * (greatest-cipher-md-requested-bytes-per-flake + 1)` but is calculated automatically from `flake-size` and `flakes-per-nugget`. The above formula is more important.
+> Further, the following must hold: `backstore-size >= flake-size * flakes-per-nugget + A`. `A` is equal to `total-number-of-nuggets * (greatest-cipher-md-requested-bytes-per-flake + 1)` but its ultimate value depends on `flake-size` and `flakes-per-nugget`. Hence, the formula in the previous paragraph is more important.
 
 Ciphers available for the `--cipher` and `--swap-cipher` are:
 

@@ -124,7 +124,7 @@ static int write_handle(const uint8_t * buffer,
                                     flake_data,
                                     flake_size,
                                     nugget_offset * nugget_size + flake_index * flake_size);
-            
+
             // Generate a local flake key
             uint8_t local_flake_key[BLFS_CRYPTO_BYTES_FLAKE_TAG_KEY];
             uint8_t local_tag[BLFS_CRYPTO_BYTES_FLAKE_TAG_OUT];
@@ -208,7 +208,7 @@ static int write_handle(const uint8_t * buffer,
         flake_internal_offset = 0;
 
         IFDEBUG(assert(flake_total_bytes_to_write >= flake_write_length));
-        
+
         flake_total_bytes_to_write -= flake_write_length;
         buffer += flake_write_length;
     }

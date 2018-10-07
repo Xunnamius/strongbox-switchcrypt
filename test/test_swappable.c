@@ -106,7 +106,7 @@ void test_crypt_data_algos_crypt_properly(void)
         blfs_swappable_cipher_t sc;
 
         sc_set_cipher_ctx(&sc, test_ciphers_fn_crypt_data[i]);
-        
+
         if(print)
             dzlog_notice("Testing %s (#%i)", sc.name, (int) test_ciphers_fn_crypt_data[i]);
 
@@ -174,7 +174,7 @@ void test_crypt_data_algos_with_BIGLY_inputs(void)
         blfs_swappable_cipher_t sc;
 
         sc_set_cipher_ctx(&sc, test_ciphers_fn_crypt_data[i]);
-    
+
         uint8_t data[4096] = { 0x00 };
         randombytes_buf(data, sizeof data);
 
@@ -366,11 +366,10 @@ void test_aes256_xts_handles_basic_crypt_properly(void)
                 flake_size,
                 nugget_offset * (sizeof message) + sufx
             );
-            
+
             blfs_backstore_read_body_IgnoreArg_buffer();
             blfs_backstore_read_body_ReturnArrayThruPtr_buffer((ciphertext_original + sufx), flake_size);
             verify_in_merkle_tree_ExpectAnyArgs();
-            
         }
 
         update_in_merkle_tree_Expect(
@@ -519,11 +518,10 @@ void test_aes256_xts_handles_offset_crypt_properly(void)
                 flake_size,
                 nugget_offset * (sizeof message) + sufx
             );
-            
+
             blfs_backstore_read_body_IgnoreArg_buffer();
             blfs_backstore_read_body_ReturnArrayThruPtr_buffer((ciphertext_original + sufx), flake_size);
             verify_in_merkle_tree_ExpectAnyArgs();
-            
         }
 
         update_in_merkle_tree_Expect(
@@ -555,7 +553,7 @@ void test_aes256_xts_handles_offset_crypt_properly(void)
     );
 
     uint8_t ciphertext_amalgum[sizeof message];
-    
+
     memset(ciphertext_amalgum, 0x3C, sizeof ciphertext_amalgum);
     memcpy(ciphertext_amalgum, ciphertext_original, sizeof ciphertext_original);
     memcpy(ciphertext_amalgum + nio_to_flake, ciphertext + nio_to_flake, buffer_write_length + from_the_back + flake_internal_offset);
@@ -568,7 +566,7 @@ void test_aes256_xts_handles_offset_crypt_properly(void)
     flake_end = 64;
     flake_internal_offset = 0;
     from_the_back = 0;
-    
+
     nio_to_flake = flake_size * flake_index;
     nugget_internal_offset = nio_to_flake + flake_internal_offset;
     buffer_read_length = flake_size * flake_end - nugget_internal_offset - from_the_back;
@@ -652,7 +650,7 @@ void test_freestyle_handles_crypt_properly(void)
     flake_internal_offset = 0;
     mt_offset = 127;
     nugget_offset = 50;
-    
+
     backstore.md_real_offset = 500;
     backstore.num_nuggets = 60;
 
@@ -838,11 +836,10 @@ void test_freestyle_handles_crypt_properly(void)
                     flake_size,
                     nugget_offset * (sizeof message) + sufx
                 );
-                
+
                 blfs_backstore_read_body_IgnoreArg_buffer();
                 blfs_backstore_read_body_ReturnArrayThruPtr_buffer((ciphertext_original + sufx), flake_size);
                 verify_in_merkle_tree_ExpectAnyArgs();
-                
             }
 
             update_in_merkle_tree_Expect(
@@ -886,7 +883,7 @@ void test_freestyle_handles_crypt_properly(void)
         );
 
         uint8_t ciphertext_amalgum[sizeof ciphertext_original];
-        
+
         memcpy(ciphertext_amalgum, ciphertext_original, sizeof ciphertext_original);
         memcpy(ciphertext_amalgum + nio_to_flake, ciphertext + nio_to_flake, buffer_write_length + from_the_back + flake_internal_offset);
 
@@ -898,7 +895,7 @@ void test_freestyle_handles_crypt_properly(void)
         flake_end = 64;
         flake_internal_offset = 0;
         from_the_back = 0;
-        
+
         nio_to_flake = flake_size * flake_index;
         nugget_internal_offset = nio_to_flake + flake_internal_offset;
         buffer_read_length = flake_size * flake_end - nugget_internal_offset - from_the_back;

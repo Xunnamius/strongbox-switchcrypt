@@ -57,7 +57,7 @@ void test_bitmask_fini_works_as_expected(void)
 
     uint8_t data[] = { 0x01, 0x02, 0x03, 0x04, 0x05 };
     bitmask = bitmask_init(data, sizeof data);
-    
+
     // ? The below is called by tearDown() instead
     //bitmask_fini(bitmask);
 }

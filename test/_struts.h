@@ -6,7 +6,7 @@
 static const uint8_t buffer_init_backstore_state[/*204*/] = {
     // HEAD
     // header section
-    
+
     0xFF, 0xFF, 0xFF, 0xFF, // BLFS_HEAD_HEADER_BYTES_VERSION
 
     0x8f, 0xa2, 0x0d, 0x92, 0x35, 0xd6, 0xc2, 0x4c,
@@ -43,7 +43,7 @@ static const uint8_t buffer_init_backstore_state[/*204*/] = {
 
     // TJ (index: 129-131)
     // 3 nuggets * 2 flakes each * ~1 byte to represent the nuggets' flake state
-    
+
     0xF0,
 
     0xFF,
@@ -52,7 +52,7 @@ static const uint8_t buffer_init_backstore_state[/*204*/] = {
 
     // MD
     // 3 nuggets * 8 bytes per struct (index: 132-155)
-    
+
     0x00, 0xA0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 
     0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01,
@@ -61,7 +61,7 @@ static const uint8_t buffer_init_backstore_state[/*204*/] = {
 
     // BODY (index: 156-203)
     // 3 nuggets * 2 flakes each * each flake is 8 bytes
-    
+
     0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19,
     0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17,
 

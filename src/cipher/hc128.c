@@ -25,7 +25,7 @@ static void crypt_data(const blfs_swappable_cipher_t * sc,
     uint8_t stream_nonce[BLFS_CRYPTO_BYTES_HC128_IV];
 
     IFDEBUG(assert(sizeof(kcs_keycount) + sizeof(counter) <= sizeof(stream_nonce)));
-    
+
     memset(stream_nonce, 0, sizeof(stream_nonce));
     memcpy(stream_nonce, kcs_keycount_ptr, sizeof(kcs_keycount));
     memcpy(raw_key, nugget_key, sizeof(raw_key)); // ! cutting off the key, bad bad not good! Need key schedule!

@@ -70,7 +70,7 @@ static blfs_backstore_t * backstore_setup_actual_pre(const char * path)
         .cache_tj_entries = kh_init(BLFS_KHASH_TJ_CACHE_NAME),
         .cache_nugget_md  = kh_init(BLFS_KHASH_MD_CACHE_NAME),
     };
-    
+
     IFDEBUG(dzlog_debug("init->file_path = %s", init.file_path));
     IFDEBUG(dzlog_debug("init->file_name = %s", init.file_name));
 
@@ -80,7 +80,7 @@ static blfs_backstore_t * backstore_setup_actual_pre(const char * path)
         Throw(EXCEPTION_ALLOC_FAILURE);
 
     memcpy(backstore, &init, sizeof *backstore);
-    
+
     backstore->io_fd = open(backstore->file_path, O_CREAT | O_RDWR, BLFS_DEFAULT_BACKSTORE_FILE_PERMS);
 
     if(backstore->io_fd < 0)
@@ -106,7 +106,7 @@ static blfs_backstore_t * backstore_setup_actual_pre(const char * path)
 void blfs_backstore_setup_actual_post(blfs_backstore_t * backstore)
 {
     IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
-    
+
     // ! get the last item in the header (before the start of the kcs) and
     // ! use its offset + length to determine the true length of the HEAD header
     blfs_header_t * header_last = blfs_open_header(backstore, header_types_ordered[BLFS_HEAD_NUM_HEADERS - 1][0]);
@@ -140,7 +140,7 @@ void blfs_backstore_setup_actual_post(blfs_backstore_t * backstore)
 }
 
 void blfs_backstore_setup_actual_finish(blfs_backstore_t * backstore)
-{  
+{
     backstore->body_real_offset = backstore->md_real_offset + backstore->num_nuggets * backstore->md_bytes_per_nugget;
     IFDEBUG(dzlog_debug("backstore->body_real_offset = %"PRIu64, backstore->body_real_offset));
 
@@ -171,7 +171,7 @@ blfs_backstore_t * blfs_backstore_create(const char * path, uint64_t file_size_b
 
     ftruncate(backstore->io_fd, file_size_bytes);
     backstore->file_size_actual = file_size_bytes;
-    
+
     #pragma GCC diagnostic pop
 
     // Header data

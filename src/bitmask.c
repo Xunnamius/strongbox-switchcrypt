@@ -362,7 +362,7 @@ int bitmask_are_bits_set(bitmask_t * bitmask, uint_fast32_t start_index, uint_fa
                         not_filter,
                         is_set,
                         !((bitmask->mask[i] & not_filter) ^ not_filter)));
-        
+
         is_set = is_set && !((bitmask->mask[i] & not_filter) ^ not_filter);
 
         IFDEBUG(dzlog_debug("is_set (was 0x%x, now 0x%x)", old_val_at_index_inner, bitmask->mask[i]));

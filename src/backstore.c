@@ -178,7 +178,7 @@ void blfs_commit_all_headers(blfs_backstore_t * backstore)
 
         blfs_commit_header(backstore, blfs_open_header(backstore, header_type));
     }
-    
+
     blfs_commit_header(backstore, blfs_open_header(backstore, BLFS_HEAD_HEADER_TYPE_INITIALIZED));
 
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
@@ -460,7 +460,7 @@ blfs_nugget_metadata_t * blfs_create_nugget_metadata(blfs_backstore_t * backstor
     IFDEBUG(dzlog_debug("meta->cipher_ident = %"PRIu8, meta->cipher_ident));
     IFDEBUG(dzlog_debug("meta->metadata:"));
     IFDEBUG(hdzlog_debug(meta->metadata, meta->metadata_length));
-    
+
     KHASH_CACHE_PUT(BLFS_KHASH_MD_CACHE_NAME, backstore->cache_nugget_md, nugget_index, meta);
 
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));

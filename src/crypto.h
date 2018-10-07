@@ -30,7 +30,7 @@ void blfs_password_to_secret(uint8_t * secret, const char * passwd, uint32_t pas
  * Generates a BLFS_HEAD_HEADER_BYTES_VERIFICATION length xored_value using the
  * given secret of length BLFS_CRYPTO_BYTES_KDF_OUT and 0 as a nonce. The
  * Chacha20 function is used.
- * 
+ *
  * @param xored_value
  * @param secret
  */
@@ -40,7 +40,7 @@ void blfs_chacha20_verif(uint8_t * xored_value, const uint8_t * secret);
  * Generates a BLFS_CRYPTO_BYTES_TJ_HASH_OUT length xored_tj using the given
  * secret of `length` and a BLFS_CRYPTO_BYTES_CHACHA20_NONCE nonce. The Chacha20
  * based BLAKE2 function is used.
- * 
+ *
  * @param xored_value
  * @param secret
  */
@@ -98,7 +98,7 @@ void blfs_poly1305_key_from_data(uint8_t * new_key,
  *
  * The tag will be of length BLFS_CRYPTO_BYTES_FLAKE_TAG_OUT. Used to mac flakes
  * for comparison in the Merkle Tree. Small fakes are happy flakes!
- * 
+ *
  * @param tag
  * @param data
  * @param data_length
@@ -125,7 +125,7 @@ int blfs_globalversion_verify(uint64_t id, uint64_t global_version);
  * Accepts a global_version and commits it into an internal RPMB bucket located
  * using id. If monotonic, then the only supported commit is an increment of the
  * global_version or this function's behavior is undefined.
- * 
+ *
  * @param id
  * @param global_version
  */

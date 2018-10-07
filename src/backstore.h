@@ -247,7 +247,7 @@ void blfs_close_header(blfs_backstore_t * backstore, blfs_header_t * header);
  * Same as blfs_commit_header except applied to every registered header in
  * the backstore. Note that BLFS_HEAD_HEADER_TYPE_INITIALIZED will be committed
  * last.
- * 
+ *
  * @param backstore
  */
 void blfs_commit_all_headers(blfs_backstore_t * backstore);

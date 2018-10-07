@@ -160,7 +160,7 @@ void test_blfs_backstore_read_body_and_write_body_works_as_expected(void)
 
     blfs_backstore_write_body(fake_backstore, buffer_expected_head2, sizeof buffer_expected_head2, 0);
     blfs_backstore_read(fake_backstore, buffer_actual2, sizeof buffer_actual2, 0);
-    
+
     TEST_ASSERT_EQUAL_MEMORY(buffer_expected_welldefined, buffer_actual2, sizeof buffer_actual2);
 }
 

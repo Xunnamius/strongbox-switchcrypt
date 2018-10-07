@@ -136,16 +136,16 @@ void setUp(void)
 
     char buf[100] = { 0x00 };
     snprintf(buf, sizeof buf, "%s%s_%s", "blfs_level", STRINGIZE(BLFS_DEBUG_LEVEL), "device_test");
-    
+
     if(dzlog_init(BLFS_CONFIG_ZLOG, buf))
         exit(EXCEPTION_ZLOG_INIT_FAILURE);
-    
+
     if(BLFS_MANUAL_GV_FALLBACK == -1 && !is_sudo())
     {
         dzlog_fatal("Must be root!");
         exit(255);
     }
-    
+
     make_fake_state();
 }
 
@@ -169,7 +169,7 @@ void tearDown(void)
 void test_adding_and_evicting_from_the_keycache_works_as_expected(void)
 {
     free(buselfs_state->backstore);
-    
+
     if(BLFS_DEFAULT_DISABLE_KEY_CACHING)
         TEST_IGNORE_MESSAGE("BLFS_DEFAULT_DISABLE_KEY_CACHING is in effect, so this test will be skipped!");
 
@@ -257,7 +257,7 @@ void test_blfs_soft_open_throws_exception_on_invalid_mtrh(void)
 {
     uint8_t data_write[BLFS_HEAD_HEADER_BYTES_MTRH] = { 0xFF, 0xFF };
     blfs_backstore_write(buselfs_state->backstore, data_write, sizeof data_write, 20);
-    
+
     open_real_backstore();
 
     CEXCEPTION_T e_expected = EXCEPTION_INTEGRITY_FAILURE;
@@ -528,7 +528,7 @@ void test_blfs_run_mode_create_initializes_keycache_and_merkle_tree_properly(voi
         blfs_backstore_close(buselfs_state->backstore);
     }
 }
-   
+
 void test_strongbox_main_actual_throws_exception_if_wrong_argc(void)
 {
     CEXCEPTION_T e_expected = EXCEPTION_MUST_HALT;
@@ -739,7 +739,7 @@ void test_strongbox_main_actual_throws_exception_if_nonimpl_cipher(void)
 void test_buse_read_works_as_expected(void)
 {
     free(buselfs_state->backstore);
-    
+
     blfs_run_mode_open(BACKSTORE_FILE_PATH, (uint8_t)(0), buselfs_state);
 
     uint8_t buffer1[1] = { 0x00 };
@@ -828,7 +828,7 @@ void test_buse_writeread_works_as_expected1(void)
 void test_buse_writeread_works_as_expected2(void)
 {
     blfs_backstore_write(buselfs_state->backstore, alternate_mtrh_data, sizeof alternate_mtrh_data, 20);
-    
+
     free(buselfs_state->backstore);
 
     clear_tj();
@@ -847,7 +847,7 @@ void test_buse_writeread_works_as_expected2(void)
 void test_buse_writeread_works_as_expected3(void)
 {
     blfs_backstore_write(buselfs_state->backstore, alternate_mtrh_data, sizeof alternate_mtrh_data, 20);
-    
+
     free(buselfs_state->backstore);
 
     clear_tj();
@@ -866,7 +866,7 @@ void test_buse_writeread_works_as_expected3(void)
 void test_buse_writeread_works_as_expected4(void)
 {
     blfs_backstore_write(buselfs_state->backstore, alternate_mtrh_data, sizeof alternate_mtrh_data, 20);
-    
+
     free(buselfs_state->backstore);
 
     clear_tj();
@@ -886,7 +886,7 @@ void test_buse_writeread_works_as_expected4(void)
 void test_buse_writeread_works_as_expected5(void)
 {
     blfs_backstore_write(buselfs_state->backstore, alternate_mtrh_data, sizeof alternate_mtrh_data, 20);
-    
+
     free(buselfs_state->backstore);
 
     clear_tj();
@@ -905,7 +905,7 @@ void test_buse_writeread_works_as_expected5(void)
 void test_buse_writeread_works_as_expected6(void)
 {
     blfs_backstore_write(buselfs_state->backstore, alternate_mtrh_data, sizeof alternate_mtrh_data, 20);
-    
+
     free(buselfs_state->backstore);
 
     clear_tj();
@@ -924,7 +924,7 @@ void test_buse_writeread_works_as_expected6(void)
 void test_buse_writeread_works_as_expected7(void)
 {
     blfs_backstore_write(buselfs_state->backstore, alternate_mtrh_data, sizeof alternate_mtrh_data, 20);
-    
+
     free(buselfs_state->backstore);
 
     clear_tj();
@@ -943,7 +943,7 @@ void test_buse_writeread_works_as_expected7(void)
 void test_buse_writeread_works_as_expected8(void)
 {
     blfs_backstore_write(buselfs_state->backstore, alternate_mtrh_data, sizeof alternate_mtrh_data, 20);
-    
+
     free(buselfs_state->backstore);
 
     clear_tj();
@@ -963,7 +963,7 @@ void test_buse_writeread_works_as_expected8(void)
 void test_buse_writeread_works_as_expected9(void)
 {
     blfs_backstore_write(buselfs_state->backstore, alternate_mtrh_data, sizeof alternate_mtrh_data, 20);
-    
+
     free(buselfs_state->backstore);
 
     clear_tj();
@@ -983,7 +983,7 @@ void test_buse_writeread_works_as_expected9(void)
 void test_buse_writeread_works_as_expected10(void)
 {
     blfs_backstore_write(buselfs_state->backstore, alternate_mtrh_data, sizeof alternate_mtrh_data, 20);
-    
+
     free(buselfs_state->backstore);
 
     clear_tj();
@@ -1003,7 +1003,7 @@ void test_buse_writeread_works_as_expected10(void)
 void test_buse_writeread_works_as_expected11(void)
 {
     blfs_backstore_write(buselfs_state->backstore, alternate_mtrh_data, sizeof alternate_mtrh_data, 20);
-    
+
     free(buselfs_state->backstore);
 
     clear_tj();
@@ -1328,7 +1328,7 @@ void test_strongbox_inits_with_requested_md_bytes_per_nugget(void)
 
     TEST_ASSERT_EQUAL_UINT(buselfs_state->active_cipher->requested_md_bytes_per_nugget + 1, buselfs_state->backstore->md_bytes_per_nugget);
 }
-    
+
 void test_strongbox_inits_properly_with_1_md_bytes_per_nugget(void)
 {
     zlog_fini();

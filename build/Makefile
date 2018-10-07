@@ -14,8 +14,8 @@
 # ? Same rules as BLFS_DEBUG_LEVEL and BLFS_MANUAL_GV_FALLBACK
 # ! GLOBAL_DEBUG_MODE=0 when not debugging or suffer the (perf-related) consequences!
 # ! GLOBAL_MANUAL_GV_FALLBACK should be set to -1 unless no RPMB device, then >= 0
-GLOBAL_DEBUG_MODE := 0
-GLOBAL_MANUAL_GV_FALLBACK := -1
+GLOBAL_DEBUG_MODE := 1
+GLOBAL_MANUAL_GV_FALLBACK := 0
 
 SRC_ROOT    := ../src
 VENDR_ROOT  := ../vendor
@@ -228,7 +228,7 @@ check: tests
 
 vendor: $(VENDR_FILES)
 	$(MAKE) clean -C ../vendor/merkle-tree
-	
+
 ifeq "$(GLOBAL_DEBUG_MODE)" "0"
 	$(MAKE) release -C ../vendor/merkle-tree
 else
@@ -245,7 +245,7 @@ src: $(SRC_FILES)
 
 code-fix:
 	ln -fs ../test . && ln -fs ../src .
-	
+
 pre: vendor mocks depends code-fix
 
 tests: pre $(TEST_TRGTS)

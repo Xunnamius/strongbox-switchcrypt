@@ -34,7 +34,7 @@ bitmask_t * bitmask_init(uint8_t * init_mask, size_t length);
 /**
  * Cleans up a bit mask and any associated objects in memory. Essentially a
  * free()-like command.
- * 
+ *
  * Note that init_mask is also free'd for you. Be aware of this.
  *
  * @param bitmask

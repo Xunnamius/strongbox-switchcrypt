@@ -14,7 +14,7 @@ typedef enum {
 } freestyle_variant;
 
 /**
- * Internal configuration structure 
+ * Internal configuration structure
  */
 typedef struct freestyle_variant_configuration {
     uint16_t min_rounds;

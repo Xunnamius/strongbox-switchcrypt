@@ -9,7 +9,7 @@
 void sc_set_cipher_ctx(blfs_swappable_cipher_t * sc_ctx, swappable_cipher_e sc)
 {
     sc_ctx->name = "<uninitialized>";
-    
+
     sc_ctx->enum_id = 0;
     sc_ctx->output_size_bytes = 0;
     sc_ctx->key_size_bytes = 0;
@@ -147,7 +147,7 @@ void sc_set_cipher_ctx(blfs_swappable_cipher_t * sc_ctx, swappable_cipher_e sc)
         IFDEBUG(dzlog_debug("valid configs are: `crypt_data` != NULL, `crypt_custom` != NULL, or `read_handle` AND `write_handle` != NULL"));
         Throw(EXCEPTION_SC_BAD_CIPHER);
     }
-    
+
     IFDEBUG(dzlog_debug("(cipher has valid configuration!)"));
 }
 
@@ -160,16 +160,16 @@ swappable_cipher_e blfs_ident_string_to_cipher(const char * sc_str)
 
     else if(strcmp(sc_str, "sc_aes128_ctr") == 0)
         cipher = sc_aes128_ctr;
-    
+
     else if(strcmp(sc_str, "sc_aes256_ctr") == 0)
         cipher = sc_aes256_ctr;
-    
+
     else if(strcmp(sc_str, "sc_aes256_xts") == 0)
         cipher = sc_aes256_xts;
 
     else if(strcmp(sc_str, "sc_salsa8") == 0)
         cipher = sc_salsa8;
-    
+
     else if(strcmp(sc_str, "sc_salsa12") == 0)
         cipher = sc_salsa12;
 
@@ -181,10 +181,10 @@ swappable_cipher_e blfs_ident_string_to_cipher(const char * sc_str)
 
     else if(strcmp(sc_str, "sc_rabbit") == 0)
         cipher = sc_rabbit;
-    
+
     else if(strcmp(sc_str, "sc_sosemanuk") == 0)
         cipher = sc_sosemanuk;
-    
+
     else if(strcmp(sc_str, "sc_chacha20") == 0)
         cipher = sc_chacha20;
 
@@ -193,16 +193,16 @@ swappable_cipher_e blfs_ident_string_to_cipher(const char * sc_str)
 
     else if(strcmp(sc_str, "sc_chacha12_neon") == 0)
         cipher = sc_chacha12_neon;
-    
+
     else if(strcmp(sc_str, "sc_chacha20_neon") == 0)
         cipher = sc_chacha20_neon;
-    
+
     else if(strcmp(sc_str, "sc_freestyle_fast") == 0)
         cipher = sc_freestyle_fast;
-    
+
     else if(strcmp(sc_str, "sc_freestyle_balanced") == 0)
         cipher = sc_freestyle_balanced;
-    
+
     else if(strcmp(sc_str, "sc_freestyle_secure") == 0)
         cipher = sc_freestyle_secure;
 
