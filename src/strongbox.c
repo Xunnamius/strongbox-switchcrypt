@@ -1522,7 +1522,7 @@ buselfs_state_t * strongbox_main_actual(int argc, char * argv[], char * blockdev
 
     uint8_t  cin_allow_insecure_start       = FALSE;
     uint8_t  cin_use_default_password       = FALSE;
-    swappable_cipher_e cin_cipher              = sc_default;
+    swappable_cipher_e cin_cipher           = sc_default;
     uint8_t  cin_backstore_mode             = BLFS_BACKSTORE_CREATE_MODE_UNKNOWN;
     uint64_t cin_backstore_size             = BLFS_DEFAULT_BYTES_BACKSTORE * BYTES_IN_A_MB;
     uint32_t cin_flake_size                 = BLFS_DEFAULT_BYTES_FLAKE;
@@ -1534,7 +1534,16 @@ buselfs_state_t * strongbox_main_actual(int argc, char * argv[], char * blockdev
     {
         printf(
         "\nUsage:\n"
-        "  %s [--default-password][--backstore-size %"PRIu32"][--flake-size %"PRIu32"][--flakes-per-nugget %"PRIu32"][--cipher sc_default][--swap-cipher sc_default][--swap-strategy swap_default][--support-uc uc_default][--tpm-id %"PRIu32"] create nbd_device_name\n\n"
+        "  %s [--default-password]"
+        "[--backstore-size %"PRIu64"]"
+        "[--flake-size %"PRIu32"]"
+        "[--flakes-per-nugget %"PRIu32"]"
+        "[--cipher sc_default]"
+        "[--swap-cipher sc_default]"
+        "[--swap-strategy swap_default]"
+        "[--support-uc uc_default]"
+        "[--tpm-id %"PRIu32"] "
+        "create nbd_device_name\n\n"
         "  %s [--default-password][--allow-insecure-start] open nbd_device_name\n\n"
         "  %s [--default-password][--allow-insecure-start] wipe nbd_device_name\n\n"
 
