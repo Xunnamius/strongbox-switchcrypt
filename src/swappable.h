@@ -25,7 +25,7 @@ typedef struct buselfs_state_t buselfs_state_t;
  * access to the StrongBox internals and is expected to execute independently.
  *
  * Unlike sc_fn_crypt_data_custom, sc_fn_crypt_data performs the final XORing
- * for you and gives you a convenient xor buffer to red your crypted data into.
+ * for you and gives you a convenient xor buffer to read your crypted data into.
  * As such, it provides a slightly higher level of interaction with the backing
  * store's data making things easier for simpler ciphers.
  */
@@ -85,7 +85,7 @@ typedef void (*sc_fn_crypt_data_custom)(
  *
  * sc_fn_read_handle expects your cipher to accept a buffer and read into it
  * (from disk) a **decrypted** subset of nugget_data ciphertext. This is a good
- * choice if your cipher needs to work below the overread protection code (i.e.
+ * choice if your cipher needs to work below the overwrite protection code (i.e.
  * Freestyle) and/or doesn't function like a stream cipher (i.e. AES-XTS). If
  * blfs_swappable_cipher_t::sc_fn_read_handle is defined,
  * blfs_swappable_cipher_t::sc_fn_write_handle must also be defined. Further,
@@ -94,7 +94,7 @@ typedef void (*sc_fn_crypt_data_custom)(
  * Note that this function should only ever operate on a single nugget or its
  * behavior is undefined. Also note that nugget_data[0] will always be aligned
  * with the start of the first affected flake.
- * 
+ *
  * ! This function should return the total number of bytes read in.
  */
 typedef int (*sc_fn_read_handle)(
@@ -135,7 +135,7 @@ typedef int (*sc_fn_read_handle)(
  * Note that writes must be flake-atomic, by which I mean it is illegal for your
  * cipher to end up writing less than/some non-multiple of a flake's worth of
  * data to the backstore.
- * 
+ *
  * ! This function should return the total number of bytes written out.
  */
 typedef int (*sc_fn_write_handle)(
@@ -187,11 +187,31 @@ struct blfs_swappable_cipher_t
 
 /**
  * Accepts swappable_cipher_e enum value sc, which translates into a proper
- * cipher context used to populate set in blfs_swappable_cipher_t.
+ * cipher context used to populate settings with blfs_swappable_cipher_t.
  *
  * @param sc
  */
 void sc_set_cipher_ctx(blfs_swappable_cipher_t * sc_ctx, swappable_cipher_e sc);
+
+/**
+ * Accepts swap_strategy_e enum value ss, which sets the swap strategy used by
+ * StrongBox.
+ *
+ * ! This should be called early in the initialization process
+ *
+ * @param ss
+ */
+void swap_set_swap_strategy(swap_strategy_e ss);
+
+/**
+ * Accepts usecase_e enum value uc, which sets the usecase assumptions StrongBox
+ * will operate under.
+ *
+ * ! This should be called early in the initialization process
+ *
+ * @param uc
+ */
+void uc_set_usecase(usecase_e uc);
 
 /**
  * Allows the cipher to calculate dynamically the bytes per nugget of metadata
@@ -212,6 +232,26 @@ void sc_calculate_cipher_bytes_per_nugget(blfs_swappable_cipher_t * sc_ctx,
  * @return swappable_cipher_e
  */
 swappable_cipher_e blfs_ident_string_to_cipher(const char * sc);
+
+/**
+ * Takes a string and converts it to its corresponding swap_strategy_e enum
+ * item as a string. Throws an exception if the passed string is invalid.
+ *
+ * @param  swap_strategy_enum_item
+ *
+ * @return swap_strategy_e
+ */
+swap_strategy_e blfs_ident_string_to_strategy(const char * sc);
+
+/**
+ * Takes a string and converts it to its corresponding usecase_e enum
+ * item as a string. Throws an exception if the passed string is invalid.
+ *
+ * @param  usecase_enum_item
+ *
+ * @return usecase_e
+ */
+usecase_e blfs_ident_string_to_usecase(const char * sc);
 
 /**
  * Defines an abstraction layer allowing StrongBox to interface properly with

@@ -21,6 +21,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <sys/types.h>
+#include <sys/stat.h>
 
 // ! This must be changed/updated if we're adding new storage layers (e.g.
 // ! the new "nugget metadata" layer)
@@ -111,6 +112,57 @@ static struct buse_operations buseops = {
     .trim = buse_trim,
     .size = 0
 };
+
+/**
+ * Register asynchronous notification
+ */
+static struct mq_attr mqattrs = {
+    .mq_flags = 0; // read only
+    .mq_curmsgs = 0; // read only
+    .mq_maxmsg = BLFS_SV_QUEUE_MAX_MESSAGES;
+    .mq_msgsize = BLFS_SV_MESSAGE_SIZE_BYTES;
+};
+
+/**
+ * Checks the well-defined POSIX message queue for any updates from the world
+ * and updates the application state accordingly
+ */
+void update_application_state_check_mq(buselfs_state_t * buselfs_state)
+{
+    IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
+
+    uint8_t incoming_buffer[BLFS_SV_MESSAGE_SIZE_BYTES];
+    ssize_t receive_result = mq_receive(buselfs_state->qd_incoming, &incoming_buffer, sizeof incoming_buffer, NULL);
+
+    if(receive_result <= 0 && receive_result != EAGAIN)
+        Throw(EXCEPTION_QUEUE_RECEIVE_FAILED);
+
+    uint8_t msg_opcode = incoming_buffer[0];
+    uint8_t msg_payload[sizeof(incoming_buffer) - 1];
+
+    memcpy(incoming_buffer, msg_payload, sizeof msg_payload);
+
+    /**
+     * * msg_opcode is 1 byte that determines the operation performed
+     * * msg_payload is 255 bytes of associated data
+     *
+     * * opcode 0 => initiate cipher switch (no msg_payload)
+     */
+    IFDEBUG(dzlog_debug("Received application state update: opcode %i", msg_opcode));
+
+    switch(msg_opcode)
+    {
+        case 0:
+            IFDEBUG(dzlog_debug("<<<SWITCHING CIPHERS!>>>"));
+            break;
+
+        default:
+            Throw(EXCEPTION_BAD_OPCODE);
+            break;
+    }
+
+    IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
+}
 
 /**
  * Updates the global merkle tree root hash.
@@ -509,6 +561,9 @@ int buse_read(void * output_buffer, uint32_t length, uint64_t absolute_offset, v
     buselfs_state_t * buselfs_state = (buselfs_state_t *) userdata;
     uint_fast32_t size = length;
 
+    IFDEBUG(dzlog_debug("synchronizing application state..."));
+    update_application_state_check_mq(buselfs_state);
+
     IFDEBUG(dzlog_debug("output_buffer (ptr): %p", (void *) output_buffer));
     IFDEBUG(dzlog_debug("buffer (ptr): %p", (void *) buffer));
     IFDEBUG(dzlog_debug("length: %"PRIu32, length));
@@ -717,6 +772,9 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
     const uint8_t * buffer = (const uint8_t *) input_buffer;
     buselfs_state_t * buselfs_state = (buselfs_state_t *) userdata;
     uint_fast32_t size = length;
+
+    IFDEBUG(dzlog_debug("synchronizing application state..."));
+    update_application_state_check_mq(buselfs_state);
 
     IFDEBUG(dzlog_debug("input_buffer (ptr): %p", (void *) input_buffer));
     IFDEBUG(dzlog_debug("buffer (ptr): %p", (void *) buffer));
@@ -1674,6 +1732,39 @@ buselfs_state_t * strongbox_main_actual(int argc, char * argv[], char * blockdev
             IFDEBUG3(printf("<bare debug>: saw --cipher, got enum value: %d\n", cin_cipher));
         }
 
+        else if(strcmp(argv[argc], "--swap-cipher") == 0)
+        { // TODO: swap cipher impl
+            char * cin_cipher_str = argv[argc + 1];
+
+            IFDEBUG3(printf("<bare debug>: saw --cipher = %s\n", cin_cipher_str));
+
+            cin_cipher = blfs_ident_string_to_cipher(cin_cipher_str);
+
+            IFDEBUG3(printf("<bare debug>: saw --cipher, got enum value: %d\n", cin_cipher));
+        }
+
+        else if(strcmp(argv[argc], "--swap-strategy") == 0)
+        { // TODO: active_swap_strategy
+            char * cin_cipher_str = argv[argc + 1];
+
+            IFDEBUG3(printf("<bare debug>: saw --cipher = %s\n", cin_cipher_str));
+
+            cin_cipher = blfs_ident_string_to_cipher(cin_cipher_str);
+
+            IFDEBUG3(printf("<bare debug>: saw --cipher, got enum value: %d\n", cin_cipher));
+        }
+
+        else if(strcmp(argv[argc], "--support-uc") == 0)
+        { // TODO: active_usecase
+            char * cin_cipher_str = argv[argc + 1];
+
+            IFDEBUG3(printf("<bare debug>: saw --cipher = %s\n", cin_cipher_str));
+
+            cin_cipher = blfs_ident_string_to_cipher(cin_cipher_str);
+
+            IFDEBUG3(printf("<bare debug>: saw --cipher, got enum value: %d\n", cin_cipher));
+        }
+
         else if(strcmp(argv[argc], "--tpm-id") == 0)
         {
             int64_t cin_tpm_id_int = strtoll(argv[argc + 1], NULL, 0);
@@ -1825,6 +1916,26 @@ buselfs_state_t * strongbox_main_actual(int argc, char * argv[], char * blockdev
 
     else if(cin_backstore_mode == BLFS_BACKSTORE_CREATE_MODE_WIPE)
         blfs_run_mode_wipe(backstore_path, cin_allow_insecure_start, buselfs_state);
+
+    /* Setup access to IPC message queues */
+
+    buselfs_state->qd_incoming
+        = mq_open(BLFS_SV_QUEUE_INCOMING_NAME, O_RDONLY | O_CREAT | O_NONBLOCK, BLFS_SV_QUEUE_PERM, &mqattrs);
+
+    if(buselfs_state->qd_incoming == -1)
+    {
+        IFDEBUG(dzlog_debug("EXCEPTION: mq_open() = qd_incoming failed"));
+        Throw(EXCEPTION_FAILED_TO_OPEN_IQUEUE);
+    }
+
+    buselfs_state->qd_outgoing
+        = mq_open(BLFS_SV_QUEUE_OUTGOING_NAME, O_WRONLY | O_CREAT | O_NONBLOCK, BLFS_SV_QUEUE_PERM, &mqattrs);
+
+    if(buselfs_state->qd_outgoing == -1)
+    {
+        IFDEBUG(dzlog_debug("EXCEPTION: mq_open() = qd_outgoing failed"));
+        Throw(EXCEPTION_FAILED_TO_OPEN_OQUEUE);
+    }
 
     /* Finish up startup procedures */
 

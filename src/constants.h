@@ -72,6 +72,28 @@ typedef enum swappable_cipher_e {
     sc_aes256_xts               =18,
 } swappable_cipher_e;
 
+typedef enum swap_strategy_e {
+    swap_default        = 1,
+    swap_opportunistic  = 2,
+    swap_immediate      = 3,
+    swap_forward        = 4,
+    swap_aggressive     = 5,
+    swap_precrypt       = 6,
+    swap_disabled       = 7,
+    swap_not_impl       = 8,
+} swap_strategy_e;
+
+typedef enum usecase_e {
+    uc_default              = 1,
+    uc_secure_regions       = 2,
+    uc_secure_nuggets       = 3,
+    uc_perf_agreement       = 4,
+    uc_fixed_energy         = 5,
+    uc_opportunistic_crypt  = 6,
+    uc_disabled             = 7,
+    uc_no_impl              = 8,
+} swap_strategy_e;
+
 #include <string.h> /* strdup() */
 
 ///////////////////
@@ -256,6 +278,12 @@ typedef enum swappable_cipher_e {
 #define BLFS_MAX_SC_FNS                         255 // limited by uint8_t max
 
 #define BLFS_DEFAULT_TPM_ID                     5U // Of course, one should consider changing this...
+
+#define BLFS_SV_QUEUE_INCOMING_NAME             "/incoming.strongbox.xunn.io"
+#define BLFS_SV_QUEUE_OUTGOING_NAME             "/receiving.strongbox.xunn.io"
+#define BLFS_SV_QUEUE_PERM                      0777 // ! WARNING: very permissive!
+#define BLFS_SV_QUEUE_MAX_MESSAGES              10
+#define BLFS_SV_MESSAGE_SIZE_BYTES              256U // bytes; 1 byte op || 255 byte payload
 
 /////////
 // MMC //

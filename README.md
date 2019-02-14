@@ -41,6 +41,8 @@ Observe that `nbd_device_name` must always appear last and the desired command
 
 > Further, the following must hold: `backstore-size >= flake-size * flakes-per-nugget + A`. `A` is equal to `total-number-of-nuggets * (greatest-cipher-md-requested-bytes-per-flake + 1)` but its ultimate value depends on `flake-size` and `flakes-per-nugget`. Hence, the formula in the previous paragraph is more important.
 
+### Swapping Ciphers
+
 Ciphers available for the `--cipher` and `--swap-cipher` are:
 
 - `sc_default` (this is synonymous with `sc_chacha20`)
@@ -63,18 +65,26 @@ You can see these options defined in [constants.h](src/constants.h). Note that
 `sc_chachaX_neon` are alternative ARM NEON optimized implementations of ChaCha20
 by [floodyberry](https://github.com/floodyberry/chacha-opt).
 
+### Swap Strategies
+
 Swap strategies available for `--swap-strategy` are:
 
 - `swap_default` (this is synonymous with `swap_disabled`)
-- `swap_forward`
-- `swap_rolling`
-- `swap_aggressive`
-- `swap_immediate`
 - `swap_opportunistic`
+- `swap_immediate` (this is synonymous with `swap_not_impl`)
+- `swap_forward`
+- `swap_aggressive`
+- `swap_precrypt`
 - `swap_disabled`
 - `swap_not_impl`
 
 You can see these options defined in [constants.h](src/constants.h).
+
+#### Triggering the Swap
+
+
+
+### Enabling Use Cases
 
 Explicit support for the following experimental use cases (uc) is available:
 
@@ -88,8 +98,6 @@ Explicit support for the following experimental use cases (uc) is available:
 - `uc_no_impl`
 
 You can see these options defined in [constants.h](src/constants.h). Note that these options are meaningless if the swap strategy is set to `swap_disabled`.
-
-> (TODO: flesh this section out with explanations of use cases, swap strategies, explaining SIGHUP <=> switching, etc)
 
 For more information and some friendly? examples:
 

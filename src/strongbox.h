@@ -10,6 +10,8 @@
 #include "merkletree.h"
 #include "swappable.h"
 
+#include <mqueue.h>
+
 typedef struct blfs_swappable_cipher_t blfs_swappable_cipher_t;
 typedef struct buselfs_state_t buselfs_state_t;
 
@@ -86,6 +88,17 @@ typedef struct buselfs_state_t
     blfs_swappable_cipher_t * active_cipher;
 
     /**
+     * This stores the currently active swap strategy. See swappable.h for
+     * details.
+     */
+    swap_strategy_e active_swap_strategy;
+
+    /**
+     * This stores the currently active usecase. See swappable.h for details.
+     */
+    usecase_e active_usecase;
+
+    /**
      * If we're in crash recover mode (TRUE) or not (FALSE). If we are, then
      * all rekeying efforts must increment the keycount store entries by +2
      * instead of +1 to avoid any unpleasantness.
@@ -96,6 +109,20 @@ typedef struct buselfs_state_t
      * Index of the RPMB counter block in the RPMB space
      */
     uint64_t rpmb_secure_index;
+
+    /**
+     * The message queue descriptor pointing to the queue storing all incoming
+     * messages
+     */
+    mqd_t qd_incoming;
+
+    /**
+     * The message queue descriptor pointing to the queue storing all outgoing
+     * messages
+     *
+     * ! Note: in a real implementation, this would be client-process-specific
+     */
+    mqd_t qd_outgoing;
 } buselfs_state_t;
 
 /**

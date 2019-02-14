@@ -211,13 +211,28 @@ do {                                                                            
 #define EXCEPTION_UNKNOWN_CHACHAN_CONFIGURATION         0x39U
 
 // A cipher was initialized with an illegal configuration of crypt_*/handles
-#define EXCEPTION_SC_BAD_CIPHER                         0x40U
+#define EXCEPTION_SC_BAD_CIPHER                         0x3AU
 
 // Unknown chacha (nano optimized) configuration specifier was passed in
-#define EXCEPTION_FLAKESIZE_TOO_SMALL                   0x41U
+#define EXCEPTION_FLAKESIZE_TOO_SMALL                   0x3BU
 
 // A cipher was initialized with an illegal configuration of crypt_*/handles
-#define EXCEPTION_TOO_FEW_FLAKES_PER_NUGGET             0x42U
+#define EXCEPTION_TOO_FEW_FLAKES_PER_NUGGET             0x3CU
+
+// Incoming message queue descriptor acquisition failed
+#define EXCEPTION_FAILED_TO_OPEN_IQUEUE                 0x3DU
+
+// Outgoing message queue descriptor acquisition failed
+#define EXCEPTION_FAILED_TO_OPEN_OQUEUE                 0x3EU
+
+// mq_receive failed
+#define EXCEPTION_QUEUE_RECEIVE_FAILED                  0x3FU
+
+// mq_send failed
+#define EXCEPTION_QUEUE_SEND_FAILED                     0x40U
+
+// A strange opcode-related issue occurred (wtf?)
+#define EXCEPTION_BAD_OPCODE                            0x41U
 
 ///////////////////////
 // End Configuration //

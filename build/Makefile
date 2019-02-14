@@ -78,7 +78,7 @@ IFLAGS      := -I/usr/local/include \
 			   -I$(CHACHAX_ROOT)/bin
 
 LDFLAGS     := -L$(VENDR_ROOT) -L/usr/local/lib \
-               -lsodium -lzlog -lpthread -lm -lcrypto -lenergymon-default -lbsd
+               -lsodium -lzlog -lpthread -lm -lcrypto -lenergymon-default -lbsd -lrt
 
 # Ruby configs for runner generation w/ Unity (automatic)
 GENRNR_CONF := $(CONFIG_ROOT)/unity_runner_config.yml
@@ -203,6 +203,9 @@ $(TEST_TRGTS): test_%: test_%_runner.o test_%.o %.o test_%.d $(SRC_FILES) $(VEND
 
 $(RUNR_TRGTS): %_runner.c: %.c
 	ruby $(UNITY_ROOT)/auto/generate_test_runner.rb $< $@ $(GENRNR_CONF)
+
+sbctl:
+	$(CC) 
 
 # Optimization workhorse targets
 
