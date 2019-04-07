@@ -181,6 +181,7 @@ void test_integration_with_buselfs_works_as_expected(void)
     buselfs_state->merkle_tree                  = mt_create();
     buselfs_state->default_password             = BLFS_DEFAULT_PASS;
     buselfs_state->rpmb_secure_index            = _TEST_BLFS_TPM_ID;
+    buselfs_state->active_cipher                = malloc(sizeof *buselfs_state->active_cipher);
 
     sc_set_cipher_ctx(buselfs_state->active_cipher, sc_default);
 

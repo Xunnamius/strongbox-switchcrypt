@@ -1,0 +1,273 @@
+# Make with painstaking love by Bernard Dickens III (bd3@cs.uchicago.edu)
+#
+# ? A few rules/assumptions:
+# ? 1) You should read the README.md file to learn how this Makefile is structured
+# ? 2) Don't give files that aren't direct children of test/ names like `test_X.c`
+# ? 3) Don't give files that are not auto-generated unity mocks the `mock_` prefix
+# ? 4) Use `make check` to make and run all the tests (after running `make pre` and `make clean` necessarily)
+# ? 5) The ONLY test that works with BLFS_DEBUG_MONITOR_POWER=1 is test_strongbox!
+
+#################
+# Configuration #
+#################
+
+# ? Same rules as BLFS_DEBUG_LEVEL and BLFS_MANUAL_GV_FALLBACK
+# ! GLOBAL_DEBUG_MODE=0 when not debugging or suffer the (perf-related) consequences!
+# ! GLOBAL_MANUAL_GV_FALLBACK should be set to -1 unless no RPMB device, then >= 0
+GLOBAL_DEBUG_MODE := 0
+GLOBAL_MANUAL_GV_FALLBACK := -1
+
+SRC_ROOT    := ../src
+VENDR_ROOT  := ../vendor
+TEST_ROOT   := ../test
+CONFIG_ROOT := ../config
+
+UNITY_ROOT      := $(VENDR_ROOT)/unity
+CMOCK_ROOT      := $(VENDR_ROOT)/cmock
+MT_ROOT         := $(VENDR_ROOT)/merkle-tree
+ENERGYMON_ROOT  := $(VENDR_ROOT)/energymon
+ESTREAM_ROOT    := $(VENDR_ROOT)/libestream
+CHACHAX_ROOT    := $(VENDR_ROOT)/chacha-opt
+
+# * StrongBox's internal debug level and other interesting compile-time flags
+DEBUG_COMPILE_FLAG := -DBLFS_DEBUG_LEVEL=$(GLOBAL_DEBUG_MODE) \
+                      -DBLFS_MANUAL_GV_FALLBACK=$(GLOBAL_MANUAL_GV_FALLBACK) \
+					  -DCMOCK_MEM_DYNAMIC=1
+
+# * This is the name of the resulant executable
+EXENAME := strongbox
+
+# This file houses the main() function for the executable (and nothing else)
+# This should be the only file with a main() function in SRC_ROOT; there should
+# be no tests for it, either
+EXECSRC := $(SRC_ROOT)/main.c
+
+# These should typically be in VENDR_ROOT, though they don't have to be
+EXPLICIT_LIBS := $(MT_ROOT)/src/libMerkleTree.a \
+                 $(ESTREAM_ROOT)/libestream.a \
+                 $(ENERGYMON_ROOT)/src/energymon-time-util.c \
+                 $(ENERGYMON_ROOT)/src/ptime/ptime.c \
+				 $(CHACHAX_ROOT)/bin/chacha.lib
+
+C_TEST_LIBS := $(UNITY_ROOT)/src/unity.c \
+               $(CMOCK_ROOT)/src/cmock.c
+
+CC  := /usr/bin/gcc
+CCV := $(shell expr `gcc --version | grep ^gcc | awk '{print $$3}'` \>= 4.9)
+
+# ! Set this to empty when building for release/profiling or -g for debugging
+#                             :=
+DEBUG_MAKE_FLAGS              := -g
+CONDITIONAL_DEBUG_MAKE_FLAGS  := -fsanitize=address,undefined,shift,integer-divide-by-zero,null,signed-integer-overflow \
+                                 -fno-omit-frame-pointer
+
+CFLAGS      := -pedantic -Wall -Wextra -std=c11
+
+IFLAGS      := -I/usr/local/include \
+               -I. \
+               -I.. \
+			   -I$(TEST_ROOT) \
+               -I$(VENDR_ROOT) \
+               -I$(CONFIG_ROOT) \
+               -I$(SRC_ROOT) \
+               -I$(UNITY_ROOT)/src \
+               -I$(CMOCK_ROOT)/src \
+               -I$(MT_ROOT)/src \
+               -I$(ENERGYMON_ROOT)/src \
+               -I$(ESTREAM_ROOT) \
+			   -I$(CHACHAX_ROOT)/bin
+
+LDFLAGS     := -L$(VENDR_ROOT) -L/usr/local/lib \
+               -lsodium -lzlog -lpthread -lm -lcrypto -lenergymon-default -lbsd -lrt
+
+# Ruby configs for runner generation w/ Unity (automatic)
+GENRNR_CONF := $(CONFIG_ROOT)/unity_runner_config.yml
+
+# Ruby configs for mock generation.
+# ! :mock_prefix should be set to mock_
+CMOCK_CONF := $(CONFIG_ROOT)/cmock_config.yml
+
+# * List of header file names (no .h or any other extensions) in SRC_ROOT to
+# * mock with cmock e.g. HDRS_TO_MOCK := interactions my_lib You can then
+# * include the mocked header in your source e.g. #include "mock_my_lib.h"
+HDRS_TO_MOCK := io backstore strongbox
+
+# * Scarecrows (empty targets)
+SCARECROWS :=
+
+########################
+# Pre-processing Setup #
+########################
+
+vpath test_%.c $(TEST_ROOT)
+vpath % $(SRC_ROOT) $(VENDR_ROOT) $(CONFIG_ROOT)
+
+SRC_FILES   := $(patsubst %.c,%.o,$(subst $(SRC_ROOT)/,,$(filter-out $(EXECSRC),$(wildcard $(SRC_ROOT)/*.c $(SRC_ROOT)/**/*.c))))
+VENDR_FILES := $(patsubst %.c,%.o,$(subst $(VENDR_ROOT)/,,$(wildcard $(VENDR_ROOT)/*.c)))
+TEST_FILES  := $(patsubst %.c,%.o,$(subst $(TEST_ROOT)/,,$(wildcard $(TEST_ROOT)/*.c)))
+RUNR_FILES  := $(patsubst %.c,%_runner.o,$(subst $(TEST_ROOT)/,,$(wildcard $(TEST_ROOT)/*.c)))
+
+TEST_TRGTS  := $(patsubst %.c,%,$(subst $(TEST_ROOT)/,,$(wildcard $(TEST_ROOT)/*.c)))
+RUNR_TRGTS  := $(patsubst %,%_runner.c,$(TEST_TRGTS))
+MOCK_TRGTS  := $(patsubst %,mock_%.h,$(HDRS_TO_MOCK))
+
+DEP_TEST_TRGTS := $(TEST_TRGTS:=.d)
+
+ifeq "$(CCV)" "1"
+	DEBUG_MAKE_FLAGS += $(CONDITIONAL_DEBUG_MAKE_FLAGS)
+endif
+
+PERCENT := %
+IFEMPTYGOALS :=
+
+ifeq "$(MAKECMDGOALS)" ""
+	IFEMPTYGOALS := all
+endif
+
+ifeq "$(MAKECMDGOALS)" "all"
+	IFEMPTYGOALS := all
+endif
+
+ifeq "$(MAKECMDGOALS)" "$(EXENAME)"
+	IFEMPTYGOALS := $(EXENAME)
+endif
+
+WE_PROD_NOW := $(findstring all-,$(MAKECMDGOALS))$(IFEMPTYGOALS)
+
+#################
+# Custom Macros #
+#################
+
+containing = $(foreach v,$2,$(if $(findstring $1,$v),$v))
+not-containing = $(foreach v,$2,$(if $(findstring $1,$v),,$v))
+distinct = $(if $1,$(firstword $1) $(call distinct,$(filter-out $(firstword $1),$1)))
+
+# Example usage of the above two macros:
+# LIST := a_bold_tt x_bold_da a_knewl_da q_ty_we q_ty_we
+# LIST_BOLD := $(call containing,bold,$(LIST))
+# LIST_NOT_BOLD := $(call not-containing,bold,$(LIST))
+# LIST_WITHOUT_DUPS := $(call distinct,$(LIST))
+
+###########
+# Targets #
+###########
+
+.PHONY: all all-O0 all-O2 all-O3 test tests tests-O0 tests-O2 tests-O3 O0 O2 O3 clean check vendor src mocks pre depends
+
+# Primary targets
+
+all-O3: O3 all
+all-O2: O2 all
+all-O0: O0 all
+
+tests-O3: O3 tests
+tests-O2: O2 tests
+tests-O0: O0 tests
+
+all: $(EXENAME)
+test: check
+
+$(SCARECROWS): ;
+
+# Workhorse targets
+
+$(EXENAME): $(SRC_FILES) $(VENDR_FILES)
+	$(CC) $(CFLAGS) $(IFLAGS) $(DEBUG_COMPILE_FLAG) -o $(EXENAME) $(EXECSRC) \
+        $(call distinct,$(notdir $(SRC_FILES)) $(VENDR_FILES)) \
+        $(EXPLICIT_LIBS) \
+        $(LDFLAGS)
+	ln -sf strongbox sb
+
+$(SRC_FILES) $(VENDR_FILES): %.o: %.c %.h
+ifneq "$(WE_PROD_NOW)" ""
+	$(CC) $(CFLAGS) $(IFLAGS) $(DEBUG_COMPILE_FLAG) -o $(notdir $@) -c $<
+else
+	$(CC) $(CFLAGS) $(IFLAGS) $(DEBUG_MAKE_FLAGS) $(DEBUG_COMPILE_FLAG) -o $(notdir $@) -c $<
+endif
+
+$(RUNR_FILES) $(TEST_FILES): %.o: %.c
+	$(CC) $(CFLAGS) $(IFLAGS) $(DEBUG_MAKE_FLAGS) $(DEBUG_COMPILE_FLAG) -o $(notdir $@) -c $<
+
+# ? Dynamically scans prereqs (filled with #include'd headers from source)
+# ? for mocks, includes them, and then removes the unmocked version from the
+# ? compilation tree to prevent definition collisions
+$(TEST_TRGTS): test_%: test_%_runner.o test_%.o %.o test_%.d $(SRC_FILES) $(VENDR_FILES)
+	$(eval R_MOCKED_FILES := $(call distinct,$(patsubst %.h,%.c,$(call containing,mock_,$^))))
+	$(eval R_REMAIN_FILES := $(filter-out $(SCARECROWS) %.h %.c %.d $(if $(R_MOCKED_FILES),$(addprefix %,$(patsubst mock_%.c,%.o,$(R_MOCKED_FILES)))), $^))
+	$(CC) $(CFLAGS) $(DEBUG_MAKE_FLAGS) $(IFLAGS) $(DEBUG_COMPILE_FLAG) -o $@ \
+        $(notdir $(R_REMAIN_FILES)) \
+        $(R_MOCKED_FILES) \
+        $(C_TEST_LIBS) \
+        $(EXPLICIT_LIBS) \
+        $(LDFLAGS)
+
+$(RUNR_TRGTS): %_runner.c: %.c
+	ruby $(UNITY_ROOT)/auto/generate_test_runner.rb $< $@ $(GENRNR_CONF)
+
+sbctl:
+	$(CC) 
+
+# Optimization workhorse targets
+
+O0:
+	$(eval CFLAGS += -O0)
+
+O2:
+	$(eval CFLAGS += -O2)
+
+O3:
+	$(eval CFLAGS += -O3)
+
+# Organizational targets
+
+clean:
+	find . -not -name 'Makefile' -not -name '.gitignore' -type f -exec rm {} +
+	rm -f /tmp/blfs*
+	rm -f /tmp/test.io.bin
+	rm -f sb
+
+check: tests
+	$(patsubst %,./% &&,$(TEST_TRGTS)) true
+
+vendor: $(VENDR_FILES)
+	$(MAKE) clean -C ../vendor/merkle-tree
+
+ifeq "$(GLOBAL_DEBUG_MODE)" "0"
+	$(MAKE) release -C ../vendor/merkle-tree
+else
+	$(MAKE) debug -C ../vendor/merkle-tree
+endif
+
+	$(MAKE) clean -C ../vendor/libestream
+	$(MAKE) libestream.a -C ../vendor/libestream
+	cd ../vendor/chacha-opt; ./configure
+	$(MAKE) clean -C ../vendor/chacha-opt
+	$(MAKE) lib -C ../vendor/chacha-opt
+
+src: $(SRC_FILES)
+
+code-fix:
+	ln -fs ../test . && ln -fs ../src .
+
+pre: vendor mocks depends code-fix
+
+tests: pre $(TEST_TRGTS)
+
+# Mock generating targets
+
+mocks: $(MOCK_TRGTS)
+
+$(MOCK_TRGTS): mock_%: %
+	ruby $(CMOCK_ROOT)/lib/cmock.rb -o$(CMOCK_CONF) $<
+
+# Dependency generating targets
+
+depends: $(DEP_TEST_TRGTS)
+
+$(DEP_TEST_TRGTS):
+	$(CC) $(IFLAGS) -MM -MP -E -MF $@.tmp -MT $(patsubst %.d,%,$@) $(TEST_ROOT)/$(patsubst %.d,%.c,$@)
+	mv -f $@.tmp $@
+
+# Include dependency Makefiles
+
+include $(wildcard $(DEP_TEST_TRGTS))
