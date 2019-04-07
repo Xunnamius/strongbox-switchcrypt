@@ -221,7 +221,7 @@ O3:
 # Organizational targets
 
 clean:
-	find . -not -name 'Makefile' -not -name '.gitignore' -type f -exec rm {} +
+	find . -not -name 'Makefile*' -not -name '.gitignore' -type f -exec rm {} +
 	rm -f /tmp/blfs*
 	rm -f /tmp/test.io.bin
 	rm -f sb

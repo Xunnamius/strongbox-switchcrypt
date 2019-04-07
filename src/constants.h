@@ -92,7 +92,7 @@ typedef enum usecase_e {
     uc_opportunistic_crypt  = 6,
     uc_disabled             = 7,
     uc_no_impl              = 8,
-} swap_strategy_e;
+} usecase_e;
 
 #include <string.h> /* strdup() */
 

@@ -117,10 +117,10 @@ static struct buse_operations buseops = {
  * Register asynchronous notification
  */
 static struct mq_attr mqattrs = {
-    .mq_flags = 0; // read only
-    .mq_curmsgs = 0; // read only
-    .mq_maxmsg = BLFS_SV_QUEUE_MAX_MESSAGES;
-    .mq_msgsize = BLFS_SV_MESSAGE_SIZE_BYTES;
+    .mq_flags = 0, // read only
+    .mq_curmsgs = 0, // read only
+    .mq_maxmsg = BLFS_SV_QUEUE_MAX_MESSAGES,
+    .mq_msgsize = BLFS_SV_MESSAGE_SIZE_BYTES
 };
 
 /**
