@@ -323,9 +323,11 @@ void sc_calculate_cipher_bytes_per_nugget(blfs_swappable_cipher_t * sc_ctx,
 void swap_set_swap_strategy(swap_strategy_e ss)
 {
     // TODO: impl and add to strongbox.c
+    (void) ss;
 }
 
 void uc_set_usecase(usecase_e uc)
 {
     // TODO: impl and add to strongbox.c
+    (void) uc;
 }

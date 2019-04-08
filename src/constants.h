@@ -279,11 +279,16 @@ typedef enum usecase_e {
 
 #define BLFS_DEFAULT_TPM_ID                     5U // Of course, one should consider changing this...
 
+#ifndef BLFS_SV_QUEUE_INCOMING_NAME
 #define BLFS_SV_QUEUE_INCOMING_NAME             "/incoming.strongbox.xunn.io"
-#define BLFS_SV_QUEUE_OUTGOING_NAME             "/receiving.strongbox.xunn.io"
+#endif
+#ifndef BLFS_SV_QUEUE_OUTGOING_NAME
+#define BLFS_SV_QUEUE_OUTGOING_NAME             "/outgoing.strongbox.xunn.io"
+#endif
 #define BLFS_SV_QUEUE_PERM                      0777 // ! WARNING: very permissive!
 #define BLFS_SV_QUEUE_MAX_MESSAGES              10
 #define BLFS_SV_MESSAGE_SIZE_BYTES              256U // bytes; 1 byte op || 255 byte payload
+#define BLFS_SV_MESSAGE_DEFAULT_PRIORITY        0 // uint; must be < ~30k. 0 - 30 recommended
 
 /////////
 // MMC //

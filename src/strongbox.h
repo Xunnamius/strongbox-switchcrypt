@@ -14,6 +14,7 @@
 
 typedef struct blfs_swappable_cipher_t blfs_swappable_cipher_t;
 typedef struct buselfs_state_t buselfs_state_t;
+typedef struct blfs_mq_msg_t blfs_mq_msg_t;
 
 KHASH_MAP_INIT_STR(BLFS_KHASH_NUGGET_KEY_CACHE_NAME, uint8_t *)
 
@@ -125,6 +126,29 @@ typedef struct buselfs_state_t
     mqd_t qd_outgoing;
 } buselfs_state_t;
 
+
+/**
+ * This struct describes a POSIX message queue message to StrongBox. Messages
+ * consist of an opcode and a payload for data. This format is used for both
+ * incoming and outgoing communications with the queue.
+ */
+typedef struct blfs_mq_msg_t
+{
+    /**
+     * The 1-byte opcode represents one of 255 possible operations to be
+     * performed in response to this message being received. See
+     * update_application_state_check_mq for those responses and their opcodes.
+     * Note that an opcode of 0 indicates an error/null message!
+     */
+    uint8_t opcode;
+
+    /**
+     * This (BLFS_SV_MESSAGE_SIZE_BYTES - 1) byte payload of data that
+     * accompanies the operation described above. Might be empty.
+     */
+    uint8_t payload[BLFS_SV_MESSAGE_SIZE_BYTES - 1];
+} blfs_mq_msg_t;
+
 /**
  * Add a nugget_index => nugget_key pair to the key cache if it is active. If
  * the key cache is disabled, this is a noop.
@@ -173,6 +197,9 @@ void get_flake_key_using_keychain(uint8_t * flake_key,
  */
 void update_merkle_tree_root_hash(buselfs_state_t * buselfs_state);
 
+/**
+ * Commit the global merkle tree root hash to the backing store
+ */
 void commit_merkle_tree_root_hash(buselfs_state_t * buselfs_state);
 
 /**
@@ -245,6 +272,41 @@ int buse_write(const void * buffer, uint32_t len, uint64_t offset, void * userda
  * md_bytes_per_nugget at the correct point and with context (buselfs_state).
  */
 blfs_backstore_t * blfs_backstore_open_with_ctx(const char * path, buselfs_state_t * buselfs_state);
+
+/**
+ * Wrapper around the POSIX message queue functions that initializes the queues
+ * StrongBox expects to exist. This function should only be called once during
+ * initialization. `buselfs_state` need not be fully intialized at the point
+ * this function is called.
+ *
+ * ! Note that the message queue descriptors should be closed after use, which
+ * ! StrongBox does not do for you (or ever)!
+ */
+void blfs_initialize_queues(buselfs_state_t * buselfs_state);
+
+/**
+ * Wrapper around the POSIX message queue read function that checks the input
+ * queue for new items, returning as quickly as possible. This function is
+ * suitable to be called in time sensitive contexts (such as within buse
+ * read/write functions). `message.opcode = 0` indicates the queue was empty.
+ */
+void blfs_read_input_queue(buselfs_state_t * buselfs_state, blfs_mq_msg_t * message);
+
+/**
+ * Wrapper around the POSIX message queue read function that pushes new items
+ * onto the output queue, returning as quickly as possible. This function is
+ * suitable to be called in time sensitive contexts (such as within buse
+ * read/write functions). `message.opcode` must be between 1 and 255. `priority`
+ * must be between 0 and the system maximum (usually ~30k).
+ */
+void blfs_write_output_queue(buselfs_state_t * buselfs_state, blfs_mq_msg_t * message, unsigned int priority);
+
+/**
+ * Checks the well-defined POSIX message queue for any updates from the world
+ * and updates the application state accordingly (e.g. cipher switching logic is
+ * here)
+ */
+void update_application_state_check_mq(buselfs_state_t * buselfs_state);
 
 /**
  * Implementation of the StrongBox rekeying procedure for on-write overwrite

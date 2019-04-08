@@ -68,6 +68,7 @@ static void make_fake_state()
     buselfs_state->active_cipher = &global_active_cipher;
 
     sc_set_cipher_ctx(buselfs_state->active_cipher, sc_default);
+    blfs_initialize_queues(buselfs_state);
 
     iofd = open(BACKSTORE_FILE_PATH, O_CREAT | O_RDWR | O_TRUNC, 0777);
 
@@ -153,6 +154,11 @@ void tearDown(void)
 {
     mt_delete(buselfs_state->merkle_tree);
 
+    mq_close(buselfs_state->qd_incoming);
+    mq_close(buselfs_state->qd_outgoing);
+    mq_unlink(BLFS_SV_QUEUE_INCOMING_NAME);
+    mq_unlink(BLFS_SV_QUEUE_OUTGOING_NAME);
+
     if(!BLFS_DEFAULT_DISABLE_KEY_CACHING)
         kh_destroy(BLFS_KHASH_NUGGET_KEY_CACHE_NAME, buselfs_state->cache_nugget_keys);
 
@@ -163,8 +169,36 @@ void tearDown(void)
     unlink(BACKSTORE_FILE_PATH);
 }
 
+// *** *** *** *** *** *** *** *** *** *** *** *** *** *** *** *** *** *** *** *** *** *** *** *** *** *** *** *** ***
+
 // ! Also need to test a delete function to fix the memory leak issue as
 // ! discussed in strongbox.h
+
+void test_mq_empty_read_works(void)
+{
+    blfs_mq_msg_t msg = { .opcode = 1 };
+    blfs_read_input_queue(buselfs_state, &msg);
+    TEST_ASSERT_EQUAL_UINT(0, msg.opcode);
+}
+
+void test_mq_write_read_works(void)
+{
+    // ? Gonna swap the two descriptors since the two queues otherwise do not
+    // ? overlap!
+    buselfs_state_t fake_buselfs_state;
+    fake_buselfs_state.qd_incoming = mq_open(BLFS_SV_QUEUE_OUTGOING_NAME, O_RDONLY | O_NONBLOCK, BLFS_SV_QUEUE_PERM);
+
+    assert(fake_buselfs_state.qd_incoming > 0);
+
+    blfs_mq_msg_t outgoing_msg = { .opcode = 10, .payload = "Payload" };
+    blfs_write_output_queue(buselfs_state, &outgoing_msg, BLFS_SV_MESSAGE_DEFAULT_PRIORITY);
+
+    blfs_mq_msg_t incoming_msg;
+    blfs_read_input_queue(&fake_buselfs_state, &incoming_msg);
+
+    TEST_ASSERT_EQUAL_UINT(outgoing_msg.opcode, incoming_msg.opcode);
+    TEST_ASSERT_EQUAL_MEMORY(outgoing_msg.payload, incoming_msg.payload, BLFS_SV_MESSAGE_SIZE_BYTES - 1);
+}
 
 void test_adding_and_evicting_from_the_keycache_works_as_expected(void)
 {

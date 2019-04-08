@@ -123,157 +123,6 @@ static struct mq_attr mqattrs = {
     .mq_msgsize = BLFS_SV_MESSAGE_SIZE_BYTES
 };
 
-/**
- * Checks the well-defined POSIX message queue for any updates from the world
- * and updates the application state accordingly
- */
-void update_application_state_check_mq(buselfs_state_t * buselfs_state)
-{
-    IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
-
-    uint8_t incoming_buffer[BLFS_SV_MESSAGE_SIZE_BYTES];
-    ssize_t receive_result = mq_receive(buselfs_state->qd_incoming, &incoming_buffer, sizeof incoming_buffer, NULL);
-
-    if(receive_result <= 0 && receive_result != EAGAIN)
-        Throw(EXCEPTION_QUEUE_RECEIVE_FAILED);
-
-    uint8_t msg_opcode = incoming_buffer[0];
-    uint8_t msg_payload[sizeof(incoming_buffer) - 1];
-
-    memcpy(incoming_buffer, msg_payload, sizeof msg_payload);
-
-    /**
-     * * msg_opcode is 1 byte that determines the operation performed
-     * * msg_payload is 255 bytes of associated data
-     *
-     * * opcode 0 => initiate cipher switch (no msg_payload)
-     */
-    IFDEBUG(dzlog_debug("Received application state update: opcode %i", msg_opcode));
-
-    switch(msg_opcode)
-    {
-        case 0:
-            IFDEBUG(dzlog_debug("<<<SWITCHING CIPHERS!>>>"));
-            break;
-
-        default:
-            Throw(EXCEPTION_BAD_OPCODE);
-            break;
-    }
-
-    IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
-}
-
-/**
- * Updates the global merkle tree root hash.
- *
- * ! This function MUST be called before buselfs_state->merkle_tree_root_hash
- * ! is referenced!
- *
- * @param buselfs_state
- */
-void update_merkle_tree_root_hash(buselfs_state_t * buselfs_state)
-{
-    IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
-
-    if(mt_get_root(buselfs_state->merkle_tree, buselfs_state->merkle_tree_root_hash) != MT_SUCCESS)
-        Throw(EXCEPTION_MERKLE_TREE_ROOT_FAILURE);
-
-    IFDEBUG(dzlog_debug("merkle tree root hash:"));
-    IFDEBUG(hdzlog_debug(buselfs_state->merkle_tree_root_hash, BLFS_CRYPTO_BYTES_MTRH));
-
-    IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
-}
-
-void commit_merkle_tree_root_hash(buselfs_state_t * buselfs_state)
-{
-    blfs_header_t * mtrh_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_MTRH);
-    memcpy(mtrh_header->data, buselfs_state->merkle_tree_root_hash, BLFS_HEAD_HEADER_BYTES_MTRH);
-    blfs_commit_header(buselfs_state->backstore, mtrh_header);
-}
-
-/**
- * Add a leaf to the global merkle tree
- *
- * @param data
- * @param length
- * @param buselfs_state
- */
-void add_to_merkle_tree(uint8_t * data, size_t length, const buselfs_state_t * buselfs_state)
-{
-    IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
-
-    IFDEBUG(dzlog_debug("length = %zu", length));
-    IFDEBUG(dzlog_debug("data:"));
-    IFDEBUG(hdzlog_debug(data, length));
-
-    mt_error_t err = mt_add(buselfs_state->merkle_tree, data, length);
-
-    if(err != MT_SUCCESS)
-    {
-        IFDEBUG(dzlog_fatal("MT ERROR: %i", err));
-        Throw(EXCEPTION_MERKLE_TREE_ADD_FAILURE);
-    }
-
-    IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
-}
-
-/**
- * Update a leaf in the global merkle tree
- *
- * @param data
- * @param length
- * @param index
- * @param buselfs_state
- */
-void update_in_merkle_tree(uint8_t * data, size_t length, uint32_t index, const buselfs_state_t * buselfs_state)
-{
-    IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
-
-    IFDEBUG(dzlog_debug("length = %zu", length));
-    IFDEBUG(dzlog_debug("index = %u", index));
-    IFDEBUG(dzlog_debug("data:"));
-    IFDEBUG(hdzlog_debug(data, length));
-
-    mt_error_t err = mt_update(buselfs_state->merkle_tree, data, length, index);
-
-    if(err != MT_SUCCESS)
-    {
-        IFDEBUG(dzlog_fatal("MT ERROR: %i", err));
-        Throw(EXCEPTION_MERKLE_TREE_UPDATE_FAILURE);
-    }
-
-    IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
-}
-
-/**
- * Verify a leaf in the global merkle tree
- *
- * @param data
- * @param length
- * @param index
- * @param buselfs_state
- */
-void verify_in_merkle_tree(uint8_t * data, size_t length, uint32_t index, const buselfs_state_t * buselfs_state)
-{
-    IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
-
-    IFDEBUG(dzlog_debug("length = %zu", length));
-    IFDEBUG(dzlog_debug("index = %u", index));
-    IFDEBUG(dzlog_debug("data:"));
-    IFDEBUG(hdzlog_debug(data, length));
-
-    mt_error_t err = mt_verify(buselfs_state->merkle_tree, data, length, index);
-
-    if(err != MT_SUCCESS)
-    {
-        IFDEBUG(dzlog_fatal("MT ERROR: %i", err));
-        Throw(EXCEPTION_MERKLE_TREE_VERIFY_FAILURE);
-    }
-
-    IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
-}
-
 static void populate_key_cache(buselfs_state_t * buselfs_state)
 {
     if(BLFS_DEFAULT_DISABLE_KEY_CACHING)
@@ -449,6 +298,200 @@ static void populate_mt(buselfs_state_t * buselfs_state)
 
     IFDEBUG(dzlog_debug("MERKLE TREE: final index vs size (should be +1 diff) %"PRIu32" vs %"PRIu32, operations_completed, mt_get_size(buselfs_state->merkle_tree)));
     IFNDEBUG(printf("\n"));
+}
+
+void blfs_initialize_queues(buselfs_state_t * buselfs_state)
+{
+    errno = 0;
+
+    buselfs_state->qd_incoming
+        = mq_open(BLFS_SV_QUEUE_INCOMING_NAME, O_RDONLY | O_CREAT | O_NONBLOCK, BLFS_SV_QUEUE_PERM, &mqattrs);
+
+    if(buselfs_state->qd_incoming == -1 || errno != 0)
+    {
+        IFDEBUG(dzlog_debug("EXCEPTION: mq_open on qd_incoming failed: %s", strerror(errno)));
+        Throw(EXCEPTION_FAILED_TO_OPEN_IQUEUE);
+    }
+
+    errno = 0;
+
+    buselfs_state->qd_outgoing
+        = mq_open(BLFS_SV_QUEUE_OUTGOING_NAME, O_WRONLY | O_CREAT | O_NONBLOCK, BLFS_SV_QUEUE_PERM, &mqattrs);
+
+    if(buselfs_state->qd_outgoing == -1 || errno != 0)
+    {
+        IFDEBUG(dzlog_debug("EXCEPTION: mq_open on qd_outgoing failed: %s", strerror(errno)));
+        Throw(EXCEPTION_FAILED_TO_OPEN_OQUEUE);
+    }
+}
+
+void blfs_read_input_queue(buselfs_state_t * buselfs_state, blfs_mq_msg_t * message)
+{
+    uint8_t incoming_buffer[BLFS_SV_MESSAGE_SIZE_BYTES];
+
+    IFDEBUG(assert((sizeof message->payload) + 1 == BLFS_SV_MESSAGE_SIZE_BYTES));
+
+    errno = 0;
+    ssize_t receive_result = mq_receive(
+        buselfs_state->qd_incoming,
+        (char *) incoming_buffer,
+        sizeof incoming_buffer,
+        NULL
+    );
+
+    if((receive_result < 0 || errno != 0)  && errno != EAGAIN)
+    {
+        IFDEBUG(dzlog_error("EXCEPTION: queue read failure: %s", strerror(errno)));
+        Throw(EXCEPTION_QUEUE_RECEIVE_FAILED);
+    }
+
+    message->opcode = 0;
+
+    if(errno != EAGAIN)
+    {
+        message->opcode = incoming_buffer[0];
+        memcpy(message->payload, incoming_buffer + 1, sizeof message->payload);
+    }
+}
+
+void blfs_write_output_queue(buselfs_state_t * buselfs_state, blfs_mq_msg_t * message, unsigned int priority)
+{
+    uint8_t outgoing_buffer[BLFS_SV_MESSAGE_SIZE_BYTES];
+
+    IFDEBUG(assert((sizeof message->payload) + 1 == BLFS_SV_MESSAGE_SIZE_BYTES));
+
+    outgoing_buffer[0] = message->opcode;
+    memcpy(outgoing_buffer + 1, message->payload, sizeof message->payload);
+
+    errno = 0;
+    mq_send(buselfs_state->qd_outgoing,
+            (const char *) outgoing_buffer,
+            sizeof outgoing_buffer,
+            priority
+    );
+
+    if(errno != 0)
+    {
+        IFDEBUG(dzlog_error("EXCEPTION: queue write failure: %s", strerror(errno)));
+        Throw(EXCEPTION_QUEUE_SEND_FAILED);
+    }
+}
+
+void update_application_state_check_mq(buselfs_state_t * buselfs_state)
+{
+    IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
+
+    blfs_mq_msg_t incoming_msg;
+    blfs_read_input_queue(buselfs_state, &incoming_msg);
+
+    /**
+     * * msg_opcode is always 1 byte that determines the operation performed
+     * * msg_payload is always 255 bytes of associated data
+     *
+     * * opcode 0 => error state or null message (i.e. a message does not exist)
+     * * opcode 1 => initiate cipher switch (payload is ignored)
+     */
+    IFDEBUG(dzlog_info("Received application state update: opcode %i", incoming_msg.opcode));
+
+    switch(incoming_msg.opcode)
+    {
+        case 0:
+            // ? Queue was empty
+            break;
+
+        case 1:
+            IFDEBUG(dzlog_info("<<<SWITCHING CIPHERS!>>>"));
+            break;
+
+        default:
+            Throw(EXCEPTION_BAD_OPCODE);
+            break;
+    }
+
+    IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
+}
+
+/**
+ * ! This function MUST be called before buselfs_state->merkle_tree_root_hash
+ * ! is referenced!
+ */
+void update_merkle_tree_root_hash(buselfs_state_t * buselfs_state)
+{
+    IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
+
+    if(mt_get_root(buselfs_state->merkle_tree, buselfs_state->merkle_tree_root_hash) != MT_SUCCESS)
+        Throw(EXCEPTION_MERKLE_TREE_ROOT_FAILURE);
+
+    IFDEBUG(dzlog_debug("merkle tree root hash:"));
+    IFDEBUG(hdzlog_debug(buselfs_state->merkle_tree_root_hash, BLFS_CRYPTO_BYTES_MTRH));
+
+    IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
+}
+
+void commit_merkle_tree_root_hash(buselfs_state_t * buselfs_state)
+{
+    blfs_header_t * mtrh_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_MTRH);
+    memcpy(mtrh_header->data, buselfs_state->merkle_tree_root_hash, BLFS_HEAD_HEADER_BYTES_MTRH);
+    blfs_commit_header(buselfs_state->backstore, mtrh_header);
+}
+
+void add_to_merkle_tree(uint8_t * data, size_t length, const buselfs_state_t * buselfs_state)
+{
+    IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
+
+    IFDEBUG(dzlog_debug("length = %zu", length));
+    IFDEBUG(dzlog_debug("data:"));
+    IFDEBUG(hdzlog_debug(data, length));
+
+    mt_error_t err = mt_add(buselfs_state->merkle_tree, data, length);
+
+    if(err != MT_SUCCESS)
+    {
+        IFDEBUG(dzlog_fatal("MT ERROR: %i", err));
+        Throw(EXCEPTION_MERKLE_TREE_ADD_FAILURE);
+    }
+
+    IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
+}
+
+void update_in_merkle_tree(uint8_t * data, size_t length, uint32_t index, const buselfs_state_t * buselfs_state)
+{
+    IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
+
+    IFDEBUG(dzlog_debug("length = %zu", length));
+    IFDEBUG(dzlog_debug("index = %u", index));
+    IFDEBUG(dzlog_debug("data:"));
+    IFDEBUG(hdzlog_debug(data, length));
+
+    mt_error_t err = mt_update(buselfs_state->merkle_tree, data, length, index);
+
+    if(err != MT_SUCCESS)
+    {
+        IFDEBUG(dzlog_fatal("MT ERROR: %i", err));
+        Throw(EXCEPTION_MERKLE_TREE_UPDATE_FAILURE);
+    }
+
+    IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
+}
+
+void verify_in_merkle_tree(uint8_t * data, size_t length, uint32_t index, const buselfs_state_t * buselfs_state)
+{
+    IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
+
+    IFDEBUG(dzlog_debug("length = %zu", length));
+    IFDEBUG(dzlog_debug("index = %u", index));
+    IFDEBUG(dzlog_debug("data:"));
+    IFDEBUG(hdzlog_debug(data, length));
+
+    mt_error_t err = mt_verify(buselfs_state->merkle_tree, data, length, index);
+
+    if(err != MT_SUCCESS)
+    {
+        IFDEBUG(dzlog_fatal("MT ERROR: %i", err));
+        Throw(EXCEPTION_MERKLE_TREE_VERIFY_FAILURE);
+    }
+
+    IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 }
 
 void add_index_to_key_cache(buselfs_state_t * buselfs_state, uint32_t nugget_index, uint8_t * nugget_key)
@@ -1167,9 +1210,6 @@ void blfs_rekey_nugget_then_write(buselfs_state_t * buselfs_state,
 // TODO: don't try the open command until this is fixed.
 void blfs_soft_open(buselfs_state_t * buselfs_state, uint8_t cin_allow_insecure_start)
 {
-    (void) buselfs_state;
-    (void) cin_allow_insecure_start;
-
     IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
 
     char passwd[BLFS_PASSWORD_BUF_SIZE] = { 0x00 };
@@ -1876,6 +1916,10 @@ buselfs_state_t * strongbox_main_actual(int argc, char * argv[], char * blockdev
     IFDEBUG(dzlog_debug("switched over to zlog for logging"));
     IFDEBUG(dzlog_notice("Initializing, please wait..."));
 
+    /* Setup access to POSIX message queues early */
+
+    blfs_initialize_queues(buselfs_state);
+
     /* Initialize merkle tree */
 
     buselfs_state->merkle_tree = mt_create();
@@ -1916,26 +1960,6 @@ buselfs_state_t * strongbox_main_actual(int argc, char * argv[], char * blockdev
 
     else if(cin_backstore_mode == BLFS_BACKSTORE_CREATE_MODE_WIPE)
         blfs_run_mode_wipe(backstore_path, cin_allow_insecure_start, buselfs_state);
-
-    /* Setup access to IPC message queues */
-
-    buselfs_state->qd_incoming
-        = mq_open(BLFS_SV_QUEUE_INCOMING_NAME, O_RDONLY | O_CREAT | O_NONBLOCK, BLFS_SV_QUEUE_PERM, &mqattrs);
-
-    if(buselfs_state->qd_incoming == -1)
-    {
-        IFDEBUG(dzlog_debug("EXCEPTION: mq_open() = qd_incoming failed"));
-        Throw(EXCEPTION_FAILED_TO_OPEN_IQUEUE);
-    }
-
-    buselfs_state->qd_outgoing
-        = mq_open(BLFS_SV_QUEUE_OUTGOING_NAME, O_WRONLY | O_CREAT | O_NONBLOCK, BLFS_SV_QUEUE_PERM, &mqattrs);
-
-    if(buselfs_state->qd_outgoing == -1)
-    {
-        IFDEBUG(dzlog_debug("EXCEPTION: mq_open() = qd_outgoing failed"));
-        Throw(EXCEPTION_FAILED_TO_OPEN_OQUEUE);
-    }
 
     /* Finish up startup procedures */
 
