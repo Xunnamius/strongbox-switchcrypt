@@ -231,6 +231,7 @@ clean:
 	rm -f /tmp/blfs*
 	rm -f /tmp/test.io.bin
 	rm -f sb
+	rm -f sbctl
 
 check: tests
 	$(patsubst %,./% &&,$(TEST_TRGTS)) true
