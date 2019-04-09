@@ -21,6 +21,7 @@ SRC_ROOT    := ../src
 VENDR_ROOT  := ../vendor
 TEST_ROOT   := ../test
 CONFIG_ROOT := ../config
+TOOLS_ROOT  := ../tools
 
 UNITY_ROOT      := $(VENDR_ROOT)/unity
 CMOCK_ROOT      := $(VENDR_ROOT)/cmock
@@ -29,6 +30,8 @@ ENERGYMON_ROOT  := $(VENDR_ROOT)/energymon
 ESTREAM_ROOT    := $(VENDR_ROOT)/libestream
 CHACHAX_ROOT    := $(VENDR_ROOT)/chacha-opt
 
+CTL_ROOT        := $(TOOLS_ROOT)/strongboxctl
+
 # * StrongBox's internal debug level and other interesting compile-time flags
 DEBUG_COMPILE_FLAG := -DBLFS_DEBUG_LEVEL=$(GLOBAL_DEBUG_MODE) \
                       -DBLFS_MANUAL_GV_FALLBACK=$(GLOBAL_MANUAL_GV_FALLBACK) \
@@ -36,11 +39,15 @@ DEBUG_COMPILE_FLAG := -DBLFS_DEBUG_LEVEL=$(GLOBAL_DEBUG_MODE) \
 
 # * This is the name of the resulant executable
 EXENAME := strongbox
+CTLNAME := strongboxctl
 
 # This file houses the main() function for the executable (and nothing else)
 # This should be the only file with a main() function in SRC_ROOT; there should
 # be no tests for it, either
-EXECSRC := $(SRC_ROOT)/main.c
+EXESRC := $(SRC_ROOT)/main.c
+
+# This file houses the main() function for the controller executable
+CTLSRC := $(CTL_ROOT)/main.c
 
 # These should typically be in VENDR_ROOT, though they don't have to be
 EXPLICIT_LIBS := $(MT_ROOT)/src/libMerkleTree.a \
@@ -57,7 +64,9 @@ CCV := $(shell expr `gcc --version | grep ^gcc | awk '{print $$3}'` \>= 4.9)
 
 # ! Set this to empty when building for release/profiling or -g for debugging
 #                             :=
-DEBUG_MAKE_FLAGS              := -g
+DEBUG_MAKE_FLAGS              := -g \
+								 -DBLFS_SV_QUEUE_INCOMING_NAME='"/test-incoming.strongbox.xunn.io"' \
+								 -DBLFS_SV_QUEUE_OUTGOING_NAME='"/test-outgoing.strongbox.xunn.io"'
 CONDITIONAL_DEBUG_MAKE_FLAGS  := -fsanitize=address,undefined,shift,integer-divide-by-zero,null,signed-integer-overflow \
                                  -fno-omit-frame-pointer
 
@@ -102,7 +111,7 @@ SCARECROWS :=
 vpath test_%.c $(TEST_ROOT)
 vpath % $(SRC_ROOT) $(VENDR_ROOT) $(CONFIG_ROOT)
 
-SRC_FILES   := $(patsubst %.c,%.o,$(subst $(SRC_ROOT)/,,$(filter-out $(EXECSRC),$(wildcard $(SRC_ROOT)/*.c $(SRC_ROOT)/**/*.c))))
+SRC_FILES   := $(patsubst %.c,%.o,$(subst $(SRC_ROOT)/,,$(filter-out $(EXESRC),$(wildcard $(SRC_ROOT)/*.c $(SRC_ROOT)/**/*.c))))
 VENDR_FILES := $(patsubst %.c,%.o,$(subst $(VENDR_ROOT)/,,$(wildcard $(VENDR_ROOT)/*.c)))
 TEST_FILES  := $(patsubst %.c,%.o,$(subst $(TEST_ROOT)/,,$(wildcard $(TEST_ROOT)/*.c)))
 RUNR_FILES  := $(patsubst %.c,%_runner.o,$(subst $(TEST_ROOT)/,,$(wildcard $(TEST_ROOT)/*.c)))
@@ -172,7 +181,7 @@ $(SCARECROWS): ;
 # Workhorse targets
 
 $(EXENAME): $(SRC_FILES) $(VENDR_FILES)
-	$(CC) $(CFLAGS) $(IFLAGS) $(DEBUG_COMPILE_FLAG) -o $(EXENAME) $(EXECSRC) \
+	$(CC) $(CFLAGS) $(IFLAGS) $(DEBUG_COMPILE_FLAG) -o $(EXENAME) $(EXESRC) \
         $(call distinct,$(notdir $(SRC_FILES)) $(VENDR_FILES)) \
         $(EXPLICIT_LIBS) \
         $(LDFLAGS)
@@ -203,9 +212,6 @@ $(TEST_TRGTS): test_%: test_%_runner.o test_%.o %.o test_%.d $(SRC_FILES) $(VEND
 
 $(RUNR_TRGTS): %_runner.c: %.c
 	ruby $(UNITY_ROOT)/auto/generate_test_runner.rb $< $@ $(GENRNR_CONF)
-
-sbctl:
-	$(CC) 
 
 # Optimization workhorse targets
 
@@ -259,6 +265,22 @@ mocks: $(MOCK_TRGTS)
 
 $(MOCK_TRGTS): mock_%: %
 	ruby $(CMOCK_ROOT)/lib/cmock.rb -o$(CMOCK_CONF) $<
+
+# Tool generating targets
+
+$(CTLNAME): $(SRC_FILES) $(VENDR_FILES)
+ifneq "$(WE_PROD_NOW)" ""
+	$(CC) $(CFLAGS) $(IFLAGS) $(DEBUG_COMPILE_FLAG) -o $(CTLNAME) $(CTLSRC) \
+        $(call distinct,$(notdir $(SRC_FILES)) $(VENDR_FILES)) \
+        $(EXPLICIT_LIBS) \
+        $(LDFLAGS)
+else
+	$(CC) $(CFLAGS) $(IFLAGS) $(DEBUG_MAKE_FLAGS) $(DEBUG_COMPILE_FLAG) -o $(CTLNAME) $(CTLSRC) \
+        $(call distinct,$(notdir $(SRC_FILES)) $(VENDR_FILES)) \
+        $(EXPLICIT_LIBS) \
+        $(LDFLAGS)
+endif
+	ln -sf strongboxctl sbctl
 
 # Dependency generating targets
 
