@@ -126,23 +126,6 @@ ifeq "$(CCV)" "1"
 	DEBUG_MAKE_FLAGS += $(CONDITIONAL_DEBUG_MAKE_FLAGS)
 endif
 
-PERCENT := %
-IFEMPTYGOALS :=
-
-ifeq "$(MAKECMDGOALS)" ""
-	IFEMPTYGOALS := all
-endif
-
-ifeq "$(MAKECMDGOALS)" "all"
-	IFEMPTYGOALS := all
-endif
-
-ifeq "$(MAKECMDGOALS)" "$(EXENAME)"
-	IFEMPTYGOALS := $(EXENAME)
-endif
-
-WE_PROD_NOW := $(findstring all-,$(MAKECMDGOALS))$(IFEMPTYGOALS)
-
 #################
 # Custom Macros #
 #################
@@ -188,7 +171,7 @@ $(EXENAME): $(SRC_FILES) $(VENDR_FILES)
 	ln -sf strongbox sb
 
 $(SRC_FILES) $(VENDR_FILES): %.o: %.c %.h
-ifneq "$(WE_PROD_NOW)" ""
+ifeq "$(GLOBAL_DEBUG_MODE)" "0"
 	$(CC) $(CFLAGS) $(IFLAGS) $(DEBUG_COMPILE_FLAG) -o $(notdir $@) -c $<
 else
 	$(CC) $(CFLAGS) $(IFLAGS) $(DEBUG_MAKE_FLAGS) $(DEBUG_COMPILE_FLAG) -o $(notdir $@) -c $<
@@ -270,7 +253,7 @@ $(MOCK_TRGTS): mock_%: %
 # Tool generating targets
 
 $(CTLNAME): $(SRC_FILES) $(VENDR_FILES)
-ifneq "$(WE_PROD_NOW)" ""
+ifeq "$(GLOBAL_DEBUG_MODE)" "0"
 	$(CC) $(CFLAGS) $(IFLAGS) $(DEBUG_COMPILE_FLAG) -o $(CTLNAME) $(CTLSRC) \
         $(call distinct,$(notdir $(SRC_FILES)) $(VENDR_FILES)) \
         $(EXPLICIT_LIBS) \

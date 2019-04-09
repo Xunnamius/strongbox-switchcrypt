@@ -163,9 +163,14 @@ int sbctl_main(int argc, char * argv[])
             IFDEBUG(dzlog_debug("cin_payload: "));
 
             if(argc == 5)
+            {
                 IFDEBUG(hdzlog_debug(cin_payload, sizeof cin_payload));
+            }
+
             else
+            {
                 IFDEBUG(dzlog_debug("(not given)"));
+            }
 
             assert(sizeof msg.payload == sizeof cin_payload);
             memcpy(msg.payload, cin_payload, sizeof msg.payload);
