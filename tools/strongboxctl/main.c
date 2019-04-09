@@ -140,7 +140,7 @@ int sbctl_main(int argc, char * argv[])
 
             if(argc == 5)
             {
-                size_t argv4_len = strlen(argv[4]) - 1; // ? -1 to account for null char
+                size_t argv4_len = strlen(argv[4]); // ? accounts for \0
 
                 IFDEBUG(dzlog_debug("(argv4_len: %zu)", argv4_len));
 
