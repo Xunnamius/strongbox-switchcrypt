@@ -300,29 +300,26 @@ static void populate_mt(buselfs_state_t * buselfs_state)
     IFNDEBUG(printf("\n"));
 }
 
-void blfs_initialize_queues(buselfs_state_t * buselfs_state)
+mqd_t blfs_open_queue(char * queue_name, int incoming_outgoing)
 {
     errno = 0;
+    int oflags = (!incoming_outgoing ? O_RDONLY : O_WRONLY) | O_CREAT | O_NONBLOCK;
 
-    buselfs_state->qd_incoming
-        = mq_open(BLFS_SV_QUEUE_INCOMING_NAME, O_RDONLY | O_CREAT | O_NONBLOCK, BLFS_SV_QUEUE_PERM, &mqattrs);
+    mqd_t qd = mq_open((const char *) queue_name, oflags, BLFS_SV_QUEUE_PERM, &mqattrs);
 
-    if(buselfs_state->qd_incoming == -1 || errno != 0)
+    if(qd == -1 || errno != 0)
     {
-        IFDEBUG(dzlog_debug("EXCEPTION: mq_open on qd_incoming failed: %s", strerror(errno)));
-        Throw(EXCEPTION_FAILED_TO_OPEN_IQUEUE);
+        IFDEBUG(dzlog_fatal("EXCEPTION: mq_open failed: %s", strerror(errno)));
+        Throw(!incoming_outgoing ? EXCEPTION_FAILED_TO_OPEN_IQUEUE : EXCEPTION_FAILED_TO_OPEN_OQUEUE);
     }
 
-    errno = 0;
+    return qd;
+}
 
-    buselfs_state->qd_outgoing
-        = mq_open(BLFS_SV_QUEUE_OUTGOING_NAME, O_WRONLY | O_CREAT | O_NONBLOCK, BLFS_SV_QUEUE_PERM, &mqattrs);
-
-    if(buselfs_state->qd_outgoing == -1 || errno != 0)
-    {
-        IFDEBUG(dzlog_debug("EXCEPTION: mq_open on qd_outgoing failed: %s", strerror(errno)));
-        Throw(EXCEPTION_FAILED_TO_OPEN_OQUEUE);
-    }
+void blfs_initialize_queues(buselfs_state_t * buselfs_state)
+{
+    buselfs_state->qd_incoming = blfs_open_queue(BLFS_SV_QUEUE_INCOMING_NAME, 0);
+    buselfs_state->qd_outgoing = blfs_open_queue(BLFS_SV_QUEUE_OUTGOING_NAME, 1);
 }
 
 void blfs_read_input_queue(buselfs_state_t * buselfs_state, blfs_mq_msg_t * message)
@@ -1605,7 +1602,7 @@ void blfs_run_mode_wipe(const char * backstore_path, uint8_t cin_allow_insecure_
 
 buselfs_state_t * strongbox_main_actual(int argc, char * argv[], char * blockdevice)
 {
-    IFDEBUG3(printf("<bare debug>: >>>> entering %s\n", __func__));
+    IFDEBUG3(printf("<bare debug>: >>>> entering %s", __func__));
 
     char * cin_device_name;
     char backstore_path[BLFS_BACKSTORE_FILENAME_MAXLEN] = { 0x00 };
@@ -1671,9 +1668,9 @@ buselfs_state_t * strongbox_main_actual(int argc, char * argv[], char * blockdev
         "- allow-insecure-start ignores a MTRH failure (integrity issue) and loads the StrongBox backstore anyway\n\n"
 
         "::wipe command::\n"
-        "Will reset an already existing StrongBox backstore to its initial state, as if it were newly created. It will not\n"
-        " be automatically loaded and must be subsequently opened via the open command. Note that this command only works\n"
-        " if the backstore in question is indeed a valid StrongBox backstore.\n\n"
+        "This command will reset an already existing StrongBox backstore to its initial state, as if it were newly\n"
+        " created. It will not be automatically loaded and must be subsequently opened via the open command. Note that\n"
+        " this command only works if the backstore in question is indeed a valid StrongBox backstore.\n\n"
         "Example: %s wipe nbd4\n\n"
         ":options:\n"
         "- default-password  instead of asking you for a password, the password '"BLFS_DEFAULT_PASS"' will be used.\n"

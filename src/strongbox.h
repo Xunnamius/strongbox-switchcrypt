@@ -280,9 +280,15 @@ blfs_backstore_t * blfs_backstore_open_with_ctx(const char * path, buselfs_state
  * this function is called.
  *
  * ! Note that the message queue descriptors should be closed after use, which
- * ! StrongBox does not do for you (or ever)!
+ * ! the StrongBox API does not do for you (or ever)!
  */
 void blfs_initialize_queues(buselfs_state_t * buselfs_state);
+
+/**
+ * Wrapper around the POSIX message queue open function. Set `incoming_outgoing`
+ * to 0 for incoming or 1 for outgoing (determines permissions/open mode).
+ */
+mqd_t blfs_open_queue(char * queue_name, int incoming_outgoing);
 
 /**
  * Wrapper around the POSIX message queue read function that checks the input

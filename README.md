@@ -1,6 +1,6 @@
 # StrongBox (internally: BuseLFS)
 
-(TODO: update the documentation to reflect recent changes as of version 500)
+(TODO: update the documentation to reflect recent changes as of version 600, including how to build strongboxctl)
 
 This is a complete rewrite of the old buselogfs code. This is a Buse + Chacha20 + Poly1305 + LFS encrypted filesystem. It uses Argon2 as its KDF. Featured in the paper [StrongBox: Confidentiality, Integrity, and Performance using Stream Ciphers for Full Drive Encryption](https://dl.acm.org/citation.cfm?id=3173183) by Bernard Dickens III (University of Chicago), Haryadi Gunawi (University of Chicago), Ariel J Feldman (University of Chicago), and Henry Hoffmann (University of Chicago).
 
