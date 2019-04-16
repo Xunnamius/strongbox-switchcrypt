@@ -103,7 +103,7 @@ typedef void (*sc_fn_crypt_data_custom)(
  *
  * ! This function should return the total number of bytes read in.
  */
-typedef int (*sc_fn_read_handle)()
+typedef int (*sc_fn_read_handle)(
     uint8_t * buffer,
     const buselfs_state_t * buselfs_state,
     uint_fast32_t buffer_read_length,
@@ -263,12 +263,12 @@ void blfs_swappable_crypt(blfs_swappable_cipher_t * sc,
  * Convenience function that returns the currently active (primary) cipher
  * given a state object.
  */
-blfs_swappable_cipher_t * blfs_get_active_cipher(buselfs_state_t * buselfs_state);
+blfs_swappable_cipher_t * blfs_get_active_cipher(const buselfs_state_t * buselfs_state);
 
 /**
  * Convenience function that returns the currently inactive (swap) cipher
  * given a state object.
  */
-blfs_swappable_cipher_t * blfs_get_inactive_cipher(buselfs_state_t * buselfs_state);
+blfs_swappable_cipher_t * blfs_get_inactive_cipher(const buselfs_state_t * buselfs_state);
 
 #endif /* BLFS_SWAP_H_ */

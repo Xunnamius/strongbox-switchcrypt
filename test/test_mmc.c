@@ -181,9 +181,10 @@ void test_integration_with_buselfs_works_as_expected(void)
     buselfs_state->merkle_tree                  = mt_create();
     buselfs_state->default_password             = BLFS_DEFAULT_PASS;
     buselfs_state->rpmb_secure_index            = _TEST_BLFS_TPM_ID;
-    buselfs_state->active_cipher                = malloc(sizeof *buselfs_state->active_cipher);
+    buselfs_state->primary_cipher               = malloc(sizeof *buselfs_state->primary_cipher);
+    buselfs_state->swap_cipher                  = buselfs_state->primary_cipher;
 
-    sc_set_cipher_ctx(buselfs_state->active_cipher, sc_default);
+    sc_set_cipher_ctx(buselfs_state->primary_cipher, sc_default);
 
     iofd = open(BACKSTORE_FILE_PATH, O_CREAT | O_RDWR | O_TRUNC, 0777);
 

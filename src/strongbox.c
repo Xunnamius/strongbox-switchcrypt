@@ -304,7 +304,12 @@ int blfs_swap_nugget_to_active_cipher(int swapping_while_read_or_write,
                                       buselfs_state_t * buselfs_state,
                                       int_fast32_t buffer_length)
 {
-    Throw(EXCEPTION_MUST_HALT);
+    IFDEBUG(dzlog_notice("<CIPHER SWAP IS BEGINNING>"));
+
+    Throw(EXCEPTION_BAD_CALL);
+    (void) swapping_while_read_or_write;
+    (void) buselfs_state;
+    (void) buffer_length;
 
     // ? Read in the entire nugget
     /* blfs_backstore_read_body(buselfs_state->backstore,
@@ -445,8 +450,10 @@ void update_application_state_check_mq(buselfs_state_t * buselfs_state)
                 break;
 
             case 2:
-                uint8_t index = !!incoming_msg.payload[0];
-                IFDEBUG(dzlog_debug("Received TRIM request of mirrored segment %u (should be 0 or 1)", index));
+                (void) buselfs_state; // ? language quirk
+                uint8_t which_segment = !!(incoming_msg.payload[0]);
+                IFDEBUG(dzlog_debug("Received TRIM request of mirrored segment %u (should be 0 or 1)", which_segment));
+                break;
 
             default:
                 Throw(EXCEPTION_BAD_OPCODE);
@@ -632,16 +639,18 @@ blfs_backstore_t * blfs_backstore_open_with_ctx(const char * path, buselfs_state
     );
 
     IFDEBUG(dzlog_debug("primary cipher requested %"PRIu32" (additional) bytes of metadata per nugget",
-        buselfs_state->active_cipher->requested_md_bytes_per_nugget
+        buselfs_state->primary_cipher->requested_md_bytes_per_nugget
     ));
 
     IFDEBUG(dzlog_debug("swap cipher requested %"PRIu32" (additional) bytes of metadata per nugget",
-        buselfs_state->active_cipher->requested_md_bytes_per_nugget
+        buselfs_state->swap_cipher->requested_md_bytes_per_nugget
     ));
 
     IFDEBUG(dzlog_debug("decided to allocate %"PRIu32" bytes of metadata per nugget",
         backstore->md_bytes_per_nugget
     ));
+
+    backstore->md_default_cipher_ident = buselfs_state->primary_cipher->enum_id;
 
     blfs_backstore_setup_actual_finish(backstore);
 
@@ -651,8 +660,6 @@ blfs_backstore_t * blfs_backstore_open_with_ctx(const char * path, buselfs_state
 int buse_read(void * output_buffer, uint32_t length, uint64_t absolute_offset, void * userdata)
 {
     IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
-
-    int must_rekey_w_active_cipher = FALSE;
 
     uint8_t * buffer = (uint8_t *) output_buffer;
     buselfs_state_t * buselfs_state = (buselfs_state_t *) userdata;
@@ -689,20 +696,8 @@ int buse_read(void * output_buffer, uint32_t length, uint64_t absolute_offset, v
     IFDEBUG(dzlog_debug("nugget_internal_offset: %"PRIuFAST32, nugget_internal_offset));
 
     blfs_swappable_cipher_t * active_cipher = blfs_get_active_cipher(buselfs_state);
-    blfs_nugget_metadata_t * meta = blfs_open_nugget_metadata(buselfs_state->backstore, nugget_offset);
 
     IFDEBUG(assert(buselfs_state->active_cipher_enum_id == active_cipher->enum_id));
-    IFDEBUG(dzlog_debug("nugget (meta) enum id: %u", meta->cipher_ident));
-    IFDEBUG(dzlog_debug("active_cipher enum id: %u", active_cipher->enum_id));
-
-    if(active_cipher->enum_id == meta->cipher_ident)
-        IFDEBUG(dzlog_debug("(cipher swap not necessary)"));
-
-    else
-    {
-        IFDEBUG(dzlog_debug("(CIPHER SWAP IS NECESSARY!)"));
-        must_rekey_w_active_cipher = TRUE;
-    }
 
     int first_nugget = TRUE;
 
@@ -754,15 +749,22 @@ int buse_read(void * output_buffer, uint32_t length, uint64_t absolute_offset, v
         uint_fast32_t flake_index = first_affected_flake;
         uint_fast32_t flake_end = first_affected_flake + num_affected_flakes;
 
-        if(must_rekey_w_active_cipher)
+        blfs_nugget_metadata_t * meta = blfs_open_nugget_metadata(buselfs_state->backstore, nugget_offset);
+
+        IFDEBUG(dzlog_debug(">-> active_cipher enum id: %u", active_cipher->enum_id));
+        IFDEBUG(dzlog_debug(">-> nugget (meta) enum id: %u", meta->cipher_ident));
+
+        if(active_cipher->enum_id != meta->cipher_ident)
         {
-            IFDEBUG(dzlog_debug("<<INITIALIZING CIPHER SWAP PROCEDURE>>"));
+            IFDEBUG(dzlog_notice("<<INITIALIZING CIPHER SWAP PROCEDURE>>"));
 
             buffer += blfs_swap_nugget_to_active_cipher(SWAP_WHILE_READ, buselfs_state, buffer_read_length);
         }
 
         else
         {
+            IFDEBUG(dzlog_debug("(cipher swap was not necessary for this nugget)"));
+
             IFDEBUG(dzlog_debug("blfs_backstore_read_body offset: %"PRIuFAST32,
                                 nugget_offset * nugget_size + first_affected_flake * flake_size));
 
@@ -892,8 +894,6 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
 {
     IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
 
-    int must_rekey_w_active_cipher = FALSE;
-
     const uint8_t * buffer = (const uint8_t *) input_buffer;
     buselfs_state_t * buselfs_state = (buselfs_state_t *) userdata;
     uint_fast32_t size = length;
@@ -943,20 +943,8 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
     memcpy(tpmv_header->data, (uint8_t *) &tpmv_value, BLFS_HEAD_HEADER_BYTES_TPMGLOBALVER);
 
     blfs_swappable_cipher_t * active_cipher = blfs_get_active_cipher(buselfs_state);
-    blfs_nugget_metadata_t * meta = blfs_open_nugget_metadata(buselfs_state->backstore, nugget_offset);
 
     IFDEBUG(assert(buselfs_state->active_cipher_enum_id == active_cipher->enum_id));
-    IFDEBUG(dzlog_debug("nugget (meta) enum id: %u", meta->cipher_ident));
-    IFDEBUG(dzlog_debug("active_cipher enum id: %u", active_cipher->enum_id));
-
-    if(active_cipher->enum_id == meta->cipher_ident)
-        IFDEBUG(dzlog_debug("(cipher swap not necessary)"));
-
-    else
-    {
-        IFDEBUG(dzlog_debug("(CIPHER SWAP IS NECESSARY!)"));
-        must_rekey_w_active_cipher = TRUE;
-    }
 
     // ! Needs to be guaranteed monotonic in a real implementation, not based on header
     blfs_globalversion_commit(buselfs_state->rpmb_secure_index, tpmv_value);
@@ -1008,15 +996,22 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
         uint_fast32_t flake_index = first_affected_flake;
         uint_fast32_t flake_end = first_affected_flake + num_affected_flakes;
 
-        if(must_rekey_w_active_cipher)
+        blfs_nugget_metadata_t * meta = blfs_open_nugget_metadata(buselfs_state->backstore, nugget_offset);
+
+        IFDEBUG(dzlog_debug(">-> active_cipher enum id: %u", active_cipher->enum_id));
+        IFDEBUG(dzlog_debug(">-> nugget (meta) enum id: %u", meta->cipher_ident));
+
+        if(active_cipher->enum_id != meta->cipher_ident)
         {
-            IFDEBUG(dzlog_debug("<<INITIALIZING CIPHER SWAP PROCEDURE>>"));
+            IFDEBUG(dzlog_notice("<<INITIALIZING CIPHER SWAP PROCEDURE>>"));
 
             buffer += blfs_swap_nugget_to_active_cipher(SWAP_WHILE_WRITE, buselfs_state, buffer_write_length);
         }
 
         else
         {
+            IFDEBUG(dzlog_debug("(cipher swap was not necessary for this nugget)"));
+
             if(active_cipher->write_handle)
             {
                 buffer += active_cipher->write_handle(
@@ -1600,7 +1595,7 @@ void blfs_run_mode_create(const char * backstore_path,
     );
 
     IFDEBUG(dzlog_debug("primary cipher requested %"PRIu32" (additional) bytes of metadata per nugget",
-        buselfs_state->active_cipher->requested_md_bytes_per_nugget
+        buselfs_state->primary_cipher->requested_md_bytes_per_nugget
     ));
 
     IFDEBUG(dzlog_debug("swap cipher requested %"PRIu32" (additional) bytes of metadata per nugget",
@@ -1658,6 +1653,7 @@ void blfs_run_mode_create(const char * backstore_path,
 
     // Do some intermediate number crunching
     blfs_backstore_setup_actual_post(buselfs_state->backstore);
+    buselfs_state->backstore->md_default_cipher_ident = buselfs_state->primary_cipher->enum_id;
     blfs_backstore_setup_actual_finish(buselfs_state->backstore);
 
     dzlog_notice("Prefetching data caches...");
@@ -1906,7 +1902,7 @@ buselfs_state_t * strongbox_main_actual(int argc, char * argv[], char * blockdev
 
             IFDEBUG3(printf("<bare debug>: saw --swap-strategy = %s\n", cin_swap_strategy_str));
 
-            cin_swap_strategy = blfs_ident_string_to_swap_strategy(cin_swap_strategy_str);
+            cin_swap_strategy = blfs_ident_string_to_strategy(cin_swap_strategy_str);
 
             IFDEBUG3(printf("<bare debug>: saw --swap-strategy, got enum value: %d\n", cin_swap_strategy));
         }
@@ -1996,7 +1992,6 @@ buselfs_state_t * strongbox_main_actual(int argc, char * argv[], char * blockdev
         Throw(EXCEPTION_TOO_FEW_FLAKES_PER_NUGGET);
 
     /* Cipher selection and initialization */
-    buselfs_state->active_cipher_enum_id = cin_cipher;
 
     buselfs_state->primary_cipher = malloc(sizeof *buselfs_state->primary_cipher);
     buselfs_state->swap_cipher = malloc(sizeof *buselfs_state->swap_cipher);
@@ -2017,6 +2012,8 @@ buselfs_state_t * strongbox_main_actual(int argc, char * argv[], char * blockdev
         cin_flake_size,
         buselfs_state->swap_cipher->output_size_bytes
     );
+
+    buselfs_state->active_cipher_enum_id = buselfs_state->primary_cipher->enum_id;
 
     /* Prepare to setup the backstore file */
 
@@ -2098,6 +2095,11 @@ buselfs_state_t * strongbox_main_actual(int argc, char * argv[], char * blockdev
 
     /* Finish up startup procedures */
 
+    buselfs_state->active_usecase = cin_usecase;
+    buselfs_state->active_swap_strategy = cin_swap_strategy;
+
+    IFDEBUG(dzlog_info("active_usecase: %i", cin_usecase));
+    IFDEBUG(dzlog_info("active_swap_strategy: %i", cin_swap_strategy));
     IFDEBUG(dzlog_info("Defined: BLFS_DEBUG_LEVEL = %i", BLFS_DEBUG_LEVEL));
 
     if(buselfs_state->backstore == NULL)

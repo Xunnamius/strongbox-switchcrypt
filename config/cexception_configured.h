@@ -252,6 +252,9 @@ do {                                                                            
 // The usecase indicated is not valid somehow
 #define EXCEPTION_UC_ALGO_NOT_FOUND                     0x47U
 
+// A rarely used exception that means the function should never be called
+#define EXCEPTION_BAD_CALL                              0x48U
+
 ///////////////////////
 // End Configuration //
 ///////////////////////

@@ -87,10 +87,11 @@ typedef enum usecase_e {
     uc_default              = 1,
     uc_secure_regions       = 2,
     uc_fixed_energy         = 3,
-    uc_lockdown             = 4,
-    uc_auto_locations       = 5,
-    uc_disabled             = 6,
-    uc_no_impl              = 7,
+    uc_offset_slowdown      = 4,
+    uc_lockdown             = 5,
+    uc_auto_locations       = 6,
+    uc_disabled             = 7,
+    uc_no_impl              = 8,
 } usecase_e;
 
 #include <string.h> /* strdup() */

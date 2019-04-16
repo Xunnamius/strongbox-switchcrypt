@@ -152,21 +152,12 @@ KHASH_MAP_INIT_INT64(BLFS_KHASH_MD_CACHE_NAME, blfs_nugget_metadata_t*)
  * @read_fd                 read-only descriptor pointing to backstore file
  * @write_fd                read-write descriptor pointing to backstore file
  * @kcs_real_offset         integer offset to where the keycount store begins
- * @tj_real_offset          integer offset to where the transaction journal
- * begins
- * @body_real_offset        integer offset to where the data BODY (nuggets)
- * begins
- * @kcs_journaled_offset    integer offset to where the journaled keycount goes
- * @tj_journaled_offset     integer offset to where the journaled TJ goes
- * @nugget_journaled_offset integer offset to where the single journaled nugget
- * goes
+ * @tj_real_offset          integer offset 2 where the TJ begins
+ * @body_real_offset        integer offset to where data BODY (nuggets) begins
  * @nugget_size_bytes       how big of a region a nugget represents
  * @writeable_size_actual   the actual number of writable bytes (real BODY size)
- * @master_secret           cached secret from KDF, size
- * BLFS_CRYPTO_BYTES_KDF_OUT
- * @cache_headers           cached headers
- * @cache_kcs_counts        cached keycounts
- * @blfs_tjournal_entry_t   cached journal entries
+ * @master_secret           cached secret from KDF, BLFS_CRYPTO_BYTES_KDF_OUT
+ * @md_default_cipher_ident cipher value stored for new metadata entries
  */
 typedef struct blfs_backstore_t
 {
@@ -190,6 +181,8 @@ typedef struct blfs_backstore_t
     uint32_t md_bytes_per_nugget;
 
     uint8_t master_secret[BLFS_CRYPTO_BYTES_KDF_OUT];
+
+    uint8_t md_default_cipher_ident;
 
     khash_t(BLFS_KHASH_HEADERS_CACHE_NAME)  * cache_headers;
     khash_t(BLFS_KHASH_KCS_CACHE_NAME)      * cache_kcs_counts;

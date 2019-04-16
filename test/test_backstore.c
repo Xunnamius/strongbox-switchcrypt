@@ -513,7 +513,7 @@ void test_blfs_create_nugget_md_works_as_expected(void)
     TEST_ASSERT_EQUAL_UINT(real_offset, actual_nugget_metadata->data_offset);
     TEST_ASSERT_EQUAL_UINT(NUGGET_METADATA_BYTES, actual_nugget_metadata->data_length);
     TEST_ASSERT_EQUAL_UINT(NUGGET_METADATA_BYTES - 1, actual_nugget_metadata->metadata_length);
-    TEST_ASSERT_EQUAL_UINT(sc_not_impl, actual_nugget_metadata->cipher_ident);
+    TEST_ASSERT_EQUAL_UINT(0, actual_nugget_metadata->cipher_ident);
     TEST_ASSERT_NOT_NULL(actual_nugget_metadata->metadata);
 
     backstore->md_bytes_per_nugget = 1;
@@ -524,7 +524,7 @@ void test_blfs_create_nugget_md_works_as_expected(void)
     TEST_ASSERT_EQUAL_UINT(backstore->md_real_offset + nugget_index + 1, actual_nugget_metadata2->data_offset);
     TEST_ASSERT_EQUAL_UINT(1, actual_nugget_metadata2->data_length);
     TEST_ASSERT_EQUAL_UINT(0, actual_nugget_metadata2->metadata_length);
-    TEST_ASSERT_EQUAL_UINT(sc_not_impl, actual_nugget_metadata2->cipher_ident);
+    TEST_ASSERT_EQUAL_UINT(0, actual_nugget_metadata2->cipher_ident);
     TEST_ASSERT_NULL(actual_nugget_metadata2->metadata);
 }
 

@@ -445,7 +445,7 @@ blfs_nugget_metadata_t * blfs_create_nugget_metadata(blfs_backstore_t * backstor
 
     IFDEBUG(assert(backstore->md_bytes_per_nugget > 0));
 
-    meta->cipher_ident = sc_not_impl;
+    meta->cipher_ident = backstore->md_default_cipher_ident;
     meta->nugget_index = nugget_index;
     meta->data_length = backstore->md_bytes_per_nugget;
     meta->metadata_length = meta->data_length - 1;

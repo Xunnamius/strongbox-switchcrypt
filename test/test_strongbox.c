@@ -64,18 +64,21 @@ static void make_fake_state()
     buselfs_state->merkle_tree                  = mt_create();
     buselfs_state->default_password             = BLFS_DEFAULT_PASS;
     buselfs_state->rpmb_secure_index            = _TEST_BLFS_TPM_ID;
-
-    buselfs_state->primary_cipher = &global_active_cipher;
+    buselfs_state->primary_cipher               = &global_active_cipher;
+    buselfs_state->swap_cipher                  = buselfs_state->primary_cipher;
 
     sc_set_cipher_ctx(buselfs_state->primary_cipher, sc_default);
     blfs_initialize_queues(buselfs_state);
 
+    buselfs_state->active_cipher_enum_id = buselfs_state->primary_cipher->enum_id;
+
     iofd = open(BACKSTORE_FILE_PATH, O_CREAT | O_RDWR | O_TRUNC, 0777);
 
-    buselfs_state->backstore                    = malloc(sizeof *buselfs_state->backstore);
-    buselfs_state->backstore->io_fd             = iofd;
-    buselfs_state->backstore->body_real_offset  = 180;
-    buselfs_state->backstore->file_size_actual  = (uint64_t)(sizeof buffer_init_backstore_state);
+    buselfs_state->backstore                          = malloc(sizeof *buselfs_state->backstore);
+    buselfs_state->backstore->io_fd                   = iofd;
+    buselfs_state->backstore->body_real_offset        = 180;
+    buselfs_state->backstore->file_size_actual        = (uint64_t)(sizeof buffer_init_backstore_state);
+    buselfs_state->backstore->md_default_cipher_ident = buselfs_state->primary_cipher->enum_id;
 
     // ? set to 8 to match the dummy data
     buselfs_state->backstore->md_bytes_per_nugget = 8;
@@ -175,13 +178,7 @@ void tearDown(void)
 // ! Also need to test a delete function to fix the memory leak issue as
 // ! discussed in strongbox.h
 
-void test_blfs_swap_nugget_to_active_cipher_and_strategies_work_as_expected(void)
-{
-    // TODO:!
-    TEST_IGNORE();
-}
-
-void test_mq_empty_read_works(void)
+/***void test_mq_empty_read_works(void)
 {
     blfs_mq_msg_t msg = { .opcode = 1 };
     blfs_read_input_queue(buselfs_state, &msg);
@@ -377,6 +374,8 @@ void test_blfs_soft_open_works_as_expected(void)
     TEST_ASSERT_EQUAL_UINT32(2, *(uint32_t *) header_flakespernugget->data);
     TEST_ASSERT_EQUAL_UINT32(8, *(uint32_t *) header_flakesize_bytes->data);
     TEST_ASSERT_EQUAL_MEMORY(set_initialized, header_initialized->data, BLFS_HEAD_HEADER_BYTES_INITIALIZED);
+
+    // TODO: should we test for backstore->md_default_cipher_ident and *_md_* correctness?
 
     // Ensure remaining state is accurate
 
@@ -786,6 +785,7 @@ void test_buse_read_works_as_expected(void)
     uint8_t buffer1[1] = { 0x00 };
     uint64_t offset1 = 0;
 
+    //blfs_nugget_metadata_t * meta = blfs_open_nugget_metadata(buselfs_state->backstore, nugget_offset);
     buse_read(buffer1, sizeof buffer1, offset1, (void *) buselfs_state);
 
     TEST_ASSERT_EQUAL_MEMORY(test_play_data + offset1, buffer1, sizeof buffer1);
@@ -1248,13 +1248,17 @@ void test_strongbox_main_actual_creates(void)
     char * argv_create1[] = {
         "progname",
         "--default-password",
+        "--backstore-size",
+        "200",
         "create",
         "device_actual-112"
     };
 
     int argc = sizeof(argv_create1)/sizeof(argv_create1[0]);
-
     buselfs_state = strongbox_main_actual(argc, argv_create1, blockdevice);
+
+    TEST_ASSERT_EQUAL_UINT(209715200, buselfs_state->backstore->file_size_actual); // ? 200 MiB specified (209715200)
+
     readwrite_quicktests();
 }
 
@@ -1266,6 +1270,8 @@ void test_strongbox_main_actual_does_not_throw_exception_if_valid_cipher(void)
     char * argv[] = {
         "progname",
         "--default-password",
+        "--backstore-size",
+        "200",
         "--cipher",
         "sc_sosemanuk",
         "create",
@@ -1284,6 +1290,8 @@ void test_strongbox_main_actual_does_not_throw_exception_if_valid_tpm_id(void)
     char * argv[] = {
         "progname",
         "--default-password",
+        "--backstore-size",
+        "200",
         "--tpm-id",
         "115",
         "create",
@@ -1302,6 +1310,8 @@ void test_strongbox_main_actual_creates_with_cipher_and_tpm(void)
     char * argv_create1[] = {
         "progname",
         "--default-password",
+        "--backstore-size",
+        "200",
         "--tpm-id",
         "115",
         "--cipher",
@@ -1327,8 +1337,6 @@ void test_strongbox_main_actual_creates_expected_buselfs_state(void)
         "115",
         "--cipher",
         "sc_aes256_xts",
-        "--backstore-size",
-        "500",
         "--flake-size",
         "16384",
         "--flakes-per-nugget",
@@ -1346,9 +1354,10 @@ void test_strongbox_main_actual_creates_expected_buselfs_state(void)
     TEST_ASSERT_EQUAL_UINT(115, buselfs_state->rpmb_secure_index);
     TEST_ASSERT_EQUAL_UINT(131072, buselfs_state->backstore->nugget_size_bytes);
     TEST_ASSERT_EQUAL_UINT(16384, buselfs_state->backstore->flake_size_bytes);
-    TEST_ASSERT_EQUAL_UINT(524288000, buselfs_state->backstore->file_size_actual);
-    TEST_ASSERT_EQUAL_UINT(3999, buselfs_state->backstore->num_nuggets);
+    TEST_ASSERT_EQUAL_UINT(1073741824, buselfs_state->backstore->file_size_actual); // ? Defaults to 1 GiB (1073741824)
+    TEST_ASSERT_EQUAL_UINT(8191, buselfs_state->backstore->num_nuggets); // ? Also changes with the above ^^^
     TEST_ASSERT_EQUAL_UINT(8, buselfs_state->backstore->flakes_per_nugget);
+    TEST_ASSERT_EQUAL_UINT(buselfs_state->primary_cipher->enum_id, buselfs_state->backstore->md_default_cipher_ident);
 }
 
 void test_strongbox_inits_with_requested_md_bytes_per_nugget(void)
@@ -1358,6 +1367,8 @@ void test_strongbox_inits_with_requested_md_bytes_per_nugget(void)
     char * argv_create1[] = {
         "progname",
         "--default-password",
+        "--backstore-size",
+        "200",
         "--cipher",
         "sc_freestyle_fast",
         "create",
@@ -1379,6 +1390,8 @@ void test_strongbox_inits_with_requested_md_bytes_per_nugget2(void)
     char * argv_create1[] = {
         "progname",
         "--default-password",
+        "--backstore-size",
+        "200",
         "--swap-cipher",
         "sc_freestyle_fast",
         "create",
@@ -1407,6 +1420,8 @@ void test_strongbox_inits_properly_with_1_md_bytes_per_nugget(void)
     char * argv_create1[] = {
         "progname",
         "--default-password",
+        "--backstore-size",
+        "200",
         "create",
         "device_actual-118"
     };
@@ -1428,6 +1443,8 @@ void test_strongbox_inits_with_proper_swap_strategy_and_usecase1(void)
     char * argv_create1[] = {
         "progname",
         "--default-password",
+        "--backstore-size",
+        "200",
         "create",
         "device_actual-119"
     };
@@ -1452,6 +1469,8 @@ void test_strongbox_inits_with_proper_swap_strategy_and_usecase2(void)
     char * argv_create1[] = {
         "progname",
         "--default-password",
+        "--backstore-size",
+        "200",
         "--swap-strategy",
         "swap_mirrored",
         "--support-uc",
@@ -1466,6 +1485,12 @@ void test_strongbox_inits_with_proper_swap_strategy_and_usecase2(void)
 
     TEST_ASSERT_EQUAL_UINT(swap_mirrored, buselfs_state->active_swap_strategy);
     TEST_ASSERT_EQUAL_UINT(uc_lockdown, buselfs_state->active_usecase);
+}***/
+
+void test_blfs_swap_nugget_to_active_cipher_and_strategies_update_stuff_properly(void)
+{
+    // TODO:!
+    TEST_IGNORE();
 }
 
 void test_strongbox_can_cipher_switch1(void)
@@ -1475,10 +1500,12 @@ void test_strongbox_can_cipher_switch1(void)
     char * argv_create1[] = {
         "progname",
         "--default-password",
+        "--backstore-size",
+        "200",
         "--cipher",
         "sc_chacha20",
         "--swap-cipher",
-        "sc_chacha8",
+        "sc_chacha8_neon",
         "--swap-strategy",
         "swap_forward",
         "create",
@@ -1500,6 +1527,8 @@ void test_strongbox_can_cipher_switch2(void)
     char * argv_create1[] = {
         "progname",
         "--default-password",
+        "--backstore-size",
+        "200",
         "--cipher",
         "sc_chacha20",
         "--swap-cipher",
@@ -1525,6 +1554,8 @@ void test_strongbox_can_cipher_switch3(void)
     char * argv_create1[] = {
         "progname",
         "--default-password",
+        "--backstore-size",
+        "200",
         "--cipher",
         "sc_freestyle_fast",
         "--swap-cipher",
@@ -1550,6 +1581,8 @@ void test_strongbox_can_cipher_switch4(void)
     char * argv_create1[] = {
         "progname",
         "--default-password",
+        "--backstore-size",
+        "200",
         "--cipher",
         "sc_freestyle_fast",
         "--swap-cipher",
@@ -1575,10 +1608,12 @@ void test_strongbox_works_when_mirrored1(void)
     char * argv_create1[] = {
         "progname",
         "--default-password",
+        "--backstore-size",
+        "200",
         "--cipher",
         "sc_chacha20",
         "--swap-cipher",
-        "sc_chacha8",
+        "sc_chacha8_neon",
         "--swap-strategy",
         "swap_mirrored",
         "create",
@@ -1600,6 +1635,8 @@ void test_strongbox_works_when_mirrored2(void)
     char * argv_create1[] = {
         "progname",
         "--default-password",
+        "--backstore-size",
+        "200",
         "--cipher",
         "sc_chacha20",
         "--swap-cipher",
@@ -1625,6 +1662,8 @@ void test_strongbox_works_when_mirrored3(void)
     char * argv_create1[] = {
         "progname",
         "--default-password",
+        "--backstore-size",
+        "200",
         "--cipher",
         "sc_freestyle_fast",
         "--swap-cipher",
@@ -1650,6 +1689,8 @@ void test_strongbox_works_when_mirrored4(void)
     char * argv_create1[] = {
         "progname",
         "--default-password",
+        "--backstore-size",
+        "200",
         "--cipher",
         "sc_freestyle_fast",
         "--swap-cipher",
@@ -1677,6 +1718,8 @@ void test_usecase_uc_secure_regions(void)
     char * argv_create1[] = {
         "progname",
         "--default-password",
+        "--backstore-size",
+        "200",
         "--cipher",
         "sc_freestyle_fast",
         "--swap-cipher",
@@ -1704,6 +1747,8 @@ void test_usecase_uc_fixed_energy(void)
     char * argv_create1[] = {
         "progname",
         "--default-password",
+        "--backstore-size",
+        "200",
         "--cipher",
         "sc_freestyle_fast",
         "--swap-cipher",
@@ -1731,6 +1776,8 @@ void test_usecase_uc_offset_slowdown(void)
     char * argv_create1[] = {
         "progname",
         "--default-password",
+        "--backstore-size",
+        "200",
         "--cipher",
         "sc_freestyle_fast",
         "--swap-cipher",
@@ -1748,6 +1795,7 @@ void test_usecase_uc_offset_slowdown(void)
     buselfs_state = strongbox_main_actual(argc, argv_create1, blockdevice);
 
     // TODO:! test use case actually works!
+    // TODO:! (test that uc is set properly for all these types of tests)
     TEST_IGNORE();
 }
 
@@ -1758,6 +1806,8 @@ void test_usecase_uc_lockdown(void)
     char * argv_create1[] = {
         "progname",
         "--default-password",
+        "--backstore-size",
+        "200",
         "--cipher",
         "sc_freestyle_fast",
         "--swap-cipher",
@@ -1785,6 +1835,8 @@ void test_usecase_uc_auto_locations(void)
     char * argv_create1[] = {
         "progname",
         "--default-password",
+        "--backstore-size",
+        "200",
         "--cipher",
         "sc_freestyle_fast",
         "--swap-cipher",
@@ -1804,172 +1856,3 @@ void test_usecase_uc_auto_locations(void)
     // TODO:! test use case actually works!
     TEST_IGNORE();
 }
-
-// void test_strongbox_main_actual_creates_with_standard_cipher_and_swap_cipher(void)
-// {
-     // TODO
-// }
-
-// TODO: fix run mode open
-/*void test_strongbox_main_actual_opens(void)
-{
-    zlog_fini();
-
-    int argc = 4;
-
-    char * argv_open1[] = {
-        "progname",
-        "--default-password",
-        "open",
-        "device_actual2"
-    };
-
-    buselfs_state = strongbox_main_actual(argc, argv_open1, blockdevice);
-    blfs_backstore_close(buselfs_state->backstore);
-}*/
-
-// TODO: fix run mode open
-/*void test_strongbox_main_actual_opens_after_create()
-{
-    zlog_fini();
-
-    int argc = 4;
-
-    char * argv_create1[] = {
-        "progname",
-        "--default-password",
-        "create",
-        "device_actual3"
-    };
-
-    buselfs_state = strongbox_main_actual(argc, argv_create1, blockdevice);
-
-    char * argv_wipe1[] = {
-        "progname",
-        "--default-password",
-        "wipe",
-        "device_actual4"
-    };
-
-    buselfs_state = strongbox_main_actual(argc, argv_wipe1, blockdevice);
-
-    uint8_t buffer5[8] = { 0x00 };
-    uint64_t offset5 = 1;
-
-    buse_write(test_play_data + offset5, sizeof buffer5, offset5, (void *) buselfs_state);
-    buse_read(buffer5, sizeof buffer5, offset5, (void *) buselfs_state);
-
-    TEST_ASSERT_EQUAL_MEMORY(test_play_data + offset5, buffer5, sizeof buffer5);
-
-    setUp();
-}*/
-
-// TODO: fix run mode open
-/*void test_blfs_run_mode_open_works_as_expected(void)
-{
-    open_real_backstore();
-    blfs_run_mode_open(BACKSTORE_FILE_PATH, (uint8_t)(0), buselfs_state);
-
-    TEST_ASSERT_EQUAL_STRING(BACKSTORE_FILE_PATH, buselfs_state->backstore->file_path);
-    TEST_ASSERT_EQUAL_STRING("test.io.bin", buselfs_state->backstore->file_name);
-    TEST_ASSERT_EQUAL_UINT(109, buselfs_state->backstore->kcs_real_offset);
-    TEST_ASSERT_EQUAL_UINT(133, buselfs_state->backstore->tj_real_offset);
-    TEST_ASSERT_EQUAL_UINT(136, buselfs_state->backstore->kcs_journaled_offset);
-    TEST_ASSERT_EQUAL_UINT(144, buselfs_state->backstore->tj_journaled_offset);
-    TEST_ASSERT_EQUAL_UINT(145, buselfs_state->backstore->nugget_journaled_offset);
-    TEST_ASSERT_EQUAL_UINT(161, buselfs_state->backstore->body_real_offset);
-    TEST_ASSERT_EQUAL_UINT(48, buselfs_state->backstore->writeable_size_actual);
-    TEST_ASSERT_EQUAL_UINT(16, buselfs_state->backstore->nugget_size_bytes);
-    TEST_ASSERT_EQUAL_UINT(209, buselfs_state->backstore->file_size_actual);
-    TEST_ASSERT_EQUAL_UINT(8, buselfs_state->backstore->flake_size_bytes);
-    TEST_ASSERT_EQUAL_UINT(3, buselfs_state->backstore->num_nuggets);
-    TEST_ASSERT_EQUAL_UINT(2, buselfs_state->backstore->flakes_per_nugget);
-    TEST_ASSERT_EQUAL_UINT(209, buselfs_state->backstore->file_size_actual);
-
-    blfs_backstore_close(buselfs_state->backstore);
-}*/
-
-// TODO: fix run mode wipe
-/*void test_blfs_run_mode_wipe_works_as_expected(void)
-{
-    open_real_backstore();
-
-
-    CEXCEPTION_T e_expected = EXCEPTION_MUST_HALT;
-    volatile CEXCEPTION_T e_actual = EXCEPTION_NO_EXCEPTION;
-
-    TRY_FN_CATCH_EXCEPTION(blfs_run_mode_wipe(BACKSTORE_FILE_PATH, (uint8_t)(0), buselfs_state));
-
-    uint8_t gv_header_zeroes[BLFS_HEAD_HEADER_BYTES_TPMGLOBALVER] = { 0x00 };
-    blfs_header_t * gv_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_TPMGLOBALVER);
-
-    TEST_ASSERT_EQUAL_MEMORY(gv_header_zeroes, gv_header->data, BLFS_HEAD_HEADER_BYTES_TPMGLOBALVER);
-
-    uint8_t mtrh_header_zeroes[BLFS_HEAD_HEADER_BYTES_MTRH] = { 0x00 };
-    blfs_header_t * mtrh_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_MTRH);
-
-    TEST_ASSERT_EQUAL_MEMORY(mtrh_header_zeroes, mtrh_header->data, BLFS_HEAD_HEADER_BYTES_MTRH);
-
-    uint8_t rekeying_header_zeroes[BLFS_HEAD_HEADER_BYTES_REKEYING];
-    memset(rekeying_header_zeroes, 0xFF, BLFS_HEAD_HEADER_BYTES_REKEYING);
-    blfs_header_t * rekeying_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_REKEYING);
-
-    TEST_ASSERT_EQUAL_MEMORY(rekeying_header_zeroes, rekeying_header->data, BLFS_HEAD_HEADER_BYTES_REKEYING);
-
-    blfs_header_t * init_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_INITIALIZED);
-    uint8_t init_header_wiped[BLFS_HEAD_HEADER_BYTES_INITIALIZED] = { BLFS_HEAD_WAS_WIPED_VALUE };
-
-    TEST_ASSERT_EQUAL_MEMORY(init_header_wiped, init_header->data, BLFS_HEAD_HEADER_BYTES_INITIALIZED);
-
-    // The rest of the header (ksc and tj) and the journal space should be wiped
-    uint64_t readsize = buselfs_state->backstore->body_real_offset - buselfs_state->backstore->kcs_real_offset;
-    uint8_t * latter_head_actual = calloc(readsize, sizeof(*latter_head_actual));
-    uint8_t * latter_head_zeroes = calloc(readsize, sizeof(*latter_head_zeroes));
-
-    blfs_backstore_read(buselfs_state->backstore, latter_head_actual, readsize, buselfs_state->backstore->kcs_real_offset);
-
-    TEST_ASSERT_EQUAL_MEMORY(latter_head_zeroes, latter_head_actual, readsize);
-
-    free(latter_head_actual);
-    free(latter_head_zeroes);
-
-    readsize = buselfs_state->backstore->writeable_size_actual;
-    latter_head_actual = calloc(readsize, sizeof(*latter_head_actual));
-    latter_head_zeroes = calloc(readsize, sizeof(*latter_head_zeroes));
-
-    blfs_backstore_read(buselfs_state->backstore, latter_head_actual, readsize, buselfs_state->backstore->body_real_offset);
-
-    TEST_ASSERT_EQUAL_MEMORY(latter_head_zeroes, latter_head_actual, readsize);
-
-    free(latter_head_actual);
-    free(latter_head_zeroes);
-
-    blfs_backstore_close(buselfs_state->backstore);
-}*/
-
-// TODO: fix run mode wipe
-/*void test_blfs_run_mode_open_properly_opens_wiped_backstores(void)
-{
-    free(buselfs_state->backstore);
-
-    CEXCEPTION_T e_expected = EXCEPTION_MUST_HALT;
-    volatile CEXCEPTION_T e_actual = EXCEPTION_NO_EXCEPTION;
-
-    TRY_FN_CATCH_EXCEPTION(blfs_run_mode_wipe(BACKSTORE_FILE_PATH, (uint8_t)(0), buselfs_state));
-
-    uint8_t init_header_data[BLFS_HEAD_HEADER_BYTES_INITIALIZED] = { 0x00 };
-    blfs_backstore_read(buselfs_state->backstore, init_header_data, sizeof init_header_data, 104);
-
-    TEST_ASSERT_EQUAL_UINT8(BLFS_HEAD_WAS_WIPED_VALUE, init_header_data[0]);
-
-    blfs_backstore_close(buselfs_state->backstore);
-
-    blfs_run_mode_open(BACKSTORE_FILE_PATH, 0, buselfs_state);
-
-    uint8_t init_header_data2[BLFS_HEAD_HEADER_BYTES_INITIALIZED] = { 0x00 };
-    blfs_backstore_read(buselfs_state->backstore, init_header_data2, sizeof init_header_data2, 104);
-
-    TEST_ASSERT_EQUAL_UINT8(BLFS_HEAD_IS_INITIALIZED_VALUE, init_header_data2[0]);
-
-    blfs_backstore_close(buselfs_state->backstore);
-}*/

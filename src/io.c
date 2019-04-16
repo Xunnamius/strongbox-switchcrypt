@@ -223,6 +223,7 @@ blfs_backstore_t * blfs_backstore_create(const char * path, uint64_t file_size_b
     backstore->md_bytes_per_nugget = 1;
     backstore->num_nuggets = 0;
     backstore->flakes_per_nugget = 0;
+    backstore->md_default_cipher_ident = 0;
 
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 

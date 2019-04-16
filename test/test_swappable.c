@@ -207,11 +207,13 @@ void test_crypt_data_algos_with_BIGLY_inputs(void)
 
 void test_crypt_custom_algos_crypt_properly(void)
 {
+    // TODO
     TEST_IGNORE();
 }
 
 void test_crypt_custom_algos_with_BIGLY_inputs(void)
 {
+    // TODO
     TEST_IGNORE();
 }
 
@@ -639,10 +641,11 @@ void test_freestyle_handles_crypt_properly(void)
     blfs_keycount_t count;
     swappable_cipher_e cipher;
 
-    buselfs_state.backstore = &backstore;
-    backstore.nugget_size_bytes = BLFS_TEST_NUGGET_SIZE_BYTES;
     buselfs_state.primary_cipher = &sc;
     buselfs_state.swap_cipher = &sc;
+
+    buselfs_state.backstore = &backstore;
+    backstore.nugget_size_bytes = BLFS_TEST_NUGGET_SIZE_BYTES;
 
     flake_size = backstore.flake_size_bytes = BLFS_TEST_FLAKE_SIZE;
     flakes_per_nugget = backstore.flakes_per_nugget = BLFS_TEST_FLAKES_PER_NUGGET;
@@ -670,6 +673,8 @@ void test_freestyle_handles_crypt_properly(void)
         TEST_ASSERT_EQUAL_INT32_MESSAGE(4608, sc.requested_md_bytes_per_nugget, "requested metadata bytes per nugget miscalculation");
 
         backstore.md_bytes_per_nugget = sc.requested_md_bytes_per_nugget + 1;
+
+        buselfs_state.active_cipher_enum_id = buselfs_state.primary_cipher->enum_id;
 
         dzlog_info("Testing %s", sc.name);
         fflush(stdout);

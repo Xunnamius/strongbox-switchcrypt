@@ -256,6 +256,9 @@ usecase_e blfs_ident_string_to_usecase(const char * uc_str)
     else if(strcmp(uc_str, "uc_fixed_energy") == 0)
         usecase = uc_fixed_energy;
 
+    else if(strcmp(uc_str, "uc_offset_slowdown") == 0)
+        usecase = uc_offset_slowdown;
+
     else if(strcmp(uc_str, "uc_lockdown") == 0)
         usecase = uc_lockdown;
 
@@ -381,14 +384,14 @@ void sc_calculate_cipher_bytes_per_nugget(blfs_swappable_cipher_t * sc_ctx,
         : 0;
 }
 
-blfs_swappable_cipher_t * blfs_get_active_cipher(buselfs_state_t * buselfs_state)
+blfs_swappable_cipher_t * blfs_get_active_cipher(const buselfs_state_t * buselfs_state)
 {
     return buselfs_state->primary_cipher->enum_id == buselfs_state->active_cipher_enum_id
             ? buselfs_state->primary_cipher
             : buselfs_state->swap_cipher;
 }
 
-blfs_swappable_cipher_t * blfs_get_inactive_cipher(buselfs_state_t * buselfs_state)
+blfs_swappable_cipher_t * blfs_get_inactive_cipher(const buselfs_state_t * buselfs_state)
 {
     return buselfs_state->primary_cipher->enum_id != buselfs_state->active_cipher_enum_id
             ? buselfs_state->primary_cipher
