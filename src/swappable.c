@@ -10,7 +10,7 @@ void sc_set_cipher_ctx(blfs_swappable_cipher_t * sc_ctx, swappable_cipher_e sc)
 {
     sc_ctx->name = "<uninitialized>";
 
-    sc_ctx->enum_id = 0;
+    sc_ctx->enum_id = sc_not_impl;
     sc_ctx->output_size_bytes = 0;
     sc_ctx->key_size_bytes = 0;
     sc_ctx->nonce_size_bytes = 0;
@@ -212,6 +212,65 @@ swappable_cipher_e blfs_ident_string_to_cipher(const char * sc_str)
     return cipher;
 }
 
+swap_strategy_e blfs_ident_string_to_strategy(const char * ss_str)
+{
+    swap_strategy_e swap_strategy = swap_not_impl;
+
+    if(strcmp(ss_str, "swap_default") == 0)
+        swap_strategy = swap_default;
+
+    else if(strcmp(ss_str, "swap_immediate") == 0)
+        swap_strategy = swap_immediate;
+
+    else if(strcmp(ss_str, "swap_forward") == 0)
+        swap_strategy = swap_forward;
+
+    else if(strcmp(ss_str, "swap_aggressive") == 0)
+        swap_strategy = swap_aggressive;
+
+    else if(strcmp(ss_str, "swap_opportunistic") == 0)
+        swap_strategy = swap_opportunistic;
+
+    else if(strcmp(ss_str, "swap_mirrored") == 0)
+        swap_strategy = swap_mirrored;
+
+    else if(strcmp(ss_str, "swap_disabled") == 0)
+        swap_strategy = swap_disabled;
+
+    else
+        Throw(EXCEPTION_STRING_TO_SWAP_STRATEGY_FAILED);
+
+    return swap_strategy;
+}
+
+usecase_e blfs_ident_string_to_usecase(const char * uc_str)
+{
+    usecase_e usecase = uc_no_impl;
+
+    if(strcmp(uc_str, "uc_default") == 0)
+        usecase = uc_default;
+
+    else if(strcmp(uc_str, "uc_secure_regions") == 0)
+        usecase = uc_secure_regions;
+
+    else if(strcmp(uc_str, "uc_fixed_energy") == 0)
+        usecase = uc_fixed_energy;
+
+    else if(strcmp(uc_str, "uc_lockdown") == 0)
+        usecase = uc_lockdown;
+
+    else if(strcmp(uc_str, "uc_auto_locations") == 0)
+        usecase = uc_auto_locations;
+
+    else if(strcmp(uc_str, "uc_disabled") == 0)
+        usecase = uc_disabled;
+
+    else
+        Throw(EXCEPTION_STRING_TO_USECASE_FAILED);
+
+    return usecase;
+}
+
 void blfs_swappable_crypt(blfs_swappable_cipher_t * sc,
                           uint8_t * crypted_data,
                           const uint8_t * data,
@@ -317,17 +376,21 @@ void sc_calculate_cipher_bytes_per_nugget(blfs_swappable_cipher_t * sc_ctx,
                                           uint32_t flake_size_bytes,
                                           uint64_t output_size_bytes)
 {
-    sc_ctx->requested_md_bytes_per_nugget = sc_ctx->calc_handle ? sc_ctx->calc_handle(flakes_per_nugget, flake_size_bytes, output_size_bytes) : 0;
+    sc_ctx->requested_md_bytes_per_nugget = sc_ctx->calc_handle
+        ? sc_ctx->calc_handle(flakes_per_nugget, flake_size_bytes, output_size_bytes)
+        : 0;
 }
 
-void swap_set_swap_strategy(swap_strategy_e ss)
+blfs_swappable_cipher_t * blfs_get_active_cipher(buselfs_state_t * buselfs_state)
 {
-    // TODO: impl and add to strongbox.c
-    (void) ss;
+    return buselfs_state->primary_cipher->enum_id == buselfs_state->active_cipher_enum_id
+            ? buselfs_state->primary_cipher
+            : buselfs_state->swap_cipher;
 }
 
-void uc_set_usecase(usecase_e uc)
+blfs_swappable_cipher_t * blfs_get_inactive_cipher(buselfs_state_t * buselfs_state)
 {
-    // TODO: impl and add to strongbox.c
-    (void) uc;
+    return buselfs_state->primary_cipher->enum_id != buselfs_state->active_cipher_enum_id
+            ? buselfs_state->primary_cipher
+            : buselfs_state->swap_cipher;
 }

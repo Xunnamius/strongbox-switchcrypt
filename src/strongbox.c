@@ -300,6 +300,40 @@ static void populate_mt(buselfs_state_t * buselfs_state)
     IFNDEBUG(printf("\n"));
 }
 
+int blfs_swap_nugget_to_active_cipher(int swapping_while_read_or_write,
+                                      buselfs_state_t * buselfs_state,
+                                      int_fast32_t buffer_length)
+{
+    Throw(EXCEPTION_MUST_HALT);
+
+    // ? Read in the entire nugget
+    /* blfs_backstore_read_body(buselfs_state->backstore,
+                            nugget_data,
+                            nugget_read_length,
+                            nugget_offset * nugget_size);
+
+    bitmask_clear_mask(entry->bitmask);
+    blfs_commit_tjournal_entry(buselfs_state->backstore, entry);
+
+    IFDEBUG(dzlog_debug("entry->bitmask (post-update):"));
+    IFDEBUG(hdzlog_debug(entry->bitmask->mask, entry->bitmask->byte_length));
+
+    IFDEBUG(dzlog_debug("MERKLE TREE: update TJ entry"));
+
+    uint8_t hash[BLFS_CRYPTO_BYTES_STRUCT_HASH_OUT];
+
+    blfs_chacha20_struct_hash(hash, entry->bitmask->mask, entry->bitmask->byte_length, buselfs_state->backstore->master_secret);
+    update_in_merkle_tree(
+        hash,
+        sizeof hash,
+        num_nuggets + (BLFS_HEAD_NUM_HEADERS - 3) + nugget_offset,
+        buselfs_state
+    ); */
+
+    // TODO:! the proper amount of data returned
+    return 0;
+}
+
 mqd_t blfs_open_queue(char * queue_name, int incoming_outgoing)
 {
     errno = 0;
@@ -325,6 +359,7 @@ void blfs_initialize_queues(buselfs_state_t * buselfs_state)
 void blfs_read_input_queue(buselfs_state_t * buselfs_state, blfs_mq_msg_t * message)
 {
     uint8_t incoming_buffer[BLFS_SV_MESSAGE_SIZE_BYTES];
+    memset(incoming_buffer, 0, sizeof incoming_buffer);
 
     IFDEBUG(assert((sizeof message->payload) + 1 == BLFS_SV_MESSAGE_SIZE_BYTES));
 
@@ -343,12 +378,10 @@ void blfs_read_input_queue(buselfs_state_t * buselfs_state, blfs_mq_msg_t * mess
     }
 
     message->opcode = 0;
+    memcpy(message->payload, incoming_buffer + 1, sizeof message->payload);
 
     if(errno != EAGAIN)
-    {
         message->opcode = incoming_buffer[0];
-        memcpy(message->payload, incoming_buffer + 1, sizeof message->payload);
-    }
 }
 
 void blfs_write_output_queue(buselfs_state_t * buselfs_state, blfs_mq_msg_t * message, unsigned int priority)
@@ -379,31 +412,47 @@ void update_application_state_check_mq(buselfs_state_t * buselfs_state)
     IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
 
     blfs_mq_msg_t incoming_msg;
-    blfs_read_input_queue(buselfs_state, &incoming_msg);
 
-    /**
-     * * msg_opcode is always 1 byte that determines the operation performed
-     * * msg_payload is always 255 bytes of associated data
-     *
-     * * opcode 0 => error state or null message (i.e. a message does not exist)
-     * * opcode 1 => initiate cipher switch (payload is ignored)
-     */
-    IFDEBUG(dzlog_info("Received application state update: opcode %i", incoming_msg.opcode));
+    do {
+        blfs_read_input_queue(buselfs_state, &incoming_msg);
 
-    switch(incoming_msg.opcode)
-    {
-        case 0:
-            // ? Queue was empty
-            break;
+        /**
+         * * msg_opcode is always 1 byte that determines the operation performed
+         * * msg_payload is always 255 bytes of associated data
+         *
+         * * opcode 0 => error state or null message (i.e. a message does not exist)
+         * * opcode 1 => indicate cipher switch (payload is ignored)
+         * * opcode 2 => TRIM one of the mirrored segments when strategy is mirrored
+         */
+        IFDEBUG(dzlog_info("Received application state update: opcode %i", incoming_msg.opcode));
 
-        case 1:
-            IFDEBUG(dzlog_info("<<<SWITCHING CIPHERS!>>>"));
-            break;
+        switch(incoming_msg.opcode)
+        {
+            case 0:
+                IFDEBUG(dzlog_debug("(no more messages in queue)"));
+                break;
 
-        default:
-            Throw(EXCEPTION_BAD_OPCODE);
-            break;
-    }
+            case 1:
+                IFDEBUG(dzlog_debug("Swapped active cipher index!"));
+
+                buselfs_state->active_cipher_enum_id =
+                    buselfs_state->active_cipher_enum_id == buselfs_state->primary_cipher->enum_id
+                    ? buselfs_state->swap_cipher->enum_id
+                    : buselfs_state->primary_cipher->enum_id;
+
+                IFDEBUG(dzlog_debug("Newly active cipher: %i", buselfs_state->active_cipher_enum_id));
+
+                break;
+
+            case 2:
+                uint8_t index = !!incoming_msg.payload[0];
+                IFDEBUG(dzlog_debug("Received TRIM request of mirrored segment %u (should be 0 or 1)", index));
+
+            default:
+                Throw(EXCEPTION_BAD_OPCODE);
+                break;
+        }
+    } while(incoming_msg.opcode != 0);
 
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 }
@@ -575,12 +624,18 @@ blfs_backstore_t * blfs_backstore_open_with_ctx(const char * path, buselfs_state
 {
     blfs_backstore_t * backstore = blfs_backstore_open(path);
 
-    // TODO: choose the larger of the two requested sizes if cipher switching
     // ? +1 for the byte that holds the swappable_cipher_e identifier associated
     // ? with that nugget
-    backstore->md_bytes_per_nugget = buselfs_state->active_cipher->requested_md_bytes_per_nugget + 1;
+    backstore->md_bytes_per_nugget = 1 + MAX(
+        buselfs_state->primary_cipher->requested_md_bytes_per_nugget,
+        buselfs_state->swap_cipher->requested_md_bytes_per_nugget
+    );
 
-    IFDEBUG(dzlog_debug("cipher requested %"PRIu32" (additional) bytes of metadata per nugget",
+    IFDEBUG(dzlog_debug("primary cipher requested %"PRIu32" (additional) bytes of metadata per nugget",
+        buselfs_state->active_cipher->requested_md_bytes_per_nugget
+    ));
+
+    IFDEBUG(dzlog_debug("swap cipher requested %"PRIu32" (additional) bytes of metadata per nugget",
         buselfs_state->active_cipher->requested_md_bytes_per_nugget
     ));
 
@@ -596,6 +651,8 @@ blfs_backstore_t * blfs_backstore_open_with_ctx(const char * path, buselfs_state
 int buse_read(void * output_buffer, uint32_t length, uint64_t absolute_offset, void * userdata)
 {
     IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
+
+    int must_rekey_w_active_cipher = FALSE;
 
     uint8_t * buffer = (uint8_t *) output_buffer;
     buselfs_state_t * buselfs_state = (buselfs_state_t *) userdata;
@@ -628,8 +685,24 @@ int buse_read(void * output_buffer, uint32_t length, uint64_t absolute_offset, v
     IFDEBUG(dzlog_debug("num_nuggets: %"PRIuFAST32, num_nuggets));
     IFDEBUG(dzlog_debug("flakes_per_nugget: %"PRIuFAST32, flakes_per_nugget));
     IFDEBUG(dzlog_debug("mt_offset: %"PRIuFAST32, mt_offset));
-    IFDEBUG(dzlog_debug("nugget_offset: %"PRIuFAST32, nugget_offset));
+    IFDEBUG(dzlog_debug("nugget_offset (nugget index): %"PRIuFAST32, nugget_offset));
     IFDEBUG(dzlog_debug("nugget_internal_offset: %"PRIuFAST32, nugget_internal_offset));
+
+    blfs_swappable_cipher_t * active_cipher = blfs_get_active_cipher(buselfs_state);
+    blfs_nugget_metadata_t * meta = blfs_open_nugget_metadata(buselfs_state->backstore, nugget_offset);
+
+    IFDEBUG(assert(buselfs_state->active_cipher_enum_id == active_cipher->enum_id));
+    IFDEBUG(dzlog_debug("nugget (meta) enum id: %u", meta->cipher_ident));
+    IFDEBUG(dzlog_debug("active_cipher enum id: %u", active_cipher->enum_id));
+
+    if(active_cipher->enum_id == meta->cipher_ident)
+        IFDEBUG(dzlog_debug("(cipher swap not necessary)"));
+
+    else
+    {
+        IFDEBUG(dzlog_debug("(CIPHER SWAP IS NECESSARY!)"));
+        must_rekey_w_active_cipher = TRUE;
+    }
 
     int first_nugget = TRUE;
 
@@ -660,17 +733,6 @@ int buse_read(void * output_buffer, uint32_t length, uint64_t absolute_offset, v
         IFDEBUG(dzlog_debug("num_affected_flakes: %"PRIuFAST32, num_affected_flakes));
         IFDEBUG(dzlog_debug("nugget_read_length: %"PRIuFAST32, nugget_read_length));
 
-        IFDEBUG(dzlog_debug("blfs_backstore_read_body offset: %"PRIuFAST32,
-                            nugget_offset * nugget_size + first_affected_flake * flake_size));
-
-        blfs_backstore_read_body(buselfs_state->backstore,
-                                 nugget_data,
-                                 nugget_read_length,
-                                 nugget_offset * nugget_size + first_affected_flake * flake_size);
-
-        IFDEBUG(dzlog_debug("nugget_data (initial 64 bytes):"));
-        IFDEBUG(hdzlog_debug(nugget_data, MIN(64U, nugget_read_length)));
-
         if(BLFS_DEFAULT_DISABLE_KEY_CACHING)
         {
             IFDEBUG(dzlog_debug("KEY CACHING DISABLED!"));
@@ -692,100 +754,121 @@ int buse_read(void * output_buffer, uint32_t length, uint64_t absolute_offset, v
         uint_fast32_t flake_index = first_affected_flake;
         uint_fast32_t flake_end = first_affected_flake + num_affected_flakes;
 
-        if(buselfs_state->active_cipher->read_handle)
+        if(must_rekey_w_active_cipher)
         {
-            buffer += buselfs_state->active_cipher->read_handle(
-                buffer,
-                buselfs_state,
-                buffer_read_length,
-                flake_index,
-                flake_end,
-                first_affected_flake,
-                flake_size,
-                flakes_per_nugget,
-                mt_offset,
-                nugget_data,
-                nugget_key,
-                nugget_offset,
-                nugget_internal_offset,
-                count,
-                first_nugget,
-                last_nugget
-            );
+            IFDEBUG(dzlog_debug("<<INITIALIZING CIPHER SWAP PROCEDURE>>"));
+
+            buffer += blfs_swap_nugget_to_active_cipher(SWAP_WHILE_READ, buselfs_state, buffer_read_length);
         }
 
         else
         {
-            for(uint_fast32_t i = 0; flake_index < flake_end; flake_index++, i++)
+            IFDEBUG(dzlog_debug("blfs_backstore_read_body offset: %"PRIuFAST32,
+                                nugget_offset * nugget_size + first_affected_flake * flake_size));
+
+            blfs_backstore_read_body(buselfs_state->backstore,
+                                    nugget_data,
+                                    nugget_read_length,
+                                    nugget_offset * nugget_size + first_affected_flake * flake_size);
+
+            IFDEBUG(dzlog_debug("nugget_data (initial 64 bytes):"));
+            IFDEBUG(hdzlog_debug(nugget_data, MIN(64U, nugget_read_length)));
+
+            if(active_cipher->read_handle)
             {
-                uint8_t flake_key[BLFS_CRYPTO_BYTES_FLAKE_TAG_KEY];
-                uint8_t tag[BLFS_CRYPTO_BYTES_FLAKE_TAG_OUT];
-
-                if(BLFS_DEFAULT_DISABLE_KEY_CACHING)
-                {
-                    IFDEBUG(dzlog_debug("KEY CACHING DISABLED!"));
-                    blfs_poly1305_key_from_data(flake_key, nugget_key, flake_index, count->keycount);
-                }
-
-                else
-                {
-                    IFDEBUG(dzlog_debug("KEY CACHING ENABLED!"));
-                    get_flake_key_using_keychain(flake_key, buselfs_state, nugget_offset, flake_index, count->keycount);
-                }
-
-                IFDEBUG(dzlog_debug("nugget index (offset): %"PRIuFAST32, nugget_offset));
-                IFDEBUG(dzlog_debug("flake_index: %"PRIuFAST32" of %"PRIuFAST32, flake_index, flake_end-1));
-                IFDEBUG(dzlog_debug("flake_key (initial 64 bytes):"));
-                IFDEBUG(hdzlog_debug(flake_key, MIN(64U, BLFS_CRYPTO_BYTES_FLAKE_TAG_KEY)));
-
-                IFDEBUG(dzlog_debug("blfs_poly1305_generate_tag calculated ptr: %p --[ + "
-                                    "%"PRIuFAST32" * %"PRIuFAST32" => %"PRIuFAST32
-                                    " ]> %p (gen tag for %"PRIuFAST32" bytes)",
-                                    (void *) nugget_data,
-                                    flake_index,
-                                    flake_size,
-                                    flake_index * flake_size,
-                                    (void *) (nugget_data + (i * flake_size)),
-                                    flake_size));
-
-                blfs_poly1305_generate_tag(tag, nugget_data + (i * flake_size), flake_size, flake_key);
-
-                IFDEBUG(dzlog_debug("tag (initial 64 bytes):"));
-                IFDEBUG(hdzlog_debug(tag, MIN(64U, BLFS_CRYPTO_BYTES_FLAKE_TAG_OUT)));
-
-                IFDEBUG(dzlog_debug("verify_in_merkle_tree calculated offset: %"PRIuFAST32,
-                                    mt_offset + nugget_offset * flakes_per_nugget + flake_index));
-
-                verify_in_merkle_tree(tag, sizeof tag, mt_offset + nugget_offset * flakes_per_nugget + flake_index, buselfs_state);
+                buffer += active_cipher->read_handle(
+                    buffer,
+                    buselfs_state,
+                    buffer_read_length,
+                    flake_index,
+                    flake_end,
+                    first_affected_flake,
+                    flake_size,
+                    flakes_per_nugget,
+                    mt_offset,
+                    nugget_data,
+                    nugget_key,
+                    nugget_offset,
+                    nugget_internal_offset,
+                    count,
+                    first_nugget,
+                    last_nugget
+                );
             }
 
-            IFDEBUG(dzlog_debug(
-                "blfs_crypt calculated ptr: %p --[ + "
-                "%"PRIuFAST32" - %"PRIuFAST32" * %"PRIuFAST32" => %"PRIuFAST32
-                " ]> %p (crypting %"PRIuFAST32" bytes)",
-                (void *) nugget_data,
-                nugget_internal_offset,
-                first_affected_flake,
-                flake_size,
-                nugget_internal_offset - first_affected_flake * flake_size,
-                (void *) (nugget_data + (nugget_internal_offset - first_affected_flake * flake_size)),
-                buffer_read_length
-            ));
+            else
+            {
+                for(uint_fast32_t i = 0; flake_index < flake_end; flake_index++, i++)
+                {
+                    uint8_t flake_key[BLFS_CRYPTO_BYTES_FLAKE_TAG_KEY];
+                    uint8_t tag[BLFS_CRYPTO_BYTES_FLAKE_TAG_OUT];
 
-            blfs_swappable_crypt(
-                buselfs_state->active_cipher,
-                buffer,
-                nugget_data + (nugget_internal_offset - first_affected_flake * flake_size),
-                buffer_read_length,
-                nugget_key,
-                count->keycount,
-                nugget_internal_offset
-            );
+                    if(BLFS_DEFAULT_DISABLE_KEY_CACHING)
+                    {
+                        IFDEBUG(dzlog_debug("KEY CACHING DISABLED!"));
+                        blfs_poly1305_key_from_data(flake_key, nugget_key, flake_index, count->keycount);
+                    }
 
-            IFDEBUG(dzlog_debug("output_buffer final contents (initial 64 bytes):"));
-            IFDEBUG(hdzlog_debug(output_buffer, MIN(64U, size)));
+                    else
+                    {
+                        IFDEBUG(dzlog_debug("KEY CACHING ENABLED!"));
+                        get_flake_key_using_keychain(flake_key, buselfs_state, nugget_offset, flake_index, count->keycount);
+                    }
 
-            buffer += buffer_read_length;
+                    IFDEBUG(dzlog_debug("nugget index (offset): %"PRIuFAST32, nugget_offset));
+                    IFDEBUG(dzlog_debug("flake_index: %"PRIuFAST32" of %"PRIuFAST32, flake_index, flake_end-1));
+                    IFDEBUG(dzlog_debug("flake_key (initial 64 bytes):"));
+                    IFDEBUG(hdzlog_debug(flake_key, MIN(64U, BLFS_CRYPTO_BYTES_FLAKE_TAG_KEY)));
+
+                    IFDEBUG(dzlog_debug("blfs_poly1305_generate_tag calculated ptr: %p --[ + "
+                                        "%"PRIuFAST32" * %"PRIuFAST32" => %"PRIuFAST32
+                                        " ]> %p (gen tag for %"PRIuFAST32" bytes)",
+                                        (void *) nugget_data,
+                                        flake_index,
+                                        flake_size,
+                                        flake_index * flake_size,
+                                        (void *) (nugget_data + (i * flake_size)),
+                                        flake_size));
+
+                    blfs_poly1305_generate_tag(tag, nugget_data + (i * flake_size), flake_size, flake_key);
+
+                    IFDEBUG(dzlog_debug("tag (initial 64 bytes):"));
+                    IFDEBUG(hdzlog_debug(tag, MIN(64U, BLFS_CRYPTO_BYTES_FLAKE_TAG_OUT)));
+
+                    IFDEBUG(dzlog_debug("verify_in_merkle_tree calculated offset: %"PRIuFAST32,
+                                        mt_offset + nugget_offset * flakes_per_nugget + flake_index));
+
+                    verify_in_merkle_tree(tag, sizeof tag, mt_offset + nugget_offset * flakes_per_nugget + flake_index, buselfs_state);
+                }
+
+                IFDEBUG(dzlog_debug(
+                    "blfs_crypt calculated ptr: %p --[ + "
+                    "%"PRIuFAST32" - %"PRIuFAST32" * %"PRIuFAST32" => %"PRIuFAST32
+                    " ]> %p (crypting %"PRIuFAST32" bytes)",
+                    (void *) nugget_data,
+                    nugget_internal_offset,
+                    first_affected_flake,
+                    flake_size,
+                    nugget_internal_offset - first_affected_flake * flake_size,
+                    (void *) (nugget_data + (nugget_internal_offset - first_affected_flake * flake_size)),
+                    buffer_read_length
+                ));
+
+                blfs_swappable_crypt(
+                    active_cipher,
+                    buffer,
+                    nugget_data + (nugget_internal_offset - first_affected_flake * flake_size),
+                    buffer_read_length,
+                    nugget_key,
+                    count->keycount,
+                    nugget_internal_offset
+                );
+
+                IFDEBUG(dzlog_debug("output_buffer final contents (initial 64 bytes):"));
+                IFDEBUG(hdzlog_debug(output_buffer, MIN(64U, size)));
+
+                buffer += buffer_read_length;
+            }
         }
 
         length -= buffer_read_length;
@@ -808,6 +891,8 @@ int buse_read(void * output_buffer, uint32_t length, uint64_t absolute_offset, v
 int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_offset, void * userdata)
 {
     IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
+
+    int must_rekey_w_active_cipher = FALSE;
 
     const uint8_t * buffer = (const uint8_t *) input_buffer;
     buselfs_state_t * buselfs_state = (buselfs_state_t *) userdata;
@@ -856,6 +941,22 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
     IFDEBUG(dzlog_debug("now %"PRIu64, tpmv_value));
 
     memcpy(tpmv_header->data, (uint8_t *) &tpmv_value, BLFS_HEAD_HEADER_BYTES_TPMGLOBALVER);
+
+    blfs_swappable_cipher_t * active_cipher = blfs_get_active_cipher(buselfs_state);
+    blfs_nugget_metadata_t * meta = blfs_open_nugget_metadata(buselfs_state->backstore, nugget_offset);
+
+    IFDEBUG(assert(buselfs_state->active_cipher_enum_id == active_cipher->enum_id));
+    IFDEBUG(dzlog_debug("nugget (meta) enum id: %u", meta->cipher_ident));
+    IFDEBUG(dzlog_debug("active_cipher enum id: %u", active_cipher->enum_id));
+
+    if(active_cipher->enum_id == meta->cipher_ident)
+        IFDEBUG(dzlog_debug("(cipher swap not necessary)"));
+
+    else
+    {
+        IFDEBUG(dzlog_debug("(CIPHER SWAP IS NECESSARY!)"));
+        must_rekey_w_active_cipher = TRUE;
+    }
 
     // ! Needs to be guaranteed monotonic in a real implementation, not based on header
     blfs_globalversion_commit(buselfs_state->rpmb_secure_index, tpmv_value);
@@ -907,184 +1008,194 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
         uint_fast32_t flake_index = first_affected_flake;
         uint_fast32_t flake_end = first_affected_flake + num_affected_flakes;
 
-        if(buselfs_state->active_cipher->write_handle)
+        if(must_rekey_w_active_cipher)
         {
-            buffer += buselfs_state->active_cipher->write_handle(
-                buffer,
-                buselfs_state,
-                buffer_write_length,
-                flake_index,
-                flake_end,
-                flake_size,
-                flakes_per_nugget,
-                flake_internal_offset,
-                mt_offset,
-                nugget_key,
-                nugget_offset,
-                count
-            );
+            IFDEBUG(dzlog_debug("<<INITIALIZING CIPHER SWAP PROCEDURE>>"));
+
+            buffer += blfs_swap_nugget_to_active_cipher(SWAP_WHILE_WRITE, buselfs_state, buffer_write_length);
         }
 
         else
         {
-            // First, check if this constitutes an overwrite...
-            blfs_tjournal_entry_t * entry = blfs_open_tjournal_entry(buselfs_state->backstore, nugget_offset);
-
-            IFDEBUG(dzlog_debug("entry->bitmask (pre-update):"));
-            IFDEBUG(hdzlog_debug(entry->bitmask->mask, entry->bitmask->byte_length));
-
-            if(bitmask_any_bits_set(entry->bitmask, first_affected_flake, num_affected_flakes))
+            if(active_cipher->write_handle)
             {
-                IFDEBUG(dzlog_notice("OVERWRITE DETECTED! PERFORMING IN-PLACE JOURNALED REKEYING + WRITE (l=%"PRIuFAST32")", buffer_write_length));
-                blfs_rekey_nugget_then_write(buselfs_state, nugget_offset, buffer, buffer_write_length, nugget_internal_offset);
-
-                buffer += buffer_write_length;
+                buffer += active_cipher->write_handle(
+                    buffer,
+                    buselfs_state,
+                    buffer_write_length,
+                    flake_index,
+                    flake_end,
+                    flake_size,
+                    flakes_per_nugget,
+                    flake_internal_offset,
+                    mt_offset,
+                    nugget_key,
+                    nugget_offset,
+                    count
+                );
             }
 
             else
             {
-                // ! Maybe update and commit the MTRH here first and again later?
+                // First, check if this constitutes an overwrite...
+                blfs_tjournal_entry_t * entry = blfs_open_tjournal_entry(buselfs_state->backstore, nugget_offset);
 
-                for(uint_fast32_t i = 0; flake_index < flake_end; flake_index++, i++)
+                IFDEBUG(dzlog_debug("entry->bitmask (pre-update):"));
+                IFDEBUG(hdzlog_debug(entry->bitmask->mask, entry->bitmask->byte_length));
+
+                if(bitmask_any_bits_set(entry->bitmask, first_affected_flake, num_affected_flakes))
                 {
-                    uint_fast32_t flake_write_length = MIN(flake_total_bytes_to_write, flake_size - flake_internal_offset);
+                    IFDEBUG(dzlog_notice("OVERWRITE DETECTED! PERFORMING IN-PLACE JOURNALED REKEYING + WRITE (l=%"PRIuFAST32")", buffer_write_length));
+                    blfs_rekey_nugget_then_write(buselfs_state, nugget_offset, buffer, buffer_write_length, nugget_internal_offset);
 
-                    IFDEBUG(dzlog_debug("flake_write_length: %"PRIuFAST32, flake_write_length));
-                    IFDEBUG(dzlog_debug("flake_index: %"PRIuFAST32, flake_index));
-                    IFDEBUG(dzlog_debug("flake_end: %"PRIuFAST32, flake_end));
+                    buffer += buffer_write_length;
+                }
 
-                    uint8_t flake_data[flake_size];
-                    IFDEBUG(memset(flake_data, 0, flake_size));
+                else
+                {
+                    // ! Maybe update and commit the MTRH here first and again later?
 
-                    // ! Data to write isn't aligned and/or is smaller than
-                    // ! flake_size, so we need to verify its integrity
-                    if(flake_internal_offset != 0 || flake_internal_offset + flake_write_length < flake_size)
+                    for(uint_fast32_t i = 0; flake_index < flake_end; flake_index++, i++)
                     {
-                        IFDEBUG(dzlog_debug("UNALIGNED! Write flake requires verification"));
+                        uint_fast32_t flake_write_length = MIN(flake_total_bytes_to_write, flake_size - flake_internal_offset);
 
-                        // Read in the entire flake
-                        blfs_backstore_read_body(buselfs_state->backstore,
-                                                flake_data,
-                                                flake_size,
-                                                nugget_offset * nugget_size + flake_index * flake_size);
+                        IFDEBUG(dzlog_debug("flake_write_length: %"PRIuFAST32, flake_write_length));
+                        IFDEBUG(dzlog_debug("flake_index: %"PRIuFAST32, flake_index));
+                        IFDEBUG(dzlog_debug("flake_end: %"PRIuFAST32, flake_end));
 
-                        // Generate a local flake key
-                        uint8_t local_flake_key[BLFS_CRYPTO_BYTES_FLAKE_TAG_KEY];
-                        uint8_t local_tag[BLFS_CRYPTO_BYTES_FLAKE_TAG_OUT];
+                        uint8_t flake_data[flake_size];
+                        IFDEBUG(memset(flake_data, 0, flake_size));
+
+                        // ! Data to write isn't aligned and/or is smaller than
+                        // ! flake_size, so we need to verify its integrity
+                        if(flake_internal_offset != 0 || flake_internal_offset + flake_write_length < flake_size)
+                        {
+                            IFDEBUG(dzlog_debug("UNALIGNED! Write flake requires verification"));
+
+                            // Read in the entire flake
+                            blfs_backstore_read_body(buselfs_state->backstore,
+                                                    flake_data,
+                                                    flake_size,
+                                                    nugget_offset * nugget_size + flake_index * flake_size);
+
+                            // Generate a local flake key
+                            uint8_t local_flake_key[BLFS_CRYPTO_BYTES_FLAKE_TAG_KEY];
+                            uint8_t local_tag[BLFS_CRYPTO_BYTES_FLAKE_TAG_OUT];
+
+                            if(BLFS_DEFAULT_DISABLE_KEY_CACHING)
+                            {
+                                IFDEBUG(dzlog_debug("KEY CACHING DISABLED!"));
+                                blfs_poly1305_key_from_data(local_flake_key, nugget_key, flake_index, count->keycount);
+                            }
+
+                            else
+                            {
+                                IFDEBUG(dzlog_debug("KEY CACHING ENABLED!"));
+                                get_flake_key_using_keychain(local_flake_key, buselfs_state, nugget_offset, flake_index, count->keycount);
+                            }
+
+                            // Generate tag
+                            blfs_poly1305_generate_tag(local_tag, flake_data, flake_size, local_flake_key);
+
+                            // Check tag in Merkle Tree
+                            verify_in_merkle_tree(local_tag, sizeof local_tag, mt_offset + nugget_offset * flakes_per_nugget + flake_index, buselfs_state);
+                        }
+
+                        IFDEBUG(dzlog_debug("INCOMPLETE flake_data (initial 64 bytes):"));
+                        IFDEBUG(hdzlog_debug(flake_data, MIN(64U, flake_size)));
+
+                        IFDEBUG(dzlog_debug("buffer at this point (initial 64 bytes):"));
+                        IFDEBUG(hdzlog_debug(buffer, MIN(64U, length)));
+
+                        IFDEBUG(dzlog_debug("blfs_crypt calculated src length: %"PRIuFAST32, flake_write_length));
+
+                        IFDEBUG(dzlog_debug("blfs_crypt calculated dest offset: %"PRIuFAST32,
+                                        i * flake_size));
+
+                        IFDEBUG(dzlog_debug("blfs_crypt calculated nio: %"PRIuFAST32,
+                                        flake_index * flake_size + flake_internal_offset));
+
+                        blfs_swappable_crypt(
+                            active_cipher,
+                            flake_data + flake_internal_offset,
+                            buffer,
+                            flake_write_length,
+                            nugget_key,
+                            count->keycount,
+                            flake_index * flake_size + flake_internal_offset
+                        );
+
+                        IFDEBUG(dzlog_debug("*complete* flake_data (initial 64 bytes):"));
+                        IFDEBUG(hdzlog_debug(flake_data, MIN(64U, flake_size)));
+
+                        uint8_t flake_key[BLFS_CRYPTO_BYTES_FLAKE_TAG_KEY];
+                        uint8_t tag[BLFS_CRYPTO_BYTES_FLAKE_TAG_OUT];
 
                         if(BLFS_DEFAULT_DISABLE_KEY_CACHING)
                         {
                             IFDEBUG(dzlog_debug("KEY CACHING DISABLED!"));
-                            blfs_poly1305_key_from_data(local_flake_key, nugget_key, flake_index, count->keycount);
+                            blfs_poly1305_key_from_data(flake_key, nugget_key, flake_index, count->keycount);
                         }
 
                         else
                         {
                             IFDEBUG(dzlog_debug("KEY CACHING ENABLED!"));
-                            get_flake_key_using_keychain(local_flake_key, buselfs_state, nugget_offset, flake_index, count->keycount);
+                            get_flake_key_using_keychain(flake_key, buselfs_state, nugget_offset, flake_index, count->keycount);
                         }
 
-                        // Generate tag
-                        blfs_poly1305_generate_tag(local_tag, flake_data, flake_size, local_flake_key);
+                        blfs_poly1305_generate_tag(tag, flake_data, flake_size, flake_key);
 
-                        // Check tag in Merkle Tree
-                        verify_in_merkle_tree(local_tag, sizeof local_tag, mt_offset + nugget_offset * flakes_per_nugget + flake_index, buselfs_state);
+                        IFDEBUG(dzlog_debug("flake_key (initial 64 bytes):"));
+                        IFDEBUG(hdzlog_debug(flake_key, MIN(64U, BLFS_CRYPTO_BYTES_FLAKE_TAG_KEY)));
+
+                        IFDEBUG(dzlog_debug("tag (initial 64 bytes):"));
+                        IFDEBUG(hdzlog_debug(tag, MIN(64U, BLFS_CRYPTO_BYTES_FLAKE_TAG_OUT)));
+
+                        IFDEBUG(dzlog_debug("update_in_merkle_tree calculated offset: %"PRIuFAST32,
+                                            mt_offset + nugget_offset * flakes_per_nugget + flake_index));
+
+                        update_in_merkle_tree(tag, sizeof tag, mt_offset + nugget_offset * flakes_per_nugget + flake_index, buselfs_state);
+
+                        IFDEBUG(dzlog_debug("blfs_backstore_write_body offset: %"PRIuFAST32,
+                                            nugget_offset * nugget_size + flake_index * flake_size + flake_internal_offset));
+
+                        blfs_backstore_write_body(buselfs_state->backstore,
+                                                flake_data + flake_internal_offset,
+                                                flake_write_length,
+                                                nugget_offset * nugget_size + flake_index * flake_size + flake_internal_offset);
+
+                        IFDEBUG(dzlog_debug("blfs_backstore_write_body input (initial 64 bytes):"));
+                        IFDEBUG(hdzlog_debug(flake_data + flake_internal_offset, MIN(64U, flake_write_length)));
+
+                        flake_internal_offset = 0;
+
+                        IFDEBUG(assert(flake_total_bytes_to_write > flake_total_bytes_to_write - flake_write_length));
+
+                        flake_total_bytes_to_write -= flake_write_length;
+                        buffer += flake_write_length;
+
                     }
 
-                    IFDEBUG(dzlog_debug("INCOMPLETE flake_data (initial 64 bytes):"));
-                    IFDEBUG(hdzlog_debug(flake_data, MIN(64U, flake_size)));
-
-                    IFDEBUG(dzlog_debug("buffer at this point (initial 64 bytes):"));
-                    IFDEBUG(hdzlog_debug(buffer, MIN(64U, length)));
-
-                    IFDEBUG(dzlog_debug("blfs_crypt calculated src length: %"PRIuFAST32, flake_write_length));
-
-                    IFDEBUG(dzlog_debug("blfs_crypt calculated dest offset: %"PRIuFAST32,
-                                    i * flake_size));
-
-                    IFDEBUG(dzlog_debug("blfs_crypt calculated nio: %"PRIuFAST32,
-                                    flake_index * flake_size + flake_internal_offset));
-
-                    blfs_swappable_crypt(
-                        buselfs_state->active_cipher,
-                        flake_data + flake_internal_offset,
-                        buffer,
-                        flake_write_length,
-                        nugget_key,
-                        count->keycount,
-                        flake_index * flake_size + flake_internal_offset
-                    );
-
-                    IFDEBUG(dzlog_debug("*complete* flake_data (initial 64 bytes):"));
-                    IFDEBUG(hdzlog_debug(flake_data, MIN(64U, flake_size)));
-
-                    uint8_t flake_key[BLFS_CRYPTO_BYTES_FLAKE_TAG_KEY];
-                    uint8_t tag[BLFS_CRYPTO_BYTES_FLAKE_TAG_OUT];
-
-                    if(BLFS_DEFAULT_DISABLE_KEY_CACHING)
-                    {
-                        IFDEBUG(dzlog_debug("KEY CACHING DISABLED!"));
-                        blfs_poly1305_key_from_data(flake_key, nugget_key, flake_index, count->keycount);
-                    }
-
-                    else
-                    {
-                        IFDEBUG(dzlog_debug("KEY CACHING ENABLED!"));
-                        get_flake_key_using_keychain(flake_key, buselfs_state, nugget_offset, flake_index, count->keycount);
-                    }
-
-                    blfs_poly1305_generate_tag(tag, flake_data, flake_size, flake_key);
-
-                    IFDEBUG(dzlog_debug("flake_key (initial 64 bytes):"));
-                    IFDEBUG(hdzlog_debug(flake_key, MIN(64U, BLFS_CRYPTO_BYTES_FLAKE_TAG_KEY)));
-
-                    IFDEBUG(dzlog_debug("tag (initial 64 bytes):"));
-                    IFDEBUG(hdzlog_debug(tag, MIN(64U, BLFS_CRYPTO_BYTES_FLAKE_TAG_OUT)));
-
-                    IFDEBUG(dzlog_debug("update_in_merkle_tree calculated offset: %"PRIuFAST32,
-                                        mt_offset + nugget_offset * flakes_per_nugget + flake_index));
-
-                    update_in_merkle_tree(tag, sizeof tag, mt_offset + nugget_offset * flakes_per_nugget + flake_index, buselfs_state);
-
-                    IFDEBUG(dzlog_debug("blfs_backstore_write_body offset: %"PRIuFAST32,
-                                        nugget_offset * nugget_size + flake_index * flake_size + flake_internal_offset));
-
-                    blfs_backstore_write_body(buselfs_state->backstore,
-                                            flake_data + flake_internal_offset,
-                                            flake_write_length,
-                                            nugget_offset * nugget_size + flake_index * flake_size + flake_internal_offset);
-
-                    IFDEBUG(dzlog_debug("blfs_backstore_write_body input (initial 64 bytes):"));
-                    IFDEBUG(hdzlog_debug(flake_data + flake_internal_offset, MIN(64U, flake_write_length)));
-
-                    flake_internal_offset = 0;
-
-                    IFDEBUG(assert(flake_total_bytes_to_write > flake_total_bytes_to_write - flake_write_length));
-
-                    flake_total_bytes_to_write -= flake_write_length;
-                    buffer += flake_write_length;
-
+                    IFDEBUG(assert(flake_total_bytes_to_write == 0));
                 }
 
-                IFDEBUG(assert(flake_total_bytes_to_write == 0));
+                bitmask_set_bits(entry->bitmask, first_affected_flake, num_affected_flakes);
+                blfs_commit_tjournal_entry(buselfs_state->backstore, entry);
+                IFDEBUG(dzlog_debug("entry->bitmask (post-update):"));
+                IFDEBUG(hdzlog_debug(entry->bitmask->mask, entry->bitmask->byte_length));
+
+                IFDEBUG(dzlog_debug("MERKLE TREE: update TJ entry"));
+
+                uint8_t hash[BLFS_CRYPTO_BYTES_STRUCT_HASH_OUT];
+
+                blfs_chacha20_struct_hash(hash, entry->bitmask->mask, entry->bitmask->byte_length, buselfs_state->backstore->master_secret);
+                update_in_merkle_tree(
+                    hash,
+                    sizeof hash,
+                    num_nuggets + (BLFS_HEAD_NUM_HEADERS - 3) + nugget_offset,
+                    buselfs_state
+                );
             }
-
-            bitmask_set_bits(entry->bitmask, first_affected_flake, num_affected_flakes);
-            blfs_commit_tjournal_entry(buselfs_state->backstore, entry);
-            IFDEBUG(dzlog_debug("entry->bitmask (post-update):"));
-            IFDEBUG(hdzlog_debug(entry->bitmask->mask, entry->bitmask->byte_length));
-
-            IFDEBUG(dzlog_debug("MERKLE TREE: update TJ entry"));
-
-            uint8_t hash[BLFS_CRYPTO_BYTES_STRUCT_HASH_OUT];
-
-            blfs_chacha20_struct_hash(hash, entry->bitmask->mask, entry->bitmask->byte_length, buselfs_state->backstore->master_secret);
-            update_in_merkle_tree(
-                hash,
-                sizeof hash,
-                num_nuggets + (BLFS_HEAD_NUM_HEADERS - 3) + nugget_offset,
-                buselfs_state
-            );
         }
 
         length -= buffer_write_length;
@@ -1117,6 +1228,8 @@ void blfs_rekey_nugget_then_write(buselfs_state_t * buselfs_state,
 {
     IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
 
+    blfs_swappable_cipher_t * active_cipher = blfs_get_active_cipher(buselfs_state);
+
     // ! Might want to switch up the ordering of these operations
 
     blfs_keycount_t * jcount = blfs_open_keycount(buselfs_state->backstore, rekeying_nugget_index);
@@ -1145,7 +1258,7 @@ void blfs_rekey_nugget_then_write(buselfs_state_t * buselfs_state,
     jcount->keycount = jcount->keycount + (buselfs_state->crash_recovery ? 2 : 1);
 
     blfs_swappable_crypt(
-        buselfs_state->active_cipher,
+        active_cipher,
         new_nugget_data,
         rekeying_nugget_data,
         buselfs_state->backstore->nugget_size_bytes,
@@ -1479,20 +1592,24 @@ void blfs_run_mode_create(const char * backstore_path,
     memcpy(flakesize_header->data, data_flakesize, BLFS_HEAD_HEADER_BYTES_FLAKESIZE_BYTES);
     memcpy(fpn_header->data, data_fpn, BLFS_HEAD_HEADER_BYTES_FLAKESPERNUGGET);
 
-    // TODO: choose the larger of the two requested sizes if cipher switching
     // ? +1 for the byte that holds the swappable_cipher_e identifier associated
     // ? with that nugget
-    buselfs_state->backstore->md_bytes_per_nugget = buselfs_state->active_cipher->requested_md_bytes_per_nugget + 1;
+    buselfs_state->backstore->md_bytes_per_nugget = 1 + MAX(
+        buselfs_state->primary_cipher->requested_md_bytes_per_nugget,
+        buselfs_state->swap_cipher->requested_md_bytes_per_nugget
+    );
 
-    IFDEBUG(dzlog_debug("cipher requested %"PRIu32" (additional) bytes of metadata per nugget",
+    IFDEBUG(dzlog_debug("primary cipher requested %"PRIu32" (additional) bytes of metadata per nugget",
         buselfs_state->active_cipher->requested_md_bytes_per_nugget
+    ));
+
+    IFDEBUG(dzlog_debug("swap cipher requested %"PRIu32" (additional) bytes of metadata per nugget",
+        buselfs_state->swap_cipher->requested_md_bytes_per_nugget
     ));
 
     IFDEBUG(dzlog_debug("decided to allocate %"PRIu32" bytes of metadata per nugget",
         buselfs_state->backstore->md_bytes_per_nugget
     ));
-
-    IFDEBUG(dzlog_debug("calculated md_bytes_per_nugget = %"PRIu32, buselfs_state->backstore->md_bytes_per_nugget));
 
     // Calculate numnugget headers (head and body are packed together; bytes at the end are ignored)
     blfs_header_t * numnuggets_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_NUMNUGGETS);
@@ -1615,13 +1732,16 @@ buselfs_state_t * strongbox_main_actual(int argc, char * argv[], char * blockdev
 
     buselfs_state->backstore = NULL;
 
-    uint8_t  cin_allow_insecure_start       = FALSE;
-    uint8_t  cin_use_default_password       = FALSE;
-    swappable_cipher_e cin_cipher           = sc_default;
-    uint8_t  cin_backstore_mode             = BLFS_BACKSTORE_CREATE_MODE_UNKNOWN;
-    uint64_t cin_backstore_size             = BLFS_DEFAULT_BYTES_BACKSTORE * BYTES_IN_A_MB;
-    uint32_t cin_flake_size                 = BLFS_DEFAULT_BYTES_FLAKE;
-    uint32_t cin_flakes_per_nugget          = BLFS_DEFAULT_FLAKES_PER_NUGGET;
+    uint8_t  cin_allow_insecure_start  = FALSE;
+    uint8_t  cin_use_default_password  = FALSE;
+    swappable_cipher_e cin_cipher      = sc_default;
+    swappable_cipher_e cin_swap_cipher = sc_not_impl;
+    uint8_t  cin_backstore_mode        = BLFS_BACKSTORE_CREATE_MODE_UNKNOWN;
+    uint64_t cin_backstore_size        = BLFS_DEFAULT_BYTES_BACKSTORE * BYTES_IN_A_MB;
+    uint32_t cin_flake_size            = BLFS_DEFAULT_BYTES_FLAKE;
+    uint32_t cin_flakes_per_nugget     = BLFS_DEFAULT_FLAKES_PER_NUGGET;
+    swap_strategy_e cin_swap_strategy  = swap_default;
+    usecase_e cin_usecase              = uc_default;
 
     IFDEBUG3(printf("<bare debug>: argc: %i\n", argc));
 
@@ -1654,10 +1774,10 @@ buselfs_state_t * strongbox_main_actual(int argc, char * argv[], char * blockdev
         "- backstore-size    size of the backstore; must be in MEGABYTES.\n"
         "- flake-size        size of each individual flake; must be in BYTES\n"
         "- flakes-per-nugget number of flakes per nugget\n"
-        "- cipher            chosen cipher for crypt (see README for choices here)\n"
+        "- cipher            chosen cipher for crypt (see README for choices)\n"
         "- swap-cipher       chosen cipher for use with swap strategies (same choices as cipher)\n"
-        "- swap-strategy     chosen swap strategy (see README for choices here)\n"
-        "- support-uc        chosen cipher for crypt (see README for choices here)\n"
+        "- swap-strategy     chosen swap strategy (see README for choices)\n"
+        "- support-uc        chosen cipher for crypt (see README for choices)\n"
         "- tpm-id            internal index used by RPMB module\n\n"
 
         "::open command::\n"
@@ -1770,36 +1890,36 @@ buselfs_state_t * strongbox_main_actual(int argc, char * argv[], char * blockdev
         }
 
         else if(strcmp(argv[argc], "--swap-cipher") == 0)
-        { // TODO: swap cipher impl
-            char * cin_cipher_str = argv[argc + 1];
+        {
+            char * cin_swap_cipher_str = argv[argc + 1];
 
-            IFDEBUG3(printf("<bare debug>: saw --cipher = %s\n", cin_cipher_str));
+            IFDEBUG3(printf("<bare debug>: saw --swap-cipher = %s\n", cin_swap_cipher_str));
 
-            cin_cipher = blfs_ident_string_to_cipher(cin_cipher_str);
+            cin_swap_cipher = blfs_ident_string_to_cipher(cin_swap_cipher_str);
 
-            IFDEBUG3(printf("<bare debug>: saw --cipher, got enum value: %d\n", cin_cipher));
+            IFDEBUG3(printf("<bare debug>: saw --swap-cipher, got enum value: %d\n", cin_swap_cipher));
         }
 
         else if(strcmp(argv[argc], "--swap-strategy") == 0)
-        { // TODO: active_swap_strategy
-            char * cin_cipher_str = argv[argc + 1];
+        {
+            char * cin_swap_strategy_str = argv[argc + 1];
 
-            IFDEBUG3(printf("<bare debug>: saw --cipher = %s\n", cin_cipher_str));
+            IFDEBUG3(printf("<bare debug>: saw --swap-strategy = %s\n", cin_swap_strategy_str));
 
-            cin_cipher = blfs_ident_string_to_cipher(cin_cipher_str);
+            cin_swap_strategy = blfs_ident_string_to_swap_strategy(cin_swap_strategy_str);
 
-            IFDEBUG3(printf("<bare debug>: saw --cipher, got enum value: %d\n", cin_cipher));
+            IFDEBUG3(printf("<bare debug>: saw --swap-strategy, got enum value: %d\n", cin_swap_strategy));
         }
 
         else if(strcmp(argv[argc], "--support-uc") == 0)
-        { // TODO: active_usecase
-            char * cin_cipher_str = argv[argc + 1];
+        {
+            char * cin_usecase_str = argv[argc + 1];
 
-            IFDEBUG3(printf("<bare debug>: saw --cipher = %s\n", cin_cipher_str));
+            IFDEBUG3(printf("<bare debug>: saw --support-uc = %s\n", cin_usecase_str));
 
-            cin_cipher = blfs_ident_string_to_cipher(cin_cipher_str);
+            cin_usecase = blfs_ident_string_to_usecase(cin_usecase_str);
 
-            IFDEBUG3(printf("<bare debug>: saw --cipher, got enum value: %d\n", cin_cipher));
+            IFDEBUG3(printf("<bare debug>: saw --support-uc, got enum value: %d\n", cin_usecase));
         }
 
         else if(strcmp(argv[argc], "--tpm-id") == 0)
@@ -1830,6 +1950,9 @@ buselfs_state_t * strongbox_main_actual(int argc, char * argv[], char * blockdev
     IFDEBUG3(printf("<bare debug>: cin_backstore_mode = %i\n", cin_backstore_mode));
     IFDEBUG3(printf("<bare debug>: rpmb_secure_index = %"PRIu64"\n", buselfs_state->rpmb_secure_index));
     IFDEBUG3(printf("<bare debug>: cin_cipher = %d\n", cin_cipher));
+    IFDEBUG3(printf("<bare debug>: cin_swap_cipher = %d\n", cin_swap_cipher));
+    IFDEBUG3(printf("<bare debug>: cin_swap_strategy = %d\n", cin_swap_strategy));
+    IFDEBUG3(printf("<bare debug>: cin_usecase = %d\n", cin_usecase));
 
     IFDEBUG3(printf("<bare debug>: defaults:\n"));
     IFDEBUG3(printf("<bare debug>: default allow_insecure_start = 0\n"));
@@ -1840,6 +1963,9 @@ buselfs_state_t * strongbox_main_actual(int argc, char * argv[], char * blockdev
     IFDEBUG3(printf("<bare debug>: default cin_backstore_mode = %i\n", BLFS_BACKSTORE_CREATE_MODE_UNKNOWN));
     IFDEBUG3(printf("<bare debug>: default rpmb_secure_index = %i\n", BLFS_DEFAULT_TPM_ID));
     IFDEBUG3(printf("<bare debug>: default cin_cipher = %d\n", sc_default));
+    IFDEBUG3(printf("<bare debug>: default cin_swap_cipher = %d\n", sc_default));
+    IFDEBUG3(printf("<bare debug>: default cin_swap_strategy = %d\n", swap_default));
+    IFDEBUG3(printf("<bare debug>: default cin_usecase = %d\n", uc_default));
 
     IFDEBUG3(printf("<bare debug>: BLFS_BACKSTORE_CREATE_MAX_MODE_NUM = %i\n", BLFS_BACKSTORE_CREATE_MAX_MODE_NUM));
 
@@ -1870,14 +1996,26 @@ buselfs_state_t * strongbox_main_actual(int argc, char * argv[], char * blockdev
         Throw(EXCEPTION_TOO_FEW_FLAKES_PER_NUGGET);
 
     /* Cipher selection and initialization */
-    buselfs_state->active_cipher = malloc(sizeof *buselfs_state->active_cipher);
+    buselfs_state->active_cipher_enum_id = cin_cipher;
 
-    sc_set_cipher_ctx(buselfs_state->active_cipher, cin_cipher);
+    buselfs_state->primary_cipher = malloc(sizeof *buselfs_state->primary_cipher);
+    buselfs_state->swap_cipher = malloc(sizeof *buselfs_state->swap_cipher);
+
+    sc_set_cipher_ctx(buselfs_state->primary_cipher, cin_cipher);
+    sc_set_cipher_ctx(buselfs_state->swap_cipher, cin_swap_cipher == sc_not_impl ? cin_cipher : cin_swap_cipher);
+
     sc_calculate_cipher_bytes_per_nugget(
-        buselfs_state->active_cipher,
+        buselfs_state->primary_cipher,
         cin_flakes_per_nugget,
         cin_flake_size,
-        buselfs_state->active_cipher->output_size_bytes
+        buselfs_state->primary_cipher->output_size_bytes
+    );
+
+    sc_calculate_cipher_bytes_per_nugget(
+        buselfs_state->swap_cipher,
+        cin_flakes_per_nugget,
+        cin_flake_size,
+        buselfs_state->swap_cipher->output_size_bytes
     );
 
     /* Prepare to setup the backstore file */

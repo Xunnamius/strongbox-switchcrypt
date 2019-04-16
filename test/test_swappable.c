@@ -641,7 +641,8 @@ void test_freestyle_handles_crypt_properly(void)
 
     buselfs_state.backstore = &backstore;
     backstore.nugget_size_bytes = BLFS_TEST_NUGGET_SIZE_BYTES;
-    buselfs_state.active_cipher = &sc;
+    buselfs_state.primary_cipher = &sc;
+    buselfs_state.swap_cipher = &sc;
 
     flake_size = backstore.flake_size_bytes = BLFS_TEST_FLAKE_SIZE;
     flakes_per_nugget = backstore.flakes_per_nugget = BLFS_TEST_FLAKES_PER_NUGGET;

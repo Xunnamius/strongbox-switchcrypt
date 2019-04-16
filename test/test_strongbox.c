@@ -65,9 +65,9 @@ static void make_fake_state()
     buselfs_state->default_password             = BLFS_DEFAULT_PASS;
     buselfs_state->rpmb_secure_index            = _TEST_BLFS_TPM_ID;
 
-    buselfs_state->active_cipher = &global_active_cipher;
+    buselfs_state->primary_cipher = &global_active_cipher;
 
-    sc_set_cipher_ctx(buselfs_state->active_cipher, sc_default);
+    sc_set_cipher_ctx(buselfs_state->primary_cipher, sc_default);
     blfs_initialize_queues(buselfs_state);
 
     iofd = open(BACKSTORE_FILE_PATH, O_CREAT | O_RDWR | O_TRUNC, 0777);
@@ -79,7 +79,8 @@ static void make_fake_state()
 
     // ? set to 8 to match the dummy data
     buselfs_state->backstore->md_bytes_per_nugget = 8;
-    buselfs_state->active_cipher->requested_md_bytes_per_nugget = buselfs_state->backstore->md_bytes_per_nugget - 1;
+    buselfs_state->primary_cipher->requested_md_bytes_per_nugget = buselfs_state->backstore->md_bytes_per_nugget - 1;
+    buselfs_state->swap_cipher = buselfs_state->primary_cipher;
 
     blfs_backstore_write(buselfs_state->backstore, buffer_init_backstore_state, sizeof buffer_init_backstore_state, 0);
 
@@ -174,6 +175,12 @@ void tearDown(void)
 // ! Also need to test a delete function to fix the memory leak issue as
 // ! discussed in strongbox.h
 
+void test_blfs_swap_nugget_to_active_cipher_and_strategies_work_as_expected(void)
+{
+    // TODO:!
+    TEST_IGNORE();
+}
+
 void test_mq_empty_read_works(void)
 {
     blfs_mq_msg_t msg = { .opcode = 1 };
@@ -255,8 +262,8 @@ void test_adding_and_evicting_from_the_keycache_works_as_expected(void)
     }
 }
 
-// ! The password used was "t" but almost no matter what you input the test will win
-// ! Don't forget to also test using the correct password!
+// ! The password used was "t" but almost no matter what you input the test will
+// ! win. Don't forget to also test using the correct password!
 void test_blfs_soft_open_throws_exception_on_invalid_password(void)
 {
     open_real_backstore();
@@ -1334,7 +1341,8 @@ void test_strongbox_main_actual_creates_expected_buselfs_state(void)
 
     buselfs_state = strongbox_main_actual(argc, argv_create1, blockdevice);
 
-    TEST_ASSERT_EQUAL_UINT(sc_aes256_xts, buselfs_state->active_cipher->enum_id);
+    TEST_ASSERT_EQUAL_UINT(sc_aes256_xts, buselfs_state->primary_cipher->enum_id);
+    TEST_ASSERT_EQUAL_UINT(sc_aes256_xts, buselfs_state->swap_cipher->enum_id);
     TEST_ASSERT_EQUAL_UINT(115, buselfs_state->rpmb_secure_index);
     TEST_ASSERT_EQUAL_UINT(131072, buselfs_state->backstore->nugget_size_bytes);
     TEST_ASSERT_EQUAL_UINT(16384, buselfs_state->backstore->flake_size_bytes);
@@ -1360,7 +1368,36 @@ void test_strongbox_inits_with_requested_md_bytes_per_nugget(void)
 
     buselfs_state = strongbox_main_actual(argc, argv_create1, blockdevice);
 
-    TEST_ASSERT_EQUAL_UINT(buselfs_state->active_cipher->requested_md_bytes_per_nugget + 1, buselfs_state->backstore->md_bytes_per_nugget);
+    TEST_ASSERT_EQUAL_UINT(buselfs_state->primary_cipher->requested_md_bytes_per_nugget + 1, buselfs_state->backstore->md_bytes_per_nugget);
+    TEST_ASSERT_EQUAL_UINT(buselfs_state->swap_cipher->requested_md_bytes_per_nugget + 1, buselfs_state->backstore->md_bytes_per_nugget);
+}
+
+void test_strongbox_inits_with_requested_md_bytes_per_nugget2(void)
+{
+    zlog_fini();
+
+    char * argv_create1[] = {
+        "progname",
+        "--default-password",
+        "--swap-cipher",
+        "sc_freestyle_fast",
+        "create",
+        "device_actual-117-2"
+    };
+
+    int argc = sizeof(argv_create1)/sizeof(argv_create1[0]);
+
+    buselfs_state = strongbox_main_actual(argc, argv_create1, blockdevice);
+
+    blfs_swappable_cipher_t default_ctx;
+    sc_set_cipher_ctx(&default_ctx, sc_default);
+
+    TEST_ASSERT_EQUAL_UINT(1, buselfs_state->primary_cipher->requested_md_bytes_per_nugget + 1);
+    TEST_ASSERT_EQUAL(default_ctx.enum_id, buselfs_state->active_cipher_enum_id);
+    TEST_ASSERT_EQUAL(default_ctx.enum_id, buselfs_state->primary_cipher->enum_id);
+    TEST_ASSERT_EQUAL(sc_freestyle_fast, buselfs_state->swap_cipher->enum_id);
+    // ? The freestyle cipher's bigger requirements should make the number > 1
+    TEST_ASSERT_EQUAL_UINT(buselfs_state->swap_cipher->requested_md_bytes_per_nugget + 1, buselfs_state->backstore->md_bytes_per_nugget);
 }
 
 void test_strongbox_inits_properly_with_1_md_bytes_per_nugget(void)
@@ -1378,8 +1415,394 @@ void test_strongbox_inits_properly_with_1_md_bytes_per_nugget(void)
 
     buselfs_state = strongbox_main_actual(argc, argv_create1, blockdevice);
 
-    TEST_ASSERT_EQUAL_UINT(0, buselfs_state->active_cipher->requested_md_bytes_per_nugget);
+    TEST_ASSERT_EQUAL_UINT(0, buselfs_state->primary_cipher->requested_md_bytes_per_nugget);
+    TEST_ASSERT_EQUAL_UINT(0, buselfs_state->swap_cipher->requested_md_bytes_per_nugget);
+    TEST_ASSERT_TRUE(buselfs_state->primary_cipher->enum_id == buselfs_state->swap_cipher->enum_id);
     TEST_ASSERT_EQUAL_UINT(1, buselfs_state->backstore->md_bytes_per_nugget);
+}
+
+void test_strongbox_inits_with_proper_swap_strategy_and_usecase1(void)
+{
+    zlog_fini();
+
+    char * argv_create1[] = {
+        "progname",
+        "--default-password",
+        "create",
+        "device_actual-119"
+    };
+
+    int argc = sizeof(argv_create1)/sizeof(argv_create1[0]);
+
+    buselfs_state = strongbox_main_actual(argc, argv_create1, blockdevice);
+
+    blfs_swappable_cipher_t default_ctx;
+    sc_set_cipher_ctx(&default_ctx, sc_default);
+
+    TEST_ASSERT_EQUAL(default_ctx.enum_id, buselfs_state->primary_cipher->enum_id);
+    TEST_ASSERT_EQUAL_UINT(default_ctx.enum_id, buselfs_state->swap_cipher->enum_id);
+    TEST_ASSERT_EQUAL_UINT(swap_default, buselfs_state->active_swap_strategy);
+    TEST_ASSERT_EQUAL_UINT(uc_default, buselfs_state->active_usecase);
+}
+
+void test_strongbox_inits_with_proper_swap_strategy_and_usecase2(void)
+{
+    zlog_fini();
+
+    char * argv_create1[] = {
+        "progname",
+        "--default-password",
+        "--swap-strategy",
+        "swap_mirrored",
+        "--support-uc",
+        "uc_lockdown",
+        "create",
+        "device_actual-120"
+    };
+
+    int argc = sizeof(argv_create1)/sizeof(argv_create1[0]);
+
+    buselfs_state = strongbox_main_actual(argc, argv_create1, blockdevice);
+
+    TEST_ASSERT_EQUAL_UINT(swap_mirrored, buselfs_state->active_swap_strategy);
+    TEST_ASSERT_EQUAL_UINT(uc_lockdown, buselfs_state->active_usecase);
+}
+
+void test_strongbox_can_cipher_switch1(void)
+{
+    zlog_fini();
+
+    char * argv_create1[] = {
+        "progname",
+        "--default-password",
+        "--cipher",
+        "sc_chacha20",
+        "--swap-cipher",
+        "sc_chacha8",
+        "--swap-strategy",
+        "swap_forward",
+        "create",
+        "device_actual-121"
+    };
+
+    int argc = sizeof(argv_create1)/sizeof(argv_create1[0]);
+
+    buselfs_state = strongbox_main_actual(argc, argv_create1, blockdevice);
+
+    // TODO:! test cipher switching worked
+    TEST_IGNORE();
+}
+
+void test_strongbox_can_cipher_switch2(void)
+{
+    zlog_fini();
+
+    char * argv_create1[] = {
+        "progname",
+        "--default-password",
+        "--cipher",
+        "sc_chacha20",
+        "--swap-cipher",
+        "sc_freestyle_fast",
+        "--swap-strategy",
+        "swap_forward",
+        "create",
+        "device_actual-122"
+    };
+
+    int argc = sizeof(argv_create1)/sizeof(argv_create1[0]);
+
+    buselfs_state = strongbox_main_actual(argc, argv_create1, blockdevice);
+
+    // TODO:! test cipher switching worked
+    TEST_IGNORE();
+}
+
+void test_strongbox_can_cipher_switch3(void)
+{
+    zlog_fini();
+
+    char * argv_create1[] = {
+        "progname",
+        "--default-password",
+        "--cipher",
+        "sc_freestyle_fast",
+        "--swap-cipher",
+        "sc_chacha20",
+        "--swap-strategy",
+        "swap_forward",
+        "create",
+        "device_actual-123"
+    };
+
+    int argc = sizeof(argv_create1)/sizeof(argv_create1[0]);
+
+    buselfs_state = strongbox_main_actual(argc, argv_create1, blockdevice);
+
+    // TODO:! test cipher switching worked
+    TEST_IGNORE();
+}
+
+void test_strongbox_can_cipher_switch4(void)
+{
+    zlog_fini();
+
+    char * argv_create1[] = {
+        "progname",
+        "--default-password",
+        "--cipher",
+        "sc_freestyle_fast",
+        "--swap-cipher",
+        "sc_freestyle_secure",
+        "--swap-strategy",
+        "swap_forward",
+        "create",
+        "device_actual-124"
+    };
+
+    int argc = sizeof(argv_create1)/sizeof(argv_create1[0]);
+
+    buselfs_state = strongbox_main_actual(argc, argv_create1, blockdevice);
+
+    // TODO:! test cipher switching worked
+    TEST_IGNORE();
+}
+
+void test_strongbox_works_when_mirrored1(void)
+{
+    zlog_fini();
+
+    char * argv_create1[] = {
+        "progname",
+        "--default-password",
+        "--cipher",
+        "sc_chacha20",
+        "--swap-cipher",
+        "sc_chacha8",
+        "--swap-strategy",
+        "swap_mirrored",
+        "create",
+        "device_actual-125"
+    };
+
+    int argc = sizeof(argv_create1)/sizeof(argv_create1[0]);
+
+    buselfs_state = strongbox_main_actual(argc, argv_create1, blockdevice);
+
+    // TODO:! test cipher switching worked
+    TEST_IGNORE();
+}
+
+void test_strongbox_works_when_mirrored2(void)
+{
+    zlog_fini();
+
+    char * argv_create1[] = {
+        "progname",
+        "--default-password",
+        "--cipher",
+        "sc_chacha20",
+        "--swap-cipher",
+        "sc_freestyle_fast",
+        "--swap-strategy",
+        "swap_mirrored",
+        "create",
+        "device_actual-126"
+    };
+
+    int argc = sizeof(argv_create1)/sizeof(argv_create1[0]);
+
+    buselfs_state = strongbox_main_actual(argc, argv_create1, blockdevice);
+
+    // TODO:! test cipher switching worked
+    TEST_IGNORE();
+}
+
+void test_strongbox_works_when_mirrored3(void)
+{
+    zlog_fini();
+
+    char * argv_create1[] = {
+        "progname",
+        "--default-password",
+        "--cipher",
+        "sc_freestyle_fast",
+        "--swap-cipher",
+        "sc_chacha20",
+        "--swap-strategy",
+        "swap_mirrored",
+        "create",
+        "device_actual-127"
+    };
+
+    int argc = sizeof(argv_create1)/sizeof(argv_create1[0]);
+
+    buselfs_state = strongbox_main_actual(argc, argv_create1, blockdevice);
+
+    // TODO:! test cipher switching worked
+    TEST_IGNORE();
+}
+
+void test_strongbox_works_when_mirrored4(void)
+{
+    zlog_fini();
+
+    char * argv_create1[] = {
+        "progname",
+        "--default-password",
+        "--cipher",
+        "sc_freestyle_fast",
+        "--swap-cipher",
+        "sc_freestyle_secure",
+        "--swap-strategy",
+        "swap_mirrored",
+        "create",
+        "device_actual-128"
+    };
+
+    int argc = sizeof(argv_create1)/sizeof(argv_create1[0]);
+
+    buselfs_state = strongbox_main_actual(argc, argv_create1, blockdevice);
+
+    // TODO:! test cipher switching worked
+    TEST_IGNORE();
+}
+
+
+
+void test_usecase_uc_secure_regions(void)
+{
+    zlog_fini();
+
+    char * argv_create1[] = {
+        "progname",
+        "--default-password",
+        "--cipher",
+        "sc_freestyle_fast",
+        "--swap-cipher",
+        "sc_freestyle_secure",
+        "--swap-strategy",
+        "swap_forward",
+        "--support-uc",
+        "uc_secure_regions",
+        "create",
+        "device_actual-129"
+    };
+
+    int argc = sizeof(argv_create1)/sizeof(argv_create1[0]);
+
+    buselfs_state = strongbox_main_actual(argc, argv_create1, blockdevice);
+
+    // TODO:! test use case actually works!
+    TEST_IGNORE();
+}
+
+void test_usecase_uc_fixed_energy(void)
+{
+    zlog_fini();
+
+    char * argv_create1[] = {
+        "progname",
+        "--default-password",
+        "--cipher",
+        "sc_freestyle_fast",
+        "--swap-cipher",
+        "sc_freestyle_secure",
+        "--swap-strategy",
+        "swap_forward",
+        "--support-uc",
+        "uc_fixed_energy",
+        "create",
+        "device_actual-130"
+    };
+
+    int argc = sizeof(argv_create1)/sizeof(argv_create1[0]);
+
+    buselfs_state = strongbox_main_actual(argc, argv_create1, blockdevice);
+
+    // TODO:! test use case actually works!
+    TEST_IGNORE();
+}
+
+void test_usecase_uc_offset_slowdown(void)
+{
+    zlog_fini();
+
+    char * argv_create1[] = {
+        "progname",
+        "--default-password",
+        "--cipher",
+        "sc_freestyle_fast",
+        "--swap-cipher",
+        "sc_freestyle_secure",
+        "--swap-strategy",
+        "swap_forward",
+        "--support-uc",
+        "uc_offset_slowdown",
+        "create",
+        "device_actual-131"
+    };
+
+    int argc = sizeof(argv_create1)/sizeof(argv_create1[0]);
+
+    buselfs_state = strongbox_main_actual(argc, argv_create1, blockdevice);
+
+    // TODO:! test use case actually works!
+    TEST_IGNORE();
+}
+
+void test_usecase_uc_lockdown(void)
+{
+    zlog_fini();
+
+    char * argv_create1[] = {
+        "progname",
+        "--default-password",
+        "--cipher",
+        "sc_freestyle_fast",
+        "--swap-cipher",
+        "sc_freestyle_secure",
+        "--swap-strategy",
+        "swap_forward",
+        "--support-uc",
+        "uc_lockdown",
+        "create",
+        "device_actual-132"
+    };
+
+    int argc = sizeof(argv_create1)/sizeof(argv_create1[0]);
+
+    buselfs_state = strongbox_main_actual(argc, argv_create1, blockdevice);
+
+    // TODO:! test use case actually works!
+    TEST_IGNORE();
+}
+
+void test_usecase_uc_auto_locations(void)
+{
+    zlog_fini();
+
+    char * argv_create1[] = {
+        "progname",
+        "--default-password",
+        "--cipher",
+        "sc_freestyle_fast",
+        "--swap-cipher",
+        "sc_freestyle_secure",
+        "--swap-strategy",
+        "swap_forward",
+        "--support-uc",
+        "uc_auto_locations",
+        "create",
+        "device_actual-133"
+    };
+
+    int argc = sizeof(argv_create1)/sizeof(argv_create1[0]);
+
+    buselfs_state = strongbox_main_actual(argc, argv_create1, blockdevice);
+
+    // TODO:! test use case actually works!
+    TEST_IGNORE();
 }
 
 // void test_strongbox_main_actual_creates_with_standard_cipher_and_swap_cipher(void)

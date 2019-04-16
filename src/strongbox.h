@@ -83,10 +83,19 @@ typedef struct buselfs_state_t
     char * default_password;
 
     /**
-     * This stores the currently active cipher and its context. See swappable.h
-     * for details.
+     * This stores the primary cipher context. See swappable.h for details.
      */
-    blfs_swappable_cipher_t * active_cipher;
+    blfs_swappable_cipher_t * primary_cipher;
+
+    /**
+     * This stores the swap cipher context. See swappable.h for details.
+     */
+    blfs_swappable_cipher_t * swap_cipher;
+
+    /**
+     * This is the id of the currently active available cipher context.
+     */
+    swappable_cipher_e active_cipher_enum_id;
 
     /**
      * This stores the currently active swap strategy. See swappable.h for
@@ -325,6 +334,10 @@ void blfs_rekey_nugget_then_write(buselfs_state_t * buselfs_state,
                                   const uint8_t * buffer,
                                   uint32_t length,
                                   uint64_t nugget_internal_offset);
+
+int blfs_swap_nugget_to_active_cipher(int swapping_while_read_or_write,
+                                      buselfs_state_t * buselfs_state,
+                                      int_fast32_t buffer_length);
 
 /**
  * Open a backstore and perform initial validation checks and asserts.

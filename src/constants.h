@@ -74,11 +74,11 @@ typedef enum swappable_cipher_e {
 
 typedef enum swap_strategy_e {
     swap_default        = 1,
-    swap_opportunistic  = 2,
-    swap_immediate      = 3,
-    swap_forward        = 4,
-    swap_aggressive     = 5,
-    swap_precrypt       = 6,
+    swap_immediate      = 2,
+    swap_forward        = 3,
+    swap_aggressive     = 4,
+    swap_opportunistic  = 5,
+    swap_mirrored       = 6,
     swap_disabled       = 7,
     swap_not_impl       = 8,
 } swap_strategy_e;
@@ -86,12 +86,11 @@ typedef enum swap_strategy_e {
 typedef enum usecase_e {
     uc_default              = 1,
     uc_secure_regions       = 2,
-    uc_secure_nuggets       = 3,
-    uc_perf_agreement       = 4,
-    uc_fixed_energy         = 5,
-    uc_opportunistic_crypt  = 6,
-    uc_disabled             = 7,
-    uc_no_impl              = 8,
+    uc_fixed_energy         = 3,
+    uc_lockdown             = 4,
+    uc_auto_locations       = 5,
+    uc_disabled             = 6,
+    uc_no_impl              = 7,
 } usecase_e;
 
 #include <string.h> /* strdup() */
@@ -99,6 +98,9 @@ typedef enum usecase_e {
 ///////////////////
 // Useful Macros //
 ///////////////////
+
+#define SWAP_WHILE_READ 0
+#define SWAP_WHILE_WRITE 1
 
 #if BLFS_DEBUG_LEVEL > 0
 #define IFDEBUG(expression) expression
@@ -289,6 +291,8 @@ typedef enum usecase_e {
 #define BLFS_SV_QUEUE_MAX_MESSAGES              10
 #define BLFS_SV_MESSAGE_SIZE_BYTES              256U // bytes; 1 byte op || 255 byte payload
 #define BLFS_SV_MESSAGE_DEFAULT_PRIORITY        0 // uint; must be < ~30k. 0 - 30 recommended
+
+#define BLFS_NUM_ACTIVE_CIPHERS                 2 // will probably never not be 2
 
 /////////
 // MMC //

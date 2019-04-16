@@ -95,9 +95,15 @@ typedef void (*sc_fn_crypt_data_custom)(
  * behavior is undefined. Also note that nugget_data[0] will always be aligned
  * with the start of the first affected flake.
  *
+ * ! Due to cipher swapping, this function must not read in any nugget/flake
+ * ! data from the backstore if a *perfectly aligned* *nugget-sized* chunk is
+ * ! requested. This is because this handler may be called when cipher switching
+ * ! and the underlying data in the nugget might be crypted with a different
+ * ! algorithm when you attempt to read it.
+ *
  * ! This function should return the total number of bytes read in.
  */
-typedef int (*sc_fn_read_handle)(
+typedef int (*sc_fn_read_handle)()
     uint8_t * buffer,
     const buselfs_state_t * buselfs_state,
     uint_fast32_t buffer_read_length,
@@ -136,6 +142,14 @@ typedef int (*sc_fn_read_handle)(
  * cipher to end up writing less than/some non-multiple of a flake's worth of
  * data to the backstore.
  *
+ * ! Due to cipher swapping, this function must not read in any nugget/flake
+ * ! data from the backstore if a *perfectly aligned* *nugget-sized* write is
+ * ! requested. This is because this handler may be called when cipher switching
+ * ! and the underlying data in the nugget might be crypted with a different
+ * ! algorithm when you attempt to read it.
+ *
+ * ! You cannot trust buselfs_state->active_cipher to always be your cipher!
+ *
  * ! This function should return the total number of bytes written out.
  */
 typedef int (*sc_fn_write_handle)(
@@ -169,7 +183,7 @@ typedef uint32_t (*sc_fn_calc_handle)(
 struct blfs_swappable_cipher_t
 {
     char * name;
-    uint32_t enum_id;
+    swappable_cipher_e enum_id;
 
     uint64_t output_size_bytes;
     uint64_t key_size_bytes;
@@ -194,26 +208,6 @@ struct blfs_swappable_cipher_t
 void sc_set_cipher_ctx(blfs_swappable_cipher_t * sc_ctx, swappable_cipher_e sc);
 
 /**
- * Accepts swap_strategy_e enum value ss, which sets the swap strategy used by
- * StrongBox.
- *
- * ! This should be called early in the initialization process
- *
- * @param ss
- */
-void swap_set_swap_strategy(swap_strategy_e ss);
-
-/**
- * Accepts usecase_e enum value uc, which sets the usecase assumptions StrongBox
- * will operate under.
- *
- * ! This should be called early in the initialization process
- *
- * @param uc
- */
-void uc_set_usecase(usecase_e uc);
-
-/**
  * Allows the cipher to calculate dynamically the bytes per nugget of metadata
  * StrongBox will allocate in the backing store during initialization. This
  * function should be called alongside sc_set_cipher_ctx.
@@ -231,7 +225,7 @@ void sc_calculate_cipher_bytes_per_nugget(blfs_swappable_cipher_t * sc_ctx,
  *
  * @return swappable_cipher_e
  */
-swappable_cipher_e blfs_ident_string_to_cipher(const char * sc);
+swappable_cipher_e blfs_ident_string_to_cipher(const char * sc_str);
 
 /**
  * Takes a string and converts it to its corresponding swap_strategy_e enum
@@ -241,7 +235,7 @@ swappable_cipher_e blfs_ident_string_to_cipher(const char * sc);
  *
  * @return swap_strategy_e
  */
-swap_strategy_e blfs_ident_string_to_strategy(const char * sc);
+swap_strategy_e blfs_ident_string_to_strategy(const char * ss_str);
 
 /**
  * Takes a string and converts it to its corresponding usecase_e enum
@@ -251,7 +245,7 @@ swap_strategy_e blfs_ident_string_to_strategy(const char * sc);
  *
  * @return usecase_e
  */
-usecase_e blfs_ident_string_to_usecase(const char * sc);
+usecase_e blfs_ident_string_to_usecase(const char * uc_str);
 
 /**
  * Defines an abstraction layer allowing StrongBox to interface properly with
@@ -264,5 +258,17 @@ void blfs_swappable_crypt(blfs_swappable_cipher_t * sc,
                           const uint8_t * nugget_key,
                           const uint64_t kcs_keycount,
                           const uint64_t nugget_internal_offset);
+
+/**
+ * Convenience function that returns the currently active (primary) cipher
+ * given a state object.
+ */
+blfs_swappable_cipher_t * blfs_get_active_cipher(buselfs_state_t * buselfs_state);
+
+/**
+ * Convenience function that returns the currently inactive (swap) cipher
+ * given a state object.
+ */
+blfs_swappable_cipher_t * blfs_get_inactive_cipher(buselfs_state_t * buselfs_state);
 
 #endif /* BLFS_SWAP_H_ */

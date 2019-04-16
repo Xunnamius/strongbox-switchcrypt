@@ -46,10 +46,10 @@ Observe that `nbd_device_name` must always appear last and the desired command
 Ciphers available for the `--cipher` and `--swap-cipher` are:
 
 - `sc_default` (this is synonymous with `sc_chacha20`)
-- `sc_chacha8`
-- `sc_chacha12`
+- `sc_chacha8_neon`
+- `sc_chacha12_neon`
+- `sc_chacha20_neon`
 - `sc_chacha20`
-- `sc_chacha20_alt`
 - `sc_salsa8`
 - `sc_salsa12`
 - `sc_salsa20`
@@ -58,8 +58,10 @@ Ciphers available for the `--cipher` and `--swap-cipher` are:
 - `sc_hc128`
 - `sc_rabbit`
 - `sc_sosemanuk`
-- `sc_freestyle`
-- `sc_not_impl`
+- `sc_freestyle_fast`
+- `sc_freestyle_balanced`
+- `sc_freestyle_secure`
+- `sc_aes256_xts`
 
 You can see these options defined in [constants.h](src/constants.h). Note that
 `sc_chachaX_neon` are alternative ARM NEON optimized implementations of ChaCha20
@@ -70,13 +72,12 @@ by [floodyberry](https://github.com/floodyberry/chacha-opt).
 Swap strategies available for `--swap-strategy` are:
 
 - `swap_default` (this is synonymous with `swap_disabled`)
-- `swap_opportunistic`
-- `swap_immediate` (this is synonymous with `swap_not_impl`)
+- `swap_immediate` (this is not implemented)
 - `swap_forward`
 - `swap_aggressive`
-- `swap_precrypt`
+- `swap_opportunistic`
+- `swap_mirrored`
 - `swap_disabled`
-- `swap_not_impl`
 
 You can see these options defined in [constants.h](src/constants.h).
 
@@ -86,16 +87,15 @@ You can see these options defined in [constants.h](src/constants.h).
 
 ### Enabling Use Cases
 
-Explicit support for the following experimental use cases (uc) is available:
+The following experimental use cases available for `--support-uc` are:
 
 - `uc_default` (this is synonymous with `uc_disabled`)
 - `uc_secure_regions`
-- `uc_secure_nuggets`
-- `uc_perf_agreement`
 - `uc_fixed_energy`
-- `uc_opportunistic_crypt`
+- `uc_offset_slowdown`
+- `uc_lockdown`
+- `uc_auto_locations`
 - `uc_disabled`
-- `uc_no_impl`
 
 You can see these options defined in [constants.h](src/constants.h). Note that these options are meaningless if the swap strategy is set to `swap_disabled`.
 

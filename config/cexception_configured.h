@@ -234,6 +234,24 @@ do {                                                                            
 // A strange opcode-related issue occurred (wtf?)
 #define EXCEPTION_BAD_OPCODE                            0x41U
 
+// Translating string to wap strategy failed
+#define EXCEPTION_STRING_TO_SWAP_STRATEGY_FAILED        0x42U
+
+// Translating string to wap strategy failed
+#define EXCEPTION_STRING_TO_USECASE_FAILED              0x43U
+
+// The swap strategy chosen is not yet implemented
+#define EXCEPTION_SWAP_ALGO_NO_IMPL                     0x44U
+
+// The swap strategy indicated is not valid somehow
+#define EXCEPTION_SWAP_ALGO_NOT_FOUND                   0x45U
+
+// The usecase chosen is not yet implemented
+#define EXCEPTION_UC_ALGO_NO_IMPL                       0x46U
+
+// The usecase indicated is not valid somehow
+#define EXCEPTION_UC_ALGO_NOT_FOUND                     0x47U
+
 ///////////////////////
 // End Configuration //
 ///////////////////////

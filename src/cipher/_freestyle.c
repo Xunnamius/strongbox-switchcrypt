@@ -77,10 +77,15 @@ int sc_generic_freestyle_read_handle(freestyle_variant variant,
     variant_as_configuration(&config, variant);
 
     const blfs_nugget_metadata_t * meta = blfs_open_nugget_metadata(buselfs_state->backstore, nugget_offset);
+    const blfs_swappable_cipher_t * cipher = meta->cipher_ident == buselfs_state->active_cipher_enum_id
+                                             ? blfs_get_active_cipher(buselfs_state)
+                                             : blfs_get_inactive_cipher(buselfs_state);
+
+    IFDEBUG(assert(cipher->enum_id == meta->cipher_ident));
 
     uint32_t expected_hashes_size_bytes = calc_expected_hashes_size_bytes(
         buselfs_state->backstore->flake_size_bytes,
-        buselfs_state->active_cipher->output_size_bytes
+        cipher->output_size_bytes
     );
 
     for(uint_fast32_t i = 0; flake_index < flake_end; flake_index++, i++)
@@ -109,13 +114,13 @@ int sc_generic_freestyle_read_handle(freestyle_variant variant,
         // ! Potential endianness problem
         uint32_t nonce = nugget_offset * flakes_per_nugget + flake_index;
         uint8_t * nonce_ptr = (uint8_t *) &nonce;
-        uint8_t stream_nonce[buselfs_state->active_cipher->nonce_size_bytes];
+        uint8_t stream_nonce[cipher->nonce_size_bytes];
 
         memset(stream_nonce, 0, sizeof stream_nonce);
         memcpy(stream_nonce, nonce_ptr, sizeof nonce);
 
-        IFDEBUG(assert(buselfs_state->active_cipher->key_size_bytes == BLFS_CRYPTO_BYTES_FLAKE_TAG_KEY));
-        IFDEBUG(assert(buselfs_state->active_cipher->nonce_size_bytes >= sizeof nonce));
+        IFDEBUG(assert(cipher->key_size_bytes == BLFS_CRYPTO_BYTES_FLAKE_TAG_KEY));
+        IFDEBUG(assert(cipher->nonce_size_bytes >= sizeof nonce));
 
         freestyle_ctx crypt;
 
@@ -200,10 +205,26 @@ int sc_generic_freestyle_write_handle(freestyle_variant variant,
     uint_fast32_t nugget_size = buselfs_state->backstore->nugget_size_bytes;
 
     blfs_nugget_metadata_t * meta = blfs_open_nugget_metadata(buselfs_state->backstore, nugget_offset);
+    const blfs_swappable_cipher_t * cipher;
+    int assert_never_reached;
+
+    if(meta->cipher_ident == buselfs_state->active_cipher_enum_id)
+    {
+        cipher = blfs_get_active_cipher(buselfs_state);
+        assert_never_reached = TRUE;
+    }
+
+    else
+    {
+        cipher = blfs_get_inactive_cipher(buselfs_state);
+        assert_never_reached = FALSE;
+    }
+
+    IFDEBUG(assert(cipher->enum_id == meta->cipher_ident));
 
     uint32_t expected_hashes_size_bytes = calc_expected_hashes_size_bytes(
         buselfs_state->backstore->flake_size_bytes,
-        buselfs_state->active_cipher->output_size_bytes
+        cipher->output_size_bytes
     );
 
     for(; flake_index < flake_end; flake_index++)
@@ -218,13 +239,13 @@ int sc_generic_freestyle_write_handle(freestyle_variant variant,
         // ! Potential endianness problem
         uint32_t nonce = nugget_offset * flakes_per_nugget + flake_index;
         uint8_t * nonce_ptr = (uint8_t *) &nonce;
-        uint8_t stream_nonce[buselfs_state->active_cipher->nonce_size_bytes];
+        uint8_t stream_nonce[cipher->nonce_size_bytes];
 
         memset(stream_nonce, 0, sizeof stream_nonce);
         memcpy(stream_nonce, nonce_ptr, sizeof nonce);
 
-        IFDEBUG(assert(buselfs_state->active_cipher->key_size_bytes == BLFS_CRYPTO_BYTES_FLAKE_TAG_KEY));
-        IFDEBUG(assert(buselfs_state->active_cipher->nonce_size_bytes >= sizeof nonce));
+        IFDEBUG(assert(cipher->key_size_bytes == BLFS_CRYPTO_BYTES_FLAKE_TAG_KEY));
+        IFDEBUG(assert(cipher->nonce_size_bytes >= sizeof nonce));
 
         IFDEBUG(dzlog_debug("flake_write_length: %"PRIuFAST32, flake_write_length));
         IFDEBUG(dzlog_debug("flake_index: %"PRIuFAST32, flake_index));
@@ -239,6 +260,10 @@ int sc_generic_freestyle_write_handle(freestyle_variant variant,
         // ! flake_size, so we need to verify its integrity
         if(flake_internal_offset != 0 || flake_internal_offset + flake_write_length < flake_size)
         {
+            // ! This code should NEVER RUN if we're in the middle of cipher
+            // ! switching!
+            IFDEBUG(assert(assert_never_reached));
+
             IFDEBUG(dzlog_debug("UNALIGNED! Write flake requires verification"));
 
             // Read in the entire flake
@@ -290,6 +315,10 @@ int sc_generic_freestyle_write_handle(freestyle_variant variant,
 
         if(flake_internal_offset != 0 || flake_internal_offset + flake_write_length < flake_size)
         {
+            // ! This code should NEVER RUN if we're in the middle of cipher
+            // ! switching!
+            IFDEBUG(assert(assert_never_reached));
+
             freestyle_ctx decrypt;
 
             freestyle_init_decrypt(
