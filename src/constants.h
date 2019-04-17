@@ -80,7 +80,7 @@ typedef enum swap_strategy_e {
     swap_opportunistic  = 5,
     swap_mirrored       = 6,
     swap_disabled       = 7,
-    swap_not_impl       = 8,
+    swap_not_impl       = 8, // ! Make sure this is always the last one
 } swap_strategy_e;
 
 typedef enum usecase_e {
@@ -91,7 +91,7 @@ typedef enum usecase_e {
     uc_lockdown             = 5,
     uc_auto_locations       = 6,
     uc_disabled             = 7,
-    uc_no_impl              = 8,
+    uc_no_impl              = 8, // ! Make sure this is always the last one
 } usecase_e;
 
 #include <string.h> /* strdup() */
@@ -294,6 +294,7 @@ typedef enum usecase_e {
 #define BLFS_SV_MESSAGE_DEFAULT_PRIORITY        0 // uint; must be < ~30k. 0 - 30 recommended
 
 #define BLFS_NUM_ACTIVE_CIPHERS                 2 // will probably never not be 2
+#define BLFS_SWAP_AGGRESSIVENESS                10U // unit is "nuggets," might want to keep this small...
 
 /////////
 // MMC //

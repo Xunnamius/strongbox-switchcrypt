@@ -60,6 +60,7 @@ static void make_fake_state()
     buselfs_state = malloc(sizeof *buselfs_state);
 
     buselfs_state->backstore                    = NULL;
+    buselfs_state->is_cipher_swapping           = FALSE;
     buselfs_state->cache_nugget_keys            = kh_init(BLFS_KHASH_NUGGET_KEY_CACHE_NAME);
     buselfs_state->merkle_tree                  = mt_create();
     buselfs_state->default_password             = BLFS_DEFAULT_PASS;

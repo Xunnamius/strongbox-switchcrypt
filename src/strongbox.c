@@ -302,28 +302,190 @@ static void populate_mt(buselfs_state_t * buselfs_state)
 
 int blfs_swap_nugget_to_active_cipher(int swapping_while_read_or_write,
                                       buselfs_state_t * buselfs_state,
-                                      int_fast32_t buffer_length)
+                                      uint64_t target_nugget_index,
+                                      uint8_t * buffer,
+                                      uint32_t buffer_length,
+                                      uint64_t nugget_internal_offset)
 {
     IFDEBUG(dzlog_notice("<CIPHER SWAP IS BEGINNING>"));
+    buselfs_state->is_cipher_swapping = TRUE;
 
-    Throw(EXCEPTION_BAD_CALL);
-    (void) swapping_while_read_or_write;
-    (void) buselfs_state;
-    (void) buffer_length;
+    uint8_t nugget_data[buselfs_state->backstore->nugget_size_bytes];
+    uint8_t decrypted_nugget_data[sizeof nugget_data];
+    uint8_t reencrypted_nugget_data[sizeof nugget_data];
+
+    blfs_swappable_cipher_t * decryption_cipher = blfs_get_inactive_cipher(buselfs_state);
+    blfs_swappable_cipher_t * encryption_cipher = blfs_get_active_cipher(buselfs_state);
+
+    blfs_keycount_t * count = blfs_open_keycount(buselfs_state->backstore, target_nugget_index);
+    blfs_tjournal_entry_t * entry = blfs_open_tjournal_entry(buselfs_state->backstore, target_nugget_index);
+    blfs_nugget_metadata_t * meta = blfs_open_nugget_metadata(buselfs_state->backstore, target_nugget_index);
+
+    uint8_t nugget_key[BLFS_CRYPTO_BYTES_KDF_OUT] = { 0x00 };
+
+    if(!BLFS_DEFAULT_DISABLE_KEY_CACHING)
+        Throw(EXCEPTION_MUST_DISABLE_CACHING); // TODO: enable cacheability (low priority)
+
+    blfs_nugget_key_from_data(nugget_key, buselfs_state->backstore->master_secret, target_nugget_index);
+
+    if(meta->cipher_ident != decryption_cipher->enum_id)
+        Throw(EXCEPTION_ASSUMPTION_WAS_NOT_SATISFIED);
+
+    if(count == NULL || entry == NULL || meta == NULL)
+        Throw(EXCEPTION_ALLOC_FAILURE);
 
     // ? Read in the entire nugget
-    /* blfs_backstore_read_body(buselfs_state->backstore,
-                            nugget_data,
-                            nugget_read_length,
-                            nugget_offset * nugget_size);
+    blfs_backstore_read_body(
+        buselfs_state->backstore,
+        nugget_data,
+        sizeof nugget_data,
+        target_nugget_index * sizeof nugget_data
+    );
 
+    // TODO: Verify nugget contents if reading (low priority)
+
+    // ? Decrypt
+
+    if(decryption_cipher->read_handle)
+    {
+        uint64_t readed = decryption_cipher->read_handle(
+            decrypted_nugget_data,
+            buselfs_state,
+            sizeof decrypted_nugget_data,
+            0,
+            buselfs_state->backstore->flakes_per_nugget,
+            0,
+            buselfs_state->backstore->flake_size_bytes,
+            buselfs_state->backstore->flakes_per_nugget,
+            mt_calculate_expected_size(0, buselfs_state),
+            nugget_data,
+            nugget_key,
+            target_nugget_index,
+            nugget_internal_offset,
+            count,
+            1,
+            1
+        );
+
+        IFDEBUG(assert(readed == sizeof nugget_data));
+    }
+
+    else
+    {
+        blfs_swappable_crypt(
+            decryption_cipher,
+            decrypted_nugget_data,
+            nugget_data,
+            sizeof nugget_data,
+            nugget_key,
+            count->keycount,
+            0
+        );
+    }
+
+    // ? Write out to or copy in from buffer if necessary
+
+    if(buffer_length > 0 && buffer != NULL)
+    {
+        IFDEBUG(assert(buffer_length + nugget_internal_offset <= buselfs_state->backstore->nugget_size_bytes));
+
+        if(swapping_while_read_or_write == SWAP_WHILE_READ)
+            memcpy(buffer, decrypted_nugget_data + nugget_internal_offset, buffer_length);
+
+        else if(swapping_while_read_or_write == SWAP_WHILE_WRITE)
+            memcpy(decrypted_nugget_data + nugget_internal_offset, buffer, buffer_length);
+
+        else
+        {
+            dzlog_fatal("EXCEPTION: an impossible condition occurred during cipher swapping...");
+            Throw(EXCEPTION_ASSUMPTION_WAS_NOT_SATISFIED); // WTF?
+        }
+    }
+
+    // ? Encrypt
+
+    // ! If we're in crash recovery mode, the very next keycount might be
+    // ! burned, so we must take that possibility into account when rekeying.
+    count->keycount += buselfs_state->crash_recovery ? 2 : 1;
+
+    // ? Clear transaction journal
     bitmask_clear_mask(entry->bitmask);
+
+    // ? Update metadata
+    meta->cipher_ident = (uint8_t) encryption_cipher->enum_id;
+
+    if(encryption_cipher->write_handle)
+    {
+        uint64_t written = encryption_cipher->write_handle(
+            reencrypted_nugget_data,
+            buselfs_state,
+            sizeof reencrypted_nugget_data,
+            0,
+            buselfs_state->backstore->flakes_per_nugget,
+            buselfs_state->backstore->flake_size_bytes,
+            buselfs_state->backstore->flakes_per_nugget,
+            0,
+            mt_calculate_expected_size(0, buselfs_state),
+            nugget_key,
+            target_nugget_index,
+            count
+        );
+
+        IFDEBUG(assert(written == sizeof nugget_data));
+    }
+
+    else
+    {
+        blfs_swappable_crypt(
+            encryption_cipher,
+            reencrypted_nugget_data,
+            decrypted_nugget_data,
+            sizeof decrypted_nugget_data,
+            nugget_key,
+            count->keycount,
+            0
+        );
+
+        // ? Also write out entire nugget
+        blfs_backstore_write_body(
+            buselfs_state->backstore,
+            reencrypted_nugget_data,
+            sizeof reencrypted_nugget_data,
+            target_nugget_index * sizeof reencrypted_nugget_data
+        );
+
+        // ? Update the merkle tree
+
+        uint32_t flake_size = buselfs_state->backstore->flake_size_bytes;
+
+        for(uint32_t flake_index = 0; flake_index < buselfs_state->backstore->flakes_per_nugget; flake_index++)
+        {
+            uint8_t flake_key[BLFS_CRYPTO_BYTES_FLAKE_TAG_KEY] = { 0x00 };
+            uint8_t * tag = malloc(BLFS_CRYPTO_BYTES_FLAKE_TAG_OUT * (sizeof *tag));
+            uint8_t flake_data[flake_size];
+            uint32_t mt_offset = mt_calculate_flake_offset(target_nugget_index, flake_index, buselfs_state);
+
+            if(tag == NULL)
+                Throw(EXCEPTION_ALLOC_FAILURE);
+
+            blfs_poly1305_key_from_data(flake_key, nugget_key, flake_index, count->keycount);
+
+            memcpy(flake_data, reencrypted_nugget_data + flake_index * flake_size, flake_size);
+
+            // TODO: if caching is implemented for this fn, we must remove from
+            // TODO: the flake metadata from the keychain (c.f. rekeying code)
+
+            blfs_poly1305_generate_tag(tag, flake_data, flake_size, flake_key);
+            update_in_merkle_tree(tag, BLFS_CRYPTO_BYTES_FLAKE_TAG_OUT, mt_offset, buselfs_state);
+            IFDEBUG(verify_in_merkle_tree(tag, BLFS_CRYPTO_BYTES_FLAKE_TAG_OUT, mt_offset, buselfs_state));
+        }
+    }
+
+    // ? Commit changes and update merkle tree
+
     blfs_commit_tjournal_entry(buselfs_state->backstore, entry);
-
-    IFDEBUG(dzlog_debug("entry->bitmask (post-update):"));
-    IFDEBUG(hdzlog_debug(entry->bitmask->mask, entry->bitmask->byte_length));
-
-    IFDEBUG(dzlog_debug("MERKLE TREE: update TJ entry"));
+    blfs_commit_keycount(buselfs_state->backstore, count);
+    blfs_commit_nugget_metadata(buselfs_state->backstore, meta);
 
     uint8_t hash[BLFS_CRYPTO_BYTES_STRUCT_HASH_OUT];
 
@@ -331,12 +493,55 @@ int blfs_swap_nugget_to_active_cipher(int swapping_while_read_or_write,
     update_in_merkle_tree(
         hash,
         sizeof hash,
-        num_nuggets + (BLFS_HEAD_NUM_HEADERS - 3) + nugget_offset,
+        buselfs_state->backstore->num_nuggets + (BLFS_HEAD_NUM_HEADERS - 3) + target_nugget_index,
         buselfs_state
-    ); */
+    );
 
-    // TODO:! the proper amount of data returned
-    return 0;
+    // ! This logic must change if the number of headers changes!
+    update_in_merkle_tree((uint8_t *) &count->keycount,
+        BLFS_HEAD_BYTES_KEYCOUNT,
+        (BLFS_HEAD_NUM_HEADERS - 3) + target_nugget_index,
+        buselfs_state
+    );
+
+    // ? Save advanced cipher switching (recursive calls to this fn) for last!
+
+    if(buffer_length > 0 && buffer != NULL)
+    {
+        if(buselfs_state->active_swap_strategy != swap_disabled && buselfs_state->active_swap_strategy != swap_forward)
+        {
+            IFDEBUG(dzlog_notice("<<INVOKING ADVANCED CIPHER SWAP PROCEDURE>>"));
+
+            if(buselfs_state->active_swap_strategy == swap_aggressive)
+            {
+                IFDEBUG(assert(BLFS_SWAP_AGGRESSIVENESS > 0));
+
+                for(size_t i = 1; i <= BLFS_SWAP_AGGRESSIVENESS; ++i)
+                {
+                    int written = blfs_swap_nugget_to_active_cipher(
+                        swapping_while_read_or_write,
+                        buselfs_state,
+                        target_nugget_index + i,
+                        NULL,
+                        0,
+                        0
+                    );
+
+                    IFDEBUG(assert(written == sizeof nugget_data));
+                }
+            }
+
+            else
+                Throw(EXCEPTION_SWAP_ALGO_NOT_FOUND);
+        }
+
+        IFDEBUG(dzlog_debug("<<FINISHED ADVANCED CIPHER SWAP PROCEDURE>>"));
+        // ? Only the non-recursive master fn can declare swapping finished!
+        buselfs_state->is_cipher_swapping = FALSE;
+    }
+
+    IFDEBUG(dzlog_debug("<<FINISHED CIPHER SWAP>>"));
+    return buffer_length;
 }
 
 mqd_t blfs_open_queue(char * queue_name, int incoming_outgoing)
@@ -438,14 +643,23 @@ void update_application_state_check_mq(buselfs_state_t * buselfs_state)
                 break;
 
             case 1:
-                IFDEBUG(dzlog_debug("Swapped active cipher index!"));
+                if(buselfs_state->active_swap_strategy != swap_disabled)
+                {
+                    IFDEBUG(dzlog_debug("Swapped active cipher index!"));
 
-                buselfs_state->active_cipher_enum_id =
-                    buselfs_state->active_cipher_enum_id == buselfs_state->primary_cipher->enum_id
-                    ? buselfs_state->swap_cipher->enum_id
-                    : buselfs_state->primary_cipher->enum_id;
+                    buselfs_state->active_cipher_enum_id =
+                        buselfs_state->active_cipher_enum_id == buselfs_state->primary_cipher->enum_id
+                        ? buselfs_state->swap_cipher->enum_id
+                        : buselfs_state->primary_cipher->enum_id;
 
-                IFDEBUG(dzlog_debug("Newly active cipher: %i", buselfs_state->active_cipher_enum_id));
+                    IFDEBUG(dzlog_debug("Newly active cipher: %i", buselfs_state->active_cipher_enum_id));
+                }
+
+                else
+                {
+                    IFDEBUG(dzlog_fatal("EXCEPTION: we received a command to swap ciphers but cipher swapping is disabled!"));
+                    Throw(EXCEPTION_CIPHER_SWITCHING_IS_DISABLED);
+                }
 
                 break;
 
@@ -467,6 +681,8 @@ void update_application_state_check_mq(buselfs_state_t * buselfs_state)
 /**
  * ! This function MUST be called before buselfs_state->merkle_tree_root_hash
  * ! is referenced!
+ *
+ * TODO: track per-nugget metadata in merkle tree along with other data (low p)
  */
 void update_merkle_tree_root_hash(buselfs_state_t * buselfs_state)
 {
@@ -758,7 +974,7 @@ int buse_read(void * output_buffer, uint32_t length, uint64_t absolute_offset, v
         {
             IFDEBUG(dzlog_notice("<<INITIALIZING CIPHER SWAP PROCEDURE>>"));
 
-            buffer += blfs_swap_nugget_to_active_cipher(SWAP_WHILE_READ, buselfs_state, buffer_read_length);
+            buffer += blfs_swap_nugget_to_active_cipher(SWAP_WHILE_READ, buselfs_state, nugget_offset, buffer, buffer_read_length, nugget_internal_offset);
         }
 
         else
@@ -1005,7 +1221,13 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
         {
             IFDEBUG(dzlog_notice("<<INITIALIZING CIPHER SWAP PROCEDURE>>"));
 
-            buffer += blfs_swap_nugget_to_active_cipher(SWAP_WHILE_WRITE, buselfs_state, buffer_write_length);
+            buffer += blfs_swap_nugget_to_active_cipher(SWAP_WHILE_WRITE,
+                buselfs_state,
+                nugget_offset,
+                (uint8_t *) buffer, // ! Don't worry, we'll be good...
+                buffer_write_length,
+                nugget_internal_offset
+            );
         }
 
         else
@@ -1234,8 +1456,10 @@ void blfs_rekey_nugget_then_write(buselfs_state_t * buselfs_state,
     uint8_t new_nugget_data[buselfs_state->backstore->nugget_size_bytes];
     uint8_t nugget_key[BLFS_CRYPTO_BYTES_KDF_OUT] = { 0x00 };
 
-    if(BLFS_DEFAULT_DISABLE_KEY_CACHING)
-        blfs_nugget_key_from_data(nugget_key, buselfs_state->backstore->master_secret, rekeying_nugget_index);
+    if(!BLFS_DEFAULT_DISABLE_KEY_CACHING)
+        Throw(EXCEPTION_MUST_DISABLE_CACHING); // TODO: enable cacheability (low priority)
+
+    blfs_nugget_key_from_data(nugget_key, buselfs_state->backstore->master_secret, rekeying_nugget_index);
 
     if(jcount == NULL || jentry == NULL)
         Throw(EXCEPTION_ALLOC_FAILURE);
@@ -1250,7 +1474,7 @@ void blfs_rekey_nugget_then_write(buselfs_state_t * buselfs_state,
 
     // ! If we're in crash recovery mode, the very next keycount might be
     // ! burned, so we must take that possibility into account when rekeying.
-    jcount->keycount = jcount->keycount + (buselfs_state->crash_recovery ? 2 : 1);
+    jcount->keycount += buselfs_state->crash_recovery ? 2 : 1;
 
     blfs_swappable_crypt(
         active_cipher,
@@ -1271,7 +1495,8 @@ void blfs_rekey_nugget_then_write(buselfs_state_t * buselfs_state,
 
     uint32_t flake_size = buselfs_state->backstore->flake_size_bytes;
 
-    // Update the merkle tree
+    // ? Update the merkle tree
+
     for(uint32_t flake_index = 0; flake_index < buselfs_state->backstore->flakes_per_nugget; flake_index++)
     {
         uint8_t flake_key[BLFS_CRYPTO_BYTES_FLAKE_TAG_KEY] = { 0x00 };
@@ -1296,6 +1521,7 @@ void blfs_rekey_nugget_then_write(buselfs_state_t * buselfs_state,
 
     blfs_commit_keycount(buselfs_state->backstore, jcount);
 
+    // ! This logic must change if the number of headers changes!
     update_in_merkle_tree((uint8_t *) &jcount->keycount,
         BLFS_HEAD_BYTES_KEYCOUNT,
         (BLFS_HEAD_NUM_HEADERS - 3) + rekeying_nugget_index,
@@ -1727,6 +1953,7 @@ buselfs_state_t * strongbox_main_actual(int argc, char * argv[], char * blockdev
         Throw(EXCEPTION_ALLOC_FAILURE);
 
     buselfs_state->backstore = NULL;
+    buselfs_state->is_cipher_swapping = FALSE;
 
     uint8_t  cin_allow_insecure_start  = FALSE;
     uint8_t  cin_use_default_password  = FALSE;
@@ -1904,6 +2131,19 @@ buselfs_state_t * strongbox_main_actual(int argc, char * argv[], char * blockdev
 
             cin_swap_strategy = blfs_ident_string_to_strategy(cin_swap_strategy_str);
 
+            if(cin_swap_strategy == swap_default)
+                cin_swap_strategy = swap_disabled;
+
+            if(cin_swap_strategy == swap_immediate
+               || cin_swap_strategy == swap_opportunistic
+               || cin_swap_strategy == swap_not_impl)
+            {
+                Throw(EXCEPTION_SWAP_ALGO_NO_IMPL);
+            }
+
+            if(cin_swap_strategy <= 0 || cin_swap_strategy > swap_not_impl)
+                Throw(EXCEPTION_SWAP_ALGO_NOT_FOUND);
+
             IFDEBUG3(printf("<bare debug>: saw --swap-strategy, got enum value: %d\n", cin_swap_strategy));
         }
 
@@ -1914,6 +2154,17 @@ buselfs_state_t * strongbox_main_actual(int argc, char * argv[], char * blockdev
             IFDEBUG3(printf("<bare debug>: saw --support-uc = %s\n", cin_usecase_str));
 
             cin_usecase = blfs_ident_string_to_usecase(cin_usecase_str);
+
+            if(cin_usecase == uc_default)
+                cin_usecase = uc_disabled;
+
+            if(cin_usecase == uc_no_impl)
+            {
+                Throw(EXCEPTION_UC_ALGO_NO_IMPL);
+            }
+
+            if(cin_usecase <= 0 || cin_usecase > uc_no_impl)
+                Throw(EXCEPTION_UC_ALGO_NOT_FOUND);
 
             IFDEBUG3(printf("<bare debug>: saw --support-uc, got enum value: %d\n", cin_usecase));
         }

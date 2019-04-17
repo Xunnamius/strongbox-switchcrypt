@@ -133,7 +133,7 @@ do {                                                                            
 #define EXCEPTION_DEBUGGING_OVERFLOW                    0x20U
 #define EXCEPTION_DEBUGGING_UNDERFLOW                   0x21U
 
-// Why you call cache function when cache disabled?!?!
+// Why you call cache function when cache is disabled?!?!
 #define EXCEPTION_BAD_CACHE                             0x22U
 
 // Why you call aes-xts function when aes-xts disabled?!?!
@@ -254,6 +254,16 @@ do {                                                                            
 
 // A rarely used exception that means the function should never be called
 #define EXCEPTION_BAD_CALL                              0x48U
+
+// Due to the current level of development of the system, caching must be
+// disabled to make what you're trying to do work.
+#define EXCEPTION_MUST_DISABLE_CACHING                  0x49U
+
+// There is a *deep* cipher switching problem...
+#define EXCEPTION_ASSUMPTION_WAS_NOT_SATISFIED          0x50U
+
+// You can't command StrongBox to do what you told it not to!
+#define EXCEPTION_CIPHER_SWITCHING_IS_DISABLED          0x51U
 
 ///////////////////////
 // End Configuration //

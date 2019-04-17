@@ -133,6 +133,12 @@ typedef struct buselfs_state_t
      * ! Note: in a real implementation, this would be client-process-specific
      */
     mqd_t qd_outgoing;
+
+    /**
+     * Allows the entire system to know if cipher switching is happening. Useful
+     * for internal debugging purposes.
+     */
+    int is_cipher_swapping;
 } buselfs_state_t;
 
 
@@ -337,7 +343,10 @@ void blfs_rekey_nugget_then_write(buselfs_state_t * buselfs_state,
 
 int blfs_swap_nugget_to_active_cipher(int swapping_while_read_or_write,
                                       buselfs_state_t * buselfs_state,
-                                      int_fast32_t buffer_length);
+                                      uint64_t target_nugget_index,
+                                      uint8_t * buffer,
+                                      uint32_t buffer_length,
+                                      uint64_t nugget_internal_offset);
 
 /**
  * Open a backstore and perform initial validation checks and asserts.
