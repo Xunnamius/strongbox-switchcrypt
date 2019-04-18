@@ -337,53 +337,58 @@ int blfs_swap_nugget_to_active_cipher(int swapping_while_read_or_write,
     if(count == NULL || entry == NULL || meta == NULL)
         Throw(EXCEPTION_ALLOC_FAILURE);
 
-    // ? Read in the entire nugget
-    blfs_backstore_read_body(
-        buselfs_state->backstore,
-        nugget_data,
-        sizeof nugget_data,
-        target_nugget_index * sizeof nugget_data
-    );
+    IFDEBUG(assert(buffer_length <= buselfs_state->backstore->nugget_size_bytes));
 
-    // TODO: Verify nugget contents if reading (low priority)
-
-    // ? Decrypt
-
-    if(decryption_cipher->read_handle)
+    if(swapping_while_read_or_write != SWAP_WHILE_WRITE || buffer_length != buselfs_state->backstore->nugget_size_bytes)
     {
-        uint64_t readed = decryption_cipher->read_handle(
-            decrypted_nugget_data,
-            buselfs_state,
-            sizeof decrypted_nugget_data,
-            0,
-            buselfs_state->backstore->flakes_per_nugget,
-            0,
-            buselfs_state->backstore->flake_size_bytes,
-            buselfs_state->backstore->flakes_per_nugget,
-            mt_calculate_expected_size(0, buselfs_state),
-            nugget_data,
-            nugget_key,
-            target_nugget_index,
-            0,
-            count,
-            1,
-            1
-        );
-
-        IFDEBUG(assert(readed == sizeof nugget_data));
-    }
-
-    else
-    {
-        blfs_swappable_crypt(
-            decryption_cipher,
-            decrypted_nugget_data,
+        // ? Read in the entire nugget
+        blfs_backstore_read_body(
+            buselfs_state->backstore,
             nugget_data,
             sizeof nugget_data,
-            nugget_key,
-            count->keycount,
-            0
+            target_nugget_index * sizeof nugget_data
         );
+
+        // TODO: Verify nugget contents if reading (low priority)
+
+        // ? Decrypt
+
+        if(decryption_cipher->read_handle)
+        {
+            uint64_t readed = decryption_cipher->read_handle(
+                decrypted_nugget_data,
+                buselfs_state,
+                sizeof decrypted_nugget_data,
+                0,
+                buselfs_state->backstore->flakes_per_nugget,
+                0,
+                buselfs_state->backstore->flake_size_bytes,
+                buselfs_state->backstore->flakes_per_nugget,
+                mt_calculate_expected_size(0, buselfs_state),
+                nugget_data,
+                nugget_key,
+                target_nugget_index,
+                0,
+                count,
+                1,
+                1
+            );
+
+            IFDEBUG(assert(readed == sizeof nugget_data));
+        }
+
+        else
+        {
+            blfs_swappable_crypt(
+                decryption_cipher,
+                decrypted_nugget_data,
+                nugget_data,
+                sizeof nugget_data,
+                nugget_key,
+                count->keycount,
+                0
+            );
+        }
     }
 
     // ? Write out to or copy in from buffer if necessary
