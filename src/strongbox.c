@@ -307,7 +307,10 @@ int blfs_swap_nugget_to_active_cipher(int swapping_while_read_or_write,
                                       uint32_t buffer_length,
                                       uint64_t nugget_internal_offset)
 {
-    IFDEBUG(dzlog_notice("<CIPHER SWAP IS BEGINNING>"));
+    IFDEBUG(dzlog_notice("<%s ON NUGGET %"PRIu64">",
+        buffer_length > 0 && buffer != NULL ? "CIPHER SWAP BEGAN" : "TRUNCATED CIPHER SWAP OCCURRING",
+        target_nugget_index));
+
     buselfs_state->is_cipher_swapping = TRUE;
 
     uint8_t nugget_data[buselfs_state->backstore->nugget_size_bytes];
@@ -361,7 +364,7 @@ int blfs_swap_nugget_to_active_cipher(int swapping_while_read_or_write,
             nugget_data,
             nugget_key,
             target_nugget_index,
-            nugget_internal_offset,
+            0,
             count,
             1,
             1
@@ -510,7 +513,7 @@ int blfs_swap_nugget_to_active_cipher(int swapping_while_read_or_write,
     {
         if(buselfs_state->active_swap_strategy != swap_disabled && buselfs_state->active_swap_strategy != swap_forward)
         {
-            IFDEBUG(dzlog_notice("<<INVOKING ADVANCED CIPHER SWAP PROCEDURE>>"));
+            IFDEBUG(dzlog_notice("<[INVOKING ADVANCED CIPHER SWAP PROCEDURE ON NUGGET %"PRIu64"]>", target_nugget_index));
 
             if(buselfs_state->active_swap_strategy == swap_aggressive)
             {
@@ -518,7 +521,7 @@ int blfs_swap_nugget_to_active_cipher(int swapping_while_read_or_write,
 
                 for(size_t i = 1; i <= BLFS_SWAP_AGGRESSIVENESS; ++i)
                 {
-                    int written = blfs_swap_nugget_to_active_cipher(
+                    uint64_t written = blfs_swap_nugget_to_active_cipher(
                         swapping_while_read_or_write,
                         buselfs_state,
                         target_nugget_index + i,
@@ -533,14 +536,15 @@ int blfs_swap_nugget_to_active_cipher(int swapping_while_read_or_write,
 
             else
                 Throw(EXCEPTION_SWAP_ALGO_NOT_FOUND);
+
+            IFDEBUG(dzlog_notice("<[FINISHED ADVANCED CIPHER SWAP PROCEDURE ON NUGGET %"PRIu64"]>", target_nugget_index));
         }
 
-        IFDEBUG(dzlog_debug("<<FINISHED ADVANCED CIPHER SWAP PROCEDURE>>"));
         // ? Only the non-recursive master fn can declare swapping finished!
         buselfs_state->is_cipher_swapping = FALSE;
     }
 
-    IFDEBUG(dzlog_debug("<<FINISHED CIPHER SWAP>>"));
+    IFDEBUG(dzlog_notice("<CIPHER SWAP ENDED ON NUGGET %"PRIu64">", target_nugget_index));
     return buffer_length;
 }
 

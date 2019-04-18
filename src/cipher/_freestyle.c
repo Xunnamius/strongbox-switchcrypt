@@ -77,7 +77,9 @@ int sc_generic_freestyle_read_handle(freestyle_variant variant,
     variant_as_configuration(&config, variant);
 
     const blfs_nugget_metadata_t * meta = blfs_open_nugget_metadata(buselfs_state->backstore, nugget_offset);
-    const blfs_swappable_cipher_t * cipher = blfs_get_active_cipher(buselfs_state);
+    const blfs_swappable_cipher_t * cipher = meta->cipher_ident == buselfs_state->active_cipher_enum_id
+                                             ? blfs_get_active_cipher(buselfs_state)
+                                             : blfs_get_inactive_cipher(buselfs_state);
 
     IFDEBUG(assert(cipher->enum_id == meta->cipher_ident));
 
@@ -203,7 +205,9 @@ int sc_generic_freestyle_write_handle(freestyle_variant variant,
     uint_fast32_t nugget_size = buselfs_state->backstore->nugget_size_bytes;
 
     blfs_nugget_metadata_t * meta = blfs_open_nugget_metadata(buselfs_state->backstore, nugget_offset);
-    const blfs_swappable_cipher_t * cipher = blfs_get_active_cipher(buselfs_state);
+    const blfs_swappable_cipher_t * cipher = meta->cipher_ident == buselfs_state->active_cipher_enum_id
+                                             ? blfs_get_active_cipher(buselfs_state)
+                                             : blfs_get_inactive_cipher(buselfs_state);
 
     IFDEBUG(assert(cipher->enum_id == meta->cipher_ident));
 

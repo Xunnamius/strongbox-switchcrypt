@@ -539,7 +539,12 @@ void blfs_commit_nugget_metadata(blfs_backstore_t * backstore, const blfs_nugget
     uint8_t commit_data[meta->data_length];
 
     memcpy(commit_data, (uint8_t *) &(meta->cipher_ident), 1);
-    memcpy(commit_data + 1, meta->metadata, meta->metadata_length);
+    memset(commit_data + 1, 0, (sizeof commit_data) - 1);
+
+    IFDEBUG(assert(meta->metadata_length > 0 || meta->metadata == NULL));
+
+    if(meta->metadata)
+        memcpy(commit_data + 1, meta->metadata, meta->metadata_length);
 
     IFDEBUG(dzlog_debug("committing nugget metadata to backstore:"));
     IFDEBUG(dzlog_debug("meta->nugget_index = %"PRIu32, meta->nugget_index));
