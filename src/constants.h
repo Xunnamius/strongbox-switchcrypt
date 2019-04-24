@@ -111,6 +111,12 @@ typedef enum usecase_e {
 #define IFNDEBUG(expression) expression
 #endif
 
+#if BLFS_DEBUG_LEVEL > 1
+#define IFDEBUG2(expression) expression
+#else
+#define IFDEBUG2(expression)
+#endif
+
 #if BLFS_DEBUG_LEVEL > 2
 #define IFDEBUG3(expression) expression
 #else

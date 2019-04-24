@@ -82,6 +82,7 @@ int sc_generic_freestyle_read_handle(freestyle_variant variant,
                                              : blfs_get_inactive_cipher(buselfs_state);
 
     IFDEBUG(assert(cipher->enum_id == meta->cipher_ident));
+    IFDEBUG(assert(!meta->data_length || meta->metadata != NULL));
 
     uint32_t expected_hashes_size_bytes = calc_expected_hashes_size_bytes(
         buselfs_state->backstore->flake_size_bytes,
@@ -210,6 +211,7 @@ int sc_generic_freestyle_write_handle(freestyle_variant variant,
                                              : blfs_get_inactive_cipher(buselfs_state);
 
     IFDEBUG(assert(cipher->enum_id == meta->cipher_ident));
+    IFDEBUG(assert(!meta->data_length || meta->metadata != NULL));
 
     uint32_t expected_hashes_size_bytes = calc_expected_hashes_size_bytes(
         buselfs_state->backstore->flake_size_bytes,

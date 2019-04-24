@@ -62,8 +62,7 @@ C_TEST_LIBS := $(UNITY_ROOT)/src/unity.c \
 CC  := /usr/bin/gcc
 CCV := $(shell expr `gcc --version | grep ^gcc | awk '{print $$3}'` \>= 4.9)
 
-# ! Set this to empty when building for release/profiling or -g for debugging
-#                             :=
+# ? These are only activated when GLOBAL_DEBUG_MODE != 0
 DEBUG_MAKE_FLAGS              := -g \
 								 -DBLFS_SV_QUEUE_INCOMING_NAME='"/test-incoming.strongbox.xunn.io"' \
 								 -DBLFS_SV_QUEUE_OUTGOING_NAME='"/test-outgoing.strongbox.xunn.io"'
@@ -200,12 +199,15 @@ $(RUNR_TRGTS): %_runner.c: %.c
 
 O0:
 	$(eval CFLAGS += -O0)
+	@echo 'Optimization: none'
 
 O2:
 	$(eval CFLAGS += -O2)
+	@echo 'Optimization: O2'
 
 O3:
 	$(eval CFLAGS += -O3)
+	@echo 'Optimization: O3'
 
 # Organizational targets
 
@@ -215,31 +217,40 @@ clean:
 	rm -f /tmp/test.io.bin
 	rm -f sb
 	rm -f sbctl
+	$(MAKE) clean -C ../vendor/merkle-tree
+	$(MAKE) clean -C ../vendor/libestream
+	$(MAKE) clean -C ../vendor/chacha-opt
 
 check: tests
 	$(patsubst %,./% &&,$(TEST_TRGTS)) true
 
 vendor: $(VENDR_FILES)
-	$(MAKE) clean -C ../vendor/merkle-tree
-
+# ifeq "$(GLOBAL_DEBUG_MODE)" "0"
+# 	$(MAKE) release -C ../vendor/merkle-tree
+# 	$(MAKE) libestream.a -C ../vendor/libestream
+# else
+# 	$(MAKE) debug -C ../vendor/merkle-tree
+# 	$(MAKE) libestream.a -C ../vendor/libestream CFLAGS='-g -O0'
+# endif
+# 	cd ../vendor/chacha-opt && ./configure
+# ifeq "$(GLOBAL_DEBUG_MODE)" "0"
+# 	$(MAKE) lib -C ../vendor/chacha-opt
+# else
+# 	$(MAKE) lib -C ../vendor/chacha-opt CFLAGS='-fvisibility=hidden -DLIB_PUBLIC="__attribute__ ((visibility (\"default\")))" -g -O0 -DBUILDING_ASMOPT_CHACHA' ASFLAGS='-g -O0'
+# endif
+vendor: $(VENDR_FILES)
 ifeq "$(GLOBAL_DEBUG_MODE)" "0"
 	$(MAKE) release -C ../vendor/merkle-tree
 else
 	$(MAKE) debug -C ../vendor/merkle-tree
 endif
-
-	$(MAKE) clean -C ../vendor/libestream
 	$(MAKE) libestream.a -C ../vendor/libestream
 	cd ../vendor/chacha-opt; ./configure
-	$(MAKE) clean -C ../vendor/chacha-opt
 	$(MAKE) lib -C ../vendor/chacha-opt
 
 src: $(SRC_FILES)
 
-code-fix:
-	ln -fs ../test . && ln -fs ../src .
-
-pre: vendor mocks depends code-fix
+pre: vendor mocks depends
 
 tests: pre $(TEST_TRGTS)
 

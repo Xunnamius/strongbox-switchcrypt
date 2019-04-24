@@ -426,9 +426,9 @@ int blfs_swap_nugget_to_active_cipher(int swapping_while_read_or_write,
     if(encryption_cipher->write_handle)
     {
         uint64_t written = encryption_cipher->write_handle(
-            reencrypted_nugget_data,
+            decrypted_nugget_data,
             buselfs_state,
-            sizeof reencrypted_nugget_data,
+            sizeof decrypted_nugget_data,
             0,
             buselfs_state->backstore->flakes_per_nugget,
             buselfs_state->backstore->flake_size_bytes,

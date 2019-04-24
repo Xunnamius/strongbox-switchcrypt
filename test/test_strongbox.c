@@ -152,7 +152,6 @@ void setUp(void)
         exit(255);
     }
 
-    srand(5);
     make_fake_state();
 }
 
@@ -1655,7 +1654,7 @@ static void swap_readwrite_quicktest()
     TEST_ASSERT_EQUAL_UINT8(buselfs_state->swap_cipher->enum_id, meta[2]->cipher_ident);
 }
 
-/***void test_strongbox_can_cipher_switch1(void)
+void test_strongbox_can_cipher_switch1(void)
 {
     zlog_fini();
 
@@ -1678,7 +1677,7 @@ static void swap_readwrite_quicktest()
     buselfs_state = strongbox_main_actual(argc, argv_create1, blockdevice);
 
     swap_readwrite_quicktest();
-}***/
+}
 
 void test_strongbox_can_cipher_switch2(void)
 {
@@ -1705,7 +1704,7 @@ void test_strongbox_can_cipher_switch2(void)
     swap_readwrite_quicktest();
 }
 
-/***void test_strongbox_can_cipher_switch3(void)
+void test_strongbox_can_cipher_switch3(void)
 {
     zlog_fini();
 
@@ -1728,7 +1727,7 @@ void test_strongbox_can_cipher_switch2(void)
     buselfs_state = strongbox_main_actual(argc, argv_create1, blockdevice);
 
     swap_readwrite_quicktest();
-}***/
+}
 
 /***void test_strongbox_works_when_mirrored1(void)
 {

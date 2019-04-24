@@ -692,8 +692,6 @@ void test_freestyle_handles_crypt_properly(void)
         memset(ciphertext, 0x3A, BLFS_TEST_NUGGET_SIZE_BYTES);
         memset(metadata, 0xDD, sizeof metadata);
 
-        srand(5);
-
         uint32_t i;
 
         for(i = 0; i < sizeof nugget_key; ++i)
