@@ -379,28 +379,27 @@ int sc_generic_freestyle_write_handle(freestyle_variant variant,
         buffer += flake_write_length;
     }
 
-    if(meta->metadata_length)
-    {
-        blfs_commit_nugget_metadata(buselfs_state->backstore, meta);
+    assert(meta->metadata_length > 0);
 
-        uint8_t data[meta->data_length];
-        uint8_t hash[BLFS_CRYPTO_BYTES_STRUCT_HASH_OUT];
+    blfs_commit_nugget_metadata(buselfs_state->backstore, meta);
 
-        memcpy(data, &(meta->cipher_ident), 1);
-        memcpy(data + 1, meta->metadata, meta->metadata_length);
+    uint8_t data[meta->data_length];
+    uint8_t hash[BLFS_CRYPTO_BYTES_STRUCT_HASH_OUT];
 
-        blfs_chacha20_struct_hash(hash, data, meta->data_length, buselfs_state->backstore->master_secret);
+    memcpy(data, &(meta->cipher_ident), 1);
+    memcpy(data + 1, meta->metadata, meta->metadata_length);
 
-        // ! Update this if you add new layers to StrongBox ahead of the metadata layer
-        // TODO: add another more flexible mt_calculate_* function to
-        // TODO: strongbox.c that can encapsulate these calculations
-        update_in_merkle_tree(
-            hash,
-            sizeof hash,
-            1 + buselfs_state->backstore->num_nuggets * 2 + (BLFS_HEAD_NUM_HEADERS - 3) + nugget_offset,
-            buselfs_state
-        );
-    }
+    blfs_chacha20_struct_hash(hash, data, meta->data_length, buselfs_state->backstore->master_secret);
+
+    // ! Update this if you add new layers to StrongBox ahead of the metadata layer
+    // TODO: add another more flexible mt_calculate_* function to
+    // TODO: strongbox.c that can encapsulate these calculations
+    update_in_merkle_tree(
+        hash,
+        sizeof hash,
+        1 + buselfs_state->backstore->num_nuggets * 2 + (BLFS_HEAD_NUM_HEADERS - 3) + nugget_offset,
+        buselfs_state
+    );
 
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 

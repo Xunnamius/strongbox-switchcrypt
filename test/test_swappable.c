@@ -676,7 +676,7 @@ void test_freestyle_handles_crypt_properly(void)
 
         buselfs_state.active_cipher_enum_id = buselfs_state.primary_cipher->enum_id;
 
-        dzlog_info("Testing %s", sc.name);
+        dzlog_notice("Testing %s", sc.name);
         fflush(stdout);
 
         uint8_t nugget_key[BLFS_CRYPTO_BYTES_KDF_OUT];

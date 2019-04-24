@@ -375,6 +375,7 @@ int blfs_swap_nugget_to_active_cipher(int swapping_while_read_or_write,
             );
 
             IFDEBUG(assert(readed == sizeof nugget_data));
+            IFNDEBUG((void) readed);
         }
 
         else
@@ -440,6 +441,7 @@ int blfs_swap_nugget_to_active_cipher(int swapping_while_read_or_write,
         );
 
         IFDEBUG(assert(written == sizeof nugget_data));
+        IFNDEBUG((void) written);
     }
 
     else
@@ -536,6 +538,7 @@ int blfs_swap_nugget_to_active_cipher(int swapping_while_read_or_write,
                     );
 
                     IFDEBUG(assert(written == sizeof nugget_data));
+                    IFNDEBUG((void) written);
                 }
             }
 
@@ -676,6 +679,7 @@ void update_application_state_check_mq(buselfs_state_t * buselfs_state)
                 (void) buselfs_state; // ? language quirk
                 uint8_t which_segment = !!(incoming_msg.payload[0]);
                 IFDEBUG(dzlog_debug("Received TRIM request of mirrored segment %u (should be 0 or 1)", which_segment));
+                IFNDEBUG((void) which_segment); // ! When implemented, do something here!
                 break;
 
             default:

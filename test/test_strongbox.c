@@ -152,6 +152,7 @@ void setUp(void)
         exit(255);
     }
 
+    srand(5);
     make_fake_state();
 }
 

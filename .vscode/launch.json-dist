@@ -21,5 +21,45 @@
                 "x11port": 6000
             }
         }
+
+        ...
+
+        {
+            "name": "playground@examplehost",
+            "program": "/home/yourusername/repos/research/someproject/build/test_x",
+            "type": "cppdbg",
+            "request": "launch",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "/home/yourusername/repos/research/someproject/build",
+            "environment": [],
+            "externalConsole": true,
+            "pipeTransport": {
+                "pipeCwd": "",
+                "pipeProgram": "C:/path/to/ssh",
+                "debuggerPath": "/usr/bin/gdb",
+                "pipeArgs": [ ... ]
+            },
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true,
+                }
+            ],
+            "logging": {
+                "engineLogging": false,
+                "trace": false,
+                "traceResponse": false,
+                //
+                "exceptions": true,
+                "moduleLoad": true,
+                "programOutput": true
+            },
+            "sourceFileMap": {
+                "remote/path": "Z:/local/path",
+            }
+        }
     ]
 }
