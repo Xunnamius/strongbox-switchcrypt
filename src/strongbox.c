@@ -1279,7 +1279,7 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
 
         else
         {
-            IFDEBUG(dzlog_debug("(cipher swap was not necessary for this nugget)"));
+            IFDEBUG(dzlog_debug("(explicit cipher swap was not necessary for this nugget)"));
 
             if(active_cipher->write_handle)
             {
@@ -1972,7 +1972,6 @@ void blfs_run_mode_open(const char * backstore_path, uint8_t cin_allow_insecure_
     IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
     IFDEBUG(dzlog_debug("running in OPEN mode!"));
 
-
     buselfs_state->backstore = blfs_backstore_open_with_ctx(backstore_path, buselfs_state);
     blfs_soft_open(buselfs_state, cin_allow_insecure_start);
 
@@ -2407,8 +2406,9 @@ buselfs_state_t * strongbox_main_actual(int argc, char * argv[], char * blockdev
     if(buselfs_state->backstore == NULL)
         Throw(EXCEPTION_ASSERT_FAILURE);
 
-    buseops.size =
-        buselfs_state->backstore->writeable_size_actual / (buselfs_state->active_swap_strategy == swap_mirrored ? 2 : 1);
+    buseops.size = buselfs_state->active_swap_strategy == swap_mirrored
+                   ? (buselfs_state->backstore->num_nuggets / 2) * buselfs_state->backstore->nugget_size_bytes
+                   : buselfs_state->backstore->writeable_size_actual;
 
     IFDEBUG(dzlog_info("buseops.size = %"PRIu64"%s",
         buseops.size,
