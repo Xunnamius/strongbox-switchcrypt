@@ -1654,7 +1654,7 @@ static void swap_readwrite_quicktest()
     TEST_ASSERT_EQUAL_UINT8(buselfs_state->swap_cipher->enum_id, meta[2]->cipher_ident);
 }
 
-void test_strongbox_can_cipher_switch1(void)
+/***void test_strongbox_can_cipher_switch1(void)
 {
     zlog_fini();
 
@@ -1727,9 +1727,9 @@ void test_strongbox_can_cipher_switch3(void)
     buselfs_state = strongbox_main_actual(argc, argv_create1, blockdevice);
 
     swap_readwrite_quicktest();
-}
+}***/
 
-/***void test_strongbox_works_when_mirrored1(void)
+void test_strongbox_mirrored_swap_strategy_inits_properly(void)
 {
     zlog_fini();
 
@@ -1745,7 +1745,33 @@ void test_strongbox_can_cipher_switch3(void)
         "--swap-strategy",
         "swap_mirrored",
         "create",
-        "device_actual-125"
+        "device_actual-125-1"
+    };
+
+    int argc = sizeof(argv_create1)/sizeof(argv_create1[0]);
+
+    buselfs_state = strongbox_main_actual(argc, argv_create1, blockdevice);
+//TODO:!
+    //TEST_ASSERT_EQUAL_UINT(25, buselfs_state->backstore->);
+}
+
+void test_strongbox_works_when_mirrored1(void)
+{
+    zlog_fini();
+
+    char * argv_create1[] = {
+        "progname",
+        "--default-password",
+        "--backstore-size",
+        "50",
+        "--cipher",
+        "sc_chacha20",
+        "--swap-cipher",
+        "sc_chacha8_neon",
+        "--swap-strategy",
+        "swap_mirrored",
+        "create",
+        "device_actual-125-2"
     };
 
     int argc = sizeof(argv_create1)/sizeof(argv_create1[0]);
@@ -1810,7 +1836,7 @@ void test_strongbox_works_when_mirrored3(void)
     TEST_IGNORE();
 }
 
-void test_usecase_uc_secure_regions(void)
+/***void test_usecase_uc_secure_regions(void)
 {
     zlog_fini();
 

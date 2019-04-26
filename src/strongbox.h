@@ -158,6 +158,11 @@ typedef struct blfs_mq_msg_t
     uint8_t opcode;
 
     /**
+     * Unimplemented. //TODO (low priority)
+     */
+    uint8_t priority;
+
+    /**
      * This (BLFS_SV_MESSAGE_SIZE_BYTES - 1) byte payload of data that
      * accompanies the operation described above. Might be empty.
      */

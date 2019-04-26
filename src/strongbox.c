@@ -904,8 +904,18 @@ int buse_read(void * output_buffer, uint32_t length, uint64_t absolute_offset, v
     IFDEBUG(dzlog_debug("userdata (ptr): %p", (void *) userdata));
     IFDEBUG(dzlog_debug("buselfs_state (ptr): %p", (void *) buselfs_state));
 
-    uint_fast32_t nugget_size       = buselfs_state->backstore->nugget_size_bytes;
-    uint_fast32_t flake_size        = buselfs_state->backstore->flake_size_bytes;
+    // ? If we're in swap_mirrored mode, make sure to adjust abs offset
+    if(buselfs_state->active_swap_strategy == swap_mirrored
+        && buselfs_state->active_cipher_enum_id == buselfs_state->swap_cipher->enum_id)
+    {
+        absolute_offset += buseops.size;
+    }
+
+    IFDEBUG(assert(absolute_offset > buseops.size));
+    IFDEBUG(dzlog_info("FINAL absolute_offset: %"PRIu64, absolute_offset));
+
+    uint_fast32_t nugget_size = buselfs_state->backstore->nugget_size_bytes;
+    uint_fast32_t flake_size = buselfs_state->backstore->flake_size_bytes;
     uint_fast32_t flakes_per_nugget = buselfs_state->backstore->flakes_per_nugget;
     uint_fast32_t num_nuggets = buselfs_state->backstore->num_nuggets;
     uint_fast32_t mt_offset = mt_calculate_expected_size(0, buselfs_state);
@@ -983,16 +993,25 @@ int buse_read(void * output_buffer, uint32_t length, uint64_t absolute_offset, v
         IFDEBUG(dzlog_debug(">-> active_cipher enum id: %u", active_cipher->enum_id));
         IFDEBUG(dzlog_debug(">-> nugget (meta) enum id: %u", meta->cipher_ident));
 
-        if(active_cipher->enum_id != meta->cipher_ident)
+        int want_to_cipher_switch = active_cipher->enum_id != meta->cipher_ident;
+        int using_mirrored_strategy = buselfs_state->active_swap_strategy == swap_mirrored;
+
+        if(want_to_cipher_switch && using_mirrored_strategy)
+        {
+            IFDEBUG(dzlog_notice("<<INITIALIZING SPECIAL MIRRORED READ>>"));
+            active_cipher = blfs_get_inactive_cipher(buselfs_state);
+            IFDEBUG(dzlog_debug(">-> active_cipher enum id is now: %u", active_cipher->enum_id));
+        }
+
+        if(want_to_cipher_switch && !using_mirrored_strategy)
         {
             IFDEBUG(dzlog_notice("<<INITIALIZING CIPHER SWAP PROCEDURE>>"));
-
             buffer += blfs_swap_nugget_to_active_cipher(SWAP_WHILE_READ, buselfs_state, nugget_offset, buffer, buffer_read_length, nugget_internal_offset);
         }
 
         else
         {
-            IFDEBUG(dzlog_debug("(cipher swap was not necessary for this nugget)"));
+            IFDEBUG(dzlog_debug("(explicit cipher swap was not necessary for this nugget)"));
 
             IFDEBUG(dzlog_debug("blfs_backstore_read_body offset: %"PRIuFAST32,
                                 nugget_offset * nugget_size + first_affected_flake * flake_size));
@@ -1102,6 +1121,12 @@ int buse_read(void * output_buffer, uint32_t length, uint64_t absolute_offset, v
             }
         }
 
+        if(want_to_cipher_switch && using_mirrored_strategy)
+        {
+            IFDEBUG(dzlog_notice("<<ENDING SPECIAL MIRRORED READ>>"));
+            active_cipher = blfs_get_active_cipher(buselfs_state);
+        }
+
         length -= buffer_read_length;
         nugget_internal_offset = 0;
         nugget_offset++;
@@ -1159,6 +1184,15 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
     IFDEBUG(dzlog_debug("buffer to write (initial 64 bytes):"));
     IFDEBUG(hdzlog_debug(input_buffer, MIN(64U, size)));
 
+    if(buselfs_state->active_swap_strategy == swap_mirrored && absolute_offset < buseops.size)
+    {
+        IFDEBUG(dzlog_notice("<<INITIALIZING SPECIAL MIRRORED WRITE>>"));
+        IFDEBUG(assert(absolute_offset + buseops.size >= buseops.size));
+
+        // ? Mirror the write to other nugget, then complete the normal write
+        buse_write(input_buffer, length, absolute_offset + buseops.size, buselfs_state);
+    }
+
     blfs_header_t * tpmv_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_TPMGLOBALVER);
     uint64_t tpmv_value = *(uint64_t *) tpmv_header->data;
 
@@ -1171,9 +1205,9 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
 
     memcpy(tpmv_header->data, (uint8_t *) &tpmv_value, BLFS_HEAD_HEADER_BYTES_TPMGLOBALVER);
 
-    blfs_swappable_cipher_t * active_cipher = blfs_get_active_cipher(buselfs_state);
-
-    IFDEBUG(assert(buselfs_state->active_cipher_enum_id == active_cipher->enum_id));
+    blfs_swappable_cipher_t * active_cipher = absolute_offset < buseops.size
+                                                ? blfs_get_active_cipher(buselfs_state)
+                                                : blfs_get_inactive_cipher(buselfs_state);
 
     // ! Needs to be guaranteed monotonic in a real implementation, not based on header
     blfs_globalversion_commit(buselfs_state->rpmb_secure_index, tpmv_value);
@@ -1230,7 +1264,7 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
         IFDEBUG(dzlog_debug(">-> active_cipher enum id: %u", active_cipher->enum_id));
         IFDEBUG(dzlog_debug(">-> nugget (meta) enum id: %u", meta->cipher_ident));
 
-        if(active_cipher->enum_id != meta->cipher_ident)
+        if(buselfs_state->active_swap_strategy != swap_mirrored && active_cipher->enum_id != meta->cipher_ident)
         {
             IFDEBUG(dzlog_notice("<<INITIALIZING CIPHER SWAP PROCEDURE>>"));
 
@@ -1932,10 +1966,12 @@ void blfs_run_mode_create(const char * backstore_path,
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
 }
 
+// TODO: fix this mode
 void blfs_run_mode_open(const char * backstore_path, uint8_t cin_allow_insecure_start, buselfs_state_t * buselfs_state)
 {
     IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
     IFDEBUG(dzlog_debug("running in OPEN mode!"));
+
 
     buselfs_state->backstore = blfs_backstore_open_with_ctx(backstore_path, buselfs_state);
     blfs_soft_open(buselfs_state, cin_allow_insecure_start);
@@ -1950,6 +1986,8 @@ void blfs_run_mode_wipe(const char * backstore_path, uint8_t cin_allow_insecure_
     (void) buselfs_state;
 
     // TODO: implement this start mode
+    dzlog_fatal("this functionality is not available with this version of StrongBox!");
+    Throw(EXCEPTION_MUST_HALT);
 }
 
 buselfs_state_t * strongbox_main_actual(int argc, char * argv[], char * blockdevice)
@@ -2369,9 +2407,13 @@ buselfs_state_t * strongbox_main_actual(int argc, char * argv[], char * blockdev
     if(buselfs_state->backstore == NULL)
         Throw(EXCEPTION_ASSERT_FAILURE);
 
-    buseops.size = buselfs_state->backstore->writeable_size_actual;
+    buseops.size =
+        buselfs_state->backstore->writeable_size_actual / (buselfs_state->active_swap_strategy == swap_mirrored ? 2 : 1);
 
-    IFDEBUG(dzlog_info("buseops.size = %"PRIu64, buseops.size));
+    IFDEBUG(dzlog_info("buseops.size = %"PRIu64"%s",
+        buseops.size,
+        buselfs_state->active_swap_strategy == swap_mirrored ? " (mirrored)" : ""
+    ));
 
     /* Let the show begin! */
 
