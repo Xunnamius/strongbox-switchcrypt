@@ -86,6 +86,9 @@ void test_bitmask_functions_throw_exception_on_out_of_bounds_indices(void)
 
     TRY_FN_CATCH_EXCEPTION(bitmask_are_bits_set(bitmask, out_of_bounds, 0));
     TRY_FN_CATCH_EXCEPTION(bitmask_are_bits_set(bitmask, 0, out_of_bounds + 1));
+
+    TRY_FN_CATCH_EXCEPTION(bitmask_any_bits_set(bitmask, out_of_bounds, 0));
+    TRY_FN_CATCH_EXCEPTION(bitmask_any_bits_set(bitmask, 0, out_of_bounds + 1));
 }
 
 void test_bitmask_is_and_set_bit_should_set_and_check_the_nth_bit(void)

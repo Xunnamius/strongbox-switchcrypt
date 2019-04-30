@@ -8,7 +8,6 @@
 #include "bitmask.h"
 #include "interact.h"
 #include "swappable.h"
-#include "buse.h"
 #include "mt_err.h"
 
 #include <stdio.h>
@@ -99,19 +98,6 @@ static int buse_trim(uint64_t from, uint32_t len, void * userdata)
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
     return 0;
 }
-
-/**
- * struct buse_operations buseops is required by the BUSE subsystem. It is very
- * similar to its FUSE counterpart in intent.
- */
-static struct buse_operations buseops = {
-    .read = buse_read,
-    .write = buse_write,
-    .disc = buse_disc,
-    .flush = buse_flush,
-    .trim = buse_trim,
-    .size = 0
-};
 
 /**
  * Register asynchronous notification
@@ -908,10 +894,10 @@ int buse_read(void * output_buffer, uint32_t length, uint64_t absolute_offset, v
     if(buselfs_state->active_swap_strategy == swap_mirrored
         && buselfs_state->active_cipher_enum_id == buselfs_state->swap_cipher->enum_id)
     {
-        absolute_offset += buseops.size;
+        absolute_offset += buselfs_state->buseops->size;
     }
 
-    IFDEBUG(assert(absolute_offset > buseops.size));
+    IFDEBUG(assert(absolute_offset > buselfs_state->buseops->size));
     IFDEBUG(dzlog_info("FINAL absolute_offset: %"PRIu64, absolute_offset));
 
     uint_fast32_t nugget_size = buselfs_state->backstore->nugget_size_bytes;
@@ -1184,13 +1170,13 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
     IFDEBUG(dzlog_debug("buffer to write (initial 64 bytes):"));
     IFDEBUG(hdzlog_debug(input_buffer, MIN(64U, size)));
 
-    if(buselfs_state->active_swap_strategy == swap_mirrored && absolute_offset < buseops.size)
+    if(buselfs_state->active_swap_strategy == swap_mirrored && absolute_offset < buselfs_state->buseops->size)
     {
         IFDEBUG(dzlog_notice("<<INITIALIZING SPECIAL MIRRORED WRITE>>"));
-        IFDEBUG(assert(absolute_offset + buseops.size >= buseops.size));
+        IFDEBUG(assert(absolute_offset + buselfs_state->buseops->size >= buselfs_state->buseops->size));
 
         // ? Mirror the write to other nugget, then complete the normal write
-        buse_write(input_buffer, length, absolute_offset + buseops.size, buselfs_state);
+        buse_write(input_buffer, length, absolute_offset + buselfs_state->buseops->size, buselfs_state);
     }
 
     blfs_header_t * tpmv_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_TPMGLOBALVER);
@@ -1205,7 +1191,7 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
 
     memcpy(tpmv_header->data, (uint8_t *) &tpmv_value, BLFS_HEAD_HEADER_BYTES_TPMGLOBALVER);
 
-    blfs_swappable_cipher_t * active_cipher = absolute_offset < buseops.size
+    blfs_swappable_cipher_t * active_cipher = absolute_offset < buselfs_state->buseops->size
                                                 ? blfs_get_active_cipher(buselfs_state)
                                                 : blfs_get_inactive_cipher(buselfs_state);
 
@@ -2406,12 +2392,20 @@ buselfs_state_t * strongbox_main_actual(int argc, char * argv[], char * blockdev
     if(buselfs_state->backstore == NULL)
         Throw(EXCEPTION_ASSERT_FAILURE);
 
-    buseops.size = buselfs_state->active_swap_strategy == swap_mirrored
+    buselfs_state->buseops = malloc(sizeof *buselfs_state->buseops);
+
+    buselfs_state->buseops->read  = buse_read;
+    buselfs_state->buseops->write = buse_write;
+    buselfs_state->buseops->disc  = buse_disc;
+    buselfs_state->buseops->flush = buse_flush;
+    buselfs_state->buseops->trim  = buse_trim;
+
+    buselfs_state->buseops->size  = buselfs_state->active_swap_strategy == swap_mirrored
                    ? (buselfs_state->backstore->num_nuggets / 2) * buselfs_state->backstore->nugget_size_bytes
                    : buselfs_state->backstore->writeable_size_actual;
 
-    IFDEBUG(dzlog_info("buseops.size = %"PRIu64"%s",
-        buseops.size,
+    IFDEBUG(dzlog_info("buseops->size = %"PRIu64"%s",
+        buselfs_state->buseops->size,
         buselfs_state->active_swap_strategy == swap_mirrored ? " (mirrored)" : ""
     ));
 
@@ -2440,5 +2434,5 @@ int strongbox_main(int argc, char * argv[])
 
     dzlog_notice("StrongBox is ready!\n");
 
-    return buse_main(blockdevice, &buseops, (void *) buselfs_state);
+    return buse_main(blockdevice, buselfs_state->buseops, (void *) buselfs_state);
 }

@@ -3,6 +3,7 @@
 
 #include "constants.h"
 #include "backstore.h"
+#include "buse.h"
 #include "io.h"
 #include "crypto.h"
 #include "mmc.h"
@@ -139,8 +140,13 @@ typedef struct buselfs_state_t
      * for internal debugging purposes.
      */
     int is_cipher_swapping;
-} buselfs_state_t;
 
+    /**
+     * struct buse_operations buseops is required by the BUSE subsystem. It is
+     * very similar to its FUSE counterpart in intent.
+     */
+    struct buse_operations * buseops;
+} buselfs_state_t;
 
 /**
  * This struct describes a POSIX message queue message to StrongBox. Messages
