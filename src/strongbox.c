@@ -403,8 +403,15 @@ int blfs_swap_nugget_to_active_cipher(int swapping_while_read_or_write,
     // ! burned, so we must take that possibility into account when rekeying.
     count->keycount += buselfs_state->crash_recovery ? 2 : 1;
 
-    // ? Clear transaction journal
-    bitmask_clear_mask(entry->bitmask);
+    uint_fast32_t flake_size = buselfs_state->backstore->flake_size_bytes;
+    uint_fast32_t start_index = nugget_internal_offset / flake_size;
+    uint_fast32_t length =
+            CEIL((nugget_internal_offset + buffer_length), flake_size) - start_index;
+
+    IFDEBUG(assert(start_index + length <= buselfs_state->backstore->flakes_per_nugget));
+
+    // ? Set proper bits
+    bitmask_set_bits(entry->bitmask, start_index, length);
 
     // ? Update metadata
     meta->cipher_ident = (uint8_t) encryption_cipher->enum_id;
@@ -895,9 +902,10 @@ int buse_read(void * output_buffer, uint32_t length, uint64_t absolute_offset, v
         && buselfs_state->active_cipher_enum_id == buselfs_state->swap_cipher->enum_id)
     {
         absolute_offset += buselfs_state->buseops->size;
+        IFDEBUG(assert(absolute_offset >= buselfs_state->buseops->size));
     }
 
-    IFDEBUG(assert(absolute_offset > buselfs_state->buseops->size));
+    IFDEBUG(assert(absolute_offset < buselfs_state->backstore->writeable_size_actual));
     IFDEBUG(dzlog_info("FINAL absolute_offset: %"PRIu64, absolute_offset));
 
     uint_fast32_t nugget_size = buselfs_state->backstore->nugget_size_bytes;
@@ -982,13 +990,6 @@ int buse_read(void * output_buffer, uint32_t length, uint64_t absolute_offset, v
         int want_to_cipher_switch = active_cipher->enum_id != meta->cipher_ident;
         int using_mirrored_strategy = buselfs_state->active_swap_strategy == swap_mirrored;
 
-        if(want_to_cipher_switch && using_mirrored_strategy)
-        {
-            IFDEBUG(dzlog_notice("<<INITIALIZING SPECIAL MIRRORED READ>>"));
-            active_cipher = blfs_get_inactive_cipher(buselfs_state);
-            IFDEBUG(dzlog_debug(">-> active_cipher enum id is now: %u", active_cipher->enum_id));
-        }
-
         if(want_to_cipher_switch && !using_mirrored_strategy)
         {
             IFDEBUG(dzlog_notice("<<INITIALIZING CIPHER SWAP PROCEDURE>>"));
@@ -997,6 +998,7 @@ int buse_read(void * output_buffer, uint32_t length, uint64_t absolute_offset, v
 
         else
         {
+            IFDEBUG(assert(!want_to_cipher_switch));
             IFDEBUG(dzlog_debug("(explicit cipher swap was not necessary for this nugget)"));
 
             IFDEBUG(dzlog_debug("blfs_backstore_read_body offset: %"PRIuFAST32,
@@ -1107,12 +1109,6 @@ int buse_read(void * output_buffer, uint32_t length, uint64_t absolute_offset, v
             }
         }
 
-        if(want_to_cipher_switch && using_mirrored_strategy)
-        {
-            IFDEBUG(dzlog_notice("<<ENDING SPECIAL MIRRORED READ>>"));
-            active_cipher = blfs_get_active_cipher(buselfs_state);
-        }
-
         length -= buffer_read_length;
         nugget_internal_offset = 0;
         nugget_offset++;
@@ -1177,6 +1173,7 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
 
         // ? Mirror the write to other nugget, then complete the normal write
         buse_write(input_buffer, length, absolute_offset + buselfs_state->buseops->size, buselfs_state);
+        IFDEBUG(dzlog_notice("<<FINISHED; CONTINUING WITH NORMAL WRITE>>"));
     }
 
     blfs_header_t * tpmv_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_TPMGLOBALVER);
@@ -1497,10 +1494,17 @@ void blfs_rekey_nugget_then_write(buselfs_state_t * buselfs_state,
     if(jcount == NULL || jentry == NULL)
         Throw(EXCEPTION_ALLOC_FAILURE);
 
+    uint64_t half_nuggets = buselfs_state->backstore->num_nuggets / 2;
+    uint64_t local_offset = buselfs_state->active_swap_strategy == swap_mirrored && rekeying_nugget_index >= half_nuggets
+                            ? rekeying_nugget_index - half_nuggets
+                            : rekeying_nugget_index;
+
+    IFDEBUG(assert(local_offset <= rekeying_nugget_index));
+
     // Read in *and verify* nugget FIRST
     buse_read(rekeying_nugget_data,
               buselfs_state->backstore->nugget_size_bytes,
-              rekeying_nugget_index * buselfs_state->backstore->nugget_size_bytes,
+              local_offset * buselfs_state->backstore->nugget_size_bytes,
               (void *) buselfs_state);
 
     memcpy(rekeying_nugget_data + nugget_internal_offset, buffer, length);
@@ -2391,6 +2395,14 @@ buselfs_state_t * strongbox_main_actual(int argc, char * argv[], char * blockdev
 
     if(buselfs_state->backstore == NULL)
         Throw(EXCEPTION_ASSERT_FAILURE);
+
+    for(uint32_t nugget_index = 0; nugget_index < buselfs_state->backstore->num_nuggets; nugget_index++)
+    {
+        blfs_nugget_metadata_t * meta = blfs_open_nugget_metadata(buselfs_state->backstore, nugget_index);
+
+        if(cin_swap_strategy == swap_mirrored && nugget_index >= buselfs_state->backstore->num_nuggets / 2)
+            meta->cipher_ident = (uint8_t) buselfs_state->swap_cipher->enum_id;
+    }
 
     buselfs_state->buseops = malloc(sizeof *buselfs_state->buseops);
 
