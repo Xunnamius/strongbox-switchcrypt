@@ -70,10 +70,10 @@ Observe that `nbd_device_name` must always appear last and the desired command
 > respectively.
 
 > Further, the following must hold: `backstore-size >= flake-size *
-> flakes-per-nugget + A`. `A` is equal to `total-number-of-nuggets *
-> (greatest-cipher-md-requested-bytes-per-flake + 1)` but its ultimate value
-> depends on `flake-size` and `flakes-per-nugget`. Hence, the formula in the
-> previous paragraph is more important.
+> flakes-per-nugget * total-number-of-nuggets + A`. `A` is equal to
+> `total-number-of-nuggets * (greatest-cipher-md-requested-bytes-per-flake + 1)`
+> but its ultimate value depends on `flake-size` and `flakes-per-nugget`. Hence,
+> the formula in the previous paragraph is more important.
 
 ### Swapping Ciphers
 
