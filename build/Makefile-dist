@@ -62,10 +62,11 @@ C_TEST_LIBS := $(UNITY_ROOT)/src/unity.c \
 CC  := /usr/bin/gcc
 CCV := $(shell expr `gcc --version | grep ^gcc | awk '{print $$3}'` \>= 4.9)
 
-# ? These are only activated when GLOBAL_DEBUG_MODE != 0
 DEBUG_MAKE_FLAGS              := -g
+# ? These are only activated when a modern version of gcc is being used
 CONDITIONAL_DEBUG_MAKE_FLAGS  := -fsanitize=address,undefined,shift,integer-divide-by-zero,null,signed-integer-overflow \
                                  -fno-omit-frame-pointer
+# ? These are only activated when GLOBAL_DEBUG_MODE != 0
 CONDITIONAL_DEBUG_MAKE_FLAGS2 := -DBLFS_SV_QUEUE_INCOMING_NAME='"/test-incoming.strongbox.xunn.io"' \
 								 -DBLFS_SV_QUEUE_OUTGOING_NAME='"/test-outgoing.strongbox.xunn.io"'
 
