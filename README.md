@@ -3,9 +3,9 @@
 (TODO: update the documentation to reflect recent changes as of version 600,
 including how to build strongboxctl and how swap_mirrored strategy affects
 everything)  
-// TODO: update StrongBox impl to not use nuggets anymore but just flakes  
-// TODO: (similar to freestyle's implementation, except rekeying still  
-// TODO: occurs on overwrite). This might result in a speed up!
+// TODO: how much extra memory would it actually take to eliminate nuggets and  
+// TODO: just use flakes?  
+(TODO: the cipher selection logic [especially while mirrored] is kinda spaghetti)
 
 This is a complete rewrite of the old buselogfs code. This is a Buse + Chacha20
 + Poly1305 + LFS encrypted filesystem. It uses Argon2 as its KDF. Featured in

@@ -888,7 +888,8 @@ int buse_read(void * output_buffer, uint32_t length, uint64_t absolute_offset, v
     uint_fast32_t size = length;
 
     IFDEBUG(dzlog_debug("synchronizing application state..."));
-    update_application_state_check_mq(buselfs_state);
+    if(absolute_offset < buselfs_state->buseops->size) // ! Race condition here if msg sent during rekeying
+        update_application_state_check_mq(buselfs_state);
 
     IFDEBUG(dzlog_debug("output_buffer (ptr): %p", (void *) output_buffer));
     IFDEBUG(dzlog_debug("buffer (ptr): %p", (void *) buffer));
@@ -899,7 +900,8 @@ int buse_read(void * output_buffer, uint32_t length, uint64_t absolute_offset, v
 
     // ? If we're in swap_mirrored mode, make sure to adjust abs offset
     if(buselfs_state->active_swap_strategy == swap_mirrored
-        && buselfs_state->active_cipher_enum_id == buselfs_state->swap_cipher->enum_id)
+        && buselfs_state->active_cipher_enum_id == buselfs_state->swap_cipher->enum_id
+        && absolute_offset < buselfs_state->buseops->size)
     {
         absolute_offset += buselfs_state->buseops->size;
         IFDEBUG(assert(absolute_offset >= buselfs_state->buseops->size));
@@ -928,9 +930,17 @@ int buse_read(void * output_buffer, uint32_t length, uint64_t absolute_offset, v
     IFDEBUG(dzlog_debug("nugget_offset (nugget index): %"PRIuFAST32, nugget_offset));
     IFDEBUG(dzlog_debug("nugget_internal_offset: %"PRIuFAST32, nugget_internal_offset));
 
-    blfs_swappable_cipher_t * active_cipher = blfs_get_active_cipher(buselfs_state);
+    blfs_swappable_cipher_t * active_cipher;
 
-    IFDEBUG(assert(buselfs_state->active_cipher_enum_id == active_cipher->enum_id));
+    if(buselfs_state->active_swap_strategy == swap_mirrored)
+    {
+        active_cipher = absolute_offset < buselfs_state->buseops->size
+                        ? buselfs_state->primary_cipher
+                        : buselfs_state->swap_cipher;
+    }
+
+    else
+        active_cipher = blfs_get_active_cipher(buselfs_state);
 
     int first_nugget = TRUE;
 
@@ -1135,7 +1145,8 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
     uint_fast32_t size = length;
 
     IFDEBUG(dzlog_debug("synchronizing application state..."));
-    update_application_state_check_mq(buselfs_state);
+    if(absolute_offset < buselfs_state->buseops->size)
+        update_application_state_check_mq(buselfs_state);
 
     IFDEBUG(dzlog_debug("input_buffer (ptr): %p", (void *) input_buffer));
     IFDEBUG(dzlog_debug("buffer (ptr): %p", (void *) buffer));
@@ -1166,6 +1177,8 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
     IFDEBUG(dzlog_debug("buffer to write (initial 64 bytes):"));
     IFDEBUG(hdzlog_debug(input_buffer, MIN(64U, size)));
 
+    IFDEBUG(assert(buselfs_state->active_swap_strategy == swap_mirrored || absolute_offset < buselfs_state->buseops->size));
+
     if(buselfs_state->active_swap_strategy == swap_mirrored && absolute_offset < buselfs_state->buseops->size)
     {
         IFDEBUG(dzlog_notice("<<INITIALIZING SPECIAL MIRRORED WRITE>>"));
@@ -1188,9 +1201,17 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
 
     memcpy(tpmv_header->data, (uint8_t *) &tpmv_value, BLFS_HEAD_HEADER_BYTES_TPMGLOBALVER);
 
-    blfs_swappable_cipher_t * active_cipher = absolute_offset < buselfs_state->buseops->size
-                                                ? blfs_get_active_cipher(buselfs_state)
-                                                : blfs_get_inactive_cipher(buselfs_state);
+    blfs_swappable_cipher_t * active_cipher;
+
+    if(buselfs_state->active_swap_strategy == swap_mirrored)
+    {
+        active_cipher = absolute_offset < buselfs_state->buseops->size
+                        ? buselfs_state->primary_cipher
+                        : buselfs_state->swap_cipher;
+    }
+
+    else
+        active_cipher = blfs_get_active_cipher(buselfs_state);
 
     // ! Needs to be guaranteed monotonic in a real implementation, not based on header
     blfs_globalversion_commit(buselfs_state->rpmb_secure_index, tpmv_value);
@@ -1475,7 +1496,17 @@ void blfs_rekey_nugget_then_write(buselfs_state_t * buselfs_state,
 {
     IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
 
-    blfs_swappable_cipher_t * active_cipher = blfs_get_active_cipher(buselfs_state);
+    blfs_swappable_cipher_t * active_cipher;
+
+    if(buselfs_state->active_swap_strategy == swap_mirrored)
+    {
+        active_cipher = rekeying_nugget_index < buselfs_state->backstore->num_nuggets / 2
+                        ? buselfs_state->primary_cipher
+                        : buselfs_state->swap_cipher;
+    }
+
+    else
+        active_cipher = blfs_get_active_cipher(buselfs_state);
 
     // ! Might want to switch up the ordering of these operations
 
@@ -1494,17 +1525,10 @@ void blfs_rekey_nugget_then_write(buselfs_state_t * buselfs_state,
     if(jcount == NULL || jentry == NULL)
         Throw(EXCEPTION_ALLOC_FAILURE);
 
-    uint64_t half_nuggets = buselfs_state->backstore->num_nuggets / 2;
-    uint64_t local_offset = buselfs_state->active_swap_strategy == swap_mirrored && rekeying_nugget_index >= half_nuggets
-                            ? rekeying_nugget_index - half_nuggets
-                            : rekeying_nugget_index;
-
-    IFDEBUG(assert(local_offset <= rekeying_nugget_index));
-
     // Read in *and verify* nugget FIRST
     buse_read(rekeying_nugget_data,
               buselfs_state->backstore->nugget_size_bytes,
-              local_offset * buselfs_state->backstore->nugget_size_bytes,
+              rekeying_nugget_index * buselfs_state->backstore->nugget_size_bytes,
               (void *) buselfs_state);
 
     memcpy(rekeying_nugget_data + nugget_internal_offset, buffer, length);
