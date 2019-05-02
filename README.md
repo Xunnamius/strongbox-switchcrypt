@@ -151,6 +151,7 @@ made to privileged devices (like the RPMB).
 First, of course, change directory into the StrongBox directory and `make` it:
 
 ```
+# make pre
 # make
 ```
 
@@ -160,6 +161,7 @@ need to clean the `build/` directory between compilation attempts, like so:
 
 ```
 # make clean
+# make pre
 # make
 ```
 
@@ -174,14 +176,17 @@ different optimization level, you can use the following:
 
 ```
 # make clean
+# make pre
 # make all-O3
 ```
 ```
 # make clean
+# make pre
 # make all-O2
 ```
 ```
 # make clean
+# make pre
 # make all-O0
 ```
 
@@ -209,6 +214,7 @@ the following:
 
 ```
 # make clean
+# make pre
 # make tests
 ```
 
@@ -217,14 +223,17 @@ optimization, you can use the following:
 
 ```
 # make clean
+# make pre
 # make tests-O3
 ```
 ```
 # make clean
+# make pre
 # make tests-O2
 ```
 ```
 # make clean
+# make pre
 # make tests-O0
 ```
 
@@ -279,13 +288,13 @@ optimization, you can use the following:
 ```
 
 - `build/` is where all the transient results of the Makefile process will go.
-  `make clean` will clear out this directory (excluding the `build/test/`
-  symlink and `build/Makefile`).
+  `make clean` will clear out this directory (excluding the Makefiles).
 - `config/` is where the Ruby mock, zlog, cexception, and unity_runner configs
   are placed, among others.
 - `src/` is where the StrongBox source lives.
 - `test/` is where the corresponding StrongBox unit tests live.
-- `vendor/` is where all unmanaged third party code is placed.
+- `vendor/` is where all unmanaged third party code is placed. Make clean cleans
+  this directory and its subdirs too.
 
 Considerations:
 - Don't give files that aren't direct children of `test/` names like `test_X.c`

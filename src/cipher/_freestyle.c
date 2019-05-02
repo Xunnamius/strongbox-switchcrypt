@@ -73,7 +73,7 @@ int sc_generic_freestyle_read_handle(freestyle_variant variant,
 
     const uint8_t * original_buffer = buffer;
 
-    freestyle_variant_configuration config;
+    freestyle_variant_configuration config = { 0 };
     variant_as_configuration(&config, variant);
 
     const blfs_nugget_metadata_t * meta = blfs_open_nugget_metadata(buselfs_state->backstore, nugget_offset);
@@ -198,7 +198,7 @@ int sc_generic_freestyle_write_handle(freestyle_variant variant,
 
     const uint8_t * original_buffer = buffer;
 
-    freestyle_variant_configuration config;
+    freestyle_variant_configuration config = { 0 };
     variant_as_configuration(&config, variant);
 
     // ! Maybe update and commit the MTRH here first and again later?
