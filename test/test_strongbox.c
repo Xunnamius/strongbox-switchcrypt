@@ -12,6 +12,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <errno.h>
 #include <inttypes.h>
 #include <assert.h>
 
@@ -193,7 +194,11 @@ void test_mq_write_read_works(void)
     // ? Gonna swap the two descriptors since the two queues otherwise do not
     // ? overlap!
     buselfs_state_t fake_buselfs_state;
+    errno = 0;
     fake_buselfs_state.qd_incoming = mq_open(BLFS_SV_QUEUE_OUTGOING_NAME, O_RDONLY | O_NONBLOCK, BLFS_SV_QUEUE_PERM);
+
+    if(errno)
+        dzlog_fatal("EXCEPTION: mq_open failed: %s", strerror(errno));
 
     assert(fake_buselfs_state.qd_incoming > 0);
 

@@ -63,11 +63,11 @@ CC  := /usr/bin/gcc
 CCV := $(shell expr `gcc --version | grep ^gcc | awk '{print $$3}'` \>= 4.9)
 
 # ? These are only activated when GLOBAL_DEBUG_MODE != 0
-DEBUG_MAKE_FLAGS              := -g \
-								 -DBLFS_SV_QUEUE_INCOMING_NAME='"/test-incoming.strongbox.xunn.io"' \
-								 -DBLFS_SV_QUEUE_OUTGOING_NAME='"/test-outgoing.strongbox.xunn.io"'
+DEBUG_MAKE_FLAGS              := -g
 CONDITIONAL_DEBUG_MAKE_FLAGS  := -fsanitize=address,undefined,shift,integer-divide-by-zero,null,signed-integer-overflow \
                                  -fno-omit-frame-pointer
+CONDITIONAL_DEBUG_MAKE_FLAGS2 := -DBLFS_SV_QUEUE_INCOMING_NAME='"/test-incoming.strongbox.xunn.io"' \
+								 -DBLFS_SV_QUEUE_OUTGOING_NAME='"/test-outgoing.strongbox.xunn.io"'
 
 CFLAGS      := -pedantic -Wall -Wextra -std=c11
 
@@ -123,6 +123,10 @@ DEP_TEST_TRGTS := $(TEST_TRGTS:=.d)
 
 ifeq "$(CCV)" "1"
 	DEBUG_MAKE_FLAGS += $(CONDITIONAL_DEBUG_MAKE_FLAGS)
+endif
+
+ifneq "$(GLOBAL_DEBUG_MODE)" "0"
+	DEBUG_MAKE_FLAGS += $(CONDITIONAL_DEBUG_MAKE_FLAGS2)
 endif
 
 #################
