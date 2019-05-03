@@ -91,6 +91,7 @@
         "krovetz",
         "krovetz's",
         "loadl",
+        "lockdown",
         "mdbpf",
         "memcpy'd",
         "mode",
@@ -120,6 +121,7 @@
         "ters",
         "to",
         "tpmv",
+        "uc",
         "vcombine",
         "vcreate",
         "vdup",
@@ -129,6 +131,7 @@
         "vsetq",
         "vshlq",
         "vsriq",
+        "vsrs",
         "waaaay"
     ],
     "files.exclude": {

@@ -33,16 +33,27 @@ performance win from using a faster less secure cipher.
 
 - How to communicate intent down the stack?
 
-> We've decided to use POSIX message queues (IPC) for this.
+> We've decided to use POSIX message queues (IPC) for this. In fact, some form
+of the mirrored cipher strategy (but with special write rules rather than dumb
+mirroring) seems well suited to this purpose, where the primary cipher on
+partition 1 is fast and weak while the swap cipher on partition 2 is slow and
+strong.
 
 ### Tradeoffs
 
-- The amount of wasted space increases proportional to the number of VSR-enabled
-  files
+- The amount of wasted space (if there is any) increases proportional to the
+  number of VSR-enabled files
 
 > This is because the variable security regions of various files are aggregated
 > and encrypted together within the same set of reserved nuggets (the number of
-> nuggets reserved in this way is currently user-defined).
+> nuggets reserved in this way is currently 50%).
+
+> The system can also be implemented such that variable security regions are
+> assigned to their own nuggets that are interspersed with normal nuggets. The
+> wasted space (below) might be more of a problem in this scenario. Further,
+> there'll have to be some sort of API POSIX MQ call that corresponds to
+> reads/writes to make something like this work well. In this version, the
+> mirrored swap strategy is not ideal.
 
 - Slower than exclusively using the weakest cipher to crypt the file's nuggets,
   but it is more secure.
@@ -62,8 +73,7 @@ performance win from using a faster less secure cipher.
 
 ### Related Work
 
-- TODO: add variable encryption papers here when I get back to Chicago (it's on
-  my desk)
+- TODO: add variable encryption papers here (note to self: they're on your desk)
 
 ### Progress
 
@@ -97,7 +107,7 @@ configuration.
 - Total benefit is likely workload dependent
     - Read dominant vs write dominant
     - Which nuggets are hit the most during workload I/O
-        - Referred to below as **hot nuggets**
+        - Referred to below as **hot nuggets** and **hot flakes**
     - Et cetera
 
 - Why not default to the highest/lowest security cipher?
@@ -108,6 +118,9 @@ configuration.
 - Are gains eaten by the switching process?
 
 > Depends on the cipher switching strategy used
+
+> The mirrored strategy seems to lend itself well here, but any of the there
+implemented strategies would work.
 
 - How to communicate intent down the stack?
 
