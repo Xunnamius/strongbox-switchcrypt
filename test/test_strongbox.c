@@ -2109,7 +2109,50 @@ void test_strongbox_works_when_mirrored3(void)
 
 void test_strongbox_works_when_aggressive(void)
 {
-    TEST_IGNORE();
+    zlog_fini();
+
+    char * argv_create1[] = {
+        "progname",
+        "--default-password",
+        "--backstore-size",
+        "50",
+        "--cipher",
+        "sc_freestyle_fast",
+        "--swap-cipher",
+        "sc_chacha8_neon",
+        "--swap-strategy",
+        "swap_aggressive",
+        "create",
+        "device_actual-129"
+    };
+
+    int argc = sizeof(argv_create1)/sizeof(argv_create1[0]);
+
+    buselfs_state = strongbox_main_actual(argc, argv_create1, blockdevice);
+
+    buselfs_state_t fake_state = {
+        .qd_outgoing = mq_open(BLFS_SV_QUEUE_INCOMING_NAME, O_WRONLY | O_NONBLOCK, BLFS_SV_QUEUE_PERM)
+    };
+
+    uint32_t nugget_size = buselfs_state->backstore->nugget_size_bytes;
+    blfs_mq_msg_t swap_cmd_msg = { .opcode = 1 };
+
+    uint8_t in_buffer1[nugget_size / 2];
+
+    memset(in_buffer1,  0x01, sizeof in_buffer1);
+
+    blfs_nugget_metadata_t * meta[BLFS_SWAP_AGGRESSIVENESS] = { 0 };
+
+    for(size_t i = 0; i < BLFS_SWAP_AGGRESSIVENESS; ++i)
+    {
+        meta[i] = blfs_open_nugget_metadata(buselfs_state->backstore, i);
+        TEST_ASSERT_EQUAL_UINT8_MESSAGE(buselfs_state->primary_cipher->enum_id, meta[i]->cipher_ident, "(meta didn't match primary cipher id");
+    }
+
+    buse_write(in_buffer1, sizeof in_buffer1, 0, buselfs_state);
+
+    for(size_t i = 0; i < BLFS_SWAP_AGGRESSIVENESS; ++i)
+        TEST_ASSERT_EQUAL_UINT8_MESSAGE(buselfs_state->swap_cipher->enum_id, meta[i]->cipher_ident, "(meta didn't match primary cipher id");
 }
 
 /***void test_usecase_uc_secure_regions(void)
