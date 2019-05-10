@@ -2149,6 +2149,7 @@ void test_strongbox_works_when_aggressive(void)
         TEST_ASSERT_EQUAL_UINT8_MESSAGE(buselfs_state->primary_cipher->enum_id, meta[i]->cipher_ident, "(meta didn't match primary cipher id");
     }
 
+    blfs_write_output_queue(&fake_state, &swap_cmd_msg, BLFS_SV_MESSAGE_DEFAULT_PRIORITY);
     buse_write(in_buffer1, sizeof in_buffer1, 0, buselfs_state);
 
     for(size_t i = 0; i < BLFS_SWAP_AGGRESSIVENESS; ++i)
