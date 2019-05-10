@@ -2107,6 +2107,11 @@ void test_strongbox_works_when_mirrored3(void)
     mirrored_readwrite_quicktest(FALSE);
 }
 
+void test_strongbox_works_when_aggressive(void)
+{
+    TEST_IGNORE();
+}
+
 /***void test_usecase_uc_secure_regions(void)
 {
     zlog_fini();
