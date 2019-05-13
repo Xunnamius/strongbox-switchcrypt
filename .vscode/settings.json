@@ -117,6 +117,7 @@
         "reencrypted",
         "rekeyings",
         "rotl",
+        "sbctl",
         "setup",
         "slli",
         "srli",

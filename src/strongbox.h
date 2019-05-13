@@ -311,6 +311,13 @@ blfs_backstore_t * blfs_backstore_open_with_ctx(const char * path, buselfs_state
 void blfs_initialize_queues(buselfs_state_t * buselfs_state);
 
 /**
+ * Clears all messages from StrongBox's incoming queue. Useful after
+ * initialization to prevent residue from other runs from effecting this
+ * instance.
+ */
+void blfs_clear_incoming_queue(buselfs_state_t * buselfs_state);
+
+/**
  * Wrapper around the POSIX message queue open function. Set `incoming_outgoing`
  * to 0 for incoming or 1 for outgoing (determines permissions/open mode).
  */

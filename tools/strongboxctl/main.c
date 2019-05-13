@@ -15,9 +15,11 @@ void print_help_text_and_bail(char * program)
         "Example: %s info /incoming.message.queue\n\n"
 
         "::read command::\n"
-        "This command will dequeue and return the specified number of messages from the specified queue. This command\n"
-        " will not error if more messages are requested than are messages in the queue.\n\n"
-        "Example: %s read /somequeue 5\n\n"
+        "This command will dequeue and return the specified number of messages from the specified queue. This\n"
+        " command will not error if more messages are requested than are messages in the queue; in\n"
+        " fact, this is how you'd clear the queue!\n\n"
+        "Example: %s read /somequeue 5\n"
+        "Example: %s read /somequeue-to-clear 999\n\n"
 
         "::write command::\n"
         "This command will enqueue a new message into the specified queue. If the queue is full, this command will\n"
@@ -29,7 +31,7 @@ void print_help_text_and_bail(char * program)
         "Example: %s write /somequeue 250\n\n"
 
         "See README.md and constants.h for more details. Don't forget to run as root and mount /dev/mq!\n\n",
-        program, program, program, program, program, BLFS_SV_MESSAGE_SIZE_BYTES, program, program, program);
+        program, program, program, program, program, program, BLFS_SV_MESSAGE_SIZE_BYTES, program, program, program);
 
         Throw(EXCEPTION_MUST_HALT);
 }

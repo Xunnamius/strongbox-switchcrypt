@@ -212,6 +212,35 @@ void test_mq_write_read_works(void)
     TEST_ASSERT_EQUAL_MEMORY(outgoing_msg.payload, incoming_msg.payload, BLFS_SV_MESSAGE_SIZE_BYTES - 1);
 }
 
+void test_mq_clear_incoming_queue_works(void)
+{
+    // ? Gonna swap the two descriptors since the two queues otherwise do not
+    // ? overlap!
+    buselfs_state_t fake_buselfs_state;
+    blfs_mq_msg_t incoming_msg;
+    blfs_mq_msg_t outgoing_msg = { .opcode = 10, .payload = "Payload" };
+
+    errno = 0;
+    fake_buselfs_state.qd_incoming = mq_open(BLFS_SV_QUEUE_OUTGOING_NAME, O_RDONLY | O_NONBLOCK, BLFS_SV_QUEUE_PERM);
+
+    if(errno)
+        dzlog_fatal("EXCEPTION: mq_open failed: %s", strerror(errno));
+
+    assert(fake_buselfs_state.qd_incoming > 0);
+
+    blfs_read_input_queue(&fake_buselfs_state, &incoming_msg);
+
+    TEST_ASSERT_EQUAL_UINT_MESSAGE(0, incoming_msg.opcode, "(initial sanity check failed?!)");
+
+    blfs_write_output_queue(buselfs_state, &outgoing_msg, BLFS_SV_MESSAGE_DEFAULT_PRIORITY);
+
+    blfs_clear_incoming_queue(&fake_buselfs_state);
+
+    blfs_read_input_queue(&fake_buselfs_state, &incoming_msg);
+
+    TEST_ASSERT_EQUAL_UINT_MESSAGE(0, incoming_msg.opcode, "(queue was not empty)");
+}
+
 void test_adding_and_evicting_from_the_keycache_works_as_expected(void)
 {
     free(buselfs_state->backstore);
@@ -2137,23 +2166,33 @@ void test_strongbox_works_when_aggressive(void)
     uint32_t nugget_size = buselfs_state->backstore->nugget_size_bytes;
     blfs_mq_msg_t swap_cmd_msg = { .opcode = 1 };
 
-    uint8_t in_buffer1[nugget_size / 2];
+    uint8_t out_buffer[nugget_size / 2];
 
-    memset(in_buffer1,  0x01, sizeof in_buffer1);
+    memset(out_buffer,  0x01, sizeof out_buffer);
 
     blfs_nugget_metadata_t * meta[BLFS_SWAP_AGGRESSIVENESS] = { 0 };
 
     for(size_t i = 0; i < BLFS_SWAP_AGGRESSIVENESS; ++i)
     {
         meta[i] = blfs_open_nugget_metadata(buselfs_state->backstore, i);
-        TEST_ASSERT_EQUAL_UINT8_MESSAGE(buselfs_state->primary_cipher->enum_id, meta[i]->cipher_ident, "(meta didn't match primary cipher id");
+        TEST_ASSERT_EQUAL_UINT8_MESSAGE(
+            buselfs_state->primary_cipher->enum_id,
+            meta[i]->cipher_ident,
+            "(sanity check: meta didn't match primary cipher id)"
+        );
     }
 
     blfs_write_output_queue(&fake_state, &swap_cmd_msg, BLFS_SV_MESSAGE_DEFAULT_PRIORITY);
-    buse_write(in_buffer1, sizeof in_buffer1, 0, buselfs_state);
+    buse_write(out_buffer, sizeof out_buffer, 0, buselfs_state);
 
     for(size_t i = 0; i < BLFS_SWAP_AGGRESSIVENESS; ++i)
-        TEST_ASSERT_EQUAL_UINT8_MESSAGE(buselfs_state->swap_cipher->enum_id, meta[i]->cipher_ident, "(meta didn't match primary cipher id");
+    {
+        TEST_ASSERT_EQUAL_UINT8_MESSAGE(
+            buselfs_state->swap_cipher->enum_id,
+            meta[i]->cipher_ident,
+            "(meta didn't match primary cipher id)"
+        );
+    }
 }
 
 /***void test_usecase_uc_secure_regions(void)

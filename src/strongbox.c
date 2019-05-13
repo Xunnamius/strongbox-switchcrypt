@@ -571,6 +571,17 @@ void blfs_initialize_queues(buselfs_state_t * buselfs_state)
     buselfs_state->qd_outgoing = blfs_open_queue(BLFS_SV_QUEUE_OUTGOING_NAME, 1);
 }
 
+void blfs_clear_incoming_queue(buselfs_state_t * buselfs_state)
+{
+    IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
+
+    blfs_mq_msg_t incoming_msg;
+
+    do { blfs_read_input_queue(buselfs_state, &incoming_msg); } while(incoming_msg.opcode != 0);
+
+    IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
+}
+
 void blfs_read_input_queue(buselfs_state_t * buselfs_state, blfs_mq_msg_t * message)
 {
     uint8_t incoming_buffer[BLFS_SV_MESSAGE_SIZE_BYTES];
@@ -2366,6 +2377,7 @@ buselfs_state_t * strongbox_main_actual(int argc, char * argv[], char * blockdev
     /* Setup access to POSIX message queues early */
 
     blfs_initialize_queues(buselfs_state);
+    blfs_clear_incoming_queue(buselfs_state);
 
     /* Initialize merkle tree */
 

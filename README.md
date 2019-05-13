@@ -5,7 +5,7 @@ including how to build strongboxctl and how swap_mirrored strategy affects
 everything)  
 // TODO: how much extra memory would it actually take to eliminate nuggets and  
 // TODO: just use flakes?  
-(TODO: the cipher selection logic [especially while mirrored] is kinda spaghetti)
+(TODO: make sbctl, make strongboxctl)
 
 This is a complete rewrite of the old buselogfs code. This is a Buse + Chacha20
 + Poly1305 + LFS encrypted filesystem. It uses Argon2 as its KDF. Featured in
