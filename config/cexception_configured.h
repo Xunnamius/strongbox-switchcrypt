@@ -223,6 +223,7 @@ do {                                                                            
 #define EXCEPTION_FAILED_TO_OPEN_IQUEUE                 0x3DU
 
 // Outgoing message queue descriptor acquisition failed
+// ! You may not have permission to access the queues. Try sudo!
 #define EXCEPTION_FAILED_TO_OPEN_OQUEUE                 0x3EU
 
 // mq_receive failed
