@@ -290,6 +290,8 @@ $(DEP_TEST_TRGTS):
 	$(CC) $(IFLAGS) -MM -MP -E -MF $@.tmp -MT $(patsubst %.d,%,$@) $(TEST_ROOT)/$(patsubst %.d,%.c,$@)
 	mv -f $@.tmp $@
 
+sbctl: strongboxctl
+
 # Include dependency Makefiles
 
 include $(wildcard $(DEP_TEST_TRGTS))
