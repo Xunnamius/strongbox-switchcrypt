@@ -228,7 +228,7 @@ do {                                                                            
 // mq_receive failed
 #define EXCEPTION_QUEUE_RECEIVE_FAILED                  0x3FU
 
-// mq_send failed
+// mq_send failed (is the queue full?)
 #define EXCEPTION_QUEUE_SEND_FAILED                     0x40U
 
 // A strange opcode-related issue occurred (wtf?)
