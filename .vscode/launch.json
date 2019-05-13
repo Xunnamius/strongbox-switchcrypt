@@ -7,38 +7,35 @@
         {
             "type": "gdb",
             "request": "launch",
-            "name": "playground@examplehost",
-            "target": "./test_x",
+            "name": "gdb:test_strongbox@morty",
+            "target": "./test_strongbox",
             "cwd": "${workspaceRoot}/build",
             "ssh": {
                 "forwardX11": true,
-                "host": "someip",
-                "cwd": "/home/yourusername/repos/research/someproject/build",
-                "keyfile": "Z:/ssh/somekey",
-                "port": someport,
-                "user": "yourusername",
+                "host": "192.168.115.5",
+                "cwd": "/gitr/research/buselfs/build",
+                "keyfile": "Z:/ssh/xunnmorty_vscode_rsa",
+                "port": 1111,
+                "user": "xunnamius",
                 "x11host": "localhost",
                 "x11port": 6000
             }
-        }
-
-        ...
-
+        },
         {
-            "name": "playground@examplehost",
-            "program": "/home/yourusername/repos/research/someproject/build/test_x",
+            "name": "cppgdb:test_strongbox@morty",
+            "program": "/gitr/research/buselfs/build/test_strongbox",
             "type": "cppdbg",
             "request": "launch",
             "args": [],
             "stopAtEntry": false,
-            "cwd": "/home/yourusername/repos/research/someproject/build",
+            "cwd": "/gitr/research/buselfs/build",
             "environment": [],
             "externalConsole": true,
             "pipeTransport": {
                 "pipeCwd": "",
-                "pipeProgram": "C:/path/to/ssh",
+                "pipeProgram": "G:/OneDrive/linux/vsc-pipe.bat",
                 "debuggerPath": "/usr/bin/gdb",
-                "pipeArgs": [ ... ]
+                "pipeArgs": []
             },
             "MIMode": "gdb",
             "setupCommands": [
@@ -58,7 +55,7 @@
                 "programOutput": true
             },
             "sourceFileMap": {
-                "remote/path": "Z:/local/path",
+                "/gitr": "Z:/gitr",
             }
         }
     ]
