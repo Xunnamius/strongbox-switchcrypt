@@ -168,10 +168,17 @@ $(SCARECROWS): ;
 # Workhorse targets
 
 $(EXENAME): $(SRC_FILES) $(VENDR_FILES)
+ifeq "$(GLOBAL_DEBUG_MODE)" "0"
 	$(CC) $(CFLAGS) $(IFLAGS) $(DEBUG_COMPILE_FLAG) -o $(EXENAME) $(EXESRC) \
         $(call distinct,$(notdir $(SRC_FILES)) $(VENDR_FILES)) \
         $(EXPLICIT_LIBS) \
         $(LDFLAGS)
+else
+	$(CC) $(CFLAGS) $(IFLAGS) $(DEBUG_MAKE_FLAGS) $(DEBUG_COMPILE_FLAG) -o $(EXENAME) $(EXESRC) \
+        $(call distinct,$(notdir $(SRC_FILES)) $(VENDR_FILES)) \
+        $(EXPLICIT_LIBS) \
+        $(LDFLAGS)
+endif
 	ln -sf strongbox sb
 
 $(SRC_FILES) $(VENDR_FILES): %.o: %.c %.h
