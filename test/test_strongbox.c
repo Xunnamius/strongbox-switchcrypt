@@ -185,6 +185,7 @@ void tearDown(void)
 void test_mq_empty_read_works(void)
 {
     blfs_mq_msg_t msg = { .opcode = 1 };
+    blfs_clear_incoming_queue(buselfs_state);
     blfs_read_input_queue(buselfs_state, &msg);
     TEST_ASSERT_EQUAL_UINT(0, msg.opcode);
 }
@@ -200,10 +201,10 @@ void test_mq_write_read_works(void)
     if(errno)
         dzlog_fatal("EXCEPTION: mq_open failed: %s", strerror(errno));
 
-    assert(fake_buselfs_state.qd_incoming > 0);
+    blfs_clear_incoming_queue(buselfs_state);
 
     blfs_mq_msg_t outgoing_msg = { .opcode = 10, .payload = "Payload" };
-    blfs_write_output_queue(buselfs_state, &outgoing_msg, BLFS_SV_MESSAGE_DEFAULT_PRIORITY);
+    blfs_write_output_queue(buselfs_state, &outgoing_msg, BLFS_SV_MESSAGE_DEFAULT_PRIORITY + 1);
 
     blfs_mq_msg_t incoming_msg;
     blfs_read_input_queue(&fake_buselfs_state, &incoming_msg);
@@ -226,13 +227,9 @@ void test_mq_clear_incoming_queue_works(void)
     if(errno)
         dzlog_fatal("EXCEPTION: mq_open failed: %s", strerror(errno));
 
-    assert(fake_buselfs_state.qd_incoming > 0);
-
-    blfs_read_input_queue(&fake_buselfs_state, &incoming_msg);
-
-    TEST_ASSERT_EQUAL_UINT_MESSAGE(0, incoming_msg.opcode, "(initial sanity check failed?!)");
-
-    blfs_write_output_queue(buselfs_state, &outgoing_msg, BLFS_SV_MESSAGE_DEFAULT_PRIORITY);
+    blfs_write_output_queue(buselfs_state, &outgoing_msg, BLFS_SV_MESSAGE_DEFAULT_PRIORITY + 1);
+    blfs_write_output_queue(buselfs_state, &outgoing_msg, BLFS_SV_MESSAGE_DEFAULT_PRIORITY + 1);
+    blfs_write_output_queue(buselfs_state, &outgoing_msg, BLFS_SV_MESSAGE_DEFAULT_PRIORITY + 1);
 
     blfs_clear_incoming_queue(&fake_buselfs_state);
 
@@ -1610,7 +1607,7 @@ static void swap_readwrite_quicktest()
 
     // * (#1) Swap ciphers
     IFDEBUG(dzlog_notice("-- swap #1 --"));
-    blfs_write_output_queue(&fake_state, &swap_cmd_msg, BLFS_SV_MESSAGE_DEFAULT_PRIORITY);
+    blfs_write_output_queue(&fake_state, &swap_cmd_msg, BLFS_SV_MESSAGE_DEFAULT_PRIORITY + 1);
 
     memset(out_buffer1, 0x04, sizeof out_buffer1);
 
@@ -1628,7 +1625,7 @@ static void swap_readwrite_quicktest()
 
     // * (#2) Swap ciphers again
     IFDEBUG(dzlog_notice("-- swap #2 --"));
-    blfs_write_output_queue(&fake_state, &swap_cmd_msg, BLFS_SV_MESSAGE_DEFAULT_PRIORITY);
+    blfs_write_output_queue(&fake_state, &swap_cmd_msg, BLFS_SV_MESSAGE_DEFAULT_PRIORITY + 1);
 
     // Write and read again, this time partially in the first and third nuggets
     IFDEBUG(dzlog_notice("(write)"));
@@ -1647,7 +1644,7 @@ static void swap_readwrite_quicktest()
 
     // * (#3) Swap ciphers again
     IFDEBUG(dzlog_notice("-- swap #3 --"));
-    blfs_write_output_queue(&fake_state, &swap_cmd_msg, BLFS_SV_MESSAGE_DEFAULT_PRIORITY);
+    blfs_write_output_queue(&fake_state, &swap_cmd_msg, BLFS_SV_MESSAGE_DEFAULT_PRIORITY + 1);
 
     // Write and read again, this time partially in the third nugget
     IFDEBUG(dzlog_notice("(write)"));
@@ -1666,7 +1663,7 @@ static void swap_readwrite_quicktest()
 
     // * (#4) Swap ciphers once more
     IFDEBUG(dzlog_notice("-- swap #4 --"));
-    blfs_write_output_queue(&fake_state, &swap_cmd_msg, BLFS_SV_MESSAGE_DEFAULT_PRIORITY);
+    blfs_write_output_queue(&fake_state, &swap_cmd_msg, BLFS_SV_MESSAGE_DEFAULT_PRIORITY + 1);
 
     memset(out_buffer3, 0x06, sizeof out_buffer3);
 
@@ -1684,7 +1681,7 @@ static void swap_readwrite_quicktest()
 
     // * (#5) Swap ciphers one final time
     IFDEBUG(dzlog_notice("-- swap #5 --"));
-    blfs_write_output_queue(&fake_state, &swap_cmd_msg, BLFS_SV_MESSAGE_DEFAULT_PRIORITY);
+    blfs_write_output_queue(&fake_state, &swap_cmd_msg, BLFS_SV_MESSAGE_DEFAULT_PRIORITY + 1);
 
     memset(out_buffer1, 0x04, sizeof out_buffer1);
 
@@ -1880,7 +1877,7 @@ static void mirrored_readwrite_quicktest(int normal_ciphers)
 
     // * (#1) Swap is active cipher
     IFDEBUG(dzlog_notice("-- swap #1 (S) --"));
-    blfs_write_output_queue(&fake_state, &swap_cmd_msg, BLFS_SV_MESSAGE_DEFAULT_PRIORITY);
+    blfs_write_output_queue(&fake_state, &swap_cmd_msg, BLFS_SV_MESSAGE_DEFAULT_PRIORITY + 1);
 
     memset(out_buffer1, 0xAA, sizeof out_buffer1);
 
@@ -1889,7 +1886,7 @@ static void mirrored_readwrite_quicktest(int normal_ciphers)
 
     // * (#2) Primary is active cipher
     IFDEBUG(dzlog_notice("-- swap #2 (P) --"));
-    blfs_write_output_queue(&fake_state, &swap_cmd_msg, BLFS_SV_MESSAGE_DEFAULT_PRIORITY);
+    blfs_write_output_queue(&fake_state, &swap_cmd_msg, BLFS_SV_MESSAGE_DEFAULT_PRIORITY + 1);
 
     // Verify read
     TEST_ASSERT_EQUAL_MEMORY(in_buffer1, out_buffer1, sizeof in_buffer1);
@@ -1909,7 +1906,7 @@ static void mirrored_readwrite_quicktest(int normal_ciphers)
 
     // * (#3) Swap is active cipher
     IFDEBUG(dzlog_notice("-- swap #3 (S) --"));
-    blfs_write_output_queue(&fake_state, &swap_cmd_msg, BLFS_SV_MESSAGE_DEFAULT_PRIORITY);
+    blfs_write_output_queue(&fake_state, &swap_cmd_msg, BLFS_SV_MESSAGE_DEFAULT_PRIORITY + 1);
 
     memset(out_buffer1, 0xEE, sizeof out_buffer1);
 
@@ -1935,7 +1932,7 @@ static void mirrored_readwrite_quicktest(int normal_ciphers)
 
     // * (#4) Primary is active cipher
     IFDEBUG(dzlog_notice("-- swap #4 (P) --"));
-    blfs_write_output_queue(&fake_state, &swap_cmd_msg, BLFS_SV_MESSAGE_DEFAULT_PRIORITY);
+    blfs_write_output_queue(&fake_state, &swap_cmd_msg, BLFS_SV_MESSAGE_DEFAULT_PRIORITY + 1);
 
     memset(out_buffer1, 0xFF, sizeof out_buffer1);
 
@@ -1958,7 +1955,7 @@ static void mirrored_readwrite_quicktest(int normal_ciphers)
 
     // * (#5) Swap is active cipher
     IFDEBUG(dzlog_notice("-- swap #5 --"));
-    blfs_write_output_queue(&fake_state, &swap_cmd_msg, BLFS_SV_MESSAGE_DEFAULT_PRIORITY);
+    blfs_write_output_queue(&fake_state, &swap_cmd_msg, BLFS_SV_MESSAGE_DEFAULT_PRIORITY + 1);
 
     // Write and read again, this time partially in the third nugget
     IFDEBUG(dzlog_notice("(write 5)"));
@@ -1969,7 +1966,7 @@ static void mirrored_readwrite_quicktest(int normal_ciphers)
 
     // * (#6) Primary is active cipher
     IFDEBUG(dzlog_notice("-- swap #6 --"));
-    blfs_write_output_queue(&fake_state, &swap_cmd_msg, BLFS_SV_MESSAGE_DEFAULT_PRIORITY);
+    blfs_write_output_queue(&fake_state, &swap_cmd_msg, BLFS_SV_MESSAGE_DEFAULT_PRIORITY + 1);
 
     memset(out_buffer3, 0x06, sizeof out_buffer3);
 
@@ -1983,7 +1980,7 @@ static void mirrored_readwrite_quicktest(int normal_ciphers)
 
     // * (#7) Swap is active cipher
     IFDEBUG(dzlog_notice("-- swap #7 --"));
-    blfs_write_output_queue(&fake_state, &swap_cmd_msg, BLFS_SV_MESSAGE_DEFAULT_PRIORITY);
+    blfs_write_output_queue(&fake_state, &swap_cmd_msg, BLFS_SV_MESSAGE_DEFAULT_PRIORITY + 1);
 
     memset(out_buffer1, 0x04, sizeof out_buffer1);
 
@@ -2182,7 +2179,7 @@ void test_strongbox_works_when_aggressive(void)
         );
     }
 
-    blfs_write_output_queue(&fake_state, &swap_cmd_msg, BLFS_SV_MESSAGE_DEFAULT_PRIORITY);
+    blfs_write_output_queue(&fake_state, &swap_cmd_msg, BLFS_SV_MESSAGE_DEFAULT_PRIORITY + 1);
     buse_write(out_buffer, sizeof out_buffer, 0, buselfs_state);
 
     for(size_t i = 0; i < BLFS_SWAP_AGGRESSIVENESS; ++i)
