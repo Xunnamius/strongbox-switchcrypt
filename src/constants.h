@@ -8,14 +8,14 @@
 #define BLFS_CURRENT_VERSION 600U
 #define BLFS_LEAST_COMPAT_VERSION 600U
 
-// ! these would likely be non-static irl
+// ! These would likely be non-static irl
 #define BLFS_RPMB_KEY "thirtycharactersecurecounterkey!"
 #define BLFS_RPMB_DEVICE "/dev/mmcblk0rpmb"
 
 #define BLFS_CONFIG_ZLOG "../config/zlog_conf.conf"
 
-// ! when adding new command line flags, don't forget to update this!
-#define MAX_NUM_ARGC 14
+// ! When adding new command line flags, don't forget to update this!
+#define MAX_NUM_ARGC 20
 
 #define VECTOR_GROWTH_FACTOR    2
 #define VECTOR_INIT_SIZE        10
