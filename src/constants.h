@@ -300,7 +300,7 @@ typedef enum usecase_e {
 #define BLFS_SV_MESSAGE_DEFAULT_PRIORITY        0 // uint; must be < ~30k. 0 - 30 recommended
 
 #define BLFS_NUM_ACTIVE_CIPHERS                 2 // will probably never not be 2
-#define BLFS_SWAP_AGGRESSIVENESS                10U // unit is "nuggets," might want to keep this small...
+#define BLFS_SWAP_AGGRESSIVENESS                1U // unit is "nuggets," might want to keep this small...
 
 /////////
 // MMC //
