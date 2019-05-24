@@ -220,6 +220,7 @@ do {                                                                            
 #define EXCEPTION_TOO_FEW_FLAKES_PER_NUGGET             0x3CU
 
 // Incoming message queue descriptor acquisition failed
+// ! You may not have permission to access the queues. Try sudo!
 #define EXCEPTION_FAILED_TO_OPEN_IQUEUE                 0x3DU
 
 // Outgoing message queue descriptor acquisition failed
