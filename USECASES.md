@@ -19,6 +19,10 @@ so) cipher in exchange for a stronger security guarantee.
 The user will not experience a significant performance hit when perusing the
 data if the bulk of it is encrypted using a high performance cipher.
 
+Terminology: "a VSR" is a region of a file that is crypted with the swap cipher
+cipher than the remaining majority of the file, which is crypted using the
+primary cipher.
+
 Benefit: we can "future-proof" our encrypted highly sensitive data against more
 powerful future attacks/less trustworthy ciphers while preserving the
 performance win from using a faster less secure cipher.
@@ -27,17 +31,33 @@ performance win from using a faster less secure cipher.
 
 - Where to store the VSRs?
 
-> The data can be stored in "reserved nuggets" (reducing the available space on
-> the drive by some amount proportional to the total number of VSRs in the
-> filesystem.
+> The data can be stored in "reserved nuggets" which reduce the available space
+on the drive by some amount proportional to the total number of VSRs in the
+filesystem.
+
+- What do VSRs have to do with our cipher switching strategies?
+
+> Using a slightly modified version of the mirrored cipher switching strategy,
+we can effectively "reserve" a portion of the backing store for the VSRs while
+the remaining space is used for normal data encryption.
 
 - How to communicate intent down the stack?
 
-> We've decided to use POSIX message queues (IPC) for this. In fact, some form
-of the mirrored cipher strategy (but with special write rules rather than dumb
-mirroring) seems well suited to this purpose, where the primary cipher on
-partition 1 is fast and weak while the swap cipher on partition 2 is slow and
-strong.
+> In an ideal implementation, the low level I/O API (i.e. `write()` in C) would
+> be modified to include an extra security parameter so that VSR writes could be
+> distinguished from normal writes to StrongBox. Reads would function as normal
+> except when an attempt is made to read a VSR; in this case, the read would be
+> transparently mapped to the appropriate location on disk where the VSR resides
+> and the data decrypted using the appropriate cipher.
+>
+> Unfortunately, the BUSE subsystem on which StrongBox is based does not support
+> aberrant low level I/O requests natively, making a literal implementation an
+> unattractive prospect. Hence, for our purposes, we use POSIX message queues
+> (IPC) to communicate our security parameter down the stack. In fact, some form
+> of the mirrored cipher strategy (but with special write rules rather than dumb
+> mirroring) seems well suited to this purpose, where the primary cipher on
+> partition 1 is fast and weak while the swap cipher (for the VSRs) on partition
+> 2 is slow and strong.
 
 ### Tradeoffs
 
@@ -45,41 +65,49 @@ strong.
   number of VSR-enabled files
 
 > This is because the variable security regions of various files are aggregated
-> and encrypted together within the same set of reserved nuggets (the number of
-> nuggets reserved in this way is currently 50%).
+> and encrypted together within the same set of reserved nuggets. The number of
+> nuggets reserved in this way is currently 50% of total available nuggets via a
+> slightly modified version of the mirrored swap strategy.
 
-> The system can also be implemented such that variable security regions are
-> assigned to their own nuggets that are interspersed with normal nuggets. The
-> wasted space (below) might be more of a problem in this scenario. Further,
-> there'll have to be some sort of API POSIX MQ call that corresponds to
-> reads/writes to make something like this work well. In this version, the
-> mirrored swap strategy is not ideal.
+- Slower than exclusively using the weakest cipher to crypt a file's nuggets,
+  but the VSR content is stored more securely.
 
-- Slower than exclusively using the weakest cipher to crypt the file's nuggets,
-  but it is more secure.
-
-- Weaker security guarantees than using the strongest cipher to crypt the file's
-  contents, but it takes longer to perform I/O on the file.
+- Weaker security guarantees than using the strongest cipher to crypt the
+  majority of a file's contents, but there is less I/O latency when interacting
+  with said file.
 
 ### Proto Threat Model
 
-- Encrypted data becomes more resilient to targeted attacks, especially if the
-  user is concerned about the security properties of a particular cipher, or
-  feel that certain potentially powerful adversaries (i.e. nation-state
+- Encrypted data at rest becomes more resilient to targeted attacks, especially
+  if the user is concerned about the security properties of a particular cipher,
+  or feel that certain potentially powerful adversaries (i.e. nation-state
   adversaries) might have means to compromise a reduced round cipher through
-  brute force, side channel, or etc.
-
-- (TODO: expand this more)
+  brute force, side channel, or etc. Freestyle, for instance, is more resilient
+  to offline brute force attacks thanks to output randomization and the like but
+  is much slower in practice than something like ChaCha20.
 
 ### Related Work
 
-- TODO: add variable encryption papers here (note to self: they're on your desk)
+- Goodman et al. `An Energy/Security Scalable Encryption Processor Using an
+  Embedded Variable Voltage DC/DC Converter`
+- Batina et al. `Energy, performance, area versus security trade-offs for stream
+  ciphers`
 
 ### Progress
 
- - [x] Implementation exists
-    - [ ] Implementation completed
- - [ ] Results exists
+- Implementation exists based on the mirrored swap strategy
+- An implementation based on forward and aggressive swap strategies is theorized
+- Current results
+    - Read operations to non-VSR regions match StrongBox baseline performance
+    - Write operations to non-VSR regions match StrongBox baseline performance
+    - Read operations to VSR regions match StrongBox baseline performance when
+      using an equivalent cipher
+    - Write operations to VSR regions match StrongBox baseline performance when
+      using an equivalent cipher
+    - Whole file I/O is slower than or equal to baseline StrongBox whole file
+      I/O
+        - This depends on the proportion of VSR-protected data in a file
+          compared to non-VSR data
 
 ## Balancing Security Goals and the Current Energy Budget
 
@@ -96,35 +124,43 @@ should be made to behave in a manner that is energy-aware as well.
 Our goal is to use as little energy as possible (while reasonably preserving
 filesystem performance) until the energy budget changes or the device dies.
 
-Benefit: With cipher switching, the filesystem can react dynamically to the
-system's total energy budget while still aiming for the most performant
+Benefit: When constantly streaming data, e.g. using DLNA to stream a high
+resolution video wirelessly to a TV on the same network, the ability to adapt to
+time-varying data rates and QoS requirements while maintaining confidentiality
+and integrity guarantees is paramount. This can be done by trading off a set of
+security guarantees with respect to the energy spent crypting each bit. With
+cipher switching, the filesystem can react dynamically to the system's total
+energy budget while still aiming for the most performant (least latency)
 configuration.
 
 ### Issues
 
 - Total benefit will depend on which swap strategy is used to implement this
+   - Candidate strategies are: forward and aggressive
 
 - Total benefit is likely workload dependent
     - Read dominant vs write dominant
     - Which nuggets are hit the most during workload I/O
         - Referred to below as **hot nuggets** and **hot flakes**
-    - Et cetera
 
 - Why not default to the highest/lowest security cipher?
 
-> Because we're also trying to optimize for high performance/low latency and low
-> energy use
+> Because we are trying to optimize for high performance/low latency at the same
+> time we are optimizing for low energy use. These are competing concerns.
 
 - Are gains eaten by the switching process?
 
-> Depends on the cipher switching strategy used
+> ~~Depends on the cipher switching strategy used~~ It is workload dependent. We
+> observe acceptable performance near baseline for workloads that end up with
+> many hot nuggets, especially if they are read-heavy; for workloads that touch
+> a nugget once or twice and then never again we observe a decided performance
+> degradation.
 
-> The mirrored strategy seems to lend itself well here, but any of the there
-implemented strategies would work.
+- How to communicate energy-efficiency intent down the stack?
 
-- How to communicate intent down the stack?
-
-> We've decided to use POSIX message queues (IPC) for this.
+> We have decided to use POSIX message queues (IPC) for this. See
+> `uc_secure_regions` section above for more details on why we favor this over
+> an implementation that explicitly modifies the low level I/O API.
 
 ### Tradeoffs
 
@@ -137,19 +173,64 @@ implemented strategies would work.
 ### Proto Threat Model
 
 - Confidentiality and integrity against active, passive, and offline/brute force
-  attacks against FDE
+  attacks against FDE with respect to energy consumption
+
+### Related Work
+
+- Potlapally et al. `Analyzing the Energy Consumption of Security Protocols`
+- Goodman et al. `An Energy/Security Scalable Encryption Processor Using an
+  Embedded Variable Voltage DC/DC Converter`
+- Batina et al. `Energy, performance, area versus security trade-offs for stream
+  ciphers`
+
+### Progress
+
+- Implementation exists based on the forward and aggressive swap strategies
+- The relationship between energy use and latency is linear. Hence, a reduction
+  in latency translates directly into a reduction in energy use. A cipher that
+  does not exhibit this behavior would be interesting to behold.
+- Current results
+    - ???
+
+## Lockdown: Securing Device Data Under Duress
+
+[StrongBox UC flag: `uc_lockdown`]
+
+Nation-state and other adversaries have truly extensive compute resources at
+their disposal, as well as knowledge of side-channels and access to technology
+like q-bit computers.
+
+Suppose one were attempting to re-enter a country through a border checkpoint
+after visiting family when one is stopped. Your mobile device is confiscated and
+placed in custody of the State. In such a scenario, it would be useful if the
+device could swap itself into a more secure state *as quickly as possible*.
+
+Benefit: greater security guarantee achieved using the highest security
+encryption available versus powerful adversaries with unknown means and motive.
+
+### Issues
+
+- How do we delete the less secure region of the disk both quickly and
+  effectively? TRIM?
+
+### Tradeoffs
+
+- (TODO)
+
+### Proto Threat Model
 
 - (TODO: expand this more)
 
 ### Related Work
 
-- (TODO)
+- (TODO: is there any?)
 
 ### Progress
 
- - [x] Implementation exists
-    - [ ] Implementation completed
- - [ ] Results exists
+ - Implementation exists based on the vanilla mirrored strategy
+ - Results on the mirrored swap strategy using with-cipher-switching (WCS) tests
+   are in
+      - Filebench results ???
 
 ## Detecting and Responding to End-of-Life Slowdown in Solid State Drives
 
@@ -172,7 +253,7 @@ but less secure cipher.
 
 - How to communicate down the stack that EOL slowdown was detected?
 
-> We've decided to use POSIX message queues (IPC) for this.
+> We have decided to use POSIX message queues (IPC) for this.
 
 ### Tradeoffs
 
@@ -190,47 +271,7 @@ but less secure cipher.
 
 ### Progress
 
- - [ ] Implementation exists
-    - [ ] Implementation completed
- - [ ] Results exists
-
-## Lockdown: Securing Device Data Under Duress
-
-[StrongBox UC flag: `uc_lockdown`]
-
-Nation-state and other adversaries have truly extensive compute resources at
-their disposal, as well as knowledge of side-channels and access to technology
-like q-bit computers.
-
-Suppose one were attempting to re-enter a country through a border checkpoint
-after visiting family when one is stopped. Your mobile device is confiscated and
-placed in custody of the State. In such a scenario, it would be useful if the
-device could swap itself into a more secure state *as quickly as possible*.
-
-Benefit: greater security guarantee achieved using the highest security
-encryption available versus powerful adversaries with unknown means and motive.
-
-### Issues
-
-- (TODO)
-
-### Tradeoffs
-
-- (TODO)
-
-### Proto Threat Model
-
-- (TODO: expand this more)
-
-### Related Work
-
-- (TODO)
-
-### Progress
-
- - [ ] Implementation exists
-    - [ ] Implementation completed
- - [ ] Results exists
+ - Implementation exists
 
 ## Automated location-based Security versus Performance Tradeoff
 
@@ -246,57 +287,4 @@ these regions for performance or other reasons.
 Benefit: the filesystem can become more or less performance/energy efficient
 depending on where it determines it is.
 
-### Issues
-
-- Locations can be faked?
-
-### Tradeoffs
-
-- (TODO)
-
-### Proto Threat Model
-
-- (TODO)
-
-### Related Work
-
-- (TODO)
-
-### Progress
-
- - [ ] Implementation exists
-    - [ ] Implementation completed
- - [ ] Results exists
-
-## ???
-
-[StrongBox UC flag: `uc_???`]
-
-???
-
-### Issues
-
-- ???
-
-### Tradeoffs
-
-- ???
-
-### Proto Threat Model
-
-- ???
-
-### Related Work
-
-- ???
-
-### Progress
-
- - [ ] Implementation exists
-    - [ ] Implementation completed
- - [ ] Results exists
-
-# Combinations?
-
-Are there any combinations of the aforesaid that might make for an interesting
-use case scenario?
+This usecase is not being actively explored at the moment.
