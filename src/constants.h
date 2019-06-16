@@ -5,8 +5,8 @@
 // Configurable //
 //////////////////
 
-#define BLFS_CURRENT_VERSION 600U
-#define BLFS_LEAST_COMPAT_VERSION 600U
+#define BLFS_CURRENT_VERSION 700U
+#define BLFS_LEAST_COMPAT_VERSION 700U
 
 // ! These would likely be non-static irl
 #define BLFS_RPMB_KEY "thirtycharactersecurecounterkey!"
@@ -74,11 +74,11 @@ typedef enum swappable_cipher_e {
 
 typedef enum swap_strategy_e {
     swap_default        = 1,
-    swap_immediate      = 2,
-    swap_forward        = 3,
-    swap_aggressive     = 4,
-    swap_opportunistic  = 5,
-    swap_mirrored       = 6,
+    swap_0_forward      = 2,
+    swap_1_forward      = 3,
+    swap_2_forward      = 4,
+    swap_mirrored       = 5,
+    swap_selective      = 6,
     swap_disabled       = 7,
     swap_not_impl       = 8, // ! Make sure this is always the last one
 } swap_strategy_e;
@@ -89,9 +89,8 @@ typedef enum usecase_e {
     uc_fixed_energy         = 3,
     uc_offset_slowdown      = 4,
     uc_lockdown             = 5,
-    uc_auto_locations       = 6,
-    uc_disabled             = 7,
-    uc_no_impl              = 8, // ! Make sure this is always the last one
+    uc_disabled             = 6,
+    uc_no_impl              = 7, // ! Make sure this is always the last one
 } usecase_e;
 
 #include <string.h> /* strdup() */
@@ -300,7 +299,6 @@ typedef enum usecase_e {
 #define BLFS_SV_MESSAGE_DEFAULT_PRIORITY        0 // uint; must be < ~30k. 0 - 30 recommended
 
 #define BLFS_NUM_ACTIVE_CIPHERS                 2 // will probably never not be 2
-#define BLFS_SWAP_AGGRESSIVENESS                1U // unit is "nuggets," might want to keep this small...
 
 /////////
 // MMC //

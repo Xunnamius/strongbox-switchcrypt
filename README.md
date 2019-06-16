@@ -1,7 +1,7 @@
 # StrongBox (internally: BuseLFS)
 
 (TODO: update the documentation to reflect recent changes as of version 600,
-including how to build strongboxctl and how swap_mirrored strategy affects
+including how to build strongboxctl and how mirror/selective strategies affect
 everything)  
 // TODO: how much extra memory would it actually take to eliminate nuggets and  
 // TODO: just use flakes?  
@@ -106,11 +106,11 @@ by [floodyberry](https://github.com/floodyberry/chacha-opt).
 Swap strategies available for `--swap-strategy` are:
 
 - `swap_default` (this is synonymous with `swap_disabled`)
-- `swap_immediate` (this is not implemented)
-- `swap_forward`
-- `swap_aggressive`
-- `swap_opportunistic`
+- `swap_0_forward`
+- `swap_1_forward`
+- `swap_2_forward`
 - `swap_mirrored`
+- `swap_selective`
 - `swap_disabled`
 
 You can see these options defined in [constants.h](src/constants.h).

@@ -219,20 +219,20 @@ swap_strategy_e blfs_ident_string_to_strategy(const char * ss_str)
     if(strcmp(ss_str, "swap_default") == 0)
         swap_strategy = swap_default;
 
-    else if(strcmp(ss_str, "swap_immediate") == 0)
-        swap_strategy = swap_immediate;
+    else if(strcmp(ss_str, "swap_0_forward") == 0)
+        swap_strategy = swap_0_forward;
 
-    else if(strcmp(ss_str, "swap_forward") == 0)
-        swap_strategy = swap_forward;
+    else if(strcmp(ss_str, "swap_1_forward") == 0)
+        swap_strategy = swap_1_forward;
 
-    else if(strcmp(ss_str, "swap_aggressive") == 0)
-        swap_strategy = swap_aggressive;
-
-    else if(strcmp(ss_str, "swap_opportunistic") == 0)
-        swap_strategy = swap_opportunistic;
+    else if(strcmp(ss_str, "swap_2_forward") == 0)
+        swap_strategy = swap_2_forward;
 
     else if(strcmp(ss_str, "swap_mirrored") == 0)
         swap_strategy = swap_mirrored;
+
+    else if(strcmp(ss_str, "swap_selective") == 0)
+        swap_strategy = swap_selective;
 
     else if(strcmp(ss_str, "swap_disabled") == 0)
         swap_strategy = swap_disabled;

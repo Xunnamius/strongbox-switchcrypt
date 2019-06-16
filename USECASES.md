@@ -17,7 +17,9 @@ information would be encrypted using a less performant (sometimes *dramatically*
 so) cipher in exchange for a stronger security guarantee.
 
 The user will not experience a significant performance hit when perusing the
-data if the bulk of it is encrypted using a high performance cipher.
+data if the bulk of it is encrypted using a high performance cipher. Similarly,
+the more sensitive data regions are future-proofed and more resilient to
+attack.
 
 Terminology: "a VSR" is a region of a file that is crypted with the swap cipher
 cipher than the remaining majority of the file, which is crypted using the

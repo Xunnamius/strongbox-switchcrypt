@@ -1715,7 +1715,7 @@ void test_strongbox_can_cipher_switch1(void)
         "--swap-cipher",
         "sc_chacha8_neon",
         "--swap-strategy",
-        "swap_forward",
+        "swap_0_forward",
         "create",
         "device_actual-121"
     };
@@ -1740,7 +1740,7 @@ void test_strongbox_can_cipher_switch2(void)
         "--swap-cipher",
         "sc_freestyle_fast",
         "--swap-strategy",
-        "swap_forward",
+        "swap_0_forward",
         "create",
         "device_actual-122"
     };
@@ -1765,7 +1765,7 @@ void test_strongbox_can_cipher_switch3(void)
         "--swap-cipher",
         "sc_freestyle_secure",
         "--swap-strategy",
-        "swap_forward",
+        "swap_0_forward",
         "create",
         "device_actual-124"
     };
@@ -2012,7 +2012,7 @@ void test_strongbox_mirrored_swap_strategy_inits_properly(void)
         "--swap-strategy",
         "swap_mirrored",
         "create",
-        "device_actual-125-1"
+        "device_actual-125"
     };
 
     int argc = sizeof(argv_create1)/sizeof(argv_create1[0]);
@@ -2071,7 +2071,7 @@ void test_strongbox_works_when_mirrored1(void)
         "--swap-strategy",
         "swap_mirrored",
         "create",
-        "device_actual-125-2"
+        "device_actual-126"
     };
 
     int argc = sizeof(argv_create1)/sizeof(argv_create1[0]);
@@ -2097,7 +2097,7 @@ void test_strongbox_works_when_mirrored2(void)
         "--swap-strategy",
         "swap_mirrored",
         "create",
-        "device_actual-126"
+        "device_actual-127"
     };
 
     int argc = sizeof(argv_create1)/sizeof(argv_create1[0]);
@@ -2133,7 +2133,90 @@ void test_strongbox_works_when_mirrored3(void)
     mirrored_readwrite_quicktest(FALSE);
 }
 
-void test_strongbox_works_when_aggressive(void)
+static void selective_readwrite_quicktest()
+{
+    TEST_IGNORE_MESSAGE("IMPLEMENT ME!");
+}
+
+void test_strongbox_works_when_selective1(void)
+{
+    zlog_fini();
+
+    char * argv_create1[] = {
+        "progname",
+        "--default-password",
+        "--backstore-size",
+        "50",
+        "--cipher",
+        "sc_chacha20",
+        "--swap-cipher",
+        "sc_chacha8_neon",
+        "--swap-strategy",
+        "swap_selective",
+        "create",
+        "device_actual-136"
+    };
+
+    int argc = sizeof(argv_create1)/sizeof(argv_create1[0]);
+
+    buselfs_state = strongbox_main_actual(argc, argv_create1, blockdevice);
+
+    selective_readwrite_quicktest();
+}
+
+void test_strongbox_works_when_selective2(void)
+{
+    zlog_fini();
+
+    char * argv_create1[] = {
+        "progname",
+        "--default-password",
+        "--backstore-size",
+        "50",
+        "--cipher",
+        "sc_chacha20",
+        "--swap-cipher",
+        "sc_freestyle_fast",
+        "--swap-strategy",
+        "swap_selective",
+        "create",
+        "device_actual-137"
+    };
+
+    int argc = sizeof(argv_create1)/sizeof(argv_create1[0]);
+
+    buselfs_state = strongbox_main_actual(argc, argv_create1, blockdevice);
+
+    selective_readwrite_quicktest();
+}
+
+void test_strongbox_works_when_selective3(void)
+{
+    zlog_fini();
+
+    char * argv_create1[] = {
+        "progname",
+        "--default-password",
+        "--backstore-size",
+        "50",
+        "--cipher",
+        "sc_freestyle_fast",
+        "--swap-cipher",
+        "sc_freestyle_secure",
+        "--swap-strategy",
+        "swap_selective",
+        "create",
+        "device_actual-138"
+    };
+
+    int argc = sizeof(argv_create1)/sizeof(argv_create1[0]);
+
+    buselfs_state = strongbox_main_actual(argc, argv_create1, blockdevice);
+
+    selective_readwrite_quicktest(FALSE);
+}
+
+void test_strongbox_works_when_1aggressive(void)
 {
     zlog_fini();
 
@@ -2147,7 +2230,7 @@ void test_strongbox_works_when_aggressive(void)
         "--swap-cipher",
         "sc_chacha8_neon",
         "--swap-strategy",
-        "swap_aggressive",
+        "swap_1_forward",
         "create",
         "device_actual-129"
     };
@@ -2167,29 +2250,117 @@ void test_strongbox_works_when_aggressive(void)
 
     memset(out_buffer,  0x01, sizeof out_buffer);
 
-    blfs_nugget_metadata_t * meta[BLFS_SWAP_AGGRESSIVENESS] = { 0 };
+    blfs_nugget_metadata_t * meta[2] = {
+        blfs_open_nugget_metadata(buselfs_state->backstore, 1),
+        blfs_open_nugget_metadata(buselfs_state->backstore, 2)
+    };
 
-    for(size_t i = 0; i < BLFS_SWAP_AGGRESSIVENESS; ++i)
-    {
-        meta[i] = blfs_open_nugget_metadata(buselfs_state->backstore, i);
-        TEST_ASSERT_EQUAL_UINT8_MESSAGE(
-            buselfs_state->primary_cipher->enum_id,
-            meta[i]->cipher_ident,
-            "(sanity check: meta didn't match primary cipher id)"
-        );
-    }
+    TEST_ASSERT_EQUAL_UINT8_MESSAGE(
+        buselfs_state->primary_cipher->enum_id,
+        meta[1]->cipher_ident,
+        "(sanity check: meta1 didn't match primary cipher id)"
+    );
+
+    TEST_ASSERT_EQUAL_UINT8_MESSAGE(
+        buselfs_state->primary_cipher->enum_id,
+        meta[2]->cipher_ident,
+        "(sanity check: meta2 didn't match primary cipher id)"
+    );
 
     blfs_write_output_queue(&fake_state, &swap_cmd_msg, BLFS_SV_MESSAGE_DEFAULT_PRIORITY + 1);
     buse_write(out_buffer, sizeof out_buffer, 0, buselfs_state);
 
-    for(size_t i = 0; i < BLFS_SWAP_AGGRESSIVENESS; ++i)
-    {
-        TEST_ASSERT_EQUAL_UINT8_MESSAGE(
-            buselfs_state->swap_cipher->enum_id,
-            meta[i]->cipher_ident,
-            "(meta didn't match primary cipher id)"
-        );
-    }
+    TEST_ASSERT_EQUAL_UINT8_MESSAGE(
+        buselfs_state->swap_cipher->enum_id,
+        meta[1]->cipher_ident,
+        "(meta didn't match swap cipher id)"
+    );
+
+    TEST_ASSERT_EQUAL_UINT8_MESSAGE(
+        buselfs_state->primary_cipher->enum_id,
+        meta[2]->cipher_ident,
+        "(meta didn't match primary cipher id)"
+    );
+}
+
+void test_strongbox_works_when_2aggressive(void)
+{
+    zlog_fini();
+
+    char * argv_create1[] = {
+        "progname",
+        "--default-password",
+        "--backstore-size",
+        "50",
+        "--cipher",
+        "sc_freestyle_fast",
+        "--swap-cipher",
+        "sc_chacha8_neon",
+        "--swap-strategy",
+        "swap_2_forward",
+        "create",
+        "device_actual-130"
+    };
+
+    int argc = sizeof(argv_create1)/sizeof(argv_create1[0]);
+
+    buselfs_state = strongbox_main_actual(argc, argv_create1, blockdevice);
+
+    buselfs_state_t fake_state = {
+        .qd_outgoing = mq_open(BLFS_SV_QUEUE_INCOMING_NAME, O_WRONLY | O_NONBLOCK, BLFS_SV_QUEUE_PERM)
+    };
+
+    uint32_t nugget_size = buselfs_state->backstore->nugget_size_bytes;
+    blfs_mq_msg_t swap_cmd_msg = { .opcode = 1 };
+
+    uint8_t out_buffer[nugget_size / 2];
+
+    memset(out_buffer,  0x01, sizeof out_buffer);
+
+    blfs_nugget_metadata_t * meta[3] = {
+        blfs_open_nugget_metadata(buselfs_state->backstore, 1),
+        blfs_open_nugget_metadata(buselfs_state->backstore, 2),
+        blfs_open_nugget_metadata(buselfs_state->backstore, 3)
+    };
+
+    TEST_ASSERT_EQUAL_UINT8_MESSAGE(
+        buselfs_state->primary_cipher->enum_id,
+        meta[1]->cipher_ident,
+        "(sanity check: meta1 didn't match primary cipher id)"
+    );
+
+    TEST_ASSERT_EQUAL_UINT8_MESSAGE(
+        buselfs_state->primary_cipher->enum_id,
+        meta[2]->cipher_ident,
+        "(sanity check: meta2 didn't match primary cipher id)"
+    );
+
+    TEST_ASSERT_EQUAL_UINT8_MESSAGE(
+        buselfs_state->primary_cipher->enum_id,
+        meta[3]->cipher_ident,
+        "(sanity check: meta3 didn't match primary cipher id)"
+    );
+
+    blfs_write_output_queue(&fake_state, &swap_cmd_msg, BLFS_SV_MESSAGE_DEFAULT_PRIORITY + 1);
+    buse_write(out_buffer, sizeof out_buffer, 0, buselfs_state);
+
+    TEST_ASSERT_EQUAL_UINT8_MESSAGE(
+        buselfs_state->swap_cipher->enum_id,
+        meta[1]->cipher_ident,
+        "(meta1 didn't match swap cipher id)"
+    );
+
+    TEST_ASSERT_EQUAL_UINT8_MESSAGE(
+        buselfs_state->swap_cipher->enum_id,
+        meta[2]->cipher_ident,
+        "(meta2 didn't match swap cipher id)"
+    );
+
+    TEST_ASSERT_EQUAL_UINT8_MESSAGE(
+        buselfs_state->primary_cipher->enum_id,
+        meta[3]->cipher_ident,
+        "(meta3 didn't match primary cipher id)"
+    );
 }
 
 /***void test_usecase_uc_secure_regions(void)
@@ -2206,11 +2377,11 @@ void test_strongbox_works_when_aggressive(void)
         "--swap-cipher",
         "sc_freestyle_secure",
         "--swap-strategy",
-        "swap_forward",
+        "swap_0_forward",
         "--support-uc",
         "uc_secure_regions",
         "create",
-        "device_actual-129"
+        "device_actual-131"
     };
 
     int argc = sizeof(argv_create1)/sizeof(argv_create1[0]);
@@ -2235,11 +2406,11 @@ void test_usecase_uc_fixed_energy(void)
         "--swap-cipher",
         "sc_freestyle_secure",
         "--swap-strategy",
-        "swap_forward",
+        "swap_0_forward",
         "--support-uc",
         "uc_fixed_energy",
         "create",
-        "device_actual-130"
+        "device_actual-132"
     };
 
     int argc = sizeof(argv_create1)/sizeof(argv_create1[0]);
@@ -2264,11 +2435,11 @@ void test_usecase_uc_offset_slowdown(void)
         "--swap-cipher",
         "sc_freestyle_secure",
         "--swap-strategy",
-        "swap_forward",
+        "swap_0_forward",
         "--support-uc",
         "uc_offset_slowdown",
         "create",
-        "device_actual-131"
+        "device_actual-133"
     };
 
     int argc = sizeof(argv_create1)/sizeof(argv_create1[0]);
@@ -2294,11 +2465,11 @@ void test_usecase_uc_lockdown(void)
         "--swap-cipher",
         "sc_freestyle_secure",
         "--swap-strategy",
-        "swap_forward",
+        "swap_0_forward",
         "--support-uc",
         "uc_lockdown",
         "create",
-        "device_actual-132"
+        "device_actual-134"
     };
 
     int argc = sizeof(argv_create1)/sizeof(argv_create1[0]);
@@ -2323,11 +2494,11 @@ void test_usecase_uc_auto_locations(void)
         "--swap-cipher",
         "sc_freestyle_secure",
         "--swap-strategy",
-        "swap_forward",
+        "swap_0_forward",
         "--support-uc",
         "uc_auto_locations",
         "create",
-        "device_actual-133"
+        "device_actual-135"
     };
 
     int argc = sizeof(argv_create1)/sizeof(argv_create1[0]);

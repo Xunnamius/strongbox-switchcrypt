@@ -511,34 +511,29 @@ int blfs_swap_nugget_to_active_cipher(int swapping_while_read_or_write,
 
     if(buffer_length > 0 && buffer != NULL)
     {
-        if(buselfs_state->active_swap_strategy != swap_disabled && buselfs_state->active_swap_strategy != swap_forward)
+        if(buselfs_state->active_swap_strategy == swap_1_forward || buselfs_state->active_swap_strategy == swap_2_forward)
         {
-            IFDEBUG(dzlog_notice("<[INVOKING ADVANCED CIPHER SWAP PROCEDURE ON NUGGET %"PRIu64"]>", target_nugget_index));
+            IFDEBUG(dzlog_notice("<[INVOKING AGGRESSIVE CIPHER SWAP PROCEDURE AFTER NUGGET %"PRIu64"]>", target_nugget_index));
 
-            if(buselfs_state->active_swap_strategy == swap_aggressive)
+            int aggressiveness = buselfs_state->active_swap_strategy == swap_1_forward ? 1 : 2;
+            IFDEBUG(dzlog_debug("aggressiveness: %i", aggressiveness));
+
+            for(size_t i = 1; i <= aggressiveness; ++i)
             {
-                IFDEBUG(assert(BLFS_SWAP_AGGRESSIVENESS > 0));
+                uint64_t written = blfs_swap_nugget_to_active_cipher(
+                    swapping_while_read_or_write,
+                    buselfs_state,
+                    target_nugget_index + i,
+                    NULL,
+                    0,
+                    0
+                );
 
-                for(size_t i = 1; i <= BLFS_SWAP_AGGRESSIVENESS; ++i)
-                {
-                    uint64_t written = blfs_swap_nugget_to_active_cipher(
-                        swapping_while_read_or_write,
-                        buselfs_state,
-                        target_nugget_index + i,
-                        NULL,
-                        0,
-                        0
-                    );
-
-                    IFDEBUG(assert(written == sizeof nugget_data));
-                    IFNDEBUG((void) written);
-                }
+                IFDEBUG(assert(written == sizeof nugget_data));
+                IFNDEBUG((void) written);
             }
 
-            else
-                Throw(EXCEPTION_SWAP_ALGO_NOT_FOUND);
-
-            IFDEBUG(dzlog_notice("<[FINISHED ADVANCED CIPHER SWAP PROCEDURE ON NUGGET %"PRIu64"]>", target_nugget_index));
+            IFDEBUG(dzlog_notice("<[FINISHED AGGRESSIVE CIPHER SWAP PROCEDURE AFTER NUGGET %"PRIu64"]>", target_nugget_index));
         }
 
         // ? Only the non-recursive master fn can declare swapping finished!
@@ -647,8 +642,8 @@ void update_application_state_check_mq(buselfs_state_t * buselfs_state)
          * * msg_payload is always 255 bytes of associated data
          *
          * * opcode 0 => error state or null message (i.e. a message does not exist)
-         * * opcode 1 => indicate cipher switch (payload is ignored)
-         * * opcode 2 => TRIM one of the mirrored segments when strategy is mirrored
+         * * opcode 1 => indicate cipher switch or selectivity change [payload: ignored]
+         * * opcode 2 => TRIM one of the mirrored partitions if using swap_mirrored [payload: partition to TRIM]
          */
         IFDEBUG(dzlog_info("Received application state update: opcode %i", incoming_msg.opcode));
 
@@ -684,6 +679,8 @@ void update_application_state_check_mq(buselfs_state_t * buselfs_state)
                 uint8_t which_segment = !!(incoming_msg.payload[0]);
                 IFDEBUG(dzlog_debug("Received TRIM request of mirrored segment %u (should be 0 or 1)", which_segment));
                 IFNDEBUG((void) which_segment); // ! When implemented, do something here!
+                dzlog_fatal("TRIM operation not implemented!");
+                Throw(EXCEPTION_MUST_HALT);
                 break;
 
             default:
@@ -2209,12 +2206,8 @@ buselfs_state_t * strongbox_main_actual(int argc, char * argv[], char * blockdev
             if(cin_swap_strategy == swap_default)
                 cin_swap_strategy = swap_disabled;
 
-            if(cin_swap_strategy == swap_immediate
-               || cin_swap_strategy == swap_opportunistic
-               || cin_swap_strategy == swap_not_impl)
-            {
+            if(cin_swap_strategy == swap_not_impl)
                 Throw(EXCEPTION_SWAP_ALGO_NO_IMPL);
-            }
 
             if(cin_swap_strategy <= 0 || cin_swap_strategy > swap_not_impl)
                 Throw(EXCEPTION_SWAP_ALGO_NOT_FOUND);
