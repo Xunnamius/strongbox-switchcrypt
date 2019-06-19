@@ -393,13 +393,10 @@ int sc_generic_freestyle_write_handle(freestyle_variant variant,
 
     blfs_chacha20_struct_hash(hash, data, meta->data_length, buselfs_state->backstore->master_secret);
 
-    // ! Update this if you add new layers to StrongBox ahead of the metadata layer
-    // TODO: add another more flexible mt_calculate_* function to
-    // TODO: strongbox.c that can encapsulate these calculations
     update_in_merkle_tree(
         hash,
         sizeof hash,
-        1 + buselfs_state->backstore->num_nuggets * 2 + (BLFS_HEAD_NUM_HEADERS - 3) + nugget_offset,
+        mt_calculate_metadata_mt_index(buselfs_state, nugget_offset),
         buselfs_state
     );
 

@@ -262,9 +262,6 @@ usecase_e blfs_ident_string_to_usecase(const char * uc_str)
     else if(strcmp(uc_str, "uc_lockdown") == 0)
         usecase = uc_lockdown;
 
-    else if(strcmp(uc_str, "uc_auto_locations") == 0)
-        usecase = uc_auto_locations;
-
     else if(strcmp(uc_str, "uc_disabled") == 0)
         usecase = uc_disabled;
 

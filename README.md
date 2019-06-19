@@ -128,7 +128,6 @@ The following experimental use cases available for `--support-uc` are:
 - `uc_fixed_energy`
 - `uc_offset_slowdown`
 - `uc_lockdown`
-- `uc_auto_locations`
 - `uc_disabled`
 
 You can see these options defined in [constants.h](src/constants.h). Note that

@@ -34,24 +34,49 @@ uint32_t calculate_total_space_required_for_1nug(uint32_t nuggetsize, uint32_t f
 
 // ! This must be changed/updated if we're adding new storage layers (e.g.
 // ! the new "nugget metadata" layer)
-uint32_t mt_calculate_expected_size(uint32_t nugget_index, buselfs_state_t * buselfs_state)
+uint32_t mt_calculate_expected_size(const buselfs_state_t * buselfs_state, uint32_t nugget_index)
 {
     // ? 3*N+(BLFS_HEAD_NUM_HEADERS-3)+(nugget_index*fpn)+1
     // See the `merkle_tree` declaration in the `buselfs_state_t` definition in
     // `strongbox.h` for more details on this calculation.
     return 1
-        + (BLFS_HEAD_NUM_HEADERS - 3)
-        + buselfs_state->backstore->num_nuggets * 3
-        + nugget_index * buselfs_state->backstore->flakes_per_nugget;
+        + (BLFS_HEAD_NUM_HEADERS - 3) // ? # of tracked headers (constant)
+        + buselfs_state->backstore->num_nuggets * 3 // ? 1N kcs + 1N tjs + 1N md (disregarding bytes b/c tags)
+        + nugget_index * buselfs_state->backstore->flakes_per_nugget; // ? index * FPN (disregarding bytes b/c tags)
 }
 
 // ! This must be changed/updated if we're adding new storage layers (e.g.
 // ! the new "nugget metadata" layer)
-uint32_t mt_calculate_flake_offset(uint32_t jump_to_nugget_index, uint32_t flake_index, buselfs_state_t * buselfs_state)
+uint32_t mt_calculate_flake_offset(const buselfs_state_t * buselfs_state, uint32_t jump_to_nugget_index, uint32_t flake_index)
 {
     // ? Jump over indicies that aren't associated w/ this nug and land on the
     // ? flake that we're looking for (at an index contained in this nug)
-    return mt_calculate_expected_size(jump_to_nugget_index, buselfs_state) + flake_index;
+    return mt_calculate_expected_size(buselfs_state, jump_to_nugget_index) + flake_index;
+}
+
+// ! This must be changed/updated if we're adding new storage layers (e.g.
+// ! the new "nugget metadata" layer)
+uint32_t mt_calculate_metadata_mt_index(const buselfs_state_t * buselfs_state, uint32_t nugget_index)
+{
+    // ? Jump over indicies that aren't associated w/ this nug and land on the
+    // ? nugget metadata hash we're looking for
+    return 1 + buselfs_state->backstore->num_nuggets * 2 + (BLFS_HEAD_NUM_HEADERS - 3) + nugget_index;
+}
+
+// ! This must be changed/updated if we're adding new storage layers (e.g.
+// ! the new "nugget metadata" layer)
+uint32_t mt_calculate_keycount_index(uint32_t nugget_index)
+{
+    // ? Jump to the keycount
+    return (BLFS_HEAD_NUM_HEADERS - 3) + nugget_index;
+}
+
+// ! This must be changed/updated if we're adding new storage layers (e.g.
+// ! the new "nugget metadata" layer)
+uint32_t mt_calculate_tj1_index(const buselfs_state_t * buselfs_state, uint32_t nugget_index)
+{
+    // ? Jump to the first layer of the transaction journal
+    return buselfs_state->backstore->num_nuggets + (BLFS_HEAD_NUM_HEADERS - 3) + nugget_index;
 }
 
 /**
@@ -153,7 +178,7 @@ static void populate_mt(buselfs_state_t * buselfs_state)
     uint32_t nugsize   = buselfs_state->backstore->nugget_size_bytes;
 
     uint32_t operations_completed = 0;
-    IFNDEBUG(uint32_t operations_total = mt_calculate_expected_size(buselfs_state->backstore->num_nuggets, buselfs_state));
+    IFNDEBUG(uint32_t operations_total = mt_calculate_expected_size(buselfs_state, buselfs_state->backstore->num_nuggets));
 
     IFDEBUG(dzlog_debug("MERKLE TREE: adding TPMGV counter..."));
     IFDEBUG(dzlog_debug("MERKLE TREE: starting index %"PRIu32, operations_completed));
@@ -293,9 +318,13 @@ int blfs_swap_nugget_to_active_cipher(int swapping_while_read_or_write,
                                       uint32_t buffer_length,
                                       uint64_t nugget_internal_offset)
 {
+    int aggressive_write_ahead = buffer_length <= 0 || buffer == NULL;
+
     IFDEBUG(dzlog_notice("<%s ON NUGGET %"PRIu64">",
-        buffer_length > 0 && buffer != NULL ? "CIPHER SWAP BEGAN" : "TRUNCATED CIPHER SWAP OCCURRING",
-        target_nugget_index));
+        aggressive_write_ahead ? "TRUNCATED CIPHER SWAP OCCURRING" : "CIPHER SWAP BEGAN", target_nugget_index));
+
+    if(aggressive_write_ahead)
+        buffer_length = buselfs_state->backstore->nugget_size_bytes;
 
     buselfs_state->is_cipher_swapping = TRUE;
 
@@ -350,7 +379,7 @@ int blfs_swap_nugget_to_active_cipher(int swapping_while_read_or_write,
                 0,
                 buselfs_state->backstore->flake_size_bytes,
                 buselfs_state->backstore->flakes_per_nugget,
-                mt_calculate_expected_size(0, buselfs_state),
+                mt_calculate_expected_size(buselfs_state, 0),
                 nugget_data,
                 nugget_key,
                 target_nugget_index,
@@ -380,7 +409,7 @@ int blfs_swap_nugget_to_active_cipher(int swapping_while_read_or_write,
 
     // ? Write out to or copy in from buffer if necessary
 
-    if(buffer_length > 0 && buffer != NULL)
+    if(!aggressive_write_ahead)
     {
         IFDEBUG(assert(buffer_length + nugget_internal_offset <= buselfs_state->backstore->nugget_size_bytes));
 
@@ -427,7 +456,7 @@ int blfs_swap_nugget_to_active_cipher(int swapping_while_read_or_write,
             buselfs_state->backstore->flake_size_bytes,
             buselfs_state->backstore->flakes_per_nugget,
             0,
-            mt_calculate_expected_size(0, buselfs_state),
+            mt_calculate_expected_size(buselfs_state, 0),
             nugget_key,
             target_nugget_index,
             count
@@ -466,7 +495,7 @@ int blfs_swap_nugget_to_active_cipher(int swapping_while_read_or_write,
             uint8_t flake_key[BLFS_CRYPTO_BYTES_FLAKE_TAG_KEY] = { 0x00 };
             uint8_t * tag = malloc(BLFS_CRYPTO_BYTES_FLAKE_TAG_OUT * (sizeof *tag));
             uint8_t flake_data[flake_size];
-            uint32_t mt_offset = mt_calculate_flake_offset(target_nugget_index, flake_index, buselfs_state);
+            uint32_t mt_offset = mt_calculate_flake_offset(buselfs_state, target_nugget_index, flake_index);
 
             if(tag == NULL)
                 Throw(EXCEPTION_ALLOC_FAILURE);
@@ -496,26 +525,25 @@ int blfs_swap_nugget_to_active_cipher(int swapping_while_read_or_write,
     update_in_merkle_tree(
         hash,
         sizeof hash,
-        buselfs_state->backstore->num_nuggets + (BLFS_HEAD_NUM_HEADERS - 3) + target_nugget_index,
+        mt_calculate_tj1_index(buselfs_state, target_nugget_index),
         buselfs_state
     );
 
-    // ! This logic must change if the number of headers changes!
     update_in_merkle_tree((uint8_t *) &count->keycount,
         BLFS_HEAD_BYTES_KEYCOUNT,
-        (BLFS_HEAD_NUM_HEADERS - 3) + target_nugget_index,
+        mt_calculate_keycount_index(target_nugget_index),
         buselfs_state
     );
 
     // ? Save advanced cipher switching (recursive calls to this fn) for last!
 
-    if(buffer_length > 0 && buffer != NULL)
+    if(!aggressive_write_ahead)
     {
         if(buselfs_state->active_swap_strategy == swap_1_forward || buselfs_state->active_swap_strategy == swap_2_forward)
         {
             IFDEBUG(dzlog_notice("<[INVOKING AGGRESSIVE CIPHER SWAP PROCEDURE AFTER NUGGET %"PRIu64"]>", target_nugget_index));
 
-            int aggressiveness = buselfs_state->active_swap_strategy == swap_1_forward ? 1 : 2;
+            size_t aggressiveness = buselfs_state->active_swap_strategy == swap_1_forward ? 1 : 2;
             IFDEBUG(dzlog_debug("aggressiveness: %i", aggressiveness));
 
             for(size_t i = 1; i <= aggressiveness; ++i)
@@ -915,6 +943,15 @@ int buse_read(void * output_buffer, uint32_t length, uint64_t absolute_offset, v
         IFDEBUG(assert(absolute_offset >= buselfs_state->buseops->size));
     }
 
+    // ? If we're in swap_selective mode, make sure to adjust abs offset
+    if(buselfs_state->active_swap_strategy == swap_selective
+        && buselfs_state->active_cipher_enum_id == buselfs_state->swap_cipher->enum_id)
+    {
+        IFDEBUG(assert(absolute_offset < buselfs_state->buseops->size));
+        absolute_offset += buselfs_state->buseops->size;
+        IFDEBUG(assert(absolute_offset >= buselfs_state->buseops->size));
+    }
+
     IFDEBUG(assert(absolute_offset < buselfs_state->backstore->writeable_size_actual));
     IFDEBUG(dzlog_info("FINAL absolute_offset: %"PRIu64, absolute_offset));
 
@@ -922,7 +959,7 @@ int buse_read(void * output_buffer, uint32_t length, uint64_t absolute_offset, v
     uint_fast32_t flake_size = buselfs_state->backstore->flake_size_bytes;
     uint_fast32_t flakes_per_nugget = buselfs_state->backstore->flakes_per_nugget;
     uint_fast32_t num_nuggets = buselfs_state->backstore->num_nuggets;
-    uint_fast32_t mt_offset = mt_calculate_expected_size(0, buselfs_state);
+    uint_fast32_t mt_offset = mt_calculate_expected_size(buselfs_state, 0);
 
     (void) num_nuggets; // ? Even when not debugging, no warnings from compiler!
 
@@ -940,7 +977,7 @@ int buse_read(void * output_buffer, uint32_t length, uint64_t absolute_offset, v
 
     blfs_swappable_cipher_t * active_cipher;
 
-    if(buselfs_state->active_swap_strategy == swap_mirrored)
+    if(buselfs_state->active_swap_strategy == swap_mirrored || buselfs_state->active_swap_strategy == swap_selective)
     {
         active_cipher = absolute_offset < buselfs_state->buseops->size
                         ? buselfs_state->primary_cipher
@@ -1006,9 +1043,10 @@ int buse_read(void * output_buffer, uint32_t length, uint64_t absolute_offset, v
         IFDEBUG(dzlog_debug(">-> nugget (meta) enum id: %u", meta->cipher_ident));
 
         int want_to_cipher_switch = active_cipher->enum_id != meta->cipher_ident;
-        int using_mirrored_strategy = buselfs_state->active_swap_strategy == swap_mirrored;
+        int using_non_forward_strategy =  buselfs_state->active_swap_strategy == swap_mirrored
+                                       || buselfs_state->active_swap_strategy == swap_selective;
 
-        if(want_to_cipher_switch && !using_mirrored_strategy)
+        if(want_to_cipher_switch && !using_non_forward_strategy)
         {
             IFDEBUG(dzlog_notice("<<INITIALIZING CIPHER SWAP PROCEDURE>>"));
             buffer += blfs_swap_nugget_to_active_cipher(SWAP_WHILE_READ, buselfs_state, nugget_offset, buffer, buffer_read_length, nugget_internal_offset);
@@ -1168,7 +1206,7 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
     uint_fast32_t num_nuggets       = buselfs_state->backstore->num_nuggets;
     uint_fast32_t flakes_per_nugget = buselfs_state->backstore->flakes_per_nugget;
 
-    uint_fast32_t mt_offset = mt_calculate_expected_size(0, buselfs_state);
+    uint_fast32_t mt_offset = mt_calculate_expected_size(buselfs_state, 0);
 
     // ! For a bigger system, this cast could be a problem
     uint_fast32_t nugget_offset          = (uint_fast32_t)(absolute_offset / nugget_size); // nugget_index
@@ -1185,7 +1223,10 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
     IFDEBUG(dzlog_debug("buffer to write (initial 64 bytes):"));
     IFDEBUG(hdzlog_debug(input_buffer, MIN(64U, size)));
 
-    IFDEBUG(assert(buselfs_state->active_swap_strategy == swap_mirrored || absolute_offset < buselfs_state->buseops->size));
+    IFDEBUG(assert(buselfs_state->active_swap_strategy == swap_mirrored
+        || buselfs_state->active_swap_strategy == swap_selective
+        || absolute_offset < buselfs_state->buseops->size
+        ));
 
     if(buselfs_state->active_swap_strategy == swap_mirrored && absolute_offset < buselfs_state->buseops->size)
     {
@@ -1195,6 +1236,15 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
         // ? Mirror the write to other nugget, then complete the normal write
         buse_write(input_buffer, length, absolute_offset + buselfs_state->buseops->size, buselfs_state);
         IFDEBUG(dzlog_notice("<<FINISHED; CONTINUING WITH NORMAL WRITE>>"));
+    }
+
+    // ? If we're in swap_selective mode, make sure to adjust abs offset
+    if(buselfs_state->active_swap_strategy == swap_selective
+        && buselfs_state->active_cipher_enum_id == buselfs_state->swap_cipher->enum_id)
+    {
+        IFDEBUG(assert(absolute_offset < buselfs_state->buseops->size));
+        absolute_offset += buselfs_state->buseops->size;
+        IFDEBUG(assert(absolute_offset >= buselfs_state->buseops->size));
     }
 
     blfs_header_t * tpmv_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_TPMGLOBALVER);
@@ -1211,7 +1261,7 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
 
     blfs_swappable_cipher_t * active_cipher;
 
-    if(buselfs_state->active_swap_strategy == swap_mirrored)
+    if(buselfs_state->active_swap_strategy == swap_mirrored || buselfs_state->active_swap_strategy == swap_selective)
     {
         active_cipher = absolute_offset < buselfs_state->buseops->size
                         ? buselfs_state->primary_cipher
@@ -1276,7 +1326,9 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
         IFDEBUG(dzlog_debug(">-> active_cipher enum id: %u", active_cipher->enum_id));
         IFDEBUG(dzlog_debug(">-> nugget (meta) enum id: %u", meta->cipher_ident));
 
-        if(buselfs_state->active_swap_strategy != swap_mirrored && active_cipher->enum_id != meta->cipher_ident)
+        if(!(buselfs_state->active_swap_strategy == swap_mirrored
+            || buselfs_state->active_swap_strategy == swap_selective)
+           && active_cipher->enum_id != meta->cipher_ident)
         {
             IFDEBUG(dzlog_notice("<<INITIALIZING CIPHER SWAP PROCEDURE>>"));
 
@@ -1468,7 +1520,7 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
                 update_in_merkle_tree(
                     hash,
                     sizeof hash,
-                    num_nuggets + (BLFS_HEAD_NUM_HEADERS - 3) + nugget_offset,
+                    mt_calculate_tj1_index(buselfs_state, nugget_offset),
                     buselfs_state
                 );
             }
@@ -1506,7 +1558,7 @@ void blfs_rekey_nugget_then_write(buselfs_state_t * buselfs_state,
 
     blfs_swappable_cipher_t * active_cipher;
 
-    if(buselfs_state->active_swap_strategy == swap_mirrored)
+    if(buselfs_state->active_swap_strategy == swap_mirrored || buselfs_state->active_swap_strategy == swap_selective)
     {
         active_cipher = rekeying_nugget_index < buselfs_state->backstore->num_nuggets / 2
                         ? buselfs_state->primary_cipher
@@ -1571,7 +1623,7 @@ void blfs_rekey_nugget_then_write(buselfs_state_t * buselfs_state,
         uint8_t flake_key[BLFS_CRYPTO_BYTES_FLAKE_TAG_KEY] = { 0x00 };
         uint8_t * tag = malloc(BLFS_CRYPTO_BYTES_FLAKE_TAG_OUT * sizeof *tag);
         uint8_t flake_data[flake_size];
-        uint32_t mt_offset = mt_calculate_flake_offset(rekeying_nugget_index, flake_index, buselfs_state);
+        uint32_t mt_offset = mt_calculate_flake_offset(buselfs_state, rekeying_nugget_index, flake_index);
 
         if(tag == NULL)
             Throw(EXCEPTION_ALLOC_FAILURE);
@@ -2429,8 +2481,11 @@ buselfs_state_t * strongbox_main_actual(int argc, char * argv[], char * blockdev
     {
         blfs_nugget_metadata_t * meta = blfs_open_nugget_metadata(buselfs_state->backstore, nugget_index);
 
-        if(cin_swap_strategy == swap_mirrored && nugget_index >= buselfs_state->backstore->num_nuggets / 2)
+        if((cin_swap_strategy == swap_mirrored || cin_swap_strategy == swap_selective)
+           && nugget_index >= buselfs_state->backstore->num_nuggets / 2)
+        {
             meta->cipher_ident = (uint8_t) buselfs_state->swap_cipher->enum_id;
+        }
     }
 
     buselfs_state->buseops = malloc(sizeof *buselfs_state->buseops);
@@ -2441,7 +2496,8 @@ buselfs_state_t * strongbox_main_actual(int argc, char * argv[], char * blockdev
     buselfs_state->buseops->flush = buse_flush;
     buselfs_state->buseops->trim  = buse_trim;
 
-    buselfs_state->buseops->size  = buselfs_state->active_swap_strategy == swap_mirrored
+    buselfs_state->buseops->size  =  buselfs_state->active_swap_strategy == swap_mirrored
+                                  || buselfs_state->active_swap_strategy == swap_selective
                    ? (buselfs_state->backstore->num_nuggets / 2) * buselfs_state->backstore->nugget_size_bytes
                    : buselfs_state->backstore->writeable_size_actual;
 

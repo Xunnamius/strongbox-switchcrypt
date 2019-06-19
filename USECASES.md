@@ -274,19 +274,3 @@ but less secure cipher.
 ### Progress
 
  - Implementation exists
-
-## Automated location-based Security versus Performance Tradeoff
-
-[StrongBox UC flag: `uc_auto_locations`]
-
-Suppose you own a startup that does sensitive work, e.g. government contractor.
-When the devices (laptops, tablets) you lend to your employees are taken off the
-premises, it would be beneficial if the regions of the drive containing
-sensitive information were encrypted using the most powerful cipher available.
-While on the premises, it might behoove the startup to lower the security on
-these regions for performance or other reasons.
-
-Benefit: the filesystem can become more or less performance/energy efficient
-depending on where it determines it is.
-
-This usecase is not being actively explored at the moment.

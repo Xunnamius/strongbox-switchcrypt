@@ -5,8 +5,8 @@
 // Configurable //
 //////////////////
 
-#define BLFS_CURRENT_VERSION 700U
-#define BLFS_LEAST_COMPAT_VERSION 700U
+#define BLFS_CURRENT_VERSION 800U
+#define BLFS_LEAST_COMPAT_VERSION 800U
 
 // ! These would likely be non-static irl
 #define BLFS_RPMB_KEY "thirtycharactersecurecounterkey!"

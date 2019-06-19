@@ -263,14 +263,19 @@ uint32_t calculate_total_space_required_for_1nug(uint32_t nuggetsize, uint32_t f
  *
  * @nugget_index This function will count nuggets up to BUT EXCLUDING this index
  */
-uint32_t mt_calculate_expected_size(uint32_t nugget_index, buselfs_state_t * buselfs_state);
+uint32_t mt_calculate_expected_size(const buselfs_state_t * buselfs_state, uint32_t nugget_index);
 
 /**
  * Calculates the offset of a flake in the merkle tree. This has been abstracted
  * out to make it easier to add deep changes to the StrongBox internals (e.g.
  * extra n-dependent storage layers).
  */
-uint32_t mt_calculate_flake_offset(uint32_t jump_to_nugget_index, uint32_t flake_index, buselfs_state_t * buselfs_state);
+uint32_t mt_calculate_flake_offset(const buselfs_state_t * buselfs_state, uint32_t jump_to_nugget_index, uint32_t flake_index);
+
+/* Similar functions to the above */
+uint32_t mt_calculate_metadata_mt_index(const buselfs_state_t * buselfs_state, uint32_t nugget_index);
+uint32_t mt_calculate_tj1_index(const buselfs_state_t * buselfs_state, uint32_t nugget_index);
+uint32_t mt_calculate_keycount_index(uint32_t nugget_index);
 
 // ? Note: you may be wondering why the main file has been broken up like this.
 // ?
