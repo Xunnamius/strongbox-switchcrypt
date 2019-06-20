@@ -945,9 +945,9 @@ int buse_read(void * output_buffer, uint32_t length, uint64_t absolute_offset, v
 
     // ? If we're in swap_selective mode, make sure to adjust abs offset
     if(buselfs_state->active_swap_strategy == swap_selective
-        && buselfs_state->active_cipher_enum_id == buselfs_state->swap_cipher->enum_id)
+        && buselfs_state->active_cipher_enum_id == buselfs_state->swap_cipher->enum_id
+        && absolute_offset < buselfs_state->buseops->size)
     {
-        IFDEBUG(assert(absolute_offset < buselfs_state->buseops->size));
         absolute_offset += buselfs_state->buseops->size;
         IFDEBUG(assert(absolute_offset >= buselfs_state->buseops->size));
     }
@@ -1197,7 +1197,7 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
     IFDEBUG(dzlog_debug("input_buffer (ptr): %p", (void *) input_buffer));
     IFDEBUG(dzlog_debug("buffer (ptr): %p", (void *) buffer));
     IFDEBUG(dzlog_debug("length: %"PRIu32, length));
-    IFDEBUG(dzlog_debug("absolute_offset: %"PRIu64, absolute_offset));
+    IFDEBUG(dzlog_debug("initial absolute_offset: %"PRIu64, absolute_offset));
     IFDEBUG(dzlog_debug("userdata (ptr): %p", (void *) userdata));
     IFDEBUG(dzlog_debug("buselfs_state (ptr): %p", (void *) buselfs_state));
 
@@ -1207,6 +1207,17 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
     uint_fast32_t flakes_per_nugget = buselfs_state->backstore->flakes_per_nugget;
 
     uint_fast32_t mt_offset = mt_calculate_expected_size(buselfs_state, 0);
+
+    // ? If we're in swap_selective mode, make sure to adjust abs offset
+    if(buselfs_state->active_swap_strategy == swap_selective
+        && buselfs_state->active_cipher_enum_id == buselfs_state->swap_cipher->enum_id)
+    {
+        IFDEBUG(assert(absolute_offset < buselfs_state->buseops->size));
+        absolute_offset += buselfs_state->buseops->size;
+        IFDEBUG(assert(absolute_offset >= buselfs_state->buseops->size));
+    }
+
+    IFDEBUG(dzlog_debug("actual absolute_offset: %"PRIu64, absolute_offset));
 
     // ! For a bigger system, this cast could be a problem
     uint_fast32_t nugget_offset          = (uint_fast32_t)(absolute_offset / nugget_size); // nugget_index
@@ -1236,15 +1247,6 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
         // ? Mirror the write to other nugget, then complete the normal write
         buse_write(input_buffer, length, absolute_offset + buselfs_state->buseops->size, buselfs_state);
         IFDEBUG(dzlog_notice("<<FINISHED; CONTINUING WITH NORMAL WRITE>>"));
-    }
-
-    // ? If we're in swap_selective mode, make sure to adjust abs offset
-    if(buselfs_state->active_swap_strategy == swap_selective
-        && buselfs_state->active_cipher_enum_id == buselfs_state->swap_cipher->enum_id)
-    {
-        IFDEBUG(assert(absolute_offset < buselfs_state->buseops->size));
-        absolute_offset += buselfs_state->buseops->size;
-        IFDEBUG(assert(absolute_offset >= buselfs_state->buseops->size));
     }
 
     blfs_header_t * tpmv_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_TPMGLOBALVER);
