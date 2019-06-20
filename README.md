@@ -121,6 +121,9 @@ You can see these options defined in [constants.h](src/constants.h).
 
 ### Enabling Use Cases
 
+> Note: as of version 800, the use cases StrongBox supports do not require
+> explicit enabling. Hence, this setting does nothing.
+
 The following experimental use cases available for `--support-uc` are:
 
 - `uc_default` (this is synonymous with `uc_disabled`)
