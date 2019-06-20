@@ -1218,7 +1218,7 @@ void test_buse_write_dirty_write_triggers_rekeying8(void)
 
 static void readwrite_quicktests()
 {
-    IFDEBUG(dzlog_notice("Running read/write quicktests (stage 1)..."));
+    dzlog_notice("Running read/write quicktests (stage 1)...");
     fflush(stdout);
 
     uint8_t expected_buffer1[4096];
@@ -1240,7 +1240,7 @@ static void readwrite_quicktests()
         TEST_ASSERT_EQUAL_MEMORY_MESSAGE(expected_buffer1, buffer, sizeof buffer, strbuf);
     }
 
-    IFDEBUG(dzlog_notice("Running read/write quicktests (stage 2)..."));
+    dzlog_notice("Running read/write quicktests (stage 2)...");
     fflush(stdout);
 
     uint8_t expected_buffer2[5000] = { 0x00 };
@@ -1259,7 +1259,7 @@ static void readwrite_quicktests()
         TEST_ASSERT_EQUAL_MEMORY_MESSAGE(expected_buffer2, buffer, sizeof buffer, strbuf);
     }
 
-    IFDEBUG(dzlog_notice("Running read/write quicktests (stage 3)..."));
+    dzlog_notice("Running read/write quicktests (stage 3)...");
     fflush(stdout);
 
     // Test end writes
@@ -1596,23 +1596,23 @@ static void swap_readwrite_quicktest()
     TEST_ASSERT_EQUAL_UINT8(buselfs_state->primary_cipher->enum_id, meta[2]->cipher_ident);
 
     // Write and then read it and make sure it's correct
-    IFDEBUG(dzlog_notice("(write)"));
+    dzlog_notice("(write)");
     buse_write(in_buffer1, sizeof in_buffer1, 0, buselfs_state);
 
-    IFDEBUG(dzlog_notice("(read)"));
+    dzlog_notice("(read)");
     buse_read(out_buffer1, sizeof out_buffer1, 0, buselfs_state);
 
     // Verify read
     TEST_ASSERT_EQUAL_MEMORY(in_buffer1, out_buffer1, sizeof in_buffer1);
 
     // * (#1) Swap ciphers
-    IFDEBUG(dzlog_notice("-- swap #1 --"));
+    dzlog_notice("-- swap #1 --");
     blfs_write_output_queue(&fake_state, &swap_cmd_msg, BLFS_SV_MESSAGE_DEFAULT_PRIORITY + 1);
 
     memset(out_buffer1, 0x04, sizeof out_buffer1);
 
     // Read what was written earlier under the new cipher
-    IFDEBUG(dzlog_notice("(read)"));
+    dzlog_notice("(read)");
     buse_read(out_buffer1, sizeof out_buffer1, 0, buselfs_state);
 
     // Ensure metadata is correct
@@ -1624,14 +1624,14 @@ static void swap_readwrite_quicktest()
     TEST_ASSERT_EQUAL_MEMORY(in_buffer1, out_buffer1, sizeof in_buffer1);
 
     // * (#2) Swap ciphers again
-    IFDEBUG(dzlog_notice("-- swap #2 --"));
+    dzlog_notice("-- swap #2 --");
     blfs_write_output_queue(&fake_state, &swap_cmd_msg, BLFS_SV_MESSAGE_DEFAULT_PRIORITY + 1);
 
     // Write and read again, this time partially in the first and third nuggets
-    IFDEBUG(dzlog_notice("(write)"));
+    dzlog_notice("(write)");
     buse_write(in_buffer2, sizeof in_buffer2, nugget_size / 2, buselfs_state);
 
-    IFDEBUG(dzlog_notice("(read)"));
+    dzlog_notice("(read)");
     buse_read(out_buffer2, sizeof out_buffer2, nugget_size / 2, buselfs_state);
 
     // Ensure metadata is correct
@@ -1643,14 +1643,14 @@ static void swap_readwrite_quicktest()
     TEST_ASSERT_EQUAL_MEMORY(in_buffer2, out_buffer2, sizeof in_buffer2);
 
     // * (#3) Swap ciphers again
-    IFDEBUG(dzlog_notice("-- swap #3 --"));
+    dzlog_notice("-- swap #3 --");
     blfs_write_output_queue(&fake_state, &swap_cmd_msg, BLFS_SV_MESSAGE_DEFAULT_PRIORITY + 1);
 
     // Write and read again, this time partially in the third nugget
-    IFDEBUG(dzlog_notice("(write)"));
+    dzlog_notice("(write)");
     buse_write(in_buffer3, sizeof in_buffer3, nugget_size * 2 + nugget_size / 4, buselfs_state);
 
-    IFDEBUG(dzlog_notice("(read)"));
+    dzlog_notice("(read)");
     buse_read(out_buffer3, sizeof out_buffer3, nugget_size * 2 + nugget_size / 4, buselfs_state);
 
     // Ensure metadata is correct
@@ -1662,13 +1662,13 @@ static void swap_readwrite_quicktest()
     TEST_ASSERT_EQUAL_MEMORY(in_buffer3, out_buffer3, sizeof in_buffer3);
 
     // * (#4) Swap ciphers once more
-    IFDEBUG(dzlog_notice("-- swap #4 --"));
+    dzlog_notice("-- swap #4 --");
     blfs_write_output_queue(&fake_state, &swap_cmd_msg, BLFS_SV_MESSAGE_DEFAULT_PRIORITY + 1);
 
     memset(out_buffer3, 0x06, sizeof out_buffer3);
 
     // Read what was written earlier under a new cipher
-    IFDEBUG(dzlog_notice("(read)"));
+    dzlog_notice("(read)");
     buse_read(out_buffer3, sizeof out_buffer3, nugget_size * 2 + nugget_size / 4, buselfs_state);
 
     // Ensure metadata is correct
@@ -1680,16 +1680,16 @@ static void swap_readwrite_quicktest()
     TEST_ASSERT_EQUAL_MEMORY(in_buffer3, out_buffer3, sizeof in_buffer3);
 
     // * (#5) Swap ciphers one final time
-    IFDEBUG(dzlog_notice("-- swap #5 --"));
+    dzlog_notice("-- swap #5 --");
     blfs_write_output_queue(&fake_state, &swap_cmd_msg, BLFS_SV_MESSAGE_DEFAULT_PRIORITY + 1);
 
     memset(out_buffer1, 0x04, sizeof out_buffer1);
 
     // This time, write first, then read and compare
-    IFDEBUG(dzlog_notice("(write)"));
+    dzlog_notice("(write)");
     buse_write(in_buffer1, (sizeof in_buffer1) - 2, 1, buselfs_state);
 
-    IFDEBUG(dzlog_notice("(read)"));
+    dzlog_notice("(read)");
     buse_read(out_buffer1, (sizeof out_buffer1) - 2, 1, buselfs_state);
 
     // Verify read
@@ -1852,11 +1852,11 @@ static void mirrored_readwrite_quicktest(int normal_ciphers)
     TEST_ASSERT_EQUAL_UINT8(0, bitmask_any_bits_set(tj2[3]->bitmask, 0, tj2[3]->bitmask->byte_length * 8));
 
     // * (#0) Primary is initially the active cipher
-    IFDEBUG(dzlog_notice("-- swap #0 (initial-P) --"));
+    dzlog_notice("-- swap #0 (initial-P) --");
     TEST_ASSERT_EQUAL_UINT8(buselfs_state->primary_cipher->enum_id, buselfs_state->active_cipher_enum_id);
 
     // Write and then read it and make sure it's correct
-    IFDEBUG(dzlog_notice("(write 1)"));
+    dzlog_notice("(write 1)");
     buse_write(in_buffer1, sizeof in_buffer1, 0, buselfs_state);
 
     if(normal_ciphers)
@@ -1872,49 +1872,49 @@ static void mirrored_readwrite_quicktest(int normal_ciphers)
         TEST_ASSERT_EQUAL_UINT8(0, bitmask_are_bits_set(tj2[3]->bitmask, 0, tj2[3]->bitmask->byte_length * 8));
     }
 
-    IFDEBUG(dzlog_notice("(read 1)"));
+    dzlog_notice("(read 1)");
     buse_read(out_buffer1, sizeof out_buffer1, 0, buselfs_state);
 
     // Verify read
     TEST_ASSERT_EQUAL_MEMORY(in_buffer1, out_buffer1, sizeof in_buffer1);
 
     // * (#1) Swap is active cipher
-    IFDEBUG(dzlog_notice("-- swap #1 (S) --"));
+    dzlog_notice("-- swap #1 (S) --");
     blfs_write_output_queue(&fake_state, &swap_cmd_msg, BLFS_SV_MESSAGE_DEFAULT_PRIORITY + 1);
 
     memset(out_buffer1, 0xAA, sizeof out_buffer1);
 
-    IFDEBUG(dzlog_notice("(read 1-2)"));
+    dzlog_notice("(read 1-2)");
     buse_read(out_buffer1, sizeof out_buffer1, 0, buselfs_state);
 
     // Verify read
     TEST_ASSERT_EQUAL_MEMORY(in_buffer1, out_buffer1, sizeof in_buffer1);
 
     // * (#2) Primary is active cipher
-    IFDEBUG(dzlog_notice("-- swap #2 (P) --"));
+    dzlog_notice("-- swap #2 (P) --");
     blfs_write_output_queue(&fake_state, &swap_cmd_msg, BLFS_SV_MESSAGE_DEFAULT_PRIORITY + 1);
 
     memset(in_buffer1,  0x99, sizeof in_buffer1);
     memset(out_buffer1, 0xFF, sizeof out_buffer1);
 
     // Write again and then read it again
-    IFDEBUG(dzlog_notice("(write 2)"));
+    dzlog_notice("(write 2)");
     buse_write(in_buffer1, sizeof in_buffer1, 0, buselfs_state);
 
-    IFDEBUG(dzlog_notice("(read 2)"));
+    dzlog_notice("(read 2)");
     buse_read(out_buffer1, sizeof out_buffer1, 0, buselfs_state);
 
     // Verify read again
     TEST_ASSERT_EQUAL_MEMORY(in_buffer1, out_buffer1, sizeof in_buffer1);
 
     // * (#3) Swap is active cipher
-    IFDEBUG(dzlog_notice("-- swap #3 (S) --"));
+    dzlog_notice("-- swap #3 (S) --");
     blfs_write_output_queue(&fake_state, &swap_cmd_msg, BLFS_SV_MESSAGE_DEFAULT_PRIORITY + 1);
 
     memset(out_buffer1, 0xEE, sizeof out_buffer1);
 
     // Read what was written earlier under the new cipher
-    IFDEBUG(dzlog_notice("(read 2-2)"));
+    dzlog_notice("(read 2-2)");
     buse_read(out_buffer1, sizeof out_buffer1, 0, buselfs_state);
     TEST_ASSERT_EQUAL_UINT8(buselfs_state->swap_cipher->enum_id, buselfs_state->active_cipher_enum_id);
 
@@ -1924,57 +1924,57 @@ static void mirrored_readwrite_quicktest(int normal_ciphers)
     memset(in_buffer1,  0x01, sizeof in_buffer1);
     memset(out_buffer1, 0xDD, sizeof out_buffer1);
 
-    IFDEBUG(dzlog_notice("(write 3)"));
+    dzlog_notice("(write 3)");
     buse_write(in_buffer1, sizeof in_buffer1, 0, buselfs_state);
 
-    IFDEBUG(dzlog_notice("(read 3)"));
+    dzlog_notice("(read 3)");
     buse_read(out_buffer1, sizeof out_buffer1, 0, buselfs_state);
 
     // Verify read again
     TEST_ASSERT_EQUAL_MEMORY(in_buffer1, out_buffer1, sizeof in_buffer1);
 
     // * (#4) Primary is active cipher
-    IFDEBUG(dzlog_notice("-- swap #4 (P) --"));
+    dzlog_notice("-- swap #4 (P) --");
     blfs_write_output_queue(&fake_state, &swap_cmd_msg, BLFS_SV_MESSAGE_DEFAULT_PRIORITY + 1);
 
     memset(out_buffer1, 0xFF, sizeof out_buffer1);
 
-    IFDEBUG(dzlog_notice("(read 3-2)"));
+    dzlog_notice("(read 3-2)");
     buse_read(out_buffer1, sizeof out_buffer1, 0, buselfs_state);
 
     // Verify read one final time
     TEST_ASSERT_EQUAL_MEMORY(in_buffer1, out_buffer1, sizeof in_buffer1);
 
     // Write and read again, this time partially in the first and third nuggets
-    IFDEBUG(dzlog_notice("(write 4)"));
+    dzlog_notice("(write 4)");
     buse_write(in_buffer2, sizeof in_buffer2, nugget_size / 2, buselfs_state);
     TEST_ASSERT_EQUAL_UINT8(buselfs_state->primary_cipher->enum_id, buselfs_state->active_cipher_enum_id);
 
-    IFDEBUG(dzlog_notice("(read 4)"));
+    dzlog_notice("(read 4)");
     buse_read(out_buffer2, sizeof out_buffer2, nugget_size / 2, buselfs_state);
 
     // Verify read
     TEST_ASSERT_EQUAL_MEMORY(in_buffer2, out_buffer2, sizeof in_buffer2);
 
     // * (#5) Swap is active cipher
-    IFDEBUG(dzlog_notice("-- swap #5 --"));
+    dzlog_notice("-- swap #5 --");
     blfs_write_output_queue(&fake_state, &swap_cmd_msg, BLFS_SV_MESSAGE_DEFAULT_PRIORITY + 1);
 
     // Write and read again, this time partially in the third nugget
-    IFDEBUG(dzlog_notice("(write 5)"));
+    dzlog_notice("(write 5)");
     buse_write(in_buffer3, sizeof in_buffer3, nugget_size * 2 + nugget_size / 4, buselfs_state);
     TEST_ASSERT_EQUAL_UINT8(buselfs_state->swap_cipher->enum_id, buselfs_state->active_cipher_enum_id);
 
     // Verify read LATER!
 
     // * (#6) Primary is active cipher
-    IFDEBUG(dzlog_notice("-- swap #6 --"));
+    dzlog_notice("-- swap #6 --");
     blfs_write_output_queue(&fake_state, &swap_cmd_msg, BLFS_SV_MESSAGE_DEFAULT_PRIORITY + 1);
 
     memset(out_buffer3, 0x06, sizeof out_buffer3);
 
     // Read what was written earlier under a new cipher
-    IFDEBUG(dzlog_notice("(read 5)"));
+    dzlog_notice("(read 5)");
     buse_read(out_buffer3, sizeof out_buffer3, nugget_size * 2 + nugget_size / 4, buselfs_state);
     TEST_ASSERT_EQUAL_UINT8(buselfs_state->primary_cipher->enum_id, buselfs_state->active_cipher_enum_id);
 
@@ -1982,17 +1982,17 @@ static void mirrored_readwrite_quicktest(int normal_ciphers)
     TEST_ASSERT_EQUAL_MEMORY(in_buffer3, out_buffer3, sizeof in_buffer3);
 
     // * (#7) Swap is active cipher
-    IFDEBUG(dzlog_notice("-- swap #7 --"));
+    dzlog_notice("-- swap #7 --");
     blfs_write_output_queue(&fake_state, &swap_cmd_msg, BLFS_SV_MESSAGE_DEFAULT_PRIORITY + 1);
 
     memset(out_buffer1, 0x04, sizeof out_buffer1);
 
     // Let's do this again...
-    IFDEBUG(dzlog_notice("(write 6)"));
+    dzlog_notice("(write 6)");
     buse_write(in_buffer1, (sizeof in_buffer1) - 2, 1, buselfs_state);
     TEST_ASSERT_EQUAL_UINT8(buselfs_state->swap_cipher->enum_id, buselfs_state->active_cipher_enum_id);
 
-    IFDEBUG(dzlog_notice("(read 6)"));
+    dzlog_notice("(read 6)");
     buse_read(out_buffer1, (sizeof out_buffer1) - 2, 1, buselfs_state);
 
     // Verify read
@@ -2207,11 +2207,11 @@ static void selective_readwrite_quicktest(int normal_ciphers)
     TEST_ASSERT_EQUAL_UINT8(0, bitmask_any_bits_set(tj2[3]->bitmask, 0, tj2[3]->bitmask->byte_length * 8));
 
     // * (#0) Primary is initially the active cipher
-    IFDEBUG(dzlog_notice("-- swap #0 (initial-P) --"));
+    dzlog_notice("-- swap #0 (initial-P) --");
     TEST_ASSERT_EQUAL_UINT8(buselfs_state->primary_cipher->enum_id, buselfs_state->active_cipher_enum_id);
 
     // Write and then read it and make sure it's correct
-    IFDEBUG(dzlog_notice("(write 1)"));
+    dzlog_notice("(write 1)");
     buse_write(in_buffer1, sizeof in_buffer1, 0, buselfs_state);
 
     if(normal_ciphers)
@@ -2227,24 +2227,24 @@ static void selective_readwrite_quicktest(int normal_ciphers)
         TEST_ASSERT_EQUAL_UINT8(0, bitmask_are_bits_set(tj2[3]->bitmask, 0, tj2[3]->bitmask->byte_length * 8));
     }
 
-    IFDEBUG(dzlog_notice("(read 1)"));
+    dzlog_notice("(read 1)");
     buse_read(out_buffer1, sizeof out_buffer1, 0, buselfs_state);
 
     // Verify read
     TEST_ASSERT_EQUAL_MEMORY(in_buffer1, out_buffer1, sizeof in_buffer1);
 
     // * (#1) Swap is active cipher
-    IFDEBUG(dzlog_notice("-- swap #1 (S) --"));
+    dzlog_notice("-- swap #1 (S) --");
     blfs_write_output_queue(&fake_state, &swap_cmd_msg, BLFS_SV_MESSAGE_DEFAULT_PRIORITY + 1);
 
     memset(in_buffer1,  0x99, sizeof in_buffer1);
     memset(out_buffer1, 0xFF, sizeof out_buffer1);
 
     // Write again and then read it again
-    IFDEBUG(dzlog_notice("(write 2)"));
+    dzlog_notice("(write 2)");
     buse_write(in_buffer1, sizeof in_buffer1, 0, buselfs_state);
 
-    IFDEBUG(dzlog_notice("(read 2)"));
+    dzlog_notice("(read 2)");
     buse_read(out_buffer1, sizeof out_buffer1, 0, buselfs_state);
 
     // Verify read
@@ -2254,21 +2254,21 @@ static void selective_readwrite_quicktest(int normal_ciphers)
     memset(out_buffer1, 0xDD, sizeof out_buffer1);
 
     // * (#2) Primary is active cipher
-    IFDEBUG(dzlog_notice("-- swap #2 (P) --"));
+    dzlog_notice("-- swap #2 (P) --");
     blfs_write_output_queue(&fake_state, &swap_cmd_msg, BLFS_SV_MESSAGE_DEFAULT_PRIORITY + 1);
 
-    IFDEBUG(dzlog_notice("(read 3)"));
+    dzlog_notice("(read 3)");
     buse_read(out_buffer1, sizeof out_buffer1, 0, buselfs_state);
 
     // Verify read
     TEST_ASSERT_EQUAL_MEMORY(in_buffer1, out_buffer1, sizeof in_buffer1);
 
-    IFDEBUG(dzlog_notice("(write 3)"));
+    dzlog_notice("(write 3)");
     buse_write(in_buffer2, nugget_size, 35, buselfs_state);
 
     memset(out_buffer1, 0xEE, sizeof out_buffer1);
 
-    IFDEBUG(dzlog_notice("(read 4)"));
+    dzlog_notice("(read 4)");
     buse_read(out_buffer1, sizeof out_buffer1, 0, buselfs_state);
 
     // Make sure all is as it is supposed to be
@@ -2277,24 +2277,24 @@ static void selective_readwrite_quicktest(int normal_ciphers)
     TEST_ASSERT_EQUAL_MEMORY(in_buffer1, out_buffer1 + nugget_size + 35, nugget_size);
 
     // * (#3) Swap is active cipher
-    IFDEBUG(dzlog_notice("-- swap #3 (S) --"));
+    dzlog_notice("-- swap #3 (S) --");
     blfs_write_output_queue(&fake_state, &swap_cmd_msg, BLFS_SV_MESSAGE_DEFAULT_PRIORITY + 1);
 
     memset(in_buffer1, 0x99, sizeof in_buffer1);
     memset(out_buffer1, 0xBB, sizeof out_buffer1);
 
-    IFDEBUG(dzlog_notice("(read 5)"));
+    dzlog_notice("(read 5)");
     buse_read(out_buffer1, sizeof out_buffer1, 0, buselfs_state);
 
     // Verify read
     TEST_ASSERT_EQUAL_MEMORY(in_buffer1, out_buffer1, sizeof in_buffer1);
 
-    IFDEBUG(dzlog_notice("(write 4)"));
+    dzlog_notice("(write 4)");
     buse_write(in_buffer2, nugget_size, 55, buselfs_state);
 
     memset(out_buffer1, 0xAA, sizeof out_buffer1);
 
-    IFDEBUG(dzlog_notice("(read 6)"));
+    dzlog_notice("(read 6)");
     buse_read(out_buffer1, sizeof out_buffer1, 0, buselfs_state);
 
     // Make sure all is as it is supposed to be
@@ -2381,154 +2381,7 @@ void test_strongbox_works_when_selective3(void)
     selective_readwrite_quicktest(FALSE);
 }
 
-// void test_strongbox_works_when_1aggressive(void)
-// {
-//     zlog_fini();
-
-//     char * argv_create1[] = {
-//         "progname",
-//         "--default-password",
-//         "--backstore-size",
-//         "50",
-//         "--cipher",
-//         "sc_freestyle_fast",
-//         "--swap-cipher",
-//         "sc_chacha8_neon",
-//         "--swap-strategy",
-//         "swap_1_forward",
-//         "create",
-//         "device_actual-129"
-//     };
-
-//     int argc = sizeof(argv_create1)/sizeof(argv_create1[0]);
-
-//     buselfs_state = strongbox_main_actual(argc, argv_create1, blockdevice);
-
-//     buselfs_state_t fake_state = {
-//         .qd_outgoing = mq_open(BLFS_SV_QUEUE_INCOMING_NAME, O_WRONLY | O_NONBLOCK, BLFS_SV_QUEUE_PERM)
-//     };
-
-//     uint32_t nugget_size = buselfs_state->backstore->nugget_size_bytes;
-//     blfs_mq_msg_t swap_cmd_msg = { .opcode = 1 };
-
-//     uint8_t out_buffer[nugget_size / 2];
-
-//     memset(out_buffer,  0x01, sizeof out_buffer);
-
-//     blfs_nugget_metadata_t * meta[2] = {
-//         blfs_open_nugget_metadata(buselfs_state->backstore, 1),
-//         blfs_open_nugget_metadata(buselfs_state->backstore, 2)
-//     };
-
-//     TEST_ASSERT_EQUAL_UINT8_MESSAGE(
-//         buselfs_state->primary_cipher->enum_id,
-//         meta[0]->cipher_ident,
-//         "(sanity check: meta0 didn't match primary cipher id)"
-//     );
-
-//     TEST_ASSERT_EQUAL_UINT8_MESSAGE(
-//         buselfs_state->primary_cipher->enum_id,
-//         meta[1]->cipher_ident,
-//         "(sanity check: meta1 didn't match primary cipher id)"
-//     );
-
-//     blfs_write_output_queue(&fake_state, &swap_cmd_msg, BLFS_SV_MESSAGE_DEFAULT_PRIORITY + 1);
-//     buse_write(out_buffer, sizeof out_buffer, 0, buselfs_state);
-
-//     TEST_ASSERT_EQUAL_UINT8_MESSAGE(
-//         buselfs_state->swap_cipher->enum_id,
-//         meta[0]->cipher_ident,
-//         "(meta0 didn't match swap cipher id)"
-//     );
-
-//     TEST_ASSERT_EQUAL_UINT8_MESSAGE(
-//         buselfs_state->primary_cipher->enum_id,
-//         meta[1]->cipher_ident,
-//         "(meta1 didn't match primary cipher id)"
-//     );
-// }
-
-// void test_strongbox_works_when_2aggressive(void)
-// {
-//     zlog_fini();
-
-//     char * argv_create1[] = {
-//         "progname",
-//         "--default-password",
-//         "--backstore-size",
-//         "50",
-//         "--cipher",
-//         "sc_freestyle_fast",
-//         "--swap-cipher",
-//         "sc_chacha8_neon",
-//         "--swap-strategy",
-//         "swap_2_forward",
-//         "create",
-//         "device_actual-130"
-//     };
-
-//     int argc = sizeof(argv_create1)/sizeof(argv_create1[0]);
-
-//     buselfs_state = strongbox_main_actual(argc, argv_create1, blockdevice);
-
-//     buselfs_state_t fake_state = {
-//         .qd_outgoing = mq_open(BLFS_SV_QUEUE_INCOMING_NAME, O_WRONLY | O_NONBLOCK, BLFS_SV_QUEUE_PERM)
-//     };
-
-//     uint32_t nugget_size = buselfs_state->backstore->nugget_size_bytes;
-//     blfs_mq_msg_t swap_cmd_msg = { .opcode = 1 };
-
-//     uint8_t out_buffer[nugget_size / 2];
-
-//     memset(out_buffer,  0x01, sizeof out_buffer);
-
-//     blfs_nugget_metadata_t * meta[3] = {
-//         blfs_open_nugget_metadata(buselfs_state->backstore, 1),
-//         blfs_open_nugget_metadata(buselfs_state->backstore, 2),
-//         blfs_open_nugget_metadata(buselfs_state->backstore, 3)
-//     };
-
-//     TEST_ASSERT_EQUAL_UINT8_MESSAGE(
-//         buselfs_state->primary_cipher->enum_id,
-//         meta[0]->cipher_ident,
-//         "(sanity check: meta0 didn't match primary cipher id)"
-//     );
-
-//     TEST_ASSERT_EQUAL_UINT8_MESSAGE(
-//         buselfs_state->primary_cipher->enum_id,
-//         meta[1]->cipher_ident,
-//         "(sanity check: meta1 didn't match primary cipher id)"
-//     );
-
-//     TEST_ASSERT_EQUAL_UINT8_MESSAGE(
-//         buselfs_state->primary_cipher->enum_id,
-//         meta[2]->cipher_ident,
-//         "(sanity check: meta2 didn't match primary cipher id)"
-//     );
-
-//     blfs_write_output_queue(&fake_state, &swap_cmd_msg, BLFS_SV_MESSAGE_DEFAULT_PRIORITY + 1);
-//     buse_write(out_buffer, sizeof out_buffer, 0, buselfs_state);
-
-//     TEST_ASSERT_EQUAL_UINT8_MESSAGE(
-//         buselfs_state->swap_cipher->enum_id,
-//         meta[0]->cipher_ident,
-//         "(meta0 didn't match swap cipher id)"
-//     );
-
-//     TEST_ASSERT_EQUAL_UINT8_MESSAGE(
-//         buselfs_state->swap_cipher->enum_id,
-//         meta[1]->cipher_ident,
-//         "(meta1 didn't match swap cipher id)"
-//     );
-
-//     TEST_ASSERT_EQUAL_UINT8_MESSAGE(
-//         buselfs_state->primary_cipher->enum_id,
-//         meta[2]->cipher_ident,
-//         "(meta2 didn't match primary cipher id)"
-//     );
-// }
-
-/***void test_usecase_uc_secure_regions(void)
+void test_strongbox_works_when_1aggressive(void)
 {
     zlog_fini();
 
@@ -2540,24 +2393,113 @@ void test_strongbox_works_when_selective3(void)
         "--cipher",
         "sc_freestyle_fast",
         "--swap-cipher",
-        "sc_freestyle_secure",
+        "sc_chacha8_neon",
         "--swap-strategy",
-        "swap_0_forward",
-        "--support-uc",
-        "uc_secure_regions",
+        "swap_1_forward",
         "create",
-        "device_actual-131"
+        "device_actual-129"
     };
 
     int argc = sizeof(argv_create1)/sizeof(argv_create1[0]);
 
     buselfs_state = strongbox_main_actual(argc, argv_create1, blockdevice);
 
-    // TODO:! test use case actually works!
-    TEST_IGNORE();
+    buselfs_state_t fake_state = {
+        .qd_outgoing = mq_open(BLFS_SV_QUEUE_INCOMING_NAME, O_WRONLY | O_NONBLOCK, BLFS_SV_QUEUE_PERM)
+    };
+
+    uint32_t nugget_size = buselfs_state->backstore->nugget_size_bytes;
+    blfs_mq_msg_t swap_cmd_msg = { .opcode = 1 };
+
+    uint8_t in_buffer[nugget_size / 2];
+    uint8_t out_buffer[nugget_size / 2];
+    uint8_t in_buffer2[nugget_size * 2];
+    uint8_t out_buffer2[nugget_size * 2];
+
+    memset(in_buffer,  0x01, sizeof in_buffer);
+    memset(out_buffer,  0x02, sizeof out_buffer);
+    memset(in_buffer2,  0x03, sizeof in_buffer2);
+    memset(out_buffer2,  0x04, sizeof out_buffer2);
+
+    blfs_nugget_metadata_t * meta[2] = {
+        blfs_open_nugget_metadata(buselfs_state->backstore, 1), // ? We assume that 0 already changed b/c other tests
+        blfs_open_nugget_metadata(buselfs_state->backstore, 2)
+    };
+
+    TEST_ASSERT_EQUAL_UINT8_MESSAGE(
+        buselfs_state->primary_cipher->enum_id,
+        meta[0]->cipher_ident,
+        "(sanity check: meta0 didn't match primary cipher id)"
+    );
+
+    TEST_ASSERT_EQUAL_UINT8_MESSAGE(
+        buselfs_state->primary_cipher->enum_id,
+        meta[1]->cipher_ident,
+        "(sanity check: meta1 didn't match primary cipher id)"
+    );
+
+    dzlog_notice("(write 1)");
+    buse_write(in_buffer, sizeof in_buffer, 0, buselfs_state);
+
+    TEST_ASSERT_EQUAL_UINT8_MESSAGE(
+        buselfs_state->primary_cipher->enum_id,
+        meta[0]->cipher_ident,
+        "(sanity check: meta0 didn't match primary cipher id)"
+    );
+
+    TEST_ASSERT_EQUAL_UINT8_MESSAGE(
+        buselfs_state->primary_cipher->enum_id,
+        meta[1]->cipher_ident,
+        "(sanity check: meta1 didn't match primary cipher id)"
+    );
+
+    dzlog_notice("-- swap #1 (S) --");
+    blfs_write_output_queue(&fake_state, &swap_cmd_msg, BLFS_SV_MESSAGE_DEFAULT_PRIORITY + 1);
+
+    dzlog_notice("(read 1)");
+    buse_read(out_buffer, sizeof out_buffer, 0, buselfs_state);
+
+    TEST_ASSERT_EQUAL_UINT8_MESSAGE(
+        buselfs_state->swap_cipher->enum_id,
+        meta[0]->cipher_ident,
+        "(meta0 didn't match swap cipher id)"
+    );
+
+    TEST_ASSERT_EQUAL_UINT8_MESSAGE(
+        buselfs_state->primary_cipher->enum_id,
+        meta[1]->cipher_ident,
+        "(meta1 didn't match primary cipher id)"
+    );
+
+    TEST_ASSERT_EQUAL_MEMORY(in_buffer, out_buffer, nugget_size / 2);
+
+    dzlog_notice("-- swap #2 (P) --");
+    blfs_write_output_queue(&fake_state, &swap_cmd_msg, BLFS_SV_MESSAGE_DEFAULT_PRIORITY + 1);
+
+    memset(in_buffer,  0x11, sizeof in_buffer);
+
+    dzlog_notice("(write 2)");
+    buse_write(in_buffer2, sizeof in_buffer2, 0, buselfs_state);
+
+    dzlog_notice("(read 2)");
+    buse_read(out_buffer2, sizeof out_buffer2, 0, buselfs_state);
+
+    TEST_ASSERT_EQUAL_UINT8_MESSAGE(
+        buselfs_state->primary_cipher->enum_id,
+        meta[0]->cipher_ident,
+        "(meta0 didn't match primary cipher id)"
+    );
+
+    TEST_ASSERT_EQUAL_UINT8_MESSAGE(
+        buselfs_state->primary_cipher->enum_id,
+        meta[1]->cipher_ident,
+        "(meta1 didn't match primary cipher id)"
+    );
+
+    TEST_ASSERT_EQUAL_MEMORY(in_buffer2, out_buffer2, sizeof in_buffer2);
 }
 
-void test_usecase_uc_fixed_energy(void)
+void test_strongbox_works_when_2aggressive(void)
 {
     zlog_fini();
 
@@ -2569,78 +2511,70 @@ void test_usecase_uc_fixed_energy(void)
         "--cipher",
         "sc_freestyle_fast",
         "--swap-cipher",
-        "sc_freestyle_secure",
+        "sc_chacha8_neon",
         "--swap-strategy",
-        "swap_0_forward",
-        "--support-uc",
-        "uc_fixed_energy",
+        "swap_2_forward",
         "create",
-        "device_actual-132"
+        "device_actual-130"
     };
 
     int argc = sizeof(argv_create1)/sizeof(argv_create1[0]);
 
     buselfs_state = strongbox_main_actual(argc, argv_create1, blockdevice);
 
-    // TODO:! test use case actually works!
-    TEST_IGNORE();
+    buselfs_state_t fake_state = {
+        .qd_outgoing = mq_open(BLFS_SV_QUEUE_INCOMING_NAME, O_WRONLY | O_NONBLOCK, BLFS_SV_QUEUE_PERM)
+    };
+
+    uint32_t nugget_size = buselfs_state->backstore->nugget_size_bytes;
+    blfs_mq_msg_t swap_cmd_msg = { .opcode = 1 };
+
+    uint8_t out_buffer[nugget_size / 2];
+
+    memset(out_buffer,  0x01, sizeof out_buffer);
+
+    blfs_nugget_metadata_t * meta[3] = {
+        blfs_open_nugget_metadata(buselfs_state->backstore, 1),
+        blfs_open_nugget_metadata(buselfs_state->backstore, 2),
+        blfs_open_nugget_metadata(buselfs_state->backstore, 3)
+    };
+
+    TEST_ASSERT_EQUAL_UINT8_MESSAGE(
+        buselfs_state->primary_cipher->enum_id,
+        meta[0]->cipher_ident,
+        "(sanity check: meta0 didn't match primary cipher id)"
+    );
+
+    TEST_ASSERT_EQUAL_UINT8_MESSAGE(
+        buselfs_state->primary_cipher->enum_id,
+        meta[1]->cipher_ident,
+        "(sanity check: meta1 didn't match primary cipher id)"
+    );
+
+    TEST_ASSERT_EQUAL_UINT8_MESSAGE(
+        buselfs_state->primary_cipher->enum_id,
+        meta[2]->cipher_ident,
+        "(sanity check: meta2 didn't match primary cipher id)"
+    );
+
+    blfs_write_output_queue(&fake_state, &swap_cmd_msg, BLFS_SV_MESSAGE_DEFAULT_PRIORITY + 1);
+    buse_write(out_buffer, sizeof out_buffer, 0, buselfs_state);
+
+    TEST_ASSERT_EQUAL_UINT8_MESSAGE(
+        buselfs_state->swap_cipher->enum_id,
+        meta[0]->cipher_ident,
+        "(meta0 didn't match swap cipher id)"
+    );
+
+    TEST_ASSERT_EQUAL_UINT8_MESSAGE(
+        buselfs_state->swap_cipher->enum_id,
+        meta[1]->cipher_ident,
+        "(meta1 didn't match swap cipher id)"
+    );
+
+    TEST_ASSERT_EQUAL_UINT8_MESSAGE(
+        buselfs_state->primary_cipher->enum_id,
+        meta[2]->cipher_ident,
+        "(meta2 didn't match primary cipher id)"
+    );
 }
-
-void test_usecase_uc_offset_slowdown(void)
-{
-    zlog_fini();
-
-    char * argv_create1[] = {
-        "progname",
-        "--default-password",
-        "--backstore-size",
-        "50",
-        "--cipher",
-        "sc_freestyle_fast",
-        "--swap-cipher",
-        "sc_freestyle_secure",
-        "--swap-strategy",
-        "swap_0_forward",
-        "--support-uc",
-        "uc_offset_slowdown",
-        "create",
-        "device_actual-133"
-    };
-
-    int argc = sizeof(argv_create1)/sizeof(argv_create1[0]);
-
-    buselfs_state = strongbox_main_actual(argc, argv_create1, blockdevice);
-
-    // TODO:! test use case actually works!
-    // TODO:! (test that uc is set properly for all these types of tests)
-    TEST_IGNORE();
-}
-
-void test_usecase_uc_lockdown(void)
-{
-    zlog_fini();
-
-    char * argv_create1[] = {
-        "progname",
-        "--default-password",
-        "--backstore-size",
-        "50",
-        "--cipher",
-        "sc_freestyle_fast",
-        "--swap-cipher",
-        "sc_freestyle_secure",
-        "--swap-strategy",
-        "swap_0_forward",
-        "--support-uc",
-        "uc_lockdown",
-        "create",
-        "device_actual-134"
-    };
-
-    int argc = sizeof(argv_create1)/sizeof(argv_create1[0]);
-
-    buselfs_state = strongbox_main_actual(argc, argv_create1, blockdevice);
-
-    // TODO:! test use case actually works!
-    TEST_IGNORE();
-}***/
