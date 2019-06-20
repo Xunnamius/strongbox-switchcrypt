@@ -633,6 +633,12 @@ void test_aes256_xts_handles_offset_crypt_properly(void)
     );
 }
 
+uint32_t mt_calculate_metadata_mt_index_callback(const buselfs_state_t * buselfs_state, uint32_t nugget_index, int nc)
+{
+    (void) nc;
+    return 1 + buselfs_state->backstore->num_nuggets * 2 + (BLFS_HEAD_NUM_HEADERS - 3) + nugget_index;
+}
+
 void test_freestyle_handles_crypt_properly(void)
 {
     blfs_swappable_cipher_t sc;
@@ -659,6 +665,9 @@ void test_freestyle_handles_crypt_properly(void)
     backstore.num_nuggets = 60;
 
     swappable_cipher_e ciphers_under_test[] = { sc_freestyle_fast,  sc_freestyle_balanced, sc_freestyle_secure };
+
+    blfs_backstore_write_body_Ignore();
+    mt_calculate_metadata_mt_index_StubWithCallback(mt_calculate_metadata_mt_index_callback);
 
     for(uint32_t runs = 0, size = sizeof(ciphers_under_test)/sizeof(ciphers_under_test[0]); runs < size; ++runs)
     {

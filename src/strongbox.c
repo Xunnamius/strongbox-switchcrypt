@@ -60,6 +60,7 @@ uint32_t mt_calculate_metadata_mt_index(const buselfs_state_t * buselfs_state, u
 {
     // ? Jump over indicies that aren't associated w/ this nug and land on the
     // ? nugget metadata hash we're looking for
+    // ! Must also update the stubbed version in test_swappable
     return 1 + buselfs_state->backstore->num_nuggets * 2 + (BLFS_HEAD_NUM_HEADERS - 3) + nugget_index;
 }
 
@@ -1205,6 +1206,8 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
     uint_fast32_t flake_size        = buselfs_state->backstore->flake_size_bytes;
     uint_fast32_t num_nuggets       = buselfs_state->backstore->num_nuggets;
     uint_fast32_t flakes_per_nugget = buselfs_state->backstore->flakes_per_nugget;
+
+    (void) num_nuggets;
 
     uint_fast32_t mt_offset = mt_calculate_expected_size(buselfs_state, 0);
 
