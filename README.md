@@ -6,7 +6,7 @@ everything)
 // TODO: how much extra memory would it actually take to eliminate nuggets and  
 // TODO: just use flakes?  
 (TODO: make sbctl, make strongboxctl)  
-(TODO: older POSIX mq implementations handle permissions granted to mounted /dev/mq very badly)
+(TODO: for older kernels, BLFS_SV_QUEUE_MAX_MESSAGES must be kept low)
 
 This is a complete rewrite of the old buselogfs code. This is a Buse + Chacha20
 + Poly1305 + LFS encrypted filesystem. It uses Argon2 as its KDF. Featured in
