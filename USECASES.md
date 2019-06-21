@@ -2,7 +2,7 @@
 
 ## Intra-file Variable Security Regions (VSR)
 
-[StrongBox UC flag: `uc_secure_regions`]
+[StrongBox UC flag: `uc_secure_regions` (deprecated)]
 
 Communicating classified materials, grand jury testimony, national secrets, etc.
 require the highest level of discretion when handled, yet sensitive information
@@ -22,8 +22,7 @@ the more sensitive data regions are future-proofed and more resilient to
 attack.
 
 Terminology: "a VSR" is a region of a file that is crypted with the swap cipher
-cipher than the remaining majority of the file, which is crypted using the
-primary cipher.
+rather than the primary cipher that encrypts the remaining majority of the file.
 
 Benefit: we can "future-proof" our encrypted highly sensitive data against more
 powerful future attacks/less trustworthy ciphers while preserving the
@@ -113,7 +112,7 @@ the remaining space is used for normal data encryption.
 
 ## Balancing Security Goals and the Current Energy Budget
 
-[StrongBox UC flag: `uc_fixed_energy`]
+[StrongBox UC flag: `uc_fixed_energy` (deprecated)]
 
 When our mobile devices enter power saving mode, it is usually because the total
 energy/power budget for the device has become constrained for one reason or
@@ -196,7 +195,7 @@ configuration.
 
 ## Lockdown: Securing Device Data Under Duress
 
-[StrongBox UC flag: `uc_lockdown`]
+[StrongBox UC flag: `uc_lockdown` (deprecated)]
 
 Nation-state and other adversaries have truly extensive compute resources at
 their disposal, as well as knowledge of side-channels and access to technology
@@ -236,7 +235,7 @@ encryption available versus powerful adversaries with unknown means and motive.
 
 ## Detecting and Responding to End-of-Life Slowdown in Solid State Drives
 
-[StrongBox UC flag: `uc_offset_slowdown`]
+[StrongBox UC flag: `uc_offset_slowdown` (deprecated)]
 
 Due to garbage collection and the append-mostly nature of SSDs and other NAND
 devices, as free space becomes constrained, performance drops off a cliff. This

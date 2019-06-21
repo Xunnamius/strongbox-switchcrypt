@@ -1,13 +1,5 @@
 # StrongBox (internally: BuseLFS)
 
-(TODO: update the documentation to reflect recent changes as of version 600,
-including how to build strongboxctl and how mirror/selective strategies affect
-everything)  
-// TODO: how much extra memory would it actually take to eliminate nuggets and  
-// TODO: just use flakes?  
-(TODO: make sbctl, make strongboxctl)  
-(TODO: for older kernels, BLFS_SV_QUEUE_MAX_MESSAGES must be kept low)
-
 This is a complete rewrite of the old buselogfs code. This is a Buse + Chacha20
 + Poly1305 + LFS encrypted filesystem. It uses Argon2 as its KDF. Featured in
 the paper [StrongBox: Confidentiality, Integrity, and Performance using Stream
@@ -22,10 +14,40 @@ Chicago), and Henry Hoffmann (University of Chicago).
 > production code, do not place it anywhere near files you consider important!
 > You've been warned!*
 
+***
+- [StrongBox (internally: BuseLFS)](#StrongBox-internally-BuseLFS)
+  - [Dependencies](#Dependencies)
+  - [Usage](#Usage)
+    - [Swapping Ciphers](#Swapping-Ciphers)
+    - [Swap Strategies](#Swap-Strategies)
+      - [Triggering the Swap](#Triggering-the-Swap)
+    - [Enabling Use Cases](#Enabling-Use-Cases)
+  - [Building StrongBox](#Building-StrongBox)
+  - [Testing StrongBox](#Testing-StrongBox)
+    - [Available Tests](#Available-Tests)
+  - [File Structure and Internal Construction](#File-Structure-and-Internal-Construction)
+  - [Gathering Energy Metrics](#Gathering-Energy-Metrics)
+  - [Important Compile Flags](#Important-Compile-Flags)
+      - [**BLFS_DEBUG_LEVEL**](#BLFS_DEBUG_LEVEL)
+      - [**BLFS_MANUAL_GV_FALLBACK**](#BLFS_MANUAL_GV_FALLBACK)
+  - [Important Configuration Constants](#Important-Configuration-Constants)
+      - [**BLFS_CURRENT_VERSION**](#BLFS_CURRENT_VERSION)
+      - [**BLFS_LEAST_COMPAT_VERSION**](#BLFS_LEAST_COMPAT_VERSION)
+      - [**BLFS_RPMB_KEY**](#BLFS_RPMB_KEY)
+      - [**BLFS_RPMB_DEVICE**](#BLFS_RPMB_DEVICE)
+      - [**BLFS_CONFIG_ZLOG**](#BLFS_CONFIG_ZLOG)
+      - [**VECTOR_GROWTH_FACTOR**](#VECTOR_GROWTH_FACTOR)
+      - [**VECTOR_INIT_SIZE**](#VECTOR_INIT_SIZE)
+      - [**BLFS_CONFIG_ZLOG**](#BLFS_CONFIG_ZLOG-1)
+      - [**BLFS_BACKSTORE_FILENAME**](#BLFS_BACKSTORE_FILENAME)
+      - [**BLFS_BACKSTORE_DEVICEPATH**](#BLFS_BACKSTORE_DEVICEPATH)
+  - [Prototypical Limitations and Potential Pitfalls](#Prototypical-Limitations-and-Potential-Pitfalls)
+***
+
 ## Dependencies
 
 - Some sort of [ARM](https://www.arm.com/) device, preferably an
-  [Odroid](https://www.hardkernel.com/main/main.php)
+  [Odroid](https://www.hardkernel.com/main/main.php). We used an Odroid XU3.
 - [ARM NEON](https://developer.arm.com/technologies/neon) CPU feature (`cat
   /proc/cpuinfo | grep -i neon`)
 - [zlog](https://github.com/HardySimpson/zlog)
@@ -40,8 +62,10 @@ Chicago), and Henry Hoffmann (University of Chicago).
 - [OpenSSL](https://www.openssl.org) (provides swappable algorithm base)
 - [energymon](https://github.com/energymon/energymon) (required iff you want
   energy metrics **[currently hardcode disabled]**)
+- NILFS, F2FS, EXT4 filesystems should be available if you want to replicate the
+  experimental results.
 - [std=c11](https://en.wikipedia.org/wiki/C11_(C_standard_revision))
-- Assumes 32-bit `int`, 64-bit `long long` (due to [`sc_chacha20_alt`](#usage))
+- Assumes 32-bit `int`, 64-bit `long long` (due to [`sc_chachaX_neon`](#swapping-ciphers))
 - A device that offers or emulates an [RPMB
   API](https://lwn.net/Articles/682276/) is required iff you intend to test RPMB
   functionality. See: [BLFS_RPMB_KEY](#blfs_rpmb_key),
@@ -53,7 +77,7 @@ Chicago), and Henry Hoffmann (University of Chicago).
 
 ## Usage
 
-> Note that, as of this version, the `open` and `wipe` commands have not yet
+> Note that, as of the latest version, the `open` and `wipe` commands have not yet
 > been fully implemented, so don't try to use them.
 
 ```
@@ -114,11 +138,32 @@ Swap strategies available for `--swap-strategy` are:
 - `swap_selective`
 - `swap_disabled`
 
-You can see these options defined in [constants.h](src/constants.h).
+You can see these options defined in [constants.h](src/constants.h). More
+information about what each strategy does can be found in the second StrongBox
+paper.
 
 #### Triggering the Swap
 
+Cipher swapping in StrongBox can be triggered by sending a well-structured
+message to the incoming StrongBox POSIX message queue. In a production
+implementation, StrongBox would respond with an observable acknowledgement sent
+through the outgoing StrongBox POSIX message queue.
 
+Messages can be sent and received from the StrongBox message queue or any
+message queue by using `strongboxctl` (AKA: `sbctl`). `sbctl` can be built via
+Make:
+
+```
+make pre
+make sbctl
+```
+
+Or:
+
+```
+make pre
+make strongboxctl
+```
 
 ### Enabling Use Cases
 
@@ -242,16 +287,8 @@ optimization, you can use the following:
 
 ### Available Tests
 
-- `test_aes`
-    - This test is only relevant when the
-      [BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION](#blfs_badbadnotgood_use_aesxts_emulation)
-      flag is in effect.
 - `test_backstore`
 - `test_bitmask`
-- `test_strongbox`
-    - *Many* tests in this collection are disabled when the
-      [BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION](#blfs_badbadnotgood_use_aesxts_emulation)
-      flag is in effect.
 - `test_crypto`
     - Several tests in this collection are disabled when the
       [BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION](#blfs_badbadnotgood_use_aesxts_emulation)
@@ -263,15 +300,15 @@ optimization, you can use the following:
       the RPMB (i.e. most tests) will fail if you don't have an RPMB-aware and
       configured device. Check [the flag's
       documentation](#blfs_manual_gv_fallback) for more information.
+- `test_strongbox`
+    - *Many* tests in this collection are disabled when the
+      [BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION](#blfs_badbadnotgood_use_aesxts_emulation)
+      flag is in effect.
 - `test_swappable`
     - Several tests in this collection are disabled when the
       [BLFS_BADBADNOTGOOD_USE_AESXTS_EMULATION](#blfs_badbadnotgood_use_aesxts_emulation)
       flag is in effect.
 - `test_vector`
-
-> Note: the **ONLY** test that works with
-> [BLFS_DEBUG_MONITOR_POWER](#blfs_debug_monitor_power) is in effect is
-> `test_strongbox`!
 
 ## File Structure and Internal Construction
 
@@ -282,6 +319,7 @@ optimization, you can use the following:
 ├── config
 ├── src
 ├── test
+├── tools
 └── vendor
     ├── cmock
     ├── energymon
@@ -296,6 +334,7 @@ optimization, you can use the following:
   are placed, among others.
 - `src/` is where the StrongBox source lives.
 - `test/` is where the corresponding StrongBox unit tests live.
+- `tools/` is where the StrongBox controller (i.e. `sbctl`) and other tools are.
 - `vendor/` is where all unmanaged third party code is placed. Make clean cleans
   this directory and its subdirs too.
 
@@ -305,11 +344,13 @@ Considerations:
 
 ## Gathering Energy Metrics
 
-StrongBox is designed to capture energy usage data (energy, power, duration)
-while operating, though it is disabled by default. You can enable this behavior
-with the [BLFS_DEBUG_MONITOR_POWER](#blfs_debug_monitor_power) flag. Use of this
-feature requires [energymon](https://github.com/energymon/energymon) to be
-compiled—ideally with a non-dummy default implementation—and fully installed.
+StrongBox *was* designed to capture energy usage data (energy, power, duration)
+while operating, though this functionality has since been retired. You used to
+enable this behavior with the
+[BLFS_DEBUG_MONITOR_POWER](#blfs_debug_monitor_power) flag, which has since been
+deprecated. Use of this feature requires
+[energymon](https://github.com/energymon/energymon) to be compiled—ideally with
+a non-dummy default implementation—and fully installed.
 
 > Note that collection of data about StrongBox's energy use likely has some
 > performance implications.
@@ -330,19 +371,13 @@ output to `/tmp/blfs_level_$BLFS_DEBUG_LEVEL_$DEVICE_FRAG` where `$DEVICE_FRAG`
 
 `BLFS_DEBUG_LEVEL=0` => debug is off  
 `BLFS_DEBUG_LEVEL=1` => light debugging to designated log file  
-`BLFS_DEBUG_LEVEL=2` => `BLFS_DEBUG_LEVEL=1` and some informative messages to
-stdout  
+`BLFS_DEBUG_LEVEL=2` => `BLFS_DEBUG_LEVEL=1` and some additional informative
+messages to stdout  
 `BLFS_DEBUG_LEVEL=3` => `BLFS_DEBUG_LEVEL=2` with the addition that every single
-function call is now logged
+function call is now logged and a bunch of other deep debug info is presented
 
-> **Note that BLFS_DEBUG_LEVEL > 0 breaks security and leaks potentially
-> sensitive information!**
-
-#### **BLFS_DEBUG_MONITOR_POWER**
-
-`BLFS_DEBUG_MONITOR_POWER=1` enables this debug flag while `=0` disables it
-(default). When enabled, StrongBox will begin logging energy/power/duration data
-to the log. Enabling this has some performance implications.
+> **Note that BLFS_DEBUG_LEVEL > 0 breaks security (inasmuch as security can be
+> broken in a demo like this) and leaks potentially sensitive information!**
 
 #### **BLFS_MANUAL_GV_FALLBACK**
 
@@ -386,10 +421,6 @@ in favor of automatically discovery.
 #### **BLFS_CONFIG_ZLOG**
 Path to your [zlog configuration
 file](https://github.com/HardySimpson/zlog/blob/master/doc/GettingStart-EN.txt).
-
-#### **BLFS_ENERGYMON_OUTPUT_PATH**
-If you've enabled [energy metrics gathering](#blfs_debug_monitor_power), this
-must be a valid file path string (file need not exist yet).
 
 #### **VECTOR_GROWTH_FACTOR**
 
@@ -447,3 +478,5 @@ Path to the NBD pseudo-device that will be generated on run. Defaults to
   several crypto-related issues with the current prototype implementation!
 - In an actual implementation, the backstore should be initialized with random
   data that is then encrypted and written as the "initial" encryption operation.
+- For older kernels, BLFS_SV_QUEUE_MAX_MESSAGES must be kept low (i.e. probably
+  less than 20)
