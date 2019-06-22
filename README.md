@@ -66,6 +66,9 @@ Chicago), and Henry Hoffmann (University of Chicago).
   experimental results.
 - [std=c11](https://en.wikipedia.org/wiki/C11_(C_standard_revision))
 - Assumes 32-bit `int`, 64-bit `long long` (due to [`sc_chachaX_neon`](#swapping-ciphers))
+- POSIX message queues must be enabled in the kernel; StrongBox must have
+  permissions to create and use queues (can be set up to not use sudo if you
+  have the know how)
 - A device that offers or emulates an [RPMB
   API](https://lwn.net/Articles/682276/) is required iff you intend to test RPMB
   functionality. See: [BLFS_RPMB_KEY](#blfs_rpmb_key),
