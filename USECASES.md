@@ -9,19 +9,19 @@ require the highest level of discretion when handled, yet sensitive information
 like this often appears within a (much) larger amount of data that we care less
 about in context.
 
-In this scenario, a user wants to classify one or more regions of a file as more
-sensitive than the others. For example, perhaps banking transaction information
-is littered throughout a document; perhaps passwords and other sensitive or
-compromising information exists within a *much* larger data file. This sensitive
-information would be encrypted using a less performant (sometimes *dramatically*
-so) cipher in exchange for a stronger security guarantee.
+In this scenario, a user wants to indicate one or more regions of a file are
+more sensitive than the others. For example, perhaps banking transaction
+information is littered throughout a document; perhaps passwords and other
+sensitive or compromising information exists within a *much* larger data file.
+This sensitive information would be encrypted using a less performant (sometimes
+*dramatically* so) cipher in exchange for a stronger security guarantee.
 
 The user will not experience a significant performance hit when perusing the
-data if the bulk of it is encrypted using a high performance cipher. Similarly,
-the more sensitive data regions are future-proofed and more resilient to
-attack.
+data if the bulk of it is encrypted using a high performance cipher.
+Simultaneously, the more sensitive data regions are future-proofed and more
+resilient to attack using a high security cipher.
 
-Terminology: "a VSR" is a region of a file that is crypted with the swap cipher
+Terminology: a "VSR" is a region of a file that is crypted with the swap cipher
 rather than the primary cipher that encrypts the remaining majority of the file.
 
 Benefit: we can "future-proof" our encrypted highly sensitive data against more
