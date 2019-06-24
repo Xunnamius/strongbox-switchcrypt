@@ -4,10 +4,10 @@
 
 [StrongBox UC flag: `uc_secure_regions` (deprecated)]
 
-Communicating classified materials, grand jury testimony, national secrets, etc.
-require the highest level of discretion when handled, yet sensitive information
-like this often appears within a (much) larger amount of data that we care less
-about in context.
+Communicating classified materials, grand jury testimony, corporate secrets,
+etc. require the highest level of discretion when handled, yet sensitive
+information like this often appears within a (much) larger amount of data that
+we care less about in context.
 
 In this scenario, a user wants to indicate one or more regions of a file are
 more sensitive than the others. For example, perhaps banking transaction
@@ -21,7 +21,7 @@ data if the bulk of it is encrypted using a high performance cipher.
 Simultaneously, the more sensitive data regions are future-proofed and more
 resilient to attack using a high security cipher.
 
-Terminology: a "VSR" is a region of a file that is crypted with the swap cipher
+Terminology: a "VSR" is a region of a file that is crypted with the alternative
 rather than the primary cipher that encrypts the remaining majority of the file.
 
 Benefit: we can "future-proof" our encrypted highly sensitive data against more
@@ -42,6 +42,9 @@ filesystem.
 we can effectively "reserve" a portion of the backing store for the VSRs while
 the remaining space is used for normal data encryption.
 
+In StrongBox II, this is called the `swap_selective` or selective-immediate
+cipher switching strategy.
+
 - How to communicate intent down the stack?
 
 > In an ideal implementation, the low level I/O API (i.e. `write()` in C) would
@@ -52,7 +55,7 @@ the remaining space is used for normal data encryption.
 > and the data decrypted using the appropriate cipher.
 >
 > Unfortunately, the BUSE subsystem on which StrongBox is based does not support
-> aberrant low level I/O requests natively, making a literal implementation an
+> custom low level I/O requests natively, making a literal implementation an
 > unattractive prospect. Hence, for our purposes, we use POSIX message queues
 > (IPC) to communicate our security parameter down the stack. In fact, some form
 > of the mirrored cipher strategy (but with special write rules rather than dumb
@@ -65,10 +68,10 @@ the remaining space is used for normal data encryption.
 - The amount of wasted space (if there is any) increases proportional to the
   number of VSR-enabled files
 
-> This is because the variable security regions of various files are aggregated
-> and encrypted together within the same set of reserved nuggets. The number of
-> nuggets reserved in this way is currently 50% of total available nuggets via a
-> slightly modified version of the mirrored swap strategy.
+> This is because the variable security regions of various files are encrypted
+> in the higher security reserved nugget area. The number of nuggets reserved in
+> this way is currently 50% of total available nuggets via the selective swap
+> strategy.
 
 - Slower than exclusively using the weakest cipher to crypt a file's nuggets,
   but the VSR content is stored more securely.
@@ -93,22 +96,6 @@ the remaining space is used for normal data encryption.
   Embedded Variable Voltage DC/DC Converter`
 - Batina et al. `Energy, performance, area versus security trade-offs for stream
   ciphers`
-
-### Progress
-
-- Implementation exists based on the mirrored swap strategy
-- An implementation based on forward and aggressive swap strategies is theorized
-- Current results
-    - Read operations to non-VSR regions match StrongBox baseline performance
-    - Write operations to non-VSR regions match StrongBox baseline performance
-    - Read operations to VSR regions match StrongBox baseline performance when
-      using an equivalent cipher
-    - Write operations to VSR regions match StrongBox baseline performance when
-      using an equivalent cipher
-    - Whole file I/O is slower than or equal to baseline StrongBox whole file
-      I/O
-        - This depends on the proportion of VSR-protected data in a file
-          compared to non-VSR data
 
 ## Balancing Security Goals and the Current Energy Budget
 
@@ -184,15 +171,6 @@ configuration.
 - Batina et al. `Energy, performance, area versus security trade-offs for stream
   ciphers`
 
-### Progress
-
-- Implementation exists based on the forward and aggressive swap strategies
-- The relationship between energy use and latency is linear. Hence, a reduction
-  in latency translates directly into a reduction in energy use. A cipher that
-  does not exhibit this behavior would be interesting to behold.
-- Current results
-    - ???
-
 ## Lockdown: Securing Device Data Under Duress
 
 [StrongBox UC flag: `uc_lockdown` (deprecated)]
@@ -225,13 +203,6 @@ encryption available versus powerful adversaries with unknown means and motive.
 ### Related Work
 
 - (TODO: is there any?)
-
-### Progress
-
- - Implementation exists based on the vanilla mirrored strategy
- - Results on the mirrored swap strategy using with-cipher-switching (WCS) tests
-   are in
-      - Filebench results ???
 
 ## Detecting and Responding to End-of-Life Slowdown in Solid State Drives
 
@@ -269,7 +240,3 @@ but less secure cipher.
 - (?) Limplock
 - (?) Tiny-tail flash: Near-perfect elimination of garbage collection tail latencies in NAND SSDs
 - (TODO: perhaps add a lot of Har's work here)
-
-### Progress
-
- - Implementation exists
