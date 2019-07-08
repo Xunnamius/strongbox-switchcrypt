@@ -162,11 +162,6 @@ void tearDown(void)
 {
     mt_delete(buselfs_state->merkle_tree);
 
-    mq_close(buselfs_state->qd_incoming);
-    mq_close(buselfs_state->qd_outgoing);
-    mq_unlink(BLFS_SV_QUEUE_INCOMING_NAME);
-    mq_unlink(BLFS_SV_QUEUE_OUTGOING_NAME);
-
     if(!BLFS_DEFAULT_DISABLE_KEY_CACHING)
         kh_destroy(BLFS_KHASH_NUGGET_KEY_CACHE_NAME, buselfs_state->cache_nugget_keys);
 
@@ -182,7 +177,7 @@ void tearDown(void)
 // ! Also need to test a delete function to fix the memory leak issue as
 // ! discussed in strongbox.h
 
-void test_mq_empty_read_works(void)
+/* void test_mq_empty_read_works(void)
 {
     blfs_mq_msg_t msg = { .opcode = 1 };
     blfs_clear_incoming_queue(buselfs_state);
@@ -2577,4 +2572,312 @@ void test_strongbox_works_when_2aggressive(void)
         meta[2]->cipher_ident,
         "(meta2 didn't match primary cipher id)"
     );
+} */
+
+void test_strongbox_aggressive_doesnt_walk_off_the_end_oneoff(void)
+{
+    zlog_fini();
+
+    char * argv_create1[] = {
+        "progname",
+        "--default-password",
+        "--backstore-size",
+        "50",
+        "--cipher",
+        "sc_freestyle_fast",
+        "--swap-cipher",
+        "sc_chacha8_neon",
+        "--swap-strategy",
+        "swap_2_forward",
+        "create",
+        "device_actual-131"
+    };
+
+    int argc = sizeof(argv_create1)/sizeof(argv_create1[0]);
+
+    buselfs_state = strongbox_main_actual(argc, argv_create1, blockdevice);
+
+    buselfs_state_t fake_state = {
+        .qd_outgoing = mq_open(BLFS_SV_QUEUE_INCOMING_NAME, O_WRONLY | O_NONBLOCK, BLFS_SV_QUEUE_PERM)
+    };
+
+    uint32_t nugget_size = buselfs_state->backstore->nugget_size_bytes;
+    blfs_mq_msg_t swap_cmd_msg = { .opcode = 1 };
+
+    uint8_t out_buffer[nugget_size / 2];
+
+    memset(out_buffer,  0x01, sizeof out_buffer);
+
+    blfs_nugget_metadata_t * meta[3] = {
+        blfs_open_nugget_metadata(buselfs_state->backstore, buselfs_state->backstore->num_nuggets - 3),
+        blfs_open_nugget_metadata(buselfs_state->backstore, buselfs_state->backstore->num_nuggets - 2),
+        blfs_open_nugget_metadata(buselfs_state->backstore, buselfs_state->backstore->num_nuggets - 1)
+    };
+
+    TEST_ASSERT_EQUAL_UINT8_MESSAGE(
+        buselfs_state->primary_cipher->enum_id,
+        meta[0]->cipher_ident,
+        "(sanity check: meta0 didn't match primary cipher id)"
+    );
+
+    TEST_ASSERT_EQUAL_UINT8_MESSAGE(
+        buselfs_state->primary_cipher->enum_id,
+        meta[1]->cipher_ident,
+        "(sanity check: meta1 didn't match primary cipher id)"
+    );
+
+    TEST_ASSERT_EQUAL_UINT8_MESSAGE(
+        buselfs_state->primary_cipher->enum_id,
+        meta[2]->cipher_ident,
+        "(sanity check: meta2 didn't match primary cipher id)"
+    );
+
+    uint64_t ndx = (buselfs_state->backstore->num_nuggets - 1) * nugget_size + 50;
+    blfs_write_output_queue(&fake_state, &swap_cmd_msg, BLFS_SV_MESSAGE_DEFAULT_PRIORITY + 1);
+    buse_write(out_buffer, sizeof out_buffer, ndx, buselfs_state);
+
+    TEST_ASSERT_EQUAL_UINT8_MESSAGE(
+        buselfs_state->primary_cipher->enum_id,
+        meta[0]->cipher_ident,
+        "(meta0 didn't match primary cipher id)"
+    );
+
+    TEST_ASSERT_EQUAL_UINT8_MESSAGE(
+        buselfs_state->primary_cipher->enum_id,
+        meta[1]->cipher_ident,
+        "(meta1 didn't match primary cipher id)"
+    );
+
+    TEST_ASSERT_EQUAL_UINT8_MESSAGE(
+        buselfs_state->swap_cipher->enum_id,
+        meta[2]->cipher_ident,
+        "(meta2 didn't match swap cipher id)"
+    );
 }
+
+void test_strongbox_aggressive_doesnt_walk_off_the_end_twooff(void)
+{
+    zlog_fini();
+
+    char * argv_create1[] = {
+        "progname",
+        "--default-password",
+        "--backstore-size",
+        "50",
+        "--cipher",
+        "sc_freestyle_fast",
+        "--swap-cipher",
+        "sc_chacha8_neon",
+        "--swap-strategy",
+        "swap_2_forward",
+        "create",
+        "device_actual-131"
+    };
+
+    int argc = sizeof(argv_create1)/sizeof(argv_create1[0]);
+
+    buselfs_state = strongbox_main_actual(argc, argv_create1, blockdevice);
+
+    buselfs_state_t fake_state = {
+        .qd_outgoing = mq_open(BLFS_SV_QUEUE_INCOMING_NAME, O_WRONLY | O_NONBLOCK, BLFS_SV_QUEUE_PERM)
+    };
+
+    uint32_t nugget_size = buselfs_state->backstore->nugget_size_bytes;
+    blfs_mq_msg_t swap_cmd_msg = { .opcode = 1 };
+
+    uint8_t out_buffer[nugget_size / 2];
+
+    memset(out_buffer,  0x01, sizeof out_buffer);
+
+    blfs_nugget_metadata_t * meta[3] = {
+        blfs_open_nugget_metadata(buselfs_state->backstore, buselfs_state->backstore->num_nuggets - 3),
+        blfs_open_nugget_metadata(buselfs_state->backstore, buselfs_state->backstore->num_nuggets - 2),
+        blfs_open_nugget_metadata(buselfs_state->backstore, buselfs_state->backstore->num_nuggets - 1)
+    };
+
+    TEST_ASSERT_EQUAL_UINT8_MESSAGE(
+        buselfs_state->primary_cipher->enum_id,
+        meta[0]->cipher_ident,
+        "(sanity check: meta0 didn't match primary cipher id)"
+    );
+
+    TEST_ASSERT_EQUAL_UINT8_MESSAGE(
+        buselfs_state->primary_cipher->enum_id,
+        meta[1]->cipher_ident,
+        "(sanity check: meta1 didn't match primary cipher id)"
+    );
+
+    TEST_ASSERT_EQUAL_UINT8_MESSAGE(
+        buselfs_state->primary_cipher->enum_id,
+        meta[2]->cipher_ident,
+        "(sanity check: meta2 didn't match primary cipher id)"
+    );
+
+    uint64_t ndx = (buselfs_state->backstore->num_nuggets - 2) * nugget_size + 50;
+    blfs_write_output_queue(&fake_state, &swap_cmd_msg, BLFS_SV_MESSAGE_DEFAULT_PRIORITY + 1);
+    buse_write(out_buffer, sizeof out_buffer, ndx, buselfs_state);
+
+    TEST_ASSERT_EQUAL_UINT8_MESSAGE(
+        buselfs_state->primary_cipher->enum_id,
+        meta[0]->cipher_ident,
+        "(meta0 didn't match primary cipher id)"
+    );
+
+    TEST_ASSERT_EQUAL_UINT8_MESSAGE(
+        buselfs_state->swap_cipher->enum_id,
+        meta[1]->cipher_ident,
+        "(meta1 didn't match primary cipher id)"
+    );
+
+    TEST_ASSERT_EQUAL_UINT8_MESSAGE(
+        buselfs_state->swap_cipher->enum_id,
+        meta[2]->cipher_ident,
+        "(meta2 didn't match swap cipher id)"
+    );
+}
+
+/* void test_strongbox_aggressive_doesnt_rekey_twice(void)
+{
+    zlog_fini();
+
+    char * argv_create1[] = {
+        "progname",
+        "--default-password",
+        "--backstore-size",
+        "50",
+        "--cipher",
+        "sc_freestyle_fast",
+        "--swap-cipher",
+        "sc_chacha8_neon",
+        "--swap-strategy",
+        "swap_2_forward",
+        "create",
+        "device_actual-131"
+    };
+
+    int argc = sizeof(argv_create1)/sizeof(argv_create1[0]);
+
+    buselfs_state = strongbox_main_actual(argc, argv_create1, blockdevice);
+
+    buselfs_state_t fake_state = {
+        .qd_outgoing = mq_open(BLFS_SV_QUEUE_INCOMING_NAME, O_WRONLY | O_NONBLOCK, BLFS_SV_QUEUE_PERM)
+    };
+
+    uint32_t nugget_size = buselfs_state->backstore->nugget_size_bytes;
+    blfs_mq_msg_t swap_cmd_msg = { .opcode = 1 };
+
+    uint8_t out_buffer1[nugget_size / 2];
+    uint8_t out_buffer2[nugget_size + nugget_size / 2];
+
+    memset(out_buffer1, 0x01, sizeof out_buffer1);
+    memset(out_buffer2, 0x01, sizeof out_buffer2);
+
+    blfs_nugget_metadata_t * meta[3] = {
+        blfs_open_nugget_metadata(buselfs_state->backstore, buselfs_state->backstore->num_nuggets - 3),
+        blfs_open_nugget_metadata(buselfs_state->backstore, buselfs_state->backstore->num_nuggets - 2),
+        blfs_open_nugget_metadata(buselfs_state->backstore, buselfs_state->backstore->num_nuggets - 1)
+    };
+
+    blfs_keycount_t * count[3] = {
+        blfs_open_keycount(buselfs_state->backstore, buselfs_state->backstore->num_nuggets - 3),
+        blfs_open_keycount(buselfs_state->backstore, buselfs_state->backstore->num_nuggets - 2),
+        blfs_open_keycount(buselfs_state->backstore, buselfs_state->backstore->num_nuggets - 1)
+    };
+
+    TEST_ASSERT_EQUAL_UINT8_MESSAGE(
+        buselfs_state->primary_cipher->enum_id,
+        meta[0]->cipher_ident,
+        "(sanity check: meta0 didn't match primary cipher id)"
+    );
+
+    TEST_ASSERT_EQUAL_UINT8_MESSAGE(
+        buselfs_state->primary_cipher->enum_id,
+        meta[1]->cipher_ident,
+        "(sanity check: meta1 didn't match primary cipher id)"
+    );
+
+    TEST_ASSERT_EQUAL_UINT8_MESSAGE(
+        buselfs_state->primary_cipher->enum_id,
+        meta[2]->cipher_ident,
+        "(sanity check: meta2 didn't match primary cipher id)"
+    );
+
+    TEST_ASSERT_EQUAL_UINT_MESSAGE(
+        0,
+        count[0]->keycount,
+        "(sanity check: count0 didn't match expected)"
+    );
+
+    TEST_ASSERT_EQUAL_UINT_MESSAGE(
+        0,
+        count[1]->keycount,
+        "(sanity check: count1 didn't match expected)"
+    );
+
+    TEST_ASSERT_EQUAL_UINT_MESSAGE(
+        0,
+        count[2]->keycount,
+        "(sanity check: count2 didn't match expected)"
+    );
+
+    uint64_t ndx = (buselfs_state->backstore->num_nuggets - 2) * nugget_size;
+    blfs_write_output_queue(&fake_state, &swap_cmd_msg, BLFS_SV_MESSAGE_DEFAULT_PRIORITY + 1);
+    buse_write(out_buffer1, sizeof out_buffer1, ndx, buselfs_state);
+
+    TEST_ASSERT_EQUAL_UINT8_MESSAGE(
+        buselfs_state->primary_cipher->enum_id,
+        meta[0]->cipher_ident,
+        "(meta0 didn't match primary cipher id)"
+    );
+
+    TEST_ASSERT_EQUAL_UINT8_MESSAGE(
+        buselfs_state->swap_cipher->enum_id,
+        meta[1]->cipher_ident,
+        "(meta1 didn't match primary cipher id)"
+    );
+
+    TEST_ASSERT_EQUAL_UINT8_MESSAGE(
+        buselfs_state->swap_cipher->enum_id,
+        meta[2]->cipher_ident,
+        "(meta2 didn't match swap cipher id)"
+    );
+
+    TEST_ASSERT_EQUAL_UINT_MESSAGE(
+        0,
+        count[0]->keycount,
+        "(count0 didn't match expected)"
+    );
+
+    TEST_ASSERT_EQUAL_UINT_MESSAGE(
+        1,
+        count[1]->keycount,
+        "(count1 didn't match expected)"
+    );
+
+    TEST_ASSERT_EQUAL_UINT_MESSAGE(
+        1,
+        count[2]->keycount,
+        "(count2 didn't match expected)"
+    );
+
+    ndx = (buselfs_state->backstore->num_nuggets - 1) * nugget_size + nugget_size / 2;
+    buse_write(out_buffer2, sizeof out_buffer2, ndx, buselfs_state);
+
+    TEST_ASSERT_EQUAL_UINT_MESSAGE(
+        0,
+        count[0]->keycount,
+        "(finale: count0 didn't match expected)"
+    );
+
+    TEST_ASSERT_EQUAL_UINT_MESSAGE(
+        1,
+        count[1]->keycount,
+        "(finale: count1 didn't match expected)"
+    );
+
+    TEST_ASSERT_EQUAL_UINT_MESSAGE(
+        1,
+        count[2]->keycount,
+        "(finale: count2 didn't match expected)"
+    );
+} */

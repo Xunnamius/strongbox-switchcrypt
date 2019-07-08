@@ -68,17 +68,17 @@ Chicago).
   experimental results.
 - [std=c11](https://en.wikipedia.org/wiki/C11_(C_standard_revision))
 - Assumes 32-bit `int`, 64-bit `long long` (due to [`sc_chachaX_neon`](#swapping-ciphers))
-- POSIX message queues must be enabled in the kernel; StrongBox must have
-  permissions to create and use queues (can be set up to not use sudo if you
-  have the know how)
+- POSIX message queues must be enabled in the kernel; the user running StrongBox
+  must have permissions to create and use queues (root is not necessarily
+  required)
 - A device that offers or emulates an [RPMB
   API](https://lwn.net/Articles/682276/) is required iff you intend to test RPMB
   functionality. See: [BLFS_RPMB_KEY](#blfs_rpmb_key),
   [BLFS_RPMB_DEVICE](#blfs_rpmb_device), and
   [BLFS_MANUAL_GV_FALLBACK](#blfs_manual_gv_fallback).
     - *sudo access* is necessary when using RPMB functionality against an mmc
-      device. If you're doing usersapce emulation of some sort, *sudo* is not
-      necessary.
+      device. If you're doing usersapce emulation of some sort or have
+      configured special permissions for your RPMB, *sudo* is not necessary.
 
 ## Usage
 
@@ -198,8 +198,8 @@ For more information and some friendly? examples:
 You may wish to run the included unit tests first before actually utilizing
 StrongBox. See the [Testing](#testing-strongbox) section below.
 
-`sudo` and/or root privileges are required at certain points due to ioctl calls
-made to privileged devices (like the RPMB).
+`sudo` and/or root privileges might be required at certain points due to ioctl
+calls made to privileged devices (like the RPMB), depending on your setup.
 
 First, of course, change directory into the StrongBox directory and `make` it:
 
@@ -477,11 +477,11 @@ Path to the NBD pseudo-device that will be generated on run. Defaults to
   StrongBox is also a single-threaded application. On the other hand, dm-crypt
   has the benefit of ARM NEON/ARMv6-32 hardware optimizations as well as
   parallelization across CPUs.
-- `--flake-size` must be a power greater than or equal to 64 and, for best
+- `--flake-size` must be a number greater than or equal to 64 and, for best
   performance, should be some power of 2.
 - Do not expect real security from this. This is just a toy and there are
   several crypto-related issues with the current prototype implementation!
-- In an actual implementation, the backstore should be initialized with random
-  data that is then encrypted and written as the "initial" encryption operation.
+- In an actual implementation, the backstore should be initialized before
+  StrongBox with random data instead of zeros.
 - For older kernels, BLFS_SV_QUEUE_MAX_MESSAGES must be kept low (i.e. probably
   less than 20)

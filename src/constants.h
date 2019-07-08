@@ -5,8 +5,8 @@
 // Configurable //
 //////////////////
 
-#define BLFS_CURRENT_VERSION 810U
-#define BLFS_LEAST_COMPAT_VERSION 810U
+#define BLFS_CURRENT_VERSION 820U
+#define BLFS_LEAST_COMPAT_VERSION 820U
 
 // ! These would likely be non-static irl
 #define BLFS_RPMB_KEY "thirtycharactersecurecounterkey!"
@@ -94,6 +94,7 @@ typedef enum usecase_e {
 } usecase_e;
 
 #include <string.h> /* strdup() */
+#include <sys/stat.h>
 
 ///////////////////
 // Useful Macros //

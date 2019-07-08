@@ -423,7 +423,7 @@ int blfs_swap_nugget_to_active_cipher(int swapping_while_read_or_write,
         else
         {
             dzlog_fatal("EXCEPTION: an impossible condition occurred during cipher swapping...");
-            Throw(EXCEPTION_ASSUMPTION_WAS_NOT_SATISFIED); // WTF?
+            Throw(EXCEPTION_ASSUMPTION2_WAS_NOT_SATISFIED); // WTF?
         }
     }
 
@@ -547,12 +547,14 @@ int blfs_swap_nugget_to_active_cipher(int swapping_while_read_or_write,
             size_t aggressiveness = buselfs_state->active_swap_strategy == swap_1_forward ? 1 : 2;
             IFDEBUG(dzlog_debug("aggressiveness: %i", aggressiveness));
 
-            for(size_t i = 1; i <= aggressiveness; ++i)
+            uint32_t num_nuggets = buselfs_state->backstore->num_nuggets;
+
+            for(size_t i = 1, target = target_nugget_index + i; i <= aggressiveness && target < num_nuggets; ++i, ++target)
             {
                 uint64_t written = blfs_swap_nugget_to_active_cipher(
                     swapping_while_read_or_write,
                     buselfs_state,
-                    target_nugget_index + i,
+                    target,
                     NULL,
                     0,
                     0
@@ -578,7 +580,7 @@ mqd_t blfs_open_queue(char * queue_name, int incoming_outgoing)
     errno = 0;
     int oflags = (!incoming_outgoing ? O_RDONLY : O_WRONLY) | O_CREAT | O_NONBLOCK;
 
-    mqd_t qd = mq_open((const char *) queue_name, oflags, BLFS_SV_QUEUE_PERM, &mqattrs);
+    mqd_t qd = mq_open((const char *) queue_name, oflags, 0666, &mqattrs);
 
     if(qd == -1 || errno != 0)
     {
