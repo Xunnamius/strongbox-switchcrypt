@@ -365,6 +365,7 @@ void blfs_rekey_nugget_then_write(buselfs_state_t * buselfs_state,
                                   uint64_t nugget_internal_offset);
 
 int blfs_swap_nugget_to_active_cipher(int swapping_while_read_or_write,
+                                      int on_last_nugget,
                                       buselfs_state_t * buselfs_state,
                                       uint64_t target_nugget_index,
                                       uint8_t * buffer,

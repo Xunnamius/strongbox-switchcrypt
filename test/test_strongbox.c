@@ -177,7 +177,7 @@ void tearDown(void)
 // ! Also need to test a delete function to fix the memory leak issue as
 // ! discussed in strongbox.h
 
-/* void test_mq_empty_read_works(void)
+void test_mq_empty_read_works(void)
 {
     blfs_mq_msg_t msg = { .opcode = 1 };
     blfs_clear_incoming_queue(buselfs_state);
@@ -1542,14 +1542,14 @@ void test_blfs_swap_nugget_to_active_cipher_updates_metadata(void)
     buselfs_state->swap_cipher = &swap_cipher;
     buselfs_state->active_cipher_enum_id = buselfs_state->swap_cipher->enum_id;
 
-    blfs_swap_nugget_to_active_cipher(SWAP_WHILE_READ, buselfs_state, 0, NULL, 0, 0);
+    blfs_swap_nugget_to_active_cipher(SWAP_WHILE_READ, 1, buselfs_state, 0, NULL, 0, 0);
     buselfs_state->is_cipher_swapping = FALSE; // ? Have to do this manually since we're hijacking the swap function
 
     TEST_ASSERT_EQUAL_UINT8(buselfs_state->swap_cipher->enum_id, meta->cipher_ident);
 
     buselfs_state->active_cipher_enum_id = buselfs_state->primary_cipher->enum_id;
 
-    blfs_swap_nugget_to_active_cipher(SWAP_WHILE_READ, buselfs_state, 0, NULL, 0, 0);
+    blfs_swap_nugget_to_active_cipher(SWAP_WHILE_READ, 0, buselfs_state, 0, NULL, 0, 0);
     buselfs_state->is_cipher_swapping = FALSE; // ? Have to do this manually since we're hijacking the swap function
 
     TEST_ASSERT_EQUAL_UINT8(buselfs_state->primary_cipher->enum_id, meta->cipher_ident);
@@ -2572,7 +2572,7 @@ void test_strongbox_works_when_2aggressive(void)
         meta[2]->cipher_ident,
         "(meta2 didn't match primary cipher id)"
     );
-} */
+}
 
 void test_strongbox_aggressive_doesnt_walk_off_the_end_oneoff(void)
 {
@@ -2726,7 +2726,7 @@ void test_strongbox_aggressive_doesnt_walk_off_the_end_twooff(void)
     TEST_ASSERT_EQUAL_UINT8_MESSAGE(
         buselfs_state->swap_cipher->enum_id,
         meta[1]->cipher_ident,
-        "(meta1 didn't match primary cipher id)"
+        "(meta1 didn't match swap cipher id)"
     );
 
     TEST_ASSERT_EQUAL_UINT8_MESSAGE(
@@ -2736,7 +2736,7 @@ void test_strongbox_aggressive_doesnt_walk_off_the_end_twooff(void)
     );
 }
 
-/* void test_strongbox_aggressive_doesnt_rekey_twice(void)
+void test_strongbox_aggressive_follows_rules_when_writing(void)
 {
     zlog_fini();
 
@@ -2767,7 +2767,7 @@ void test_strongbox_aggressive_doesnt_walk_off_the_end_twooff(void)
     blfs_mq_msg_t swap_cmd_msg = { .opcode = 1 };
 
     uint8_t out_buffer1[nugget_size / 2];
-    uint8_t out_buffer2[nugget_size + nugget_size / 2];
+    uint8_t out_buffer2[nugget_size / 2];
 
     memset(out_buffer1, 0x01, sizeof out_buffer1);
     memset(out_buffer2, 0x01, sizeof out_buffer2);
@@ -2821,63 +2821,378 @@ void test_strongbox_aggressive_doesnt_walk_off_the_end_twooff(void)
     );
 
     uint64_t ndx = (buselfs_state->backstore->num_nuggets - 2) * nugget_size;
-    blfs_write_output_queue(&fake_state, &swap_cmd_msg, BLFS_SV_MESSAGE_DEFAULT_PRIORITY + 1);
     buse_write(out_buffer1, sizeof out_buffer1, ndx, buselfs_state);
 
     TEST_ASSERT_EQUAL_UINT8_MESSAGE(
         buselfs_state->primary_cipher->enum_id,
         meta[0]->cipher_ident,
-        "(meta0 didn't match primary cipher id)"
+        "(1: meta0 didn't match primary cipher id)"
     );
 
     TEST_ASSERT_EQUAL_UINT8_MESSAGE(
-        buselfs_state->swap_cipher->enum_id,
+        buselfs_state->primary_cipher->enum_id, // ? No swap happened
         meta[1]->cipher_ident,
-        "(meta1 didn't match primary cipher id)"
+        "(1: meta1 didn't match primary cipher id)"
     );
 
     TEST_ASSERT_EQUAL_UINT8_MESSAGE(
-        buselfs_state->swap_cipher->enum_id,
+        buselfs_state->primary_cipher->enum_id,
         meta[2]->cipher_ident,
-        "(meta2 didn't match swap cipher id)"
+        "(1: meta2 didn't match primary cipher id)"
     );
 
     TEST_ASSERT_EQUAL_UINT_MESSAGE(
         0,
         count[0]->keycount,
-        "(count0 didn't match expected)"
+        "(1: count0 didn't match expected)"
     );
 
     TEST_ASSERT_EQUAL_UINT_MESSAGE(
-        1,
+        0, // ? Write touches this nugget, but it was pristine beforehand
         count[1]->keycount,
-        "(count1 didn't match expected)"
+        "(1: count1 didn't match expected)"
     );
 
     TEST_ASSERT_EQUAL_UINT_MESSAGE(
-        1,
+        0,
         count[2]->keycount,
-        "(count2 didn't match expected)"
+        "(1: count2 didn't match expected)"
     );
 
-    ndx = (buselfs_state->backstore->num_nuggets - 1) * nugget_size + nugget_size / 2;
+    ndx = (buselfs_state->backstore->num_nuggets - 3) * nugget_size;
+    blfs_write_output_queue(&fake_state, &swap_cmd_msg, BLFS_SV_MESSAGE_DEFAULT_PRIORITY + 1);
     buse_write(out_buffer2, sizeof out_buffer2, ndx, buselfs_state);
 
+    TEST_ASSERT_EQUAL_UINT8_MESSAGE(
+        buselfs_state->swap_cipher->enum_id,  // ? Swap happened because of write
+        meta[0]->cipher_ident,
+        "(2: meta0 didn't match swap cipher id)"
+    );
+
+    TEST_ASSERT_EQUAL_UINT8_MESSAGE(
+        buselfs_state->primary_cipher->enum_id, // ? Non-pristine, but writes can't aggro
+        meta[1]->cipher_ident,
+        "(2: meta1 didn't match primary cipher id)"
+    );
+
+    TEST_ASSERT_EQUAL_UINT8_MESSAGE(
+        buselfs_state->swap_cipher->enum_id, // ? Pristine, and writes can flip
+        meta[2]->cipher_ident,
+        "(2: meta2 didn't match swap cipher id)"
+    );
+
+    TEST_ASSERT_EQUAL_UINT_MESSAGE(
+        1, // ? Write touches this nugget
+        count[0]->keycount,
+        "(2: count0 didn't match expected)"
+    );
+
+    TEST_ASSERT_EQUAL_UINT_MESSAGE(
+        0, // ? Non-pristine, but writes can't aggro
+        count[1]->keycount,
+        "(2: count1 didn't match expected)"
+    );
+
+    TEST_ASSERT_EQUAL_UINT_MESSAGE(
+        0, // ? Pristine nugget should not aggro, especially not under a write!
+        count[2]->keycount,
+        "(2: count2 didn't match expected)"
+    );
+
+    ndx = (buselfs_state->backstore->num_nuggets - 3) * nugget_size;
+    blfs_write_output_queue(&fake_state, &swap_cmd_msg, BLFS_SV_MESSAGE_DEFAULT_PRIORITY + 1);
+    buse_write(out_buffer2, sizeof out_buffer2, ndx, buselfs_state);
+
+    TEST_ASSERT_EQUAL_UINT8_MESSAGE(
+        buselfs_state->primary_cipher->enum_id,  // ? Swap happened because of write
+        meta[0]->cipher_ident,
+        "(2: meta0 didn't match primary cipher id)"
+    );
+
+    TEST_ASSERT_EQUAL_UINT8_MESSAGE(
+        buselfs_state->primary_cipher->enum_id, // ? Non-pristine, but writes can't aggro
+        meta[1]->cipher_ident,
+        "(2: meta1 didn't match primary cipher id)"
+    );
+
+    TEST_ASSERT_EQUAL_UINT8_MESSAGE(
+        buselfs_state->primary_cipher->enum_id, // ? Pristine, and writes can flip
+        meta[2]->cipher_ident,
+        "(2: meta2 didn't match primary cipher id)"
+    );
+
+    TEST_ASSERT_EQUAL_UINT_MESSAGE(
+        2, // ? Write touches this nugget
+        count[0]->keycount,
+        "(2: count0 didn't match expected)"
+    );
+
+    TEST_ASSERT_EQUAL_UINT_MESSAGE(
+        0, // ? Non-pristine, but writes can't aggro
+        count[1]->keycount,
+        "(2: count1 didn't match expected)"
+    );
+
+    TEST_ASSERT_EQUAL_UINT_MESSAGE(
+        0, // ? Pristine nugget should not aggro, especially not under a write!
+        count[2]->keycount,
+        "(2: count2 didn't match expected)"
+    );
+}
+
+void test_strongbox_aggressive_triggers_and_follows_rules_when_reading(void)
+{
+    zlog_fini();
+
+    char * argv_create1[] = {
+        "progname",
+        "--default-password",
+        "--backstore-size",
+        "50",
+        "--cipher",
+        "sc_freestyle_fast",
+        "--swap-cipher",
+        "sc_chacha8_neon",
+        "--swap-strategy",
+        "swap_2_forward",
+        "create",
+        "device_actual-131"
+    };
+
+    int argc = sizeof(argv_create1)/sizeof(argv_create1[0]);
+
+    buselfs_state = strongbox_main_actual(argc, argv_create1, blockdevice);
+
+    buselfs_state_t fake_state = {
+        .qd_outgoing = mq_open(BLFS_SV_QUEUE_INCOMING_NAME, O_WRONLY | O_NONBLOCK, BLFS_SV_QUEUE_PERM)
+    };
+
+    uint32_t nugget_size = buselfs_state->backstore->nugget_size_bytes;
+    blfs_mq_msg_t swap_cmd_msg = { .opcode = 1 };
+
+    uint8_t in_buffer1[nugget_size];
+    uint8_t out_buffer1[nugget_size];
+    uint8_t in_buffer2[nugget_size + nugget_size / 2];
+
+    memset(in_buffer1, 0x01, sizeof in_buffer1);
+    memset(out_buffer1, 0x02, sizeof out_buffer1);
+    memset(in_buffer2, 0x01, sizeof in_buffer2);
+
+    blfs_nugget_metadata_t * meta[4] = {
+        blfs_open_nugget_metadata(buselfs_state->backstore, buselfs_state->backstore->num_nuggets - 4),
+        blfs_open_nugget_metadata(buselfs_state->backstore, buselfs_state->backstore->num_nuggets - 3),
+        blfs_open_nugget_metadata(buselfs_state->backstore, buselfs_state->backstore->num_nuggets - 2),
+        blfs_open_nugget_metadata(buselfs_state->backstore, buselfs_state->backstore->num_nuggets - 1)
+    };
+
+    blfs_keycount_t * count[4] = {
+        blfs_open_keycount(buselfs_state->backstore, buselfs_state->backstore->num_nuggets - 4),
+        blfs_open_keycount(buselfs_state->backstore, buselfs_state->backstore->num_nuggets - 3),
+        blfs_open_keycount(buselfs_state->backstore, buselfs_state->backstore->num_nuggets - 2),
+        blfs_open_keycount(buselfs_state->backstore, buselfs_state->backstore->num_nuggets - 1)
+    };
+
+    TEST_ASSERT_EQUAL_UINT8_MESSAGE(
+        buselfs_state->primary_cipher->enum_id,
+        meta[0]->cipher_ident,
+        "(sanity check: meta0 didn't match primary cipher id)"
+    );
+
+    TEST_ASSERT_EQUAL_UINT8_MESSAGE(
+        buselfs_state->primary_cipher->enum_id,
+        meta[1]->cipher_ident,
+        "(sanity check: meta1 didn't match primary cipher id)"
+    );
+
+    TEST_ASSERT_EQUAL_UINT8_MESSAGE(
+        buselfs_state->primary_cipher->enum_id,
+        meta[2]->cipher_ident,
+        "(sanity check: meta2 didn't match primary cipher id)"
+    );
+
+    TEST_ASSERT_EQUAL_UINT8_MESSAGE(
+        buselfs_state->primary_cipher->enum_id,
+        meta[3]->cipher_ident,
+        "(sanity check: meta3 didn't match primary cipher id)"
+    );
+
     TEST_ASSERT_EQUAL_UINT_MESSAGE(
         0,
         count[0]->keycount,
-        "(finale: count0 didn't match expected)"
+        "(sanity check: count0 didn't match expected)"
     );
 
     TEST_ASSERT_EQUAL_UINT_MESSAGE(
-        1,
+        0,
         count[1]->keycount,
-        "(finale: count1 didn't match expected)"
+        "(sanity check: count1 didn't match expected)"
     );
 
     TEST_ASSERT_EQUAL_UINT_MESSAGE(
-        1,
+        0,
         count[2]->keycount,
-        "(finale: count2 didn't match expected)"
+        "(sanity check: count2 didn't match expected)"
     );
-} */
+
+    TEST_ASSERT_EQUAL_UINT_MESSAGE(
+        0,
+        count[3]->keycount,
+        "(sanity check: count3 didn't match expected)"
+    );
+
+    uint64_t ndx = (buselfs_state->backstore->num_nuggets - 3) * nugget_size;
+    buse_write(in_buffer1, sizeof in_buffer1, ndx, buselfs_state);
+    buse_write(in_buffer1, sizeof in_buffer1, ndx + nugget_size * 2, buselfs_state);
+
+    TEST_ASSERT_EQUAL_UINT8_MESSAGE(
+        buselfs_state->primary_cipher->enum_id,
+        meta[0]->cipher_ident,
+        "(1: meta0 didn't match primary cipher id)"
+    );
+
+    TEST_ASSERT_EQUAL_UINT8_MESSAGE(
+        buselfs_state->primary_cipher->enum_id, // ? No swap happened
+        meta[1]->cipher_ident,
+        "(1: meta1 didn't match primary cipher id)"
+    );
+
+    TEST_ASSERT_EQUAL_UINT8_MESSAGE(
+        buselfs_state->primary_cipher->enum_id,
+        meta[2]->cipher_ident,
+        "(1: meta2 didn't match primary cipher id)"
+    );
+
+    TEST_ASSERT_EQUAL_UINT8_MESSAGE(
+        buselfs_state->primary_cipher->enum_id, // ? No swap happened
+        meta[3]->cipher_ident,
+        "(1: meta3 didn't match primary cipher id)"
+    );
+
+    TEST_ASSERT_EQUAL_UINT_MESSAGE(
+        0,
+        count[0]->keycount,
+        "(1: count0 didn't match expected)"
+    );
+
+    TEST_ASSERT_EQUAL_UINT_MESSAGE(
+        0, // ? Write touches this nugget, but it was pristine beforehand
+        count[1]->keycount,
+        "(1: count1 didn't match expected)"
+    );
+
+    TEST_ASSERT_EQUAL_UINT_MESSAGE(
+        0,
+        count[2]->keycount,
+        "(1: count2 didn't match expected)"
+    );
+
+    TEST_ASSERT_EQUAL_UINT_MESSAGE(
+        0, // ? Write touches this nugget, but it was pristine beforehand
+        count[3]->keycount,
+        "(1: count3 didn't match expected)"
+    );
+
+    ndx = (buselfs_state->backstore->num_nuggets - 3) * nugget_size;
+    blfs_write_output_queue(&fake_state, &swap_cmd_msg, BLFS_SV_MESSAGE_DEFAULT_PRIORITY + 1);
+    buse_read(in_buffer1, sizeof in_buffer1, ndx, buselfs_state);
+
+    TEST_ASSERT_EQUAL_UINT8_MESSAGE(
+        buselfs_state->primary_cipher->enum_id,
+        meta[0]->cipher_ident,
+        "(2: meta0 didn't match primary cipher id)"
+    );
+
+    TEST_ASSERT_EQUAL_UINT8_MESSAGE(
+        buselfs_state->swap_cipher->enum_id, // ? Read touches this nugget
+        meta[1]->cipher_ident,
+        "(2: meta1 didn't match primary cipher id)"
+    );
+
+    TEST_ASSERT_EQUAL_UINT8_MESSAGE(
+        buselfs_state->swap_cipher->enum_id, // ? Pristine, and read flips
+        meta[2]->cipher_ident,
+        "(2: meta2 didn't match swap cipher id)"
+    );
+
+    TEST_ASSERT_EQUAL_UINT8_MESSAGE(
+        buselfs_state->swap_cipher->enum_id, // ? Non-pristine, and read aggros
+        meta[3]->cipher_ident,
+        "(2: meta3 didn't match swap cipher id)"
+    );
+
+    TEST_ASSERT_EQUAL_UINT_MESSAGE(
+        0,
+        count[0]->keycount,
+        "(2: count0 didn't match expected)"
+    );
+
+    TEST_ASSERT_EQUAL_UINT_MESSAGE(
+        1, // ? Read touches this nugget
+        count[1]->keycount,
+        "(2: count1 didn't match expected)"
+    );
+
+    TEST_ASSERT_EQUAL_UINT_MESSAGE(
+        0, // ? Pristine, so no need to aggro and instead just flipped
+        count[2]->keycount,
+        "(2: count2 didn't match expected)"
+    );
+
+    TEST_ASSERT_EQUAL_UINT_MESSAGE(
+        1, // ? Non-pristine, so read should aggro
+        count[3]->keycount,
+        "(2: count3 didn't match expected)"
+    );
+
+    ndx = (buselfs_state->backstore->num_nuggets - 4) * nugget_size;
+    blfs_write_output_queue(&fake_state, &swap_cmd_msg, BLFS_SV_MESSAGE_DEFAULT_PRIORITY + 1);
+    buse_read(in_buffer2, sizeof in_buffer2, ndx, buselfs_state);
+
+    TEST_ASSERT_EQUAL_UINT8_MESSAGE(
+        buselfs_state->primary_cipher->enum_id, // ? Read touches this nugget, but it's already the correct cipher
+        meta[0]->cipher_ident,
+        "(3: meta0 didn't match primary cipher id)"
+    );
+
+    TEST_ASSERT_EQUAL_UINT8_MESSAGE(
+        buselfs_state->primary_cipher->enum_id, // ? Read touches this nugget
+        meta[1]->cipher_ident,
+        "(3: meta1 didn't match primary cipher id)"
+    );
+
+    TEST_ASSERT_EQUAL_UINT8_MESSAGE(
+        buselfs_state->primary_cipher->enum_id, // ? Pristine, and read flips
+        meta[2]->cipher_ident,
+        "(3: meta2 didn't match primary cipher id)"
+    );
+
+    TEST_ASSERT_EQUAL_UINT8_MESSAGE(
+        buselfs_state->primary_cipher->enum_id, // ? Non-pristine, and read aggros
+        meta[3]->cipher_ident,
+        "(3: meta3 didn't match primary cipher id)"
+    );
+
+    TEST_ASSERT_EQUAL_UINT_MESSAGE(
+        0, // ? Read touches this nugget, but it was pristine before so no aggro
+        count[0]->keycount,
+        "(3: count0 didn't match expected)"
+    );
+
+    TEST_ASSERT_EQUAL_UINT_MESSAGE(
+        2, // ? Read touches this nugget and it was NOT pristine
+        count[1]->keycount,
+        "(3: count1 didn't match expected)"
+    );
+
+    TEST_ASSERT_EQUAL_UINT_MESSAGE(
+        0, // ? Pristine, so no need to aggro and instead just flipped
+        count[2]->keycount,
+        "(3: count2 didn't match expected)"
+    );
+
+    TEST_ASSERT_EQUAL_UINT_MESSAGE(
+        2, // ? Non-pristine, so read should aggro
+        count[3]->keycount,
+        "(3: count3 didn't match expected)"
+    );
+}

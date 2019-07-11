@@ -261,8 +261,7 @@ do {                                                                            
 // disabled to make what you're trying to do work.
 #define EXCEPTION_MUST_DISABLE_CACHING                  0x49U
 
-// There is a *deep* cipher switching problem (did we just walk off the end of
-// the array?)
+// There is a *deep* cipher switching problem...
 #define EXCEPTION_ASSUMPTION_WAS_NOT_SATISFIED          0x50U
 
 // There is a *deep* cipher switching problem...
@@ -270,6 +269,10 @@ do {                                                                            
 
 // You can't command StrongBox to do what you told it not to!
 #define EXCEPTION_CIPHER_SWITCHING_IS_DISABLED          0x52U
+
+// There is a *deep* cipher switching problem (did we just walk past the last
+// nugget?)
+#define EXCEPTION_ASSUMPTION3_WAS_NOT_SATISFIED         0x53U
 
 ///////////////////////
 // End Configuration //
