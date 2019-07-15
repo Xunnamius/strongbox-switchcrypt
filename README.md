@@ -223,6 +223,9 @@ run. With your current working directory as the context, the path
 already set up this way when the `build` directory is the current working
 directory when running StrongBox.
 
+Any invocations of `strongbox` or `strongboxctl` must be able to find
+`../config/zlog_config.conf` from the current working directory.
+
 StrongBox is by default compiled with `-O3` optimization. To compile with a
 different optimization level, you can use the following:
 
