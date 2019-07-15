@@ -37,10 +37,9 @@ Chicago).
       - [**BLFS_LEAST_COMPAT_VERSION**](#BLFS_LEAST_COMPAT_VERSION)
       - [**BLFS_RPMB_KEY**](#BLFS_RPMB_KEY)
       - [**BLFS_RPMB_DEVICE**](#BLFS_RPMB_DEVICE)
-      - [**BLFS_CONFIG_ZLOG**](#BLFS_CONFIG_ZLOG)
       - [**VECTOR_GROWTH_FACTOR**](#VECTOR_GROWTH_FACTOR)
       - [**VECTOR_INIT_SIZE**](#VECTOR_INIT_SIZE)
-      - [**BLFS_CONFIG_ZLOG**](#BLFS_CONFIG_ZLOG-1)
+      - [**BLFS_CONFIG_ZLOG**](#BLFS_CONFIG_ZLOG)
       - [**BLFS_BACKSTORE_FILENAME**](#BLFS_BACKSTORE_FILENAME)
       - [**BLFS_BACKSTORE_DEVICEPATH**](#BLFS_BACKSTORE_DEVICEPATH)
   - [Prototypical Limitations and Potential Pitfalls](#Prototypical-Limitations-and-Potential-Pitfalls)
@@ -423,10 +422,6 @@ Valid Path string to the RPMB device, e.g. "/dev/mmcblk0rpmb" (default). In
 future versions of StrongBox, should they come to exist, this may be deprecated
 in favor of automatically discovery.
 
-#### **BLFS_CONFIG_ZLOG**
-Path to your [zlog configuration
-file](https://github.com/HardySimpson/zlog/blob/master/doc/GettingStart-EN.txt).
-
 #### **VECTOR_GROWTH_FACTOR**
 
 Controls the growth factor of internal bit vectors. Defaults to 2.
@@ -437,8 +432,10 @@ Controls the initial size of internal bit vectors. Defaults to 10.
 
 #### **BLFS_CONFIG_ZLOG**
 
-This must be a valid file path string (file need not exist yet) to your zlog
-configuration file. Defaults to `../config/zlog_conf.conf`.
+This must be a valid file path string (file need not exist yet) to your [zlog
+configuration
+file](https://github.com/HardySimpson/zlog/blob/master/doc/GettingStart-EN.txt).
+Defaults to `../config/zlog_conf.conf`.
 
 #### **BLFS_BACKSTORE_FILENAME**
 
