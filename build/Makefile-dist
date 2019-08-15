@@ -264,7 +264,7 @@ src: $(SRC_FILES)
 
 pre: vendor mocks depends
 
-tests: pre $(TEST_TRGTS)
+tests: $(TEST_TRGTS)
 
 # Mock generating targets
 
