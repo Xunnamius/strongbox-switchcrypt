@@ -233,7 +233,7 @@ clean:
 	$(MAKE) clean -C ../vendor/libestream
 	$(MAKE) clean -C ../vendor/chacha-opt
 
-check: tests
+check: sbctl tests
 	$(patsubst %,./% &&,$(TEST_TRGTS)) true
 
 vendor: $(VENDR_FILES)
