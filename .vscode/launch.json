@@ -25,6 +25,7 @@
             "type": "gdb",
             "request": "launch",
             "name": "gdb:strongbox@morty",
+            //"arguments": "XXX",
             "target": "./strongbox",
             "cwd": "${workspaceRoot}/build",
             "ssh": {

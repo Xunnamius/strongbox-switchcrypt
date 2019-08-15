@@ -708,7 +708,7 @@ void update_application_state_check_mq(buselfs_state_t * buselfs_state)
          * * opcode 1 => indicate cipher switch or selectivity change [payload: ignored]
          * * opcode 2 => TRIM one of the mirrored partitions if using swap_mirrored [payload: partition to TRIM]
          */
-        IFDEBUG(dzlog_info("Received application state update: opcode %i", incoming_msg.opcode));
+        IFDEBUG(dzlog_debug("Received application state update: opcode %i", incoming_msg.opcode));
 
         switch(incoming_msg.opcode)
         {
@@ -719,19 +719,19 @@ void update_application_state_check_mq(buselfs_state_t * buselfs_state)
             case 1:
                 if(buselfs_state->active_swap_strategy != swap_disabled)
                 {
-                    IFDEBUG(dzlog_debug("Swapped active cipher index!"));
+                    IFDEBUG(dzlog_info("Swapped active cipher index!"));
 
                     buselfs_state->active_cipher_enum_id =
                         buselfs_state->active_cipher_enum_id == buselfs_state->primary_cipher->enum_id
                         ? buselfs_state->swap_cipher->enum_id
                         : buselfs_state->primary_cipher->enum_id;
 
-                    IFDEBUG(dzlog_debug("Newly active cipher: %i", buselfs_state->active_cipher_enum_id));
+                    IFDEBUG(dzlog_info("Newly active cipher: %i", buselfs_state->active_cipher_enum_id));
                 }
 
                 else
                 {
-                    IFDEBUG(dzlog_fatal("EXCEPTION: we received a command to swap ciphers but cipher swapping is disabled!"));
+                    dzlog_fatal("EXCEPTION: we received a command to swap ciphers but cipher swapping is disabled!");
                     Throw(EXCEPTION_CIPHER_SWITCHING_IS_DISABLED);
                 }
 
@@ -740,7 +740,7 @@ void update_application_state_check_mq(buselfs_state_t * buselfs_state)
             case 2:
                 (void) buselfs_state; // ? language quirk
                 uint8_t which_segment = !!(incoming_msg.payload[0]);
-                IFDEBUG(dzlog_debug("Received TRIM request of mirrored segment %u (should be 0 or 1)", which_segment));
+                IFDEBUG(dzlog_info("Received TRIM request of mirrored segment %u (should be 0 or 1)", which_segment));
                 IFNDEBUG((void) which_segment); // ! When implemented, do something here!
                 dzlog_fatal("TRIM operation not implemented!");
                 Throw(EXCEPTION_MUST_HALT);

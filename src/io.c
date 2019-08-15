@@ -293,7 +293,7 @@ void blfs_backstore_read(blfs_backstore_t * backstore, uint8_t * buffer, uint32_
     if(temp_buffer == NULL)
         Throw(EXCEPTION_ALLOC_FAILURE);
 
-    IFDEBUG(dzlog_debug("incoming read request for data of length %"PRIu32" from offset %"PRIu64" to %"PRIu64,
+    IFDEBUG3(dzlog_debug("incoming read request for data of length %"PRIu32" from offset %"PRIu64" to %"PRIu64,
                         length, offset, offset + length - 1));
 
     IFDEBUG3(dzlog_debug("length + offset = %"PRIu64, length + offset));
@@ -324,8 +324,8 @@ void blfs_backstore_read(blfs_backstore_t * backstore, uint8_t * buffer, uint32_
 
     memcpy(buffer, original_buffer, size);
 
-    IFDEBUG(dzlog_debug("first 64 bytes:"));
-    IFDEBUG(hdzlog_debug(buffer, MIN(64U, size)));
+    IFDEBUG3(dzlog_debug("first 64 bytes:"));
+    IFDEBUG3(hdzlog_debug(buffer, MIN(64U, size)));
 
     free(original_buffer);
 
@@ -342,11 +342,11 @@ void blfs_backstore_write(blfs_backstore_t * backstore, const uint8_t * buffer, 
     if(temp_buffer == NULL)
         Throw(EXCEPTION_ALLOC_FAILURE);
 
-    IFDEBUG(dzlog_debug("incoming write request for data of length %"PRIu32" from offset %"PRIu64" to %"PRIu64,
+    IFDEBUG3(dzlog_debug("incoming write request for data of length %"PRIu32" from offset %"PRIu64" to %"PRIu64,
                         length, offset, offset + length - 1));
 
-    IFDEBUG(dzlog_debug("first 64 bytes:"));
-    IFDEBUG(hdzlog_debug(buffer, MIN(64U, length)));
+    IFDEBUG3(dzlog_debug("first 64 bytes:"));
+    IFDEBUG3(hdzlog_debug(buffer, MIN(64U, length)));
 
     IFDEBUG3(dzlog_debug("length + offset = %"PRIu64, length + offset));
     IFDEBUG3(dzlog_debug("backstore->file_size_actual = %"PRIu64, backstore->file_size_actual));

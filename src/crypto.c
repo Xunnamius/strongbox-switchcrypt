@@ -215,7 +215,7 @@ void blfs_globalversion_commit(uint64_t id, uint64_t global_version)
     Catch(e)
     {
         if(e == EXCEPTION_RPMB_DOES_NOT_EXIST && BLFS_MANUAL_GV_FALLBACK != -1)
-            dzlog_info("RPMB device is not able to be opened. Commit attempt was silently ignored");
+            dzlog_debug("RPMB device is not able to be opened. Commit attempt was silently ignored");
         else
             Throw(e);
     }
