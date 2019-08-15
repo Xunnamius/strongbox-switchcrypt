@@ -988,7 +988,7 @@ int buse_read(void * output_buffer, uint32_t length, uint64_t absolute_offset, v
     }
 
     IFDEBUG(assert(absolute_offset < buselfs_state->backstore->writeable_size_actual));
-    IFDEBUG(dzlog_info("FINAL absolute_offset: %"PRIu64, absolute_offset));
+    IFDEBUG(dzlog_debug("FINAL absolute_offset: %"PRIu64, absolute_offset));
 
     uint_fast32_t nugget_size = buselfs_state->backstore->nugget_size_bytes;
     uint_fast32_t flake_size = buselfs_state->backstore->flake_size_bytes;
@@ -1819,9 +1819,9 @@ void blfs_soft_open(buselfs_state_t * buselfs_state, uint8_t cin_allow_insecure_
         else
         {
             dzlog_warn("Use the allow-insecure-start flag to ignore integrity violation (at your own peril).");
-            IFDEBUG(dzlog_info("Header MTRH (first) vs calculated MTRH (second):"));
-            IFDEBUG(hdzlog_info(mtrh_header->data, BLFS_HEAD_HEADER_BYTES_MTRH));
-            IFDEBUG(hdzlog_info(buselfs_state->merkle_tree_root_hash, BLFS_HEAD_HEADER_BYTES_MTRH));
+            IFDEBUG(dzlog_debug("Header MTRH (first) vs calculated MTRH (second):"));
+            IFDEBUG(hdzlog_debug(mtrh_header->data, BLFS_HEAD_HEADER_BYTES_MTRH));
+            IFDEBUG(hdzlog_debug(buselfs_state->merkle_tree_root_hash, BLFS_HEAD_HEADER_BYTES_MTRH));
 
             IFDEBUG(hdzlog_debug(buselfs_state->merkle_tree_root_hash, BLFS_HEAD_HEADER_BYTES_MTRH));
             Throw(EXCEPTION_INTEGRITY_FAILURE);
