@@ -73,7 +73,7 @@ typedef enum swappable_cipher_e {
 } swappable_cipher_e;
 
 typedef enum swap_strategy_e {
-    swap_default        = 1,
+    swap_default        = 7,
     swap_0_forward      = 2,
     swap_1_forward      = 3,
     swap_2_forward      = 4,

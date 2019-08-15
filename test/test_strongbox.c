@@ -1487,7 +1487,7 @@ void test_strongbox_inits_with_proper_swap_strategy_and_usecase1(void)
 
     TEST_ASSERT_EQUAL(default_ctx.enum_id, buselfs_state->primary_cipher->enum_id);
     TEST_ASSERT_EQUAL_UINT(default_ctx.enum_id, buselfs_state->swap_cipher->enum_id);
-    TEST_ASSERT_EQUAL_UINT(swap_default, buselfs_state->active_swap_strategy);
+    TEST_ASSERT_EQUAL_UINT(swap_disabled, buselfs_state->active_swap_strategy);
     TEST_ASSERT_EQUAL_UINT(uc_default, buselfs_state->active_usecase);
 
     TEST_ASSERT_EQUAL_UINT32(

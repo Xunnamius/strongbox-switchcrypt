@@ -2311,9 +2311,6 @@ buselfs_state_t * strongbox_main_actual(int argc, char * argv[], char * blockdev
 
             cin_swap_strategy = blfs_ident_string_to_strategy(cin_swap_strategy_str);
 
-            if(cin_swap_strategy == swap_default)
-                cin_swap_strategy = swap_disabled;
-
             if(cin_swap_strategy == swap_not_impl)
                 Throw(EXCEPTION_SWAP_ALGO_NO_IMPL);
 
@@ -2364,6 +2361,9 @@ buselfs_state_t * strongbox_main_actual(int argc, char * argv[], char * blockdev
             Throw(EXCEPTION_BAD_ARGUMENT_FORM);
         }
     }
+
+    if(cin_swap_strategy == swap_default)
+        cin_swap_strategy = swap_disabled;
 
     IFDEBUG3(printf("<bare debug>: argument processing result:\n"));
     IFDEBUG3(printf("<bare debug>: cin_allow_insecure_start = %i\n", cin_allow_insecure_start));
