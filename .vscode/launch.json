@@ -43,7 +43,7 @@
             "type": "gdb",
             "request": "launch",
             "name": "gdb:sbctl@morty",
-            //"arguments": "XXX",
+            "arguments": "read /test 1",
             "target": "./sbctl",
             "cwd": "${workspaceRoot}/build",
             "ssh": {
