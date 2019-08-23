@@ -2463,7 +2463,7 @@ buselfs_state_t * strongbox_main_actual(int argc, char * argv[], char * blockdev
 
     char buf[100] = { 0x00 };
 
-    snprintf(buf, sizeof buf, "%s%s_%s", "blfs_level", STRINGIZE(BLFS_DEBUG_LEVEL), cin_device_name);
+    snprintf(buf, sizeof buf, "level%s_blfs_%s", STRINGIZE(BLFS_DEBUG_LEVEL), cin_device_name);
     IFDEBUG3(printf("<bare debug>: BLFS_CONFIG_ZLOG = %s\n", BLFS_CONFIG_ZLOG));
     IFDEBUG3(printf("<bare debug>: zlog buf = %s\n", buf));
 

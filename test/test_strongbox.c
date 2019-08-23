@@ -144,7 +144,7 @@ void setUp(void)
         exit(EXCEPTION_SODIUM_INIT_FAILURE);
 
     char buf[100] = { 0x00 };
-    snprintf(buf, sizeof buf, "%s%s_%s", "blfs_level", STRINGIZE(BLFS_DEBUG_LEVEL), "device_test");
+    snprintf(buf, sizeof buf, "level%s_blfs_%s", STRINGIZE(BLFS_DEBUG_LEVEL), "device_test");
 
     if(dzlog_init(BLFS_CONFIG_ZLOG, buf))
         exit(EXCEPTION_ZLOG_INIT_FAILURE);

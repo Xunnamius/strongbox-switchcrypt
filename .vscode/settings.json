@@ -22,7 +22,8 @@
         "backstore.h": "c",
         "errno.h": "c",
         "chacha.h": "c",
-        "crypto.h": "c"
+        "crypto.h": "c",
+        "khash.h": "c"
     },
     "cSpell.words": [
         "ADTC",
@@ -166,4 +167,7 @@
         "build/{src,test,*.o,*.c,*.h,*.d,*_*}": true,
         "vendor/": true,
     },
+    "cSpell.ignoreWords": [
+        "sblfs"
+    ],
 }

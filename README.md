@@ -17,32 +17,32 @@ Chicago).
 > You've been warned!*
 
 ***
-- [StrongBox (internally: BuseLFS)](#StrongBox-internally-BuseLFS)
-  - [Dependencies](#Dependencies)
-  - [Usage](#Usage)
-    - [Swapping Ciphers](#Swapping-Ciphers)
-    - [Swap Strategies](#Swap-Strategies)
-      - [Triggering the Swap](#Triggering-the-Swap)
-    - [Enabling Use Cases](#Enabling-Use-Cases)
-  - [Building StrongBox](#Building-StrongBox)
-  - [Testing StrongBox](#Testing-StrongBox)
-    - [Available Tests](#Available-Tests)
-  - [File Structure and Internal Construction](#File-Structure-and-Internal-Construction)
-  - [Gathering Energy Metrics](#Gathering-Energy-Metrics)
-  - [Important Compile Flags](#Important-Compile-Flags)
-      - [**BLFS_DEBUG_LEVEL**](#BLFS_DEBUG_LEVEL)
-      - [**BLFS_MANUAL_GV_FALLBACK**](#BLFS_MANUAL_GV_FALLBACK)
-  - [Important Configuration Constants](#Important-Configuration-Constants)
-      - [**BLFS_CURRENT_VERSION**](#BLFS_CURRENT_VERSION)
-      - [**BLFS_LEAST_COMPAT_VERSION**](#BLFS_LEAST_COMPAT_VERSION)
-      - [**BLFS_RPMB_KEY**](#BLFS_RPMB_KEY)
-      - [**BLFS_RPMB_DEVICE**](#BLFS_RPMB_DEVICE)
-      - [**VECTOR_GROWTH_FACTOR**](#VECTOR_GROWTH_FACTOR)
-      - [**VECTOR_INIT_SIZE**](#VECTOR_INIT_SIZE)
-      - [**BLFS_CONFIG_ZLOG**](#BLFS_CONFIG_ZLOG)
-      - [**BLFS_BACKSTORE_FILENAME**](#BLFS_BACKSTORE_FILENAME)
-      - [**BLFS_BACKSTORE_DEVICEPATH**](#BLFS_BACKSTORE_DEVICEPATH)
-  - [Prototypical Limitations and Potential Pitfalls](#Prototypical-Limitations-and-Potential-Pitfalls)
+- [StrongBox (internally: BuseLFS)](#strongbox-internally-buselfs)
+  - [Dependencies](#dependencies)
+  - [Usage](#usage)
+    - [Swapping Ciphers](#swapping-ciphers)
+    - [Swap Strategies](#swap-strategies)
+      - [Triggering the Swap](#triggering-the-swap)
+    - [Enabling Use Cases](#enabling-use-cases)
+  - [Building StrongBox](#building-strongbox)
+  - [Testing StrongBox](#testing-strongbox)
+    - [Available Tests](#available-tests)
+  - [File Structure and Internal Construction](#file-structure-and-internal-construction)
+  - [Gathering Energy Metrics](#gathering-energy-metrics)
+  - [Important Compile Flags](#important-compile-flags)
+      - [**BLFS_DEBUG_LEVEL**](#blfs_debug_level)
+      - [**BLFS_MANUAL_GV_FALLBACK**](#blfs_manual_gv_fallback)
+  - [Important Configuration Constants](#important-configuration-constants)
+      - [**BLFS_CURRENT_VERSION**](#blfs_current_version)
+      - [**BLFS_LEAST_COMPAT_VERSION**](#blfs_least_compat_version)
+      - [**BLFS_RPMB_KEY**](#blfs_rpmb_key)
+      - [**BLFS_RPMB_DEVICE**](#blfs_rpmb_device)
+      - [**VECTOR_GROWTH_FACTOR**](#vector_growth_factor)
+      - [**VECTOR_INIT_SIZE**](#vector_init_size)
+      - [**BLFS_CONFIG_ZLOG**](#blfs_config_zlog)
+      - [**BLFS_BACKSTORE_FILENAME**](#blfs_backstore_filename)
+      - [**BLFS_BACKSTORE_DEVICEPATH**](#blfs_backstore_devicepath)
+  - [Prototypical Limitations and Potential Pitfalls](#prototypical-limitations-and-potential-pitfalls)
 ***
 
 ## Dependencies
@@ -372,7 +372,7 @@ Makefile](build/Makefile).
 
 This setting determines the verbosity of StrongBox's debug output. By default,
 it is off (0). The highest recognized debug level is 3U. Debug files will be
-output to `/tmp/blfs_level_$BLFS_DEBUG_LEVEL_$DEVICE_FRAG` where `$DEVICE_FRAG`
+output to `/tmp/level{$BLFS_DEBUG_LEVEL}_blfs_{$DEVICE_FRAG}` where `{$DEVICE_FRAG}`
 (*not a shell/env var*) is equal to some reference to
 [`nbd_device_name`](#usage).
 

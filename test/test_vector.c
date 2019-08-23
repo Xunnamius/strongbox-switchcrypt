@@ -18,7 +18,7 @@ static vector_t * vector;
 void setUp(void)
 {
     char buf[100] = { 0x00 };
-    snprintf(buf, sizeof buf, "%s%s_%s", "blfs_level", STRINGIZE(BLFS_DEBUG_LEVEL), "test");
+    snprintf(buf, sizeof buf, "level%s_blfs_%s", STRINGIZE(BLFS_DEBUG_LEVEL), "test");
 
     if(dzlog_init(BLFS_CONFIG_ZLOG, buf))
         exit(EXCEPTION_ZLOG_INIT_FAILURE);

@@ -41,7 +41,7 @@ int sbctl_main(int argc, char * argv[])
     IFDEBUG3(printf("<bare debug>: >>>> entering %s\n", __func__));
 
     char buf[100] = { 0x00 };
-    snprintf(buf, sizeof buf, "%s%s", "sbctl_level", STRINGIZE(BLFS_DEBUG_LEVEL));
+    snprintf(buf, sizeof buf, "level%s_sbctl", STRINGIZE(BLFS_DEBUG_LEVEL));
 
     if(dzlog_init(BLFS_CONFIG_ZLOG, buf))
         exit(EXCEPTION_ZLOG_INIT_FAILURE);
@@ -195,7 +195,7 @@ int sbctl_main(int argc, char * argv[])
 
 int main(int argc, char * argv[])
 {
-    int ret = -1;
+    int ret = 200;
     volatile CEXCEPTION_T e = EXCEPTION_NO_EXCEPTION;
 
     Try
@@ -208,5 +208,6 @@ int main(int argc, char * argv[])
         CEXCEPTION_NO_CATCH_HANDLER(e);
     }
 
+    IFDEBUG(dzlog_debug("<<<< leaving %s with return value %i", __func__, ret));
     return ret;
 }
