@@ -274,6 +274,14 @@ do {                                                                            
 // nugget?)
 #define EXCEPTION_ASSUMPTION3_WAS_NOT_SATISFIED         0x53U
 
+// A message was received (or something happened) that resulted in two 0 opcodes
+// back to back
+#define EXCEPTION_BAD_MESSAGE_ASSUMPTION                0x54U
+
+// Somehow there was more than one message in the message queue when we went to
+// read?
+#define EXCEPTION_CANNOT_HANDLE_MULTIPLE_MESSAGES_IN_QUEUE 0x55U
+
 ///////////////////////
 // End Configuration //
 ///////////////////////

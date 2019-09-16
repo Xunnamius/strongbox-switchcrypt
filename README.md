@@ -371,7 +371,7 @@ Makefile](build/Makefile).
 #### **BLFS_DEBUG_LEVEL**
 
 This setting determines the verbosity of StrongBox's debug output. By default,
-it is off (0). The highest recognized debug level is 3U. Debug files will be
+it is off (0). The highest recognized debug level is 4U. Debug files will be
 output to `/tmp/level{$BLFS_DEBUG_LEVEL}_blfs_{$DEVICE_FRAG}` where `{$DEVICE_FRAG}`
 (*not a shell/env var*) is equal to some reference to
 [`nbd_device_name`](#usage).
@@ -382,6 +382,8 @@ output to `/tmp/level{$BLFS_DEBUG_LEVEL}_blfs_{$DEVICE_FRAG}` where `{$DEVICE_FR
 messages to stdout  
 `BLFS_DEBUG_LEVEL=3` => `BLFS_DEBUG_LEVEL=2` with the addition that every single
 function call is now logged and a bunch of other deep debug info is presented
+`BLFS_DEBUG_LEVEL=4` => same output as `BLFS_DEBUG_LEVEL=0` (i.e. not much)
+except all critical path cipher switching control flow will be logged
 
 > **Note that BLFS_DEBUG_LEVEL > 0 breaks security (inasmuch as security can be
 > broken in a demo like this) and leaks potentially sensitive information!**

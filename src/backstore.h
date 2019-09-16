@@ -113,10 +113,10 @@ typedef struct blfs_tjournal_entry_t
  *
  * @nugget_index    the index of the nugget that this struct corresponds to
  * @data_offset     data offset in the backstore
- * @data_length     total data length in bytes; will be
- * @md_bytes_per_nugget
+ * @data_length     total data length in bytes; will be md_bytes_per_nugget
  * @cipher_ident    value corresponding to swappable_cipher_e (see: constants.h)
- * @data            (md_bytes_per_nugget - 1) bytes of data
+ * @metadata        metadata_length bytes of data
+ * @metadata_length length of metadata bytes; (md_bytes_per_nugget - 1)
  */
 typedef struct blfs_nugget_metadata_t
 {

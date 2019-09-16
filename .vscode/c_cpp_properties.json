@@ -28,7 +28,8 @@
                 "_XOPEN_SOURCE",
                 "_LARGEFILE64_SOURCE",
                 "_GNU_SOURCE",
-                "__ARM_NEON__"
+                "__ARM_NEON__",
+                "BLFS_DEBUG_LEVEL=4"
             ],
             "cStandard": "c11",
             "cppStandard": "c++17",

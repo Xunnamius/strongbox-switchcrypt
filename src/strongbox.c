@@ -325,8 +325,20 @@ int blfs_swap_nugget_to_active_cipher(int swapping_while_read_or_write,
     IFDEBUG(dzlog_notice("<%s ON NUGGET %"PRIu64">",
         aggressive_write_ahead ? "TRUNCATED CIPHER SWAP OCCURRING" : "CIPHER SWAP BEGAN", target_nugget_index));
 
+    IFDEBUG4(dzlog_notice("<CIPHER SWAP BEGAN ON NUGGET %"PRIu64">", target_nugget_index));
+    IFDEBUG4(dzlog_notice("aggressive_write_ahead = %i", aggressive_write_ahead));
+    IFDEBUG4(dzlog_notice("swapping_while_read_or_write = %s (%i)",
+        swapping_while_read_or_write == SWAP_WHILE_READ ? "SWAP_WHILE_READ" : "SWAP_WHILE_WRITE",
+        swapping_while_read_or_write
+    ));
+    IFDEBUG4(dzlog_notice("on_last_nugget = %i", on_last_nugget));
+    IFDEBUG4(dzlog_notice("buffer_length = %"PRIu32, buffer_length));
+    IFDEBUG4(dzlog_notice("nugget_internal_offset = %"PRIu64, nugget_internal_offset));
+
     if(aggressive_write_ahead)
         buffer_length = buselfs_state->backstore->nugget_size_bytes;
+
+    IFDEBUG4(dzlog_notice("FINAL buffer_length = %"PRIu32, buffer_length));
 
     buselfs_state->is_cipher_swapping = TRUE;
 
@@ -340,6 +352,21 @@ int blfs_swap_nugget_to_active_cipher(int swapping_while_read_or_write,
     blfs_keycount_t * count = blfs_open_keycount(buselfs_state->backstore, target_nugget_index);
     blfs_tjournal_entry_t * entry = blfs_open_tjournal_entry(buselfs_state->backstore, target_nugget_index);
     blfs_nugget_metadata_t * meta = blfs_open_nugget_metadata(buselfs_state->backstore, target_nugget_index);
+
+    IFDEBUG4(dzlog_notice("decryption_cipher = %s (%"PRIu8")", decryption_cipher->name, decryption_cipher->enum_id));
+    IFDEBUG4(dzlog_notice("encryption_cipher = %s (%"PRIu8")", encryption_cipher->name, encryption_cipher->enum_id));
+    IFDEBUG4(dzlog_notice("meta->cipher_ident = %"PRIu8, meta->cipher_ident));
+
+    IFDEBUG4(uint8_t entry_hash[crypto_generichash_BYTES]);
+    IFDEBUG4(uint8_t meta_hash[crypto_generichash_BYTES]);
+
+    IFDEBUG4(dzlog_notice("count = %"PRIu64, count->keycount));
+    IFDEBUG4(crypto_generichash(entry_hash, sizeof entry_hash, entry->bitmask->mask, entry->bitmask->byte_length, NULL, 0));
+    IFDEBUG4(dzlog_notice("entry = "));
+    IFDEBUG4(hdzlog_notice(entry_hash, sizeof entry_hash));
+    IFDEBUG4(crypto_generichash(meta_hash, sizeof meta_hash, meta->metadata, meta->metadata_length, NULL, 0));
+    IFDEBUG4(dzlog_notice("meta->metadata = "));
+    IFDEBUG4(hdzlog_notice(meta_hash, sizeof meta_hash));
 
     uint8_t nugget_key[BLFS_CRYPTO_BYTES_KDF_OUT] = { 0x00 };
 
@@ -357,10 +384,12 @@ int blfs_swap_nugget_to_active_cipher(int swapping_while_read_or_write,
     if(count == NULL || entry == NULL || meta == NULL)
         Throw(EXCEPTION_ALLOC_FAILURE);
 
-    IFDEBUG(assert(buffer_length <= buselfs_state->backstore->nugget_size_bytes));
+    IFDEBUGANY(assert(buffer_length <= buselfs_state->backstore->nugget_size_bytes));
 
     if(swapping_while_read_or_write == SWAP_WHILE_READ || buffer_length != buselfs_state->backstore->nugget_size_bytes)
     {
+        IFDEBUG4(dzlog_notice("GOING DOWN SWAP_WHILE_READ PATH!"));
+
         // ? Read in the entire nugget
         blfs_backstore_read_body(
             buselfs_state->backstore,
@@ -369,12 +398,15 @@ int blfs_swap_nugget_to_active_cipher(int swapping_while_read_or_write,
             target_nugget_index * sizeof nugget_data
         );
 
+        IFDEBUG4(dzlog_notice("[read in entire nugget #%"PRIu64"]", target_nugget_index));
+
         // TODO: Verify nugget contents if reading (low priority)
 
         // ? Decrypt
 
         if(decryption_cipher->read_handle)
         {
+            IFDEBUG4(dzlog_notice("[READ_HANDLE=>decrypting nugget #%"PRIu64" contents]", target_nugget_index));
             uint64_t readed = decryption_cipher->read_handle(
                 decrypted_nugget_data,
                 buselfs_state,
@@ -394,12 +426,14 @@ int blfs_swap_nugget_to_active_cipher(int swapping_while_read_or_write,
                 1
             );
 
-            IFDEBUG(assert(readed == sizeof nugget_data));
+            IFDEBUGANY(assert(readed == sizeof nugget_data));
             IFNDEBUG((void) readed);
         }
 
         else
         {
+            IFDEBUG4(dzlog_notice("[SWAPPABLE_CRYPT=>decrypting nugget #%"PRIu64" contents]", target_nugget_index));
+
             blfs_swappable_crypt(
                 decryption_cipher,
                 decrypted_nugget_data,
@@ -416,7 +450,8 @@ int blfs_swap_nugget_to_active_cipher(int swapping_while_read_or_write,
 
     if(!aggressive_write_ahead)
     {
-        IFDEBUG(assert(buffer_length + nugget_internal_offset <= buselfs_state->backstore->nugget_size_bytes));
+        IFDEBUG4(dzlog_notice("[NOT aggressive_write_ahead so writing out to/copying in from buffer]"));
+        IFDEBUGANY(assert(buffer_length + nugget_internal_offset <= buselfs_state->backstore->nugget_size_bytes));
 
         if(swapping_while_read_or_write == SWAP_WHILE_READ)
             memcpy(buffer, decrypted_nugget_data + nugget_internal_offset, buffer_length);
@@ -437,12 +472,16 @@ int blfs_swap_nugget_to_active_cipher(int swapping_while_read_or_write,
     // ! burned, so we must take that possibility into account when rekeying.
     count->keycount += buselfs_state->crash_recovery ? 2 : 1;
 
+    IFDEBUG4(dzlog_notice("count->keycount = %"PRIu64, count->keycount));
+
     uint_fast32_t flake_size = buselfs_state->backstore->flake_size_bytes;
     uint_fast32_t start_index = nugget_internal_offset / flake_size;
     uint_fast32_t length =
             CEIL((nugget_internal_offset + buffer_length), flake_size) - start_index;
 
     IFDEBUG(assert(start_index + length <= buselfs_state->backstore->flakes_per_nugget));
+    IFDEBUG4(assert(start_index + length <= buselfs_state->backstore->flakes_per_nugget));
+    IFDEBUG4(dzlog_notice("count->keycount = %"PRIu64, count->keycount));
 
     // ? Set proper bits
     bitmask_set_bits(entry->bitmask, start_index, length);
@@ -452,6 +491,8 @@ int blfs_swap_nugget_to_active_cipher(int swapping_while_read_or_write,
 
     if(encryption_cipher->write_handle)
     {
+        IFDEBUG4(dzlog_notice("[WRITE_HANDLE=>encrypting nugget #%"PRIu64" contents]", target_nugget_index));
+
         uint64_t written = encryption_cipher->write_handle(
             decrypted_nugget_data,
             buselfs_state,
@@ -467,12 +508,14 @@ int blfs_swap_nugget_to_active_cipher(int swapping_while_read_or_write,
             count
         );
 
-        IFDEBUG(assert(written == sizeof nugget_data));
+        IFDEBUG4(assert(written == sizeof nugget_data));
         IFNDEBUG((void) written);
     }
 
     else
     {
+        IFDEBUG4(dzlog_notice("[SWAPPABLE_CRYPT=>encrypting nugget #%"PRIu64" contents]", target_nugget_index));
+
         blfs_swappable_crypt(
             encryption_cipher,
             reencrypted_nugget_data,
@@ -482,6 +525,8 @@ int blfs_swap_nugget_to_active_cipher(int swapping_while_read_or_write,
             count->keycount,
             0
         );
+
+        IFDEBUG4(dzlog_notice("[writing out entire nugget]"));
 
         // ? Also write out entire nugget
         blfs_backstore_write_body(
@@ -494,6 +539,7 @@ int blfs_swap_nugget_to_active_cipher(int swapping_while_read_or_write,
         // ? Update the merkle tree
 
         uint32_t flake_size = buselfs_state->backstore->flake_size_bytes;
+        IFDEBUG4(dzlog_notice("[updating merkle tree flake tags]"));
 
         for(uint32_t flake_index = 0; flake_index < buselfs_state->backstore->flakes_per_nugget; flake_index++)
         {
@@ -514,11 +560,13 @@ int blfs_swap_nugget_to_active_cipher(int swapping_while_read_or_write,
 
             blfs_poly1305_generate_tag(tag, flake_data, flake_size, flake_key);
             update_in_merkle_tree(tag, BLFS_CRYPTO_BYTES_FLAKE_TAG_OUT, mt_offset, buselfs_state);
-            IFDEBUG(verify_in_merkle_tree(tag, BLFS_CRYPTO_BYTES_FLAKE_TAG_OUT, mt_offset, buselfs_state));
+            IFDEBUGANY(verify_in_merkle_tree(tag, BLFS_CRYPTO_BYTES_FLAKE_TAG_OUT, mt_offset, buselfs_state));
         }
     }
 
     // ? Commit changes and update merkle tree
+
+    IFDEBUG4(dzlog_notice("[committing tj (and merkle tree), kc (and merkle tree), md]"));
 
     blfs_commit_tjournal_entry(buselfs_state->backstore, entry);
     blfs_commit_keycount(buselfs_state->backstore, count);
@@ -544,12 +592,14 @@ int blfs_swap_nugget_to_active_cipher(int swapping_while_read_or_write,
     // ? But only try to do this if we're on the last nugget to be read/written
     if(!aggressive_write_ahead && on_last_nugget)
     {
+        IFDEBUG4(dzlog_notice("[entering aggressive swap path]"));
+
         if(buselfs_state->active_swap_strategy == swap_1_forward || buselfs_state->active_swap_strategy == swap_2_forward)
         {
-            IFDEBUG(dzlog_notice("<[INVOKING AGGRESSIVE CIPHER SWAP PROCEDURE AFTER NUGGET %"PRIu64"]>", target_nugget_index));
+            IFDEBUGANY(dzlog_notice("<[INVOKING AGGRESSIVE CIPHER SWAP PROCEDURE AFTER NUGGET %"PRIu64"]>", target_nugget_index));
 
             size_t aggressiveness = buselfs_state->active_swap_strategy == swap_1_forward ? 1 : 2;
-            IFDEBUG(dzlog_debug("aggressiveness: %i", aggressiveness));
+            IFDEBUGANY(dzlog_notice("aggressiveness: %i", aggressiveness));
 
             uint32_t num_nuggets = buselfs_state->backstore->num_nuggets;
 
@@ -567,9 +617,13 @@ int blfs_swap_nugget_to_active_cipher(int swapping_while_read_or_write,
                 int should_flip = target_meta->cipher_ident != (uint8_t) encryption_cipher->enum_id;
                 int should_aggro = should_flip && swapping_while_read_or_write != SWAP_WHILE_WRITE;
 
+                IFDEBUG4(dzlog_notice("is_pristine = %i", is_pristine));
+                IFDEBUG4(dzlog_notice("should_flip = %i", should_flip));
+                IFDEBUG4(dzlog_notice("should_aggro = %i", should_aggro));
+
                 if(!is_pristine && should_aggro)
                 {
-                    IFDEBUG(dzlog_notice("<{ WILL AGGRO NUGGET %i}>", target));
+                    IFDEBUGANY(dzlog_notice("<{ WILL AGGRO NUGGET %i}>", target));
 
                     // ? This counts as an aggro and a flip!
                     uint64_t written = blfs_swap_nugget_to_active_cipher(
@@ -582,13 +636,13 @@ int blfs_swap_nugget_to_active_cipher(int swapping_while_read_or_write,
                         0
                     );
 
-                    IFDEBUG(assert(written == sizeof nugget_data));
+                    IFDEBUGANY(assert(written == sizeof nugget_data));
                     IFNDEBUG((void) written);
                 }
 
                 if(is_pristine && should_flip)
                 {
-                    IFDEBUG(dzlog_notice("<{ WILL FLIP NUGGET %i}>", target));
+                    IFDEBUGANY(dzlog_notice("<{ WILL FLIP NUGGET %i}>", target));
 
                     // ? FLIP! Update metadata
                     target_meta->cipher_ident = (uint8_t) encryption_cipher->enum_id;
@@ -596,14 +650,16 @@ int blfs_swap_nugget_to_active_cipher(int swapping_while_read_or_write,
                 }
             }
 
-            IFDEBUG(dzlog_notice("<[FINISHED AGGRESSIVE CIPHER SWAP PROCEDURE AFTER NUGGET %"PRIu64"]>", target_nugget_index));
+            IFDEBUGANY(dzlog_notice("<[FINISHED AGGRESSIVE CIPHER SWAP PROCEDURE AFTER NUGGET %"PRIu64"]>", target_nugget_index));
         }
 
         // ? Only the non-recursive master fn can declare swapping finished!
         buselfs_state->is_cipher_swapping = FALSE;
     }
 
-    IFDEBUG(dzlog_notice("<CIPHER SWAP ENDED ON NUGGET %"PRIu64">", target_nugget_index));
+    IFDEBUG4(else { dzlog_notice("[skipping advanced cipher switching features]"); })
+
+    IFDEBUGANY(dzlog_notice("<CIPHER SWAP ENDED ON NUGGET %"PRIu64">", target_nugget_index));
     return buffer_length;
 }
 
@@ -625,6 +681,9 @@ mqd_t blfs_open_queue(char * queue_name, int incoming_outgoing)
 
 void blfs_initialize_queues(buselfs_state_t * buselfs_state)
 {
+    IFDEBUG4(dzlog_info("initialized incoming queue with %s", BLFS_SV_QUEUE_INCOMING_NAME));
+    IFDEBUG4(dzlog_info("initialized outgoing queue with %s", BLFS_SV_QUEUE_OUTGOING_NAME));
+
     buselfs_state->qd_incoming = blfs_open_queue(BLFS_SV_QUEUE_INCOMING_NAME, 0);
     buselfs_state->qd_outgoing = blfs_open_queue(BLFS_SV_QUEUE_OUTGOING_NAME, 1);
 }
@@ -696,6 +755,7 @@ void update_application_state_check_mq(buselfs_state_t * buselfs_state)
     IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
 
     blfs_mq_msg_t incoming_msg;
+    int processed_input = FALSE;
 
     do {
         blfs_read_input_queue(buselfs_state, &incoming_msg);
@@ -713,20 +773,26 @@ void update_application_state_check_mq(buselfs_state_t * buselfs_state)
         switch(incoming_msg.opcode)
         {
             case 0:
+                if(processed_input++ > TRUE)
+                    Throw(EXCEPTION_BAD_MESSAGE_ASSUMPTION);
+
                 IFDEBUG(dzlog_debug("(no more messages in queue)"));
                 break;
 
             case 1:
+                if(processed_input)
+                    Throw(EXCEPTION_CANNOT_HANDLE_MULTIPLE_MESSAGES_IN_QUEUE);
+
                 if(buselfs_state->active_swap_strategy != swap_disabled)
                 {
-                    IFDEBUG(dzlog_info("Swapped active cipher index!"));
+                    IFDEBUG(dzlog_info("swapped active cipher index!"));
 
                     buselfs_state->active_cipher_enum_id =
                         buselfs_state->active_cipher_enum_id == buselfs_state->primary_cipher->enum_id
                         ? buselfs_state->swap_cipher->enum_id
                         : buselfs_state->primary_cipher->enum_id;
 
-                    IFDEBUG(dzlog_info("Newly active cipher: %i", buselfs_state->active_cipher_enum_id));
+                    IFDEBUG(dzlog_info("newly active cipher: %i", buselfs_state->active_cipher_enum_id));
                 }
 
                 else
@@ -738,9 +804,12 @@ void update_application_state_check_mq(buselfs_state_t * buselfs_state)
                 break;
 
             case 2:
+                if(processed_input)
+                    Throw(EXCEPTION_CANNOT_HANDLE_MULTIPLE_MESSAGES_IN_QUEUE);
+
                 (void) buselfs_state; // ? language quirk
                 uint8_t which_segment = !!(incoming_msg.payload[0]);
-                IFDEBUG(dzlog_info("Received TRIM request of mirrored segment %u (should be 0 or 1)", which_segment));
+                IFDEBUGANY(dzlog_info("received TRIM request of mirrored segment %u (should be 0 or 1)", which_segment));
                 IFNDEBUG((void) which_segment); // ! When implemented, do something here!
                 dzlog_fatal("TRIM operation not implemented!");
                 Throw(EXCEPTION_MUST_HALT);
@@ -750,6 +819,8 @@ void update_application_state_check_mq(buselfs_state_t * buselfs_state)
                 Throw(EXCEPTION_BAD_OPCODE);
                 break;
         }
+
+        processed_input++;
     } while(incoming_msg.opcode != 0);
 
     IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
@@ -1227,7 +1298,7 @@ int buse_read(void * output_buffer, uint32_t length, uint64_t absolute_offset, v
 
 int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_offset, void * userdata)
 {
-    IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
+    IFDEBUGANY(dzlog_info(">>>> entering %s", __func__));
 
     const uint8_t * buffer = (const uint8_t *) input_buffer;
     buselfs_state_t * buselfs_state = (buselfs_state_t *) userdata;
@@ -1239,8 +1310,8 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
 
     IFDEBUG(dzlog_debug("input_buffer (ptr): %p", (void *) input_buffer));
     IFDEBUG(dzlog_debug("buffer (ptr): %p", (void *) buffer));
-    IFDEBUG(dzlog_debug("length: %"PRIu32, length));
-    IFDEBUG(dzlog_debug("initial absolute_offset: %"PRIu64, absolute_offset));
+    IFDEBUGANY(dzlog_debug("length: %"PRIu32, length));
+    IFDEBUGANY(dzlog_debug("initial absolute_offset: %"PRIu64, absolute_offset));
     IFDEBUG(dzlog_debug("userdata (ptr): %p", (void *) userdata));
     IFDEBUG(dzlog_debug("buselfs_state (ptr): %p", (void *) buselfs_state));
 
@@ -1279,20 +1350,22 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
     IFDEBUG(dzlog_debug("buffer to write (initial 64 bytes):"));
     IFDEBUG(hdzlog_debug(input_buffer, MIN(64U, size)));
 
-    IFDEBUG(assert(buselfs_state->active_swap_strategy == swap_mirrored
+    IFDEBUGANY(assert(buselfs_state->active_swap_strategy == swap_mirrored
         || buselfs_state->active_swap_strategy == swap_selective
         || absolute_offset < buselfs_state->buseops->size
         ));
 
     if(buselfs_state->active_swap_strategy == swap_mirrored && absolute_offset < buselfs_state->buseops->size)
     {
-        IFDEBUG(dzlog_notice("<<INITIALIZING SPECIAL MIRRORED WRITE>>"));
-        IFDEBUG(assert(absolute_offset + buselfs_state->buseops->size >= buselfs_state->buseops->size));
+        IFDEBUGANY(dzlog_notice("<<INITIALIZING SPECIAL MIRRORED WRITE>>"));
+        IFDEBUGANY(assert(absolute_offset + buselfs_state->buseops->size >= buselfs_state->buseops->size));
 
         // ? Mirror the write to other nugget, then complete the normal write
         buse_write(input_buffer, length, absolute_offset + buselfs_state->buseops->size, buselfs_state);
-        IFDEBUG(dzlog_notice("<<FINISHED; CONTINUING WITH NORMAL WRITE>>"));
+        IFDEBUGANY(dzlog_notice("<<FINISHED; CONTINUING WITH NORMAL WRITE>>"));
     }
+
+    IFDEBUG4(else { IFDEBUGANY(dzlog_notice("[[SKIPPING MIRRORED WRITE REGION]]")); });
 
     blfs_header_t * tpmv_header = blfs_open_header(buselfs_state->backstore, BLFS_HEAD_HEADER_TYPE_TPMGLOBALVER);
     uint64_t tpmv_value = *(uint64_t *) tpmv_header->data;
@@ -1323,10 +1396,10 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
 
     while(length != 0)
     {
-        IFDEBUG(dzlog_debug("starting with length: %"PRIu32, length));
+        IFDEBUGANY(dzlog_debug("next iteration in write workhorse with length: %"PRIu32, length));
 
         (void) size;
-        IFDEBUG(assert(length > 0 && length <= size));
+        IFDEBUGANY(assert(length > 0 && length <= size));
 
         uint_fast32_t buffer_write_length = MIN(length, nugget_size - nugget_internal_offset); // nmlen
         uint_fast32_t first_affected_flake = nugget_internal_offset / flake_size;
@@ -1381,7 +1454,7 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
             || buselfs_state->active_swap_strategy == swap_selective)
            && active_cipher->enum_id != meta->cipher_ident)
         {
-            IFDEBUG(dzlog_notice("<<INITIALIZING CIPHER SWAP PROCEDURE>>"));
+            IFDEBUGANY(dzlog_notice("<<INITIALIZING CIPHER SWAP PROCEDURE>>"));
 
             buffer += blfs_swap_nugget_to_active_cipher(
                 SWAP_WHILE_WRITE,
@@ -1396,7 +1469,7 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
 
         else
         {
-            IFDEBUG(dzlog_debug("(explicit cipher swap was not necessary for this nugget)"));
+            IFDEBUGANY(dzlog_notice("(explicit cipher swap was not necessary for this nugget)"));
 
             blfs_tjournal_entry_t * entry = blfs_open_tjournal_entry(buselfs_state->backstore, nugget_offset);
 
@@ -1405,6 +1478,7 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
 
             if(active_cipher->write_handle)
             {
+                IFDEBUG4(dzlog_notice("[executing write with write handle]"));
                 buffer += active_cipher->write_handle(
                     buffer,
                     buselfs_state,
@@ -1426,7 +1500,7 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
                 // ? First, check if this constitutes an overwrite...
                 if(bitmask_any_bits_set(entry->bitmask, first_affected_flake, num_affected_flakes))
                 {
-                    IFDEBUG(dzlog_notice("OVERWRITE DETECTED! PERFORMING IN-PLACE JOURNALED REKEYING + WRITE (l=%"PRIuFAST32")", buffer_write_length));
+                    IFDEBUGANY(dzlog_notice("OVERWRITE DETECTED! PERFORMING IN-PLACE JOURNALED REKEYING + WRITE (l=%"PRIuFAST32")", buffer_write_length));
                     blfs_rekey_nugget_then_write(buselfs_state, nugget_offset, buffer, buffer_write_length, nugget_internal_offset);
 
                     buffer += buffer_write_length;
@@ -1435,6 +1509,7 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
                 else
                 {
                     // ! Maybe update and commit the MTRH here first and again later?
+                    IFDEBUG4(dzlog_notice("[commencing typical write]"));
 
                     for(uint_fast32_t i = 0; flake_index < flake_end; flake_index++, i++)
                     {
@@ -1451,7 +1526,7 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
                         // ! flake_size, so we need to verify its integrity
                         if(flake_internal_offset != 0 || flake_internal_offset + flake_write_length < flake_size)
                         {
-                            IFDEBUG(dzlog_debug("UNALIGNED! Write flake requires verification"));
+                            IFDEBUGANY(dzlog_notice("UNALIGNED! Write flake requires verification"));
 
                             // Read in the entire flake
                             blfs_backstore_read_body(buselfs_state->backstore,
@@ -1550,14 +1625,14 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
 
                         flake_internal_offset = 0;
 
-                        IFDEBUG(assert(flake_total_bytes_to_write > flake_total_bytes_to_write - flake_write_length));
+                        IFDEBUGANY(assert(flake_total_bytes_to_write > flake_total_bytes_to_write - flake_write_length));
 
                         flake_total_bytes_to_write -= flake_write_length;
                         buffer += flake_write_length;
 
                     }
 
-                    IFDEBUG(assert(flake_total_bytes_to_write == 0));
+                    IFDEBUGANY(assert(flake_total_bytes_to_write == 0));
                 }
             }
 
@@ -1600,7 +1675,7 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
 
     commit_merkle_tree_root_hash(buselfs_state);
 
-    IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
+    IFDEBUGANY(dzlog_info("<<<< leaving %s", __func__));
     return 0;
 }
 

@@ -103,24 +103,37 @@ typedef enum usecase_e {
 #define SWAP_WHILE_READ 0
 #define SWAP_WHILE_WRITE 1
 
-#if BLFS_DEBUG_LEVEL > 0
+#if BLFS_DEBUG_LEVEL > 0 && BLFS_DEBUG_LEVEL < 4
 #define IFDEBUG(expression) expression
-#define IFNDEBUG(expression)
 #else
 #define IFDEBUG(expression)
-#define IFNDEBUG(expression) expression
+
 #endif
 
-#if BLFS_DEBUG_LEVEL > 1
+#if BLFS_DEBUG_LEVEL == 2
 #define IFDEBUG2(expression) expression
 #else
 #define IFDEBUG2(expression)
 #endif
 
-#if BLFS_DEBUG_LEVEL > 2
+#if BLFS_DEBUG_LEVEL == 3
 #define IFDEBUG3(expression) expression
 #else
 #define IFDEBUG3(expression)
+#endif
+
+#if BLFS_DEBUG_LEVEL == 4
+#define IFDEBUG4(expression) expression
+#else
+#define IFDEBUG4(expression)
+#endif
+
+#if BLFS_DEBUG_LEVEL > 0
+#define IFDEBUGANY(expression) expression
+#define IFNDEBUG(expression)
+#else
+#define IFDEBUGANY(expression)
+#define IFNDEBUG(expression) expression
 #endif
 
 #define STRINGIZE_STR_FN(X) #X
