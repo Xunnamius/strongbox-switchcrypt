@@ -406,7 +406,7 @@ int blfs_swap_nugget_to_active_cipher(int swapping_while_read_or_write,
 
         if(decryption_cipher->read_handle)
         {
-            IFDEBUG4(dzlog_notice("[READ_HANDLE=>decrypting nugget #%"PRIu64" contents]", target_nugget_index));
+            IFDEBUG4(dzlog_notice("[READ_HANDLE=>decrypting nugget #%"PRIu64" contents using cipher %s (%i)]", target_nugget_index, decryption_cipher->name, decryption_cipher->enum_id));
             uint64_t readed = decryption_cipher->read_handle(
                 decrypted_nugget_data,
                 buselfs_state,
@@ -432,7 +432,7 @@ int blfs_swap_nugget_to_active_cipher(int swapping_while_read_or_write,
 
         else
         {
-            IFDEBUG4(dzlog_notice("[SWAPPABLE_CRYPT=>decrypting nugget #%"PRIu64" contents]", target_nugget_index));
+            IFDEBUG4(dzlog_notice("[SWAPPABLE_CRYPT=>decrypting nugget #%"PRIu64" contents using cipher %s (%i)]", target_nugget_index, decryption_cipher->name, decryption_cipher->enum_id));
 
             blfs_swappable_crypt(
                 decryption_cipher,
@@ -491,7 +491,7 @@ int blfs_swap_nugget_to_active_cipher(int swapping_while_read_or_write,
 
     if(encryption_cipher->write_handle)
     {
-        IFDEBUG4(dzlog_notice("[WRITE_HANDLE=>encrypting nugget #%"PRIu64" contents]", target_nugget_index));
+        IFDEBUG4(dzlog_notice("[WRITE_HANDLE=>encrypting nugget #%"PRIu64" contents with cipher %s (%i)]", target_nugget_index, encryption_cipher->name, encryption_cipher->enum_id));
 
         uint64_t written = encryption_cipher->write_handle(
             decrypted_nugget_data,
@@ -514,7 +514,7 @@ int blfs_swap_nugget_to_active_cipher(int swapping_while_read_or_write,
 
     else
     {
-        IFDEBUG4(dzlog_notice("[SWAPPABLE_CRYPT=>encrypting nugget #%"PRIu64" contents]", target_nugget_index));
+        IFDEBUG4(dzlog_notice("[SWAPPABLE_CRYPT=>encrypting nugget #%"PRIu64" contents with cipher %s (%i)]", target_nugget_index, encryption_cipher->name, encryption_cipher->enum_id));
 
         blfs_swappable_crypt(
             encryption_cipher,
@@ -1447,14 +1447,17 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
 
         blfs_nugget_metadata_t * meta = blfs_open_nugget_metadata(buselfs_state->backstore, nugget_offset);
 
-        IFDEBUG(dzlog_debug(">-> active_cipher enum id: %u", active_cipher->enum_id));
-        IFDEBUG(dzlog_debug(">-> nugget (meta) enum id: %u", meta->cipher_ident));
+        IFDEBUGANY(dzlog_debug(">-> active_cipher enum id: %u", active_cipher->enum_id));
+        IFDEBUGANY(dzlog_debug(">-> nugget (meta) enum id: %u", meta->cipher_ident));
 
         if(!(buselfs_state->active_swap_strategy == swap_mirrored
             || buselfs_state->active_swap_strategy == swap_selective)
            && active_cipher->enum_id != meta->cipher_ident)
         {
-            IFDEBUGANY(dzlog_notice("<<INITIALIZING CIPHER SWAP PROCEDURE>>"));
+            IFDEBUGANY(dzlog_notice("<<INITIALIZING CIPHER SWAP PROCEDURE (from cipher %"PRIu8" to cipher %"PRIu8")>>",
+                active_cipher->enum_id,
+                meta->cipher_ident
+            ));
 
             buffer += blfs_swap_nugget_to_active_cipher(
                 SWAP_WHILE_WRITE,
@@ -1478,7 +1481,7 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
 
             if(active_cipher->write_handle)
             {
-                IFDEBUG4(dzlog_notice("[executing write with write handle]"));
+                IFDEBUG4(dzlog_notice("[executing write with write handle with active cipher %s (%"PRIu8")]", active_cipher->name, active_cipher->enum_id));
                 buffer += active_cipher->write_handle(
                     buffer,
                     buselfs_state,
@@ -1509,7 +1512,7 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
                 else
                 {
                     // ! Maybe update and commit the MTRH here first and again later?
-                    IFDEBUG4(dzlog_notice("[commencing typical write]"));
+                    IFDEBUG4(dzlog_notice("[commencing typical write with active cipher %s (%"PRIu8")]", active_cipher->name, active_cipher->enum_id));
 
                     for(uint_fast32_t i = 0; flake_index < flake_end; flake_index++, i++)
                     {

@@ -293,14 +293,16 @@ void blfs_backstore_read(blfs_backstore_t * backstore, uint8_t * buffer, uint32_
     if(temp_buffer == NULL)
         Throw(EXCEPTION_ALLOC_FAILURE);
 
-    IFDEBUG3(dzlog_debug("incoming read request for data of length %"PRIu32" from offset %"PRIu64" to %"PRIu64,
+    IFDEBUGANY(dzlog_info("incoming read request for data of length %"PRIu32" from offset %"PRIu64" to %"PRIu64,
                         length, offset, offset + length - 1));
+
+    IFDEBUG4(fprintf(stderr, "Committed read of size %"PRIu32"\n", length));
 
     IFDEBUG3(dzlog_debug("length + offset = %"PRIu64, length + offset));
     IFDEBUG3(dzlog_debug("backstore->file_size_actual = %"PRIu64, backstore->file_size_actual));
 
-    IFDEBUG3(if(length + offset > backstore->file_size_actual) Throw(EXCEPTION_DEBUGGING_OVERFLOW));
-    IFDEBUG3(if(length + offset < length) Throw(EXCEPTION_DEBUGGING_UNDERFLOW));
+    IFDEBUGANY(if(length + offset > backstore->file_size_actual) Throw(EXCEPTION_DEBUGGING_OVERFLOW));
+    IFDEBUGANY(if(length + offset < length) Throw(EXCEPTION_DEBUGGING_UNDERFLOW));
 
     lseek64(backstore->io_fd, offset, SEEK_SET);
 
@@ -342,8 +344,10 @@ void blfs_backstore_write(blfs_backstore_t * backstore, const uint8_t * buffer, 
     if(temp_buffer == NULL)
         Throw(EXCEPTION_ALLOC_FAILURE);
 
-    IFDEBUG3(dzlog_debug("incoming write request for data of length %"PRIu32" from offset %"PRIu64" to %"PRIu64,
+    IFDEBUGANY(dzlog_debug("incoming write request for data of length %"PRIu32" from offset %"PRIu64" to %"PRIu64,
                         length, offset, offset + length - 1));
+
+    IFDEBUG4(fprintf(stderr, "Committed write of size %"PRIu32"\n", length));
 
     IFDEBUG3(dzlog_debug("first 64 bytes:"));
     IFDEBUG3(hdzlog_debug(buffer, MIN(64U, length)));
@@ -351,8 +355,8 @@ void blfs_backstore_write(blfs_backstore_t * backstore, const uint8_t * buffer, 
     IFDEBUG3(dzlog_debug("length + offset = %"PRIu64, length + offset));
     IFDEBUG3(dzlog_debug("backstore->file_size_actual = %"PRIu64, backstore->file_size_actual));
 
-    IFDEBUG3(if(length + offset > backstore->file_size_actual) Throw(EXCEPTION_DEBUGGING_OVERFLOW));
-    IFDEBUG3(if(length + offset < length) Throw(EXCEPTION_DEBUGGING_UNDERFLOW));
+    IFDEBUGANY(if(length + offset > backstore->file_size_actual) Throw(EXCEPTION_DEBUGGING_OVERFLOW));
+    IFDEBUGANY(if(length + offset < length) Throw(EXCEPTION_DEBUGGING_UNDERFLOW));
 
     memcpy(temp_buffer, buffer, length);
     lseek64(backstore->io_fd, offset, SEEK_SET);
