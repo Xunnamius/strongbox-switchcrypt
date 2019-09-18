@@ -785,14 +785,14 @@ void update_application_state_check_mq(buselfs_state_t * buselfs_state)
 
                 if(buselfs_state->active_swap_strategy != swap_disabled)
                 {
-                    IFDEBUG(dzlog_info("swapped active cipher index!"));
+                    IFDEBUGANY(dzlog_info("swapped active cipher index from %i...", buselfs_state->active_cipher_enum_id));
 
                     buselfs_state->active_cipher_enum_id =
                         buselfs_state->active_cipher_enum_id == buselfs_state->primary_cipher->enum_id
                         ? buselfs_state->swap_cipher->enum_id
                         : buselfs_state->primary_cipher->enum_id;
 
-                    IFDEBUG(dzlog_info("newly active cipher: %i", buselfs_state->active_cipher_enum_id));
+                    IFDEBUGANY(dzlog_info("... to %i", buselfs_state->active_cipher_enum_id));
                 }
 
                 else

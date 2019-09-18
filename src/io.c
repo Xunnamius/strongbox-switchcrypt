@@ -344,7 +344,7 @@ void blfs_backstore_write(blfs_backstore_t * backstore, const uint8_t * buffer, 
     if(temp_buffer == NULL)
         Throw(EXCEPTION_ALLOC_FAILURE);
 
-    IFDEBUGANY(dzlog_debug("incoming write request for data of length %"PRIu32" from offset %"PRIu64" to %"PRIu64,
+    IFDEBUGANY(dzlog_info("incoming write request for data of length %"PRIu32" from offset %"PRIu64" to %"PRIu64,
                         length, offset, offset + length - 1));
 
     IFDEBUG4(fprintf(stderr, "Committed write of size %"PRIu32"\n", length));

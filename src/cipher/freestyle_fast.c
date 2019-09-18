@@ -82,6 +82,6 @@ void sc_impl_freestyle_fast(blfs_swappable_cipher_t * sc)
     sc->read_handle = &read_handle;
     sc->write_handle = &write_handle;
 
-    sc->name = "Freestyle @ BALANCED configuration";
+    sc->name = "Freestyle @ FAST configuration";
     sc->enum_id = sc_freestyle_fast;
 }
