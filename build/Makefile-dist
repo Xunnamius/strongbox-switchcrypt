@@ -60,7 +60,7 @@ C_TEST_LIBS := $(UNITY_ROOT)/src/unity.c \
                $(CMOCK_ROOT)/src/cmock.c
 
 CC  := /usr/bin/gcc
-CCV := $(shell expr `gcc --version | grep ^gcc | awk '{print $$3}'` \>= 4.9)
+CCV := $(shell expr `gcc --version | grep ^gcc | awk '{print $$3}'` \>= 5)
 
 DEBUG_MAKE_FLAGS              := -g
 # ? These are only activated when a modern version of gcc is being used
