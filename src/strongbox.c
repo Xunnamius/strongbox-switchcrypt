@@ -388,7 +388,7 @@ int blfs_swap_nugget_to_active_cipher(int swapping_while_read_or_write,
 
     if(swapping_while_read_or_write == SWAP_WHILE_READ || buffer_length != buselfs_state->backstore->nugget_size_bytes)
     {
-        IFDEBUG4(dzlog_notice("GOING DOWN SWAP_WHILE_READ PATH!"));
+        IFDEBUG4(dzlog_notice("GOING DOWN SWAP_WHILE_READ (buffer_length != size_of_nugget) PATH!"));
 
         // ? Read in the entire nugget
         blfs_backstore_read_body(
