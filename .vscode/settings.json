@@ -23,7 +23,8 @@
         "errno.h": "c",
         "chacha.h": "c",
         "crypto.h": "c",
-        "khash.h": "c"
+        "khash.h": "c",
+        "stdint.h": "c"
     },
     "cSpell.words": [
         "ADTC",
