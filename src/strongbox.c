@@ -794,7 +794,7 @@ void update_application_state_check_mq(buselfs_state_t * buselfs_state)
         switch(incoming_msg.opcode)
         {
             case 0:
-                if(processed_input++ > TRUE)
+                if(processed_input++ > 1)
                     Throw(EXCEPTION_BAD_MESSAGE_ASSUMPTION);
 
                 IFDEBUG(dzlog_debug("(no more messages in queue)"));
@@ -818,8 +818,9 @@ void update_application_state_check_mq(buselfs_state_t * buselfs_state)
 
                 else
                 {
-                    dzlog_fatal("EXCEPTION: we received a command to swap ciphers but cipher swapping is disabled!");
-                    Throw(EXCEPTION_CIPHER_SWITCHING_IS_DISABLED);
+                    dzlog_warn(">>> WARNING: we received a command to swap ciphers but cipher swapping is disabled! <<<");
+                    // dzlog_warn("EXCEPTION: we received a command to swap ciphers but cipher swapping is disabled!");
+                    // Throw(EXCEPTION_CIPHER_SWITCHING_IS_DISABLED);
                 }
 
                 break;
