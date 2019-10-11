@@ -346,6 +346,10 @@ int blfs_swap_nugget_to_active_cipher(int swapping_while_read_or_write,
     uint8_t decrypted_nugget_data[sizeof nugget_data];
     uint8_t reencrypted_nugget_data[sizeof nugget_data];
 
+    memset(nugget_data, 0, sizeof nugget_data);
+    memset(decrypted_nugget_data, 0, sizeof nugget_data);
+    memset(reencrypted_nugget_data, 0, sizeof nugget_data);
+
     blfs_swappable_cipher_t * decryption_cipher = blfs_get_inactive_cipher(buselfs_state);
     blfs_swappable_cipher_t * encryption_cipher = blfs_get_active_cipher(buselfs_state);
 
@@ -368,7 +372,7 @@ int blfs_swap_nugget_to_active_cipher(int swapping_while_read_or_write,
     IFDEBUG4(dzlog_notice("meta->metadata = "));
     IFDEBUG4(hdzlog_notice(meta_hash, sizeof meta_hash));
 
-    uint8_t nugget_key[BLFS_CRYPTO_BYTES_KDF_OUT] = { 0x00 };
+    uint8_t nugget_key[BLFS_CRYPTO_BYTES_KDF_OUT];
 
     if(!BLFS_DEFAULT_DISABLE_KEY_CACHING)
         Throw(EXCEPTION_MUST_DISABLE_CACHING); // TODO: enable cacheability (low priority)
@@ -384,11 +388,18 @@ int blfs_swap_nugget_to_active_cipher(int swapping_while_read_or_write,
     if(count == NULL || entry == NULL || meta == NULL)
         Throw(EXCEPTION_ALLOC_FAILURE);
 
+    if(meta->cipher_ident == (uint8_t) encryption_cipher->enum_id)
+        Throw(EXCEPTION_UNNECESSARY_CIPHER_SWITCH);
+
     IFDEBUGANY(assert(buffer_length <= buselfs_state->backstore->nugget_size_bytes));
 
-    if(swapping_while_read_or_write == SWAP_WHILE_READ || buffer_length != buselfs_state->backstore->nugget_size_bytes)
+    int nugget_is_pristine = !bitmask_any_bits_set(entry->bitmask, 0, buselfs_state->backstore->flakes_per_nugget);
+
+    IFDEBUG4(dzlog_notice("This nugget is: %s", nugget_is_pristine ? "<<PRISTINE>>" : "||NOT PRISTINE||"));
+
+    if(!nugget_is_pristine && (swapping_while_read_or_write == SWAP_WHILE_READ || buffer_length != buselfs_state->backstore->nugget_size_bytes))
     {
-        IFDEBUG4(dzlog_notice("GOING DOWN SWAP_WHILE_READ (buffer_length != size_of_nugget) PATH!"));
+        IFDEBUG4(dzlog_notice("GOING DOWN !nugget_is_pristine PATH: SWAP_WHILE_READ -or- buffer_length != size_of_nugget (while writing)"));
 
         // ? Read in the entire nugget
         blfs_backstore_read_body(
@@ -399,8 +410,6 @@ int blfs_swap_nugget_to_active_cipher(int swapping_while_read_or_write,
         );
 
         IFDEBUG4(dzlog_notice("[read in entire nugget #%"PRIu64"]", target_nugget_index));
-
-        // TODO: Verify nugget contents if reading (low priority)
 
         // ? Decrypt
 
@@ -446,6 +455,8 @@ int blfs_swap_nugget_to_active_cipher(int swapping_while_read_or_write,
         }
     }
 
+    IFDEBUG4(else { dzlog_notice("[skipping read-in step]"); })
+
     // ? Write out to or copy in from buffer if necessary
 
     if(!aggressive_write_ahead)
@@ -466,127 +477,137 @@ int blfs_swap_nugget_to_active_cipher(int swapping_while_read_or_write,
         }
     }
 
-    // ? Encrypt
-
-    // ! If we're in crash recovery mode, the very next keycount might be
-    // ! burned, so we must take that possibility into account when rekeying.
-    count->keycount += buselfs_state->crash_recovery ? 2 : 1;
-
-    IFDEBUG4(dzlog_notice("count->keycount = %"PRIu64, count->keycount));
-
-    uint_fast32_t flake_size = buselfs_state->backstore->flake_size_bytes;
-    uint_fast32_t start_index = nugget_internal_offset / flake_size;
-    uint_fast32_t length =
-            CEIL((nugget_internal_offset + buffer_length), flake_size) - start_index;
-
-    IFDEBUG(assert(start_index + length <= buselfs_state->backstore->flakes_per_nugget));
-    IFDEBUG4(assert(start_index + length <= buselfs_state->backstore->flakes_per_nugget));
-    IFDEBUG4(dzlog_notice("count->keycount = %"PRIu64, count->keycount));
-
-    // ? Set proper bits
-    bitmask_set_bits(entry->bitmask, start_index, length);
+    IFDEBUG4(else { dzlog_notice("[skipping copy-into-buffer step]"); })
 
     // ? Update metadata
     meta->cipher_ident = (uint8_t) encryption_cipher->enum_id;
 
-    if(encryption_cipher->write_handle)
+    // ? Only do the re-encryption step if nugget is not pristine or we're writing
+    if(!nugget_is_pristine || swapping_while_read_or_write == SWAP_WHILE_WRITE)
     {
-        IFDEBUG4(dzlog_notice("[WRITE_HANDLE=>encrypting nugget #%"PRIu64" contents with cipher %s (%i)]", target_nugget_index, encryption_cipher->name, encryption_cipher->enum_id));
+        // ? Encrypt
 
-        uint64_t written = encryption_cipher->write_handle(
-            decrypted_nugget_data,
-            buselfs_state,
-            sizeof decrypted_nugget_data,
-            0,
-            buselfs_state->backstore->flakes_per_nugget,
-            buselfs_state->backstore->flake_size_bytes,
-            buselfs_state->backstore->flakes_per_nugget,
-            0,
-            mt_calculate_expected_size(buselfs_state, 0),
-            nugget_key,
-            target_nugget_index,
-            count
-        );
+        // ! If we're in crash recovery mode, the very next keycount might be
+        // ! burned, so we must take that possibility into account when rekeying.
+        count->keycount += buselfs_state->crash_recovery ? 2 : 1;
 
-        IFDEBUG4(assert(written == sizeof nugget_data));
-        IFNDEBUG((void) written);
-    }
+        IFDEBUG4(dzlog_notice("count->keycount = %"PRIu64, count->keycount));
 
-    else
-    {
-        IFDEBUG4(dzlog_notice("[SWAPPABLE_CRYPT=>encrypting nugget #%"PRIu64" contents with cipher %s (%i)]", target_nugget_index, encryption_cipher->name, encryption_cipher->enum_id));
+        uint_fast32_t flake_size = buselfs_state->backstore->flake_size_bytes;
+        uint_fast32_t start_index = nugget_internal_offset / flake_size;
+        uint_fast32_t length =
+                CEIL((nugget_internal_offset + buffer_length), flake_size) - start_index;
 
-        blfs_swappable_crypt(
-            encryption_cipher,
-            reencrypted_nugget_data,
-            decrypted_nugget_data,
-            sizeof decrypted_nugget_data,
-            nugget_key,
-            count->keycount,
-            0
-        );
+        IFDEBUG(assert(start_index + length <= buselfs_state->backstore->flakes_per_nugget));
+        IFDEBUG4(assert(start_index + length <= buselfs_state->backstore->flakes_per_nugget));
+        IFDEBUG4(dzlog_notice("count->keycount = %"PRIu64, count->keycount));
 
-        IFDEBUG4(dzlog_notice("[writing out entire nugget]"));
+        // ? Set proper bits
+        bitmask_set_bits(entry->bitmask, start_index, length);
 
-        // ? Also write out entire nugget
-        blfs_backstore_write_body(
-            buselfs_state->backstore,
-            reencrypted_nugget_data,
-            sizeof reencrypted_nugget_data,
-            target_nugget_index * sizeof reencrypted_nugget_data
-        );
-
-        // ? Update the merkle tree
-
-        uint32_t flake_size = buselfs_state->backstore->flake_size_bytes;
-        IFDEBUG4(dzlog_notice("[updating merkle tree flake tags]"));
-
-        for(uint32_t flake_index = 0; flake_index < buselfs_state->backstore->flakes_per_nugget; flake_index++)
+        if(encryption_cipher->write_handle)
         {
-            uint8_t flake_key[BLFS_CRYPTO_BYTES_FLAKE_TAG_KEY] = { 0x00 };
-            uint8_t * tag = malloc(BLFS_CRYPTO_BYTES_FLAKE_TAG_OUT * (sizeof *tag));
-            uint8_t flake_data[flake_size];
-            uint32_t mt_offset = mt_calculate_flake_offset(buselfs_state, target_nugget_index, flake_index);
+            IFDEBUG4(dzlog_notice("[WRITE_HANDLE=>encrypting nugget #%"PRIu64" contents with cipher %s (%i)]", target_nugget_index, encryption_cipher->name, encryption_cipher->enum_id));
 
-            if(tag == NULL)
-                Throw(EXCEPTION_ALLOC_FAILURE);
+            uint64_t written = encryption_cipher->write_handle(
+                decrypted_nugget_data,
+                buselfs_state,
+                sizeof decrypted_nugget_data,
+                0,
+                buselfs_state->backstore->flakes_per_nugget,
+                buselfs_state->backstore->flake_size_bytes,
+                buselfs_state->backstore->flakes_per_nugget,
+                0,
+                mt_calculate_expected_size(buselfs_state, 0),
+                nugget_key,
+                target_nugget_index,
+                count
+            );
 
-            blfs_poly1305_key_from_data(flake_key, nugget_key, flake_index, count->keycount);
-
-            memcpy(flake_data, reencrypted_nugget_data + flake_index * flake_size, flake_size);
-
-            // TODO: if caching is implemented for this fn, we must remove from
-            // TODO: the flake metadata from the keychain (c.f. rekeying code)
-
-            blfs_poly1305_generate_tag(tag, flake_data, flake_size, flake_key);
-            update_in_merkle_tree(tag, BLFS_CRYPTO_BYTES_FLAKE_TAG_OUT, mt_offset, buselfs_state);
-            IFDEBUGANY(verify_in_merkle_tree(tag, BLFS_CRYPTO_BYTES_FLAKE_TAG_OUT, mt_offset, buselfs_state));
+            IFDEBUG4(assert(written == sizeof nugget_data));
+            IFNDEBUG((void) written);
         }
+
+        else
+        {
+            IFDEBUG4(dzlog_notice("[SWAPPABLE_CRYPT=>encrypting nugget #%"PRIu64" contents with cipher %s (%i)]", target_nugget_index, encryption_cipher->name, encryption_cipher->enum_id));
+
+            blfs_swappable_crypt(
+                encryption_cipher,
+                reencrypted_nugget_data,
+                decrypted_nugget_data,
+                sizeof decrypted_nugget_data,
+                nugget_key,
+                count->keycount,
+                0
+            );
+
+            IFDEBUG4(dzlog_notice("[writing out entire nugget]"));
+
+            // ? Also write out entire nugget
+            blfs_backstore_write_body(
+                buselfs_state->backstore,
+                reencrypted_nugget_data,
+                sizeof reencrypted_nugget_data,
+                target_nugget_index * sizeof reencrypted_nugget_data
+            );
+
+            // ? Update the merkle tree
+
+            uint32_t flake_size = buselfs_state->backstore->flake_size_bytes;
+            IFDEBUG4(dzlog_notice("[updating merkle tree flake tags]"));
+
+            for(uint32_t flake_index = 0; flake_index < buselfs_state->backstore->flakes_per_nugget; flake_index++)
+            {
+                uint8_t flake_key[BLFS_CRYPTO_BYTES_FLAKE_TAG_KEY] = { 0x00 };
+                uint8_t * tag = malloc(BLFS_CRYPTO_BYTES_FLAKE_TAG_OUT * (sizeof *tag));
+                uint8_t flake_data[flake_size];
+                uint32_t mt_offset = mt_calculate_flake_offset(buselfs_state, target_nugget_index, flake_index);
+
+                if(tag == NULL)
+                    Throw(EXCEPTION_ALLOC_FAILURE);
+
+                blfs_poly1305_key_from_data(flake_key, nugget_key, flake_index, count->keycount);
+
+                memcpy(flake_data, reencrypted_nugget_data + flake_index * flake_size, flake_size);
+
+                // TODO: if caching is implemented for this fn, we must remove from
+                // TODO: the flake metadata from the keychain (c.f. rekeying code)
+
+                blfs_poly1305_generate_tag(tag, flake_data, flake_size, flake_key);
+                update_in_merkle_tree(tag, BLFS_CRYPTO_BYTES_FLAKE_TAG_OUT, mt_offset, buselfs_state);
+                IFDEBUGANY(verify_in_merkle_tree(tag, BLFS_CRYPTO_BYTES_FLAKE_TAG_OUT, mt_offset, buselfs_state));
+            }
+        }
+
+        // ? Commit relevant changes and update merkle tree
+
+        IFDEBUG4(dzlog_notice("[committing tj (and merkle tree), kc (and merkle tree), md]"));
+
+        blfs_commit_tjournal_entry(buselfs_state->backstore, entry);
+        blfs_commit_keycount(buselfs_state->backstore, count);
+
+        uint8_t hash[BLFS_CRYPTO_BYTES_STRUCT_HASH_OUT];
+
+        blfs_chacha20_struct_hash(hash, entry->bitmask->mask, entry->bitmask->byte_length, buselfs_state->backstore->master_secret);
+        update_in_merkle_tree(
+            hash,
+            sizeof hash,
+            mt_calculate_tj1_index(buselfs_state, target_nugget_index),
+            buselfs_state
+        );
+
+        update_in_merkle_tree((uint8_t *) &count->keycount,
+            BLFS_HEAD_BYTES_KEYCOUNT,
+            mt_calculate_keycount_index(target_nugget_index),
+            buselfs_state
+        );
     }
 
-    // ? Commit changes and update merkle tree
+    IFDEBUG4(else { dzlog_notice("[skipping re-crypt+commit step]"); })
 
-    IFDEBUG4(dzlog_notice("[committing tj (and merkle tree), kc (and merkle tree), md]"));
-
-    blfs_commit_tjournal_entry(buselfs_state->backstore, entry);
-    blfs_commit_keycount(buselfs_state->backstore, count);
+    // ? Always commit metadata changes
     blfs_commit_nugget_metadata(buselfs_state->backstore, meta);
-
-    uint8_t hash[BLFS_CRYPTO_BYTES_STRUCT_HASH_OUT];
-
-    blfs_chacha20_struct_hash(hash, entry->bitmask->mask, entry->bitmask->byte_length, buselfs_state->backstore->master_secret);
-    update_in_merkle_tree(
-        hash,
-        sizeof hash,
-        mt_calculate_tj1_index(buselfs_state, target_nugget_index),
-        buselfs_state
-    );
-
-    update_in_merkle_tree((uint8_t *) &count->keycount,
-        BLFS_HEAD_BYTES_KEYCOUNT,
-        mt_calculate_keycount_index(target_nugget_index),
-        buselfs_state
-    );
 
     // ? Save advanced cipher switching (recursive calls to this fn) for last!
     // ? But only try to do this if we're on the last nugget to be read/written
@@ -640,7 +661,7 @@ int blfs_swap_nugget_to_active_cipher(int swapping_while_read_or_write,
                     IFNDEBUG((void) written);
                 }
 
-                if(is_pristine && should_flip)
+                else if(is_pristine && should_flip)
                 {
                     IFDEBUGANY(dzlog_notice("<{ WILL FLIP NUGGET %i}>", target));
 
@@ -657,7 +678,7 @@ int blfs_swap_nugget_to_active_cipher(int swapping_while_read_or_write,
         buselfs_state->is_cipher_swapping = FALSE;
     }
 
-    IFDEBUG4(else { dzlog_notice("[skipping advanced cipher switching features]"); })
+    IFDEBUG4(else { dzlog_notice("[skipping advanced cipher switching step]"); })
 
     IFDEBUGANY(dzlog_notice("<CIPHER SWAP ENDED ON NUGGET %"PRIu64">", target_nugget_index));
     return buffer_length;

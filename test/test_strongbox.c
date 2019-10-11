@@ -1771,6 +1771,158 @@ void test_strongbox_can_cipher_switch3(void)
     swap_readwrite_quicktest();
 }
 
+void test_strongbox_cipher_switches_efficiently(void)
+{
+    zlog_fini();
+
+    char * argv_create1[] = {
+        "progname",
+        "--default-password",
+        "--backstore-size",
+        "50",
+        "--cipher",
+        "sc_chacha8_neon",
+        "--swap-cipher",
+        "sc_chacha12_neon",
+        "--swap-strategy",
+        "swap_0_forward",
+        "create",
+        "device_actual-132"
+    };
+
+    int argc = sizeof(argv_create1)/sizeof(argv_create1[0]);
+    buselfs_state = strongbox_main_actual(argc, argv_create1, blockdevice);
+
+    buselfs_state_t fake_state = {
+        .qd_outgoing = mq_open(BLFS_SV_QUEUE_INCOMING_NAME, O_WRONLY | O_NONBLOCK, BLFS_SV_QUEUE_PERM)
+    };
+
+    uint32_t nugget_size = buselfs_state->backstore->nugget_size_bytes;
+    blfs_mq_msg_t swap_cmd_msg = { .opcode = 1 };
+
+    uint8_t in_buffer1[nugget_size * 3];
+    uint8_t in_buffer2[nugget_size];
+    uint8_t in_buffer3[nugget_size / 2];
+
+    uint8_t out_buffer1[sizeof in_buffer1];
+    uint8_t out_buffer2[sizeof in_buffer2];
+    uint8_t out_buffer3[sizeof in_buffer3];
+
+    memset(in_buffer1,  0x00, sizeof in_buffer1);
+    memset(in_buffer2,  0x00, sizeof in_buffer2);
+    memset(in_buffer3,  0x00, sizeof in_buffer3);
+    memset(out_buffer1, 0x04, sizeof out_buffer1);
+    memset(out_buffer2, 0x05, sizeof out_buffer2);
+    memset(out_buffer3, 0x06, sizeof out_buffer3);
+
+    blfs_nugget_metadata_t * meta[3] = {
+        blfs_open_nugget_metadata(buselfs_state->backstore, 0),
+        blfs_open_nugget_metadata(buselfs_state->backstore, 1),
+        blfs_open_nugget_metadata(buselfs_state->backstore, 2)
+    };
+
+    blfs_tjournal_entry_t * tj[3] = {
+        blfs_open_tjournal_entry(buselfs_state->backstore, 0),
+        blfs_open_tjournal_entry(buselfs_state->backstore, 1),
+        blfs_open_tjournal_entry(buselfs_state->backstore, 2)
+    };
+
+    // Ensure metadata is correct
+    TEST_ASSERT_EQUAL_UINT8(buselfs_state->primary_cipher->enum_id, meta[0]->cipher_ident);
+    TEST_ASSERT_EQUAL_UINT8(buselfs_state->primary_cipher->enum_id, meta[1]->cipher_ident);
+    TEST_ASSERT_EQUAL_UINT8(buselfs_state->primary_cipher->enum_id, meta[2]->cipher_ident);
+
+    // Ensure it was a pristine flip
+    TEST_ASSERT_FALSE(bitmask_any_bits_set(tj[0]->bitmask, 0, buselfs_state->backstore->flakes_per_nugget));
+    TEST_ASSERT_FALSE(bitmask_any_bits_set(tj[1]->bitmask, 0, buselfs_state->backstore->flakes_per_nugget));
+    TEST_ASSERT_FALSE(bitmask_any_bits_set(tj[2]->bitmask, 0, buselfs_state->backstore->flakes_per_nugget));
+
+    // * (#1) Swap ciphers
+    dzlog_notice("-- swap #1 --");
+    blfs_write_output_queue(&fake_state, &swap_cmd_msg, BLFS_SV_MESSAGE_DEFAULT_PRIORITY + 1);
+
+    // Read what was written earlier under the new cipher
+    dzlog_notice("(read)");
+    buse_read(out_buffer1, sizeof out_buffer1, 0, buselfs_state);
+
+    // Ensure metadata is correct
+    TEST_ASSERT_EQUAL_UINT8(buselfs_state->swap_cipher->enum_id, meta[0]->cipher_ident);
+    TEST_ASSERT_EQUAL_UINT8(buselfs_state->swap_cipher->enum_id, meta[1]->cipher_ident);
+    TEST_ASSERT_EQUAL_UINT8(buselfs_state->swap_cipher->enum_id, meta[2]->cipher_ident);
+
+    // Ensure it was a pristine flip
+    TEST_ASSERT_FALSE(bitmask_any_bits_set(tj[0]->bitmask, 0, buselfs_state->backstore->flakes_per_nugget));
+    TEST_ASSERT_FALSE(bitmask_any_bits_set(tj[1]->bitmask, 0, buselfs_state->backstore->flakes_per_nugget));
+    TEST_ASSERT_FALSE(bitmask_any_bits_set(tj[2]->bitmask, 0, buselfs_state->backstore->flakes_per_nugget));
+
+    // Verify read
+    TEST_ASSERT_EQUAL_MEMORY(in_buffer1, out_buffer1, sizeof in_buffer1);
+
+    // * (#2) Swap ciphers again
+    dzlog_notice("-- swap #2 --");
+    blfs_write_output_queue(&fake_state, &swap_cmd_msg, BLFS_SV_MESSAGE_DEFAULT_PRIORITY + 1);
+
+    dzlog_notice("(read)");
+    buse_read(out_buffer2, sizeof out_buffer2, nugget_size, buselfs_state);
+
+    // Ensure metadata is correct
+    TEST_ASSERT_EQUAL_UINT8(buselfs_state->swap_cipher->enum_id, meta[0]->cipher_ident);
+    TEST_ASSERT_EQUAL_UINT8(buselfs_state->primary_cipher->enum_id, meta[1]->cipher_ident);
+    TEST_ASSERT_EQUAL_UINT8(buselfs_state->swap_cipher->enum_id, meta[2]->cipher_ident);
+
+    // Ensure it was a pristine flip
+    TEST_ASSERT_FALSE(bitmask_any_bits_set(tj[0]->bitmask, 0, buselfs_state->backstore->flakes_per_nugget));
+    TEST_ASSERT_FALSE(bitmask_any_bits_set(tj[1]->bitmask, 0, buselfs_state->backstore->flakes_per_nugget));
+    TEST_ASSERT_FALSE(bitmask_any_bits_set(tj[2]->bitmask, 0, buselfs_state->backstore->flakes_per_nugget));
+
+    // Verify read
+    TEST_ASSERT_EQUAL_MEMORY(in_buffer2, out_buffer2, sizeof in_buffer2);
+
+    // * (#3) Swap ciphers again
+    dzlog_notice("-- swap #3 --");
+    blfs_write_output_queue(&fake_state, &swap_cmd_msg, BLFS_SV_MESSAGE_DEFAULT_PRIORITY + 1);
+
+    dzlog_notice("(read)");
+    buse_read(out_buffer3, sizeof out_buffer3, nugget_size + nugget_size / 4, buselfs_state);
+
+    // Ensure metadata is correct
+    TEST_ASSERT_EQUAL_UINT8(buselfs_state->swap_cipher->enum_id, meta[0]->cipher_ident);
+    TEST_ASSERT_EQUAL_UINT8(buselfs_state->swap_cipher->enum_id, meta[1]->cipher_ident);
+    TEST_ASSERT_EQUAL_UINT8(buselfs_state->swap_cipher->enum_id, meta[2]->cipher_ident);
+
+    // Ensure it was a pristine flip
+    TEST_ASSERT_FALSE(bitmask_any_bits_set(tj[0]->bitmask, 0, buselfs_state->backstore->flakes_per_nugget));
+    TEST_ASSERT_FALSE(bitmask_any_bits_set(tj[1]->bitmask, 0, buselfs_state->backstore->flakes_per_nugget));
+    TEST_ASSERT_FALSE(bitmask_any_bits_set(tj[2]->bitmask, 0, buselfs_state->backstore->flakes_per_nugget));
+
+    // Verify read
+    TEST_ASSERT_EQUAL_MEMORY(in_buffer3, out_buffer3, sizeof in_buffer3);
+
+    // * (#4) Swap ciphers
+    dzlog_notice("-- swap #4 --");
+    blfs_write_output_queue(&fake_state, &swap_cmd_msg, BLFS_SV_MESSAGE_DEFAULT_PRIORITY + 1);
+
+    memset(in_buffer1, 0x01, sizeof in_buffer1);
+    memset(out_buffer1, 0x04, sizeof out_buffer1);
+
+    // And now for some standard I/O...
+    dzlog_notice("(write)");
+    buse_write(in_buffer1, sizeof in_buffer1, 0, buselfs_state);
+
+    dzlog_notice("(read)");
+    buse_read(out_buffer1, sizeof out_buffer1, 0, buselfs_state);
+
+    // Ensure metadata is correct
+    TEST_ASSERT_EQUAL_UINT8(buselfs_state->primary_cipher->enum_id, meta[0]->cipher_ident);
+    TEST_ASSERT_EQUAL_UINT8(buselfs_state->primary_cipher->enum_id, meta[1]->cipher_ident);
+    TEST_ASSERT_EQUAL_UINT8(buselfs_state->primary_cipher->enum_id, meta[2]->cipher_ident);
+
+    // Make sure it worked!
+    TEST_ASSERT_TRUE(bitmask_are_bits_set(tj[0]->bitmask, 0, buselfs_state->backstore->flakes_per_nugget));
+    TEST_ASSERT_TRUE(bitmask_are_bits_set(tj[1]->bitmask, 0, buselfs_state->backstore->flakes_per_nugget));
+    TEST_ASSERT_TRUE(bitmask_are_bits_set(tj[2]->bitmask, 0, buselfs_state->backstore->flakes_per_nugget));
+}
+
 static void mirrored_readwrite_quicktest(int normal_ciphers)
 {
     buselfs_state_t fake_state = {

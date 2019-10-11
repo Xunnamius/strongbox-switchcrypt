@@ -282,6 +282,9 @@ do {                                                                            
 // read?
 #define EXCEPTION_CANNOT_HANDLE_MULTIPLE_MESSAGES_IN_QUEUE 0x55U
 
+// A cipher switch was triggered when it was unnecessary?!
+#define EXCEPTION_UNNECESSARY_CIPHER_SWITCH 0x56U
+
 ///////////////////////
 // End Configuration //
 ///////////////////////
