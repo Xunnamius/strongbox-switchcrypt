@@ -3348,3 +3348,56 @@ void test_strongbox_aggressive_triggers_and_follows_rules_when_reading(void)
         "(3: count3 didn't match expected)"
     );
 }
+
+void test_buselfs_state_delay_rw_is_true_when_param_exists(void)
+{
+    zlog_fini();
+
+    char * argv_create1[] = {
+        "progname",
+        "--default-password",
+        "--delay-rw",
+        "--backstore-size",
+        "50",
+        "--cipher",
+        "sc_chacha20",
+        "--swap-cipher",
+        "sc_chacha8_neon",
+        "--swap-strategy",
+        "swap_mirrored",
+        "create",
+        "device_actual-133"
+    };
+
+    int argc = sizeof(argv_create1)/sizeof(argv_create1[0]);
+
+    buselfs_state = strongbox_main_actual(argc, argv_create1, blockdevice);
+
+    TEST_ASSERT_TRUE(buselfs_state->delay_rw);
+}
+
+void test_buselfs_state_delay_rw_is_false_when_param_DNE(void)
+{
+    zlog_fini();
+
+    char * argv_create1[] = {
+        "progname",
+        "--default-password",
+        "--backstore-size",
+        "50",
+        "--cipher",
+        "sc_chacha20",
+        "--swap-cipher",
+        "sc_chacha8_neon",
+        "--swap-strategy",
+        "swap_mirrored",
+        "create",
+        "device_actual-134"
+    };
+
+    int argc = sizeof(argv_create1)/sizeof(argv_create1[0]);
+
+    buselfs_state = strongbox_main_actual(argc, argv_create1, blockdevice);
+
+    TEST_ASSERT_FALSE(buselfs_state->delay_rw);
+}

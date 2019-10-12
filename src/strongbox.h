@@ -146,6 +146,12 @@ typedef struct buselfs_state_t
      * very similar to its FUSE counterpart in intent.
      */
     struct buse_operations * buseops;
+
+    /**
+     * If non-zero, reads and writes will have a latency penalty of
+     * BLFS_DELAY_RW_PENALTY_MS milliseconds (StrongBox will sleep)
+     */
+    int delay_rw;
 } buselfs_state_t;
 
 /**

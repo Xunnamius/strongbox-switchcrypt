@@ -1051,6 +1051,12 @@ int buse_read(void * output_buffer, uint32_t length, uint64_t absolute_offset, v
     buselfs_state_t * buselfs_state = (buselfs_state_t *) userdata;
     uint_fast32_t size = length;
 
+    if(buselfs_state->delay_rw)
+    {
+        IFDEBUG(dzlog_debug("buselfs_state->delay_rw = TRUE, delaying read for %u milliseconds", BLFS_DELAY_RW_PENALTY_MS));
+        usleep(BLFS_DELAY_RW_PENALTY_MS * 1000);
+    }
+
     IFDEBUG(dzlog_debug("synchronizing application state..."));
     if(absolute_offset < buselfs_state->buseops->size) // ! Race condition here if msg sent during rekeying
         update_application_state_check_mq(buselfs_state);
@@ -1325,6 +1331,12 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
     const uint8_t * buffer = (const uint8_t *) input_buffer;
     buselfs_state_t * buselfs_state = (buselfs_state_t *) userdata;
     uint_fast32_t size = length;
+
+    if(buselfs_state->delay_rw)
+    {
+        IFDEBUG(dzlog_debug("buselfs_state->delay_rw = TRUE, delaying write for %u milliseconds", BLFS_DELAY_RW_PENALTY_MS));
+        usleep(BLFS_DELAY_RW_PENALTY_MS * 1000);
+    }
 
     IFDEBUG(dzlog_debug("synchronizing application state..."));
     if(absolute_offset < buselfs_state->buseops->size)
@@ -2245,6 +2257,7 @@ buselfs_state_t * strongbox_main_actual(int argc, char * argv[], char * blockdev
     uint32_t cin_flakes_per_nugget     = BLFS_DEFAULT_FLAKES_PER_NUGGET;
     swap_strategy_e cin_swap_strategy  = swap_default;
     usecase_e cin_usecase              = uc_default;
+    uint8_t cin_delay_rw               = FALSE;
 
     IFDEBUG3(printf("<bare debug>: argc: %i\n", argc));
 
@@ -2260,6 +2273,7 @@ buselfs_state_t * strongbox_main_actual(int argc, char * argv[], char * blockdev
         "[--swap-cipher sc_default]"
         "[--swap-strategy swap_default]"
         "[--support-uc uc_default]"
+        "[--delay-rw]"
         "[--tpm-id %"PRIu32"] "
         "create nbd_device_name\n\n"
         "  %s [--default-password][--allow-insecure-start] open nbd_device_name\n\n"
@@ -2442,6 +2456,12 @@ buselfs_state_t * strongbox_main_actual(int argc, char * argv[], char * blockdev
             IFDEBUG3(printf("<bare debug>: saw --support-uc, got enum value: %d\n", cin_usecase));
         }
 
+        else if(strcmp(argv[argc], "--delay-rw") == 0)
+        {
+            cin_delay_rw = TRUE;
+            IFDEBUG3(printf("<bare debug>: saw --delay-rw = %i\n", cin_delay_rw));
+        }
+
         else if(strcmp(argv[argc], "--tpm-id") == 0)
         {
             int64_t cin_tpm_id_int = strtoll(argv[argc + 1], NULL, 0);
@@ -2476,6 +2496,7 @@ buselfs_state_t * strongbox_main_actual(int argc, char * argv[], char * blockdev
     IFDEBUG3(printf("<bare debug>: cin_swap_cipher = %d\n", cin_swap_cipher));
     IFDEBUG3(printf("<bare debug>: cin_swap_strategy = %d\n", cin_swap_strategy));
     IFDEBUG3(printf("<bare debug>: cin_usecase = %d\n", cin_usecase));
+    IFDEBUG3(printf("<bare debug>: cin_delay_rw = %d\n", cin_delay_rw));
 
     IFDEBUG3(printf("<bare debug>: defaults:\n"));
     IFDEBUG3(printf("<bare debug>: default allow_insecure_start = 0\n"));
@@ -2661,6 +2682,8 @@ buselfs_state_t * strongbox_main_actual(int argc, char * argv[], char * blockdev
         buselfs_state->buseops->size,
         buselfs_state->active_swap_strategy == swap_mirrored ? " (mirrored)" : ""
     ));
+
+    buselfs_state->delay_rw = cin_delay_rw;
 
     /* Let the show begin! */
 

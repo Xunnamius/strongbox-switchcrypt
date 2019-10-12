@@ -15,7 +15,7 @@
 #define BLFS_CONFIG_ZLOG "../config/zlog_conf.conf"
 
 // ! When adding new command line flags, don't forget to update this!
-#define MAX_NUM_ARGC 20
+#define MAX_NUM_ARGC 21
 
 #define VECTOR_GROWTH_FACTOR    2
 #define VECTOR_INIT_SIZE        10
@@ -313,6 +313,8 @@ typedef enum usecase_e {
 #define BLFS_SV_MESSAGE_DEFAULT_PRIORITY        0 // uint; must be < ~30k. 0 - 30 recommended
 
 #define BLFS_NUM_ACTIVE_CIPHERS                 2 // will probably never not be 2
+
+#define BLFS_DELAY_RW_PENALTY_MS                250U // in milliseconds
 
 /////////
 // MMC //
