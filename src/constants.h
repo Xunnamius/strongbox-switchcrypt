@@ -314,7 +314,7 @@ typedef enum usecase_e {
 
 #define BLFS_NUM_ACTIVE_CIPHERS                 2 // will probably never not be 2
 
-#define BLFS_DELAY_RW_PENALTY_MS                250U // in milliseconds
+#define BLFS_DELAY_RW_PENALTY_MS                20U // in milliseconds
 
 /////////
 // MMC //
