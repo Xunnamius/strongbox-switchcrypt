@@ -332,8 +332,6 @@ int blfs_swap_nugget_to_active_cipher(int swapping_while_read_or_write,
         swapping_while_read_or_write
     ));
     IFDEBUG4(dzlog_notice("on_last_nugget = %i", on_last_nugget));
-    IFDEBUG4(dzlog_notice("buffer_length = %"PRIu32, buffer_length));
-    IFDEBUG4(dzlog_notice("nugget_internal_offset = %"PRIu64, nugget_internal_offset));
 
     if(aggressive_write_ahead)
         buffer_length = buselfs_state->backstore->nugget_size_bytes;
@@ -361,17 +359,6 @@ int blfs_swap_nugget_to_active_cipher(int swapping_while_read_or_write,
     IFDEBUG4(dzlog_notice("encryption_cipher = %s (%"PRIu8")", encryption_cipher->name, encryption_cipher->enum_id));
     IFDEBUG4(dzlog_notice("meta->cipher_ident = %"PRIu8, meta->cipher_ident));
 
-    IFDEBUG4(uint8_t entry_hash[crypto_generichash_BYTES]);
-    IFDEBUG4(uint8_t meta_hash[crypto_generichash_BYTES]);
-
-    IFDEBUG4(dzlog_notice("count = %"PRIu64, count->keycount));
-    IFDEBUG4(crypto_generichash(entry_hash, sizeof entry_hash, entry->bitmask->mask, entry->bitmask->byte_length, NULL, 0));
-    IFDEBUG4(dzlog_notice("entry = "));
-    IFDEBUG4(hdzlog_notice(entry_hash, sizeof entry_hash));
-    IFDEBUG4(crypto_generichash(meta_hash, sizeof meta_hash, meta->metadata, meta->metadata_length, NULL, 0));
-    IFDEBUG4(dzlog_notice("meta->metadata = "));
-    IFDEBUG4(hdzlog_notice(meta_hash, sizeof meta_hash));
-
     uint8_t nugget_key[BLFS_CRYPTO_BYTES_KDF_OUT];
 
     if(!BLFS_DEFAULT_DISABLE_KEY_CACHING)
@@ -395,7 +382,7 @@ int blfs_swap_nugget_to_active_cipher(int swapping_while_read_or_write,
 
     int nugget_is_pristine = !bitmask_any_bits_set(entry->bitmask, 0, buselfs_state->backstore->flakes_per_nugget);
 
-    IFDEBUG4(dzlog_notice("This nugget is: %s", nugget_is_pristine ? "<<PRISTINE>>" : "||NOT PRISTINE||"));
+    IFDEBUG4(dzlog_notice("This nugget (%"PRIu64") is: %s", target_nugget_index, nugget_is_pristine ? "<<PRISTINE>>" : "||NOT PRISTINE||"));
 
     if(!nugget_is_pristine && (swapping_while_read_or_write == SWAP_WHILE_READ || buffer_length != buselfs_state->backstore->nugget_size_bytes))
     {
@@ -491,8 +478,6 @@ int blfs_swap_nugget_to_active_cipher(int swapping_while_read_or_write,
         // ! burned, so we must take that possibility into account when rekeying.
         count->keycount += buselfs_state->crash_recovery ? 2 : 1;
 
-        IFDEBUG4(dzlog_notice("count->keycount = %"PRIu64, count->keycount));
-
         uint_fast32_t flake_size = buselfs_state->backstore->flake_size_bytes;
         uint_fast32_t start_index = nugget_internal_offset / flake_size;
         uint_fast32_t length =
@@ -500,7 +485,6 @@ int blfs_swap_nugget_to_active_cipher(int swapping_while_read_or_write,
 
         IFDEBUG(assert(start_index + length <= buselfs_state->backstore->flakes_per_nugget));
         IFDEBUG4(assert(start_index + length <= buselfs_state->backstore->flakes_per_nugget));
-        IFDEBUG4(dzlog_notice("count->keycount = %"PRIu64, count->keycount));
 
         // ? Set proper bits
         bitmask_set_bits(entry->bitmask, start_index, length);
@@ -555,7 +539,6 @@ int blfs_swap_nugget_to_active_cipher(int swapping_while_read_or_write,
             // ? Update the merkle tree
 
             uint32_t flake_size = buselfs_state->backstore->flake_size_bytes;
-            IFDEBUG4(dzlog_notice("[updating merkle tree flake tags]"));
 
             for(uint32_t flake_index = 0; flake_index < buselfs_state->backstore->flakes_per_nugget; flake_index++)
             {
@@ -1045,7 +1028,7 @@ blfs_backstore_t * blfs_backstore_open_with_ctx(const char * path, buselfs_state
 
 int buse_read(void * output_buffer, uint32_t length, uint64_t absolute_offset, void * userdata)
 {
-    IFDEBUG(dzlog_debug(">>>> entering %s", __func__));
+    IFDEBUGANY(dzlog_debug(">>>> entering %s", __func__));
 
     uint8_t * buffer = (uint8_t *) output_buffer;
     buselfs_state_t * buselfs_state = (buselfs_state_t *) userdata;
@@ -1053,7 +1036,7 @@ int buse_read(void * output_buffer, uint32_t length, uint64_t absolute_offset, v
 
     if(buselfs_state->delay_rw)
     {
-        IFDEBUG(dzlog_debug("buselfs_state->delay_rw = TRUE, delaying read for %u milliseconds", BLFS_DELAY_RW_PENALTY_MS));
+        IFDEBUGANY(dzlog_debug("buselfs_state->delay_rw = TRUE, delaying read for %u milliseconds", BLFS_DELAY_RW_PENALTY_MS));
         usleep(BLFS_DELAY_RW_PENALTY_MS * 1000);
     }
 
@@ -1106,7 +1089,7 @@ int buse_read(void * output_buffer, uint32_t length, uint64_t absolute_offset, v
     IFDEBUG(dzlog_debug("num_nuggets: %"PRIuFAST32, num_nuggets));
     IFDEBUG(dzlog_debug("flakes_per_nugget: %"PRIuFAST32, flakes_per_nugget));
     IFDEBUG(dzlog_debug("mt_offset: %"PRIuFAST32, mt_offset));
-    IFDEBUG(dzlog_debug("nugget_offset (nugget index): %"PRIuFAST32, nugget_offset));
+    IFDEBUGANY(dzlog_debug("nugget_offset (nugget index): %"PRIuFAST32, nugget_offset));
     IFDEBUG(dzlog_debug("nugget_internal_offset: %"PRIuFAST32, nugget_internal_offset));
 
     blfs_swappable_cipher_t * active_cipher;
@@ -1182,7 +1165,7 @@ int buse_read(void * output_buffer, uint32_t length, uint64_t absolute_offset, v
 
         if(want_to_cipher_switch && !using_non_forward_strategy)
         {
-            IFDEBUG(dzlog_notice("<<INITIALIZING CIPHER SWAP PROCEDURE>>"));
+            IFDEBUGANY(dzlog_notice("read() is triggering cipher switch..."));
             buffer += blfs_swap_nugget_to_active_cipher(
                 SWAP_WHILE_READ,
                 last_nugget,
@@ -1197,7 +1180,7 @@ int buse_read(void * output_buffer, uint32_t length, uint64_t absolute_offset, v
         else
         {
             IFDEBUG(assert(!want_to_cipher_switch));
-            IFDEBUG(dzlog_debug("(explicit cipher swap was not necessary for this nugget)"));
+            IFDEBUGANY(dzlog_debug("(explicit cipher swap was not necessary for this nugget)"));
 
             IFDEBUG(dzlog_debug("blfs_backstore_read_body offset: %"PRIuFAST32,
                                 nugget_offset * nugget_size + first_affected_flake * flake_size));
@@ -1212,6 +1195,8 @@ int buse_read(void * output_buffer, uint32_t length, uint64_t absolute_offset, v
 
             if(active_cipher->read_handle)
             {
+                IFDEBUG4(dzlog_notice("[executing read handle with active cipher %s (%"PRIu8")]", active_cipher->name, active_cipher->enum_id));
+
                 buffer += active_cipher->read_handle(
                     buffer,
                     buselfs_state,
@@ -1234,6 +1219,8 @@ int buse_read(void * output_buffer, uint32_t length, uint64_t absolute_offset, v
 
             else
             {
+                IFDEBUG4(dzlog_notice("[commencing typical read with active cipher %s (%"PRIu8")]", active_cipher->name, active_cipher->enum_id));
+
                 for(uint_fast32_t i = 0; flake_index < flake_end; flake_index++, i++)
                 {
                     uint8_t flake_key[BLFS_CRYPTO_BYTES_FLAKE_TAG_KEY];
@@ -1320,7 +1307,7 @@ int buse_read(void * output_buffer, uint32_t length, uint64_t absolute_offset, v
         first_nugget = FALSE;
     }
 
-    IFDEBUG(dzlog_debug("<<<< leaving %s", __func__));
+    IFDEBUGANY(dzlog_debug("<<<< leaving %s", __func__));
     return 0;
 }
 
@@ -1334,7 +1321,7 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
 
     if(buselfs_state->delay_rw)
     {
-        IFDEBUG(dzlog_debug("buselfs_state->delay_rw = TRUE, delaying write for %u milliseconds", BLFS_DELAY_RW_PENALTY_MS));
+        IFDEBUGANY(dzlog_debug("buselfs_state->delay_rw = TRUE, delaying write for %u milliseconds", BLFS_DELAY_RW_PENALTY_MS));
         usleep(BLFS_DELAY_RW_PENALTY_MS * 1000);
     }
 
@@ -1344,8 +1331,8 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
 
     IFDEBUG(dzlog_debug("input_buffer (ptr): %p", (void *) input_buffer));
     IFDEBUG(dzlog_debug("buffer (ptr): %p", (void *) buffer));
-    IFDEBUGANY(dzlog_debug("length: %"PRIu32, length));
-    IFDEBUGANY(dzlog_debug("initial absolute_offset: %"PRIu64, absolute_offset));
+    IFDEBUG(dzlog_debug("length: %"PRIu32, length));
+    IFDEBUG(dzlog_debug("initial absolute_offset: %"PRIu64, absolute_offset));
     IFDEBUG(dzlog_debug("userdata (ptr): %p", (void *) userdata));
     IFDEBUG(dzlog_debug("buselfs_state (ptr): %p", (void *) buselfs_state));
 
@@ -1365,9 +1352,9 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
         IFDEBUG(assert(absolute_offset < buselfs_state->buseops->size));
         absolute_offset += buselfs_state->buseops->size;
         IFDEBUG(assert(absolute_offset >= buselfs_state->buseops->size));
-    }
 
-    IFDEBUG(dzlog_debug("actual absolute_offset: %"PRIu64, absolute_offset));
+        IFDEBUG(dzlog_debug("adjusted (actual) absolute_offset: %"PRIu64, absolute_offset));
+    }
 
     // ! For a bigger system, this cast could be a problem
     uint_fast32_t nugget_offset          = (uint_fast32_t)(absolute_offset / nugget_size); // nugget_index
@@ -1378,7 +1365,7 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
     IFDEBUG(dzlog_debug("num_nuggets: %"PRIuFAST32, num_nuggets));
     IFDEBUG(dzlog_debug("flakes_per_nugget: %"PRIuFAST32, flakes_per_nugget));
     IFDEBUG(dzlog_debug("mt_offset: %"PRIuFAST32, mt_offset));
-    IFDEBUG(dzlog_debug("nugget_offset: %"PRIuFAST32, nugget_offset));
+    IFDEBUGANY(dzlog_debug("nugget_offset: %"PRIuFAST32, nugget_offset));
     IFDEBUG(dzlog_debug("nugget_internal_offset: %"PRIuFAST32, nugget_internal_offset));
 
     IFDEBUG(dzlog_debug("buffer to write (initial 64 bytes):"));
@@ -1488,10 +1475,7 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
             || buselfs_state->active_swap_strategy == swap_selective)
            && active_cipher->enum_id != meta->cipher_ident)
         {
-            IFDEBUGANY(dzlog_notice("<<INITIALIZING CIPHER SWAP PROCEDURE (from cipher %"PRIu8" to cipher %"PRIu8")>>",
-                active_cipher->enum_id,
-                meta->cipher_ident
-            ));
+            IFDEBUGANY(dzlog_notice("write() is triggering cipher switch..."));
 
             buffer += blfs_swap_nugget_to_active_cipher(
                 SWAP_WHILE_WRITE,
@@ -1515,7 +1499,7 @@ int buse_write(const void * input_buffer, uint32_t length, uint64_t absolute_off
 
             if(active_cipher->write_handle)
             {
-                IFDEBUG4(dzlog_notice("[executing write with write handle with active cipher %s (%"PRIu8")]", active_cipher->name, active_cipher->enum_id));
+                IFDEBUG4(dzlog_notice("[executing write handle with active cipher %s (%"PRIu8")]", active_cipher->name, active_cipher->enum_id));
                 buffer += active_cipher->write_handle(
                     buffer,
                     buselfs_state,
