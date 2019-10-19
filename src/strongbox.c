@@ -801,9 +801,9 @@ void update_application_state_check_mq(buselfs_state_t * buselfs_state)
 
                 else
                 {
-                    dzlog_warn(">>> WARNING: we received a command to swap ciphers but cipher swapping is disabled! <<<");
-                    // dzlog_warn("EXCEPTION: we received a command to swap ciphers but cipher swapping is disabled!");
-                    // Throw(EXCEPTION_CIPHER_SWITCHING_IS_DISABLED);
+                    //dzlog_warn(">>> WARNING: we received a command to swap ciphers but cipher swapping is disabled! <<<");
+                    dzlog_warn("EXCEPTION: we received a command to swap ciphers but cipher swapping is disabled!");
+                    Throw(EXCEPTION_CIPHER_SWITCHING_IS_DISABLED);
                 }
 
                 break;
