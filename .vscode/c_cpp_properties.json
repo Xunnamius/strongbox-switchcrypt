@@ -1,0 +1,35 @@
+{
+    "configurations": [
+        {
+            "name": "️Linux",
+            "browse": {
+                "path": [
+                    "/home/xunnamius/repos/research/buselfs"
+                ],
+                "limitSymbolsToIncludedHeaders": true
+            },
+            "includePath": [
+                "/home/xunnamius/repos/research/buselfs/src",
+                "/home/xunnamius/repos/research/buselfs/config",
+                "/home/xunnamius/repos/research/buselfs/vendor/unity/src",
+                "/home/xunnamius/repos/research/buselfs/vendor/merkle-tree/src",
+                "/home/xunnamius/repos/research/buselfs/vendor/libestream",
+                "/home/xunnamius/repos/research/buselfs/vendor/energymon/src",
+                "/home/xunnamius/repos/research/buselfs/vendor/cmock/src",
+                "/home/xunnamius/repos/research/buselfs/vendor",
+                "/usr/include"
+            ],
+            "defines": [
+                "__ARM_PCS_VFP",
+                "_XOPEN_SOURCE",
+                "_LARGEFILE64_SOURCE",
+                "_GNU_SOURCE",
+                "__ARM_NEON__"
+            ],
+            "cStandard": "c11",
+            "cppStandard": "c++17",
+            "intelliSenseMode": "clang-x64"
+        }
+    ],
+    "version": 4
+}
