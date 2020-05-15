@@ -13,8 +13,7 @@ Chicago).
 > *Note that this is a prototype implementation of the StrongBox idea. This is
 > not production-ready code. Do not expect to be able to use this in real life,
 > it's only a proof-of-concept for little-endian odroid XU3s. As this is not
-> production code, do not place it anywhere near files you consider important!
-> You've been warned!*
+> production code, do not place it anywhere near files you consider important!*
 
 ***
 - [StrongBox (internally: BuseLFS)](#strongbox-internally-buselfs)
