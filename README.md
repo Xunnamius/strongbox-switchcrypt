@@ -156,6 +156,9 @@ Messages can be sent and received from the StrongBox message queue or any
 message queue by using `strongboxctl` (AKA: `sbctl`). `sbctl` can be built via
 Make:
 
+> Note: if necessary, you can mount the message queue and manually inspect it
+> with `sudo mount -t mqueue none /dev/mq`
+
 ```
 make pre
 make sbctl
@@ -193,6 +196,11 @@ For more information and some friendly? examples:
 
 ## Building StrongBox
 
+> Be sure to install *and configure* any dependencies list above that you might
+> be missing, like [libsodium](https://doc.libsodium.org/installation) or
+> [zlog](https://github.com/HardySimpson/zlog). Otherwise, the following
+> commands will not work.
+
 You may wish to run the included unit tests first before actually utilizing
 StrongBox. See the [Testing](#testing-strongbox) section below.
 
@@ -200,6 +208,10 @@ StrongBox. See the [Testing](#testing-strongbox) section below.
 calls made to privileged devices (like the RPMB), depending on your setup.
 
 First, of course, change directory into the StrongBox directory and `make` it:
+
+> Note: you might have to change to the `build/` subdirectory to run this
+> commands properly. If something goes wrong, clean up and try running the
+> commands with `build/` as the working directory.
 
 ```
 # make pre
